@@ -1,6 +1,6 @@
 use super::{apply, created, meta, seeded, story_at};
 use crate::product_management::epic::EpicId;
-use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::{StoryId, Work};
 
 #[test]
@@ -14,11 +14,13 @@ fn parent_epic_set_event_decodes_into_the_stored_parent_epic_field() {
     );
     apply(
         &store,
-        StoryEvent::ParentEpicSet {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(12),
-            epic_id: EpicId::new(300),
-        },
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(12),
+            StoryEventKind::ParentEpicSet {
+                epic_id: EpicId::new(300),
+            },
+        ),
     );
     assert_eq!(
         story_at(&store, 12).unwrap().parent_epic(),
@@ -33,11 +35,13 @@ fn parent_epic_set_event_makes_story_read_its_parent_epic() {
     created(&store, 100, "child", Work::NotStarted);
     apply(
         &store,
-        StoryEvent::ParentEpicSet {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(100),
-            epic_id: EpicId::new(50),
-        },
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(100),
+            StoryEventKind::ParentEpicSet {
+                epic_id: EpicId::new(50),
+            },
+        ),
     );
     assert_eq!(
         story_at(&store, 100).unwrap().parent_epic(),
@@ -51,18 +55,21 @@ fn parent_epic_unset_event_makes_story_read_no_parent_epic() {
     created(&store, 101, "child", Work::NotStarted);
     apply(
         &store,
-        StoryEvent::ParentEpicSet {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(101),
-            epic_id: EpicId::new(51),
-        },
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(101),
+            StoryEventKind::ParentEpicSet {
+                epic_id: EpicId::new(51),
+            },
+        ),
     );
     apply(
         &store,
-        StoryEvent::ParentEpicUnset {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(101),
-        },
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(101),
+            StoryEventKind::ParentEpicUnset,
+        ),
     );
     assert_eq!(story_at(&store, 101).unwrap().parent_epic(), None);
 }
@@ -72,18 +79,21 @@ fn parent_epic_events_no_op_on_missing_story() {
     let store = seeded();
     apply(
         &store,
-        StoryEvent::ParentEpicSet {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(999),
-            epic_id: EpicId::new(888),
-        },
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(999),
+            StoryEventKind::ParentEpicSet {
+                epic_id: EpicId::new(888),
+            },
+        ),
     );
     apply(
         &store,
-        StoryEvent::ParentEpicUnset {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(999),
-        },
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(999),
+            StoryEventKind::ParentEpicUnset,
+        ),
     );
     assert!(story_at(&store, 999).is_none());
 }

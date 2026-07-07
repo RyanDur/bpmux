@@ -765,20 +765,24 @@ async fn latest_reject_survives_an_iteration_move() {
     let meta = crate::sync::cache_fill_meta();
     handle.dispatch(crate::store::AppAction::Story(
         crate::product_management::story::slice::StoryAction::Event(
-            crate::product_management::story::events::StoryEvent::TagAdded {
-                meta: meta.clone(),
-                id: StoryId::new(1524),
-                label: "parent-iteration-#1656.1".to_string(),
-            },
+            crate::product_management::story::events::StoryEvent::new(
+                meta.clone(),
+                StoryId::new(1524),
+                crate::product_management::story::events::StoryEventKind::TagAdded {
+                    label: "parent-iteration-#1656.1".to_string(),
+                },
+            ),
         ),
     ));
     handle.dispatch(crate::store::AppAction::Story(
         crate::product_management::story::slice::StoryAction::Event(
-            crate::product_management::story::events::StoryEvent::TagRemoved {
+            crate::product_management::story::events::StoryEvent::new(
                 meta,
-                id: StoryId::new(1524),
-                label: "parent-iteration-#1655.1".to_string(),
-            },
+                StoryId::new(1524),
+                crate::product_management::story::events::StoryEventKind::TagRemoved {
+                    label: "parent-iteration-#1655.1".to_string(),
+                },
+            ),
         ),
     ));
 

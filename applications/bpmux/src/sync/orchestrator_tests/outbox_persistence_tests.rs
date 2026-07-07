@@ -6,7 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Stage, Story, StoryId, Work};
@@ -44,12 +44,14 @@ mod outbox_persistence {
             10,
             Work::NotStarted,
         )])));
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(10),
-            new_state: Work::InProgress,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(10),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
         .unwrap();
         assert!(path.exists(), "outbox file must exist after mutate");
         let events = crate::sync::load_outbox_from_disk(&path).unwrap();
@@ -69,12 +71,14 @@ mod outbox_persistence {
             20,
             Work::NotStarted,
         )])));
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(20),
-            new_state: Work::Acceptance,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(20),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::Acceptance,
+                placement: None,
+            },
+        ))
         .unwrap();
         let drained = orch.drain_once().await.unwrap();
         assert_eq!(drained, 1);
@@ -96,12 +100,14 @@ mod outbox_persistence {
             90,
             Work::NotStarted,
         )])));
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(90),
-            new_state: Work::Acceptance,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(90),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::Acceptance,
+                placement: None,
+            },
+        ))
         .unwrap();
         assert_eq!(
             storage.load_outbox().unwrap().len(),
@@ -132,12 +138,14 @@ mod outbox_persistence {
             30,
             Work::NotStarted,
         )])));
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(30),
-            new_state: Work::Acceptance,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(30),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::Acceptance,
+                placement: None,
+            },
+        ))
         .unwrap();
         adapter.set_push_failures(true);
         let _ = orch.drain_once().await;
@@ -159,12 +167,14 @@ mod outbox_persistence {
             Work::NotStarted,
         )])));
         orch_a
-            .mutate(StoryEvent::StateTransitioned {
-                meta: meta(),
-                id: StoryId::new(40),
-                new_state: Work::Acceptance,
-                placement: None,
-            })
+            .mutate(StoryEvent::new(
+                meta(),
+                StoryId::new(40),
+                StoryEventKind::StateTransitioned {
+                    new_state: Work::Acceptance,
+                    placement: None,
+                },
+            ))
             .unwrap();
         drop(orch_a_dyn);
         drop(orch_a);
@@ -192,12 +202,14 @@ mod outbox_persistence {
             60,
             Work::NotStarted,
         )])));
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(60),
-            new_state: Work::Acceptance,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(60),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::Acceptance,
+                placement: None,
+            },
+        ))
         .unwrap();
         adapter.set_permanent_push_failures(true);
         let _ = orch.drain_once().await;
@@ -225,12 +237,14 @@ mod outbox_persistence {
             65,
             Work::NotStarted,
         )])));
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(65),
-            new_state: Work::Acceptance,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(65),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::Acceptance,
+                placement: None,
+            },
+        ))
         .unwrap();
         adapter.set_permanent_push_failures(true);
         let _ = orch.drain_once().await;
@@ -255,12 +269,14 @@ mod outbox_persistence {
             66,
             Work::NotStarted,
         )])));
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(66),
-            new_state: Work::Acceptance,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(66),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::Acceptance,
+                placement: None,
+            },
+        ))
         .unwrap();
         adapter.set_permanent_push_failures(true);
         let _ = orch.drain_once().await;
@@ -286,12 +302,14 @@ mod outbox_persistence {
             seed_story(71, Work::NotStarted),
         ])));
         for n in [70u64, 71] {
-            orch.mutate(StoryEvent::StateTransitioned {
-                meta: meta(),
-                id: StoryId::new(n),
-                new_state: Work::Acceptance,
-                placement: None,
-            })
+            orch.mutate(StoryEvent::new(
+                meta(),
+                StoryId::new(n),
+                StoryEventKind::StateTransitioned {
+                    new_state: Work::Acceptance,
+                    placement: None,
+                },
+            ))
             .unwrap();
         }
         adapter.set_permanent_push_failures(true);
@@ -319,12 +337,14 @@ mod outbox_persistence {
             80,
             Work::NotStarted,
         )])));
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(80),
-            new_state: Work::Acceptance,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(80),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::Acceptance,
+                placement: None,
+            },
+        ))
         .unwrap();
         adapter.set_push_failures(true);
         let _ = orch.drain_once().await;
@@ -352,12 +372,14 @@ mod outbox_persistence {
         ])));
         for n in [50u64, 51, 52] {
             orch_a
-                .mutate(StoryEvent::StateTransitioned {
-                    meta: meta(),
-                    id: StoryId::new(n),
-                    new_state: Work::InProgress,
-                    placement: None,
-                })
+                .mutate(StoryEvent::new(
+                    meta(),
+                    StoryId::new(n),
+                    StoryEventKind::StateTransitioned {
+                        new_state: Work::InProgress,
+                        placement: None,
+                    },
+                ))
                 .unwrap();
         }
         drop(orch_a_dyn);
@@ -379,12 +401,14 @@ mod outbox_persistence {
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
 
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(999),
-            new_state: Work::InProgress,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(999),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
         .unwrap();
 
         assert!(
@@ -402,12 +426,14 @@ mod outbox_persistence {
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
 
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(777),
-            new_state: Work::InProgress,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(777),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
         .unwrap();
         assert!(
             orch.story(777).is_none(),
@@ -420,12 +446,14 @@ mod outbox_persistence {
             "refresh_story populates the store from adapter"
         );
 
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(777),
-            new_state: Work::InProgress,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(777),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
         .unwrap();
         assert_eq!(
             orch.story(777).map(|s| s.state),

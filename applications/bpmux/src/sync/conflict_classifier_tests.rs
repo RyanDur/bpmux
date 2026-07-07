@@ -5,7 +5,7 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::bind_seeded_refresh;
@@ -43,12 +43,14 @@ async fn mutate_captures_pre_state_snapshot_before_local_apply() {
     bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 
-    orch.mutate(StoryEvent::StateTransitioned {
-        meta: meta(),
-        id: StoryId::new(500),
-        new_state: Work::InProgress,
-        placement: None,
-    })
+    orch.mutate(StoryEvent::new(
+        meta(),
+        StoryId::new(500),
+        StoryEventKind::StateTransitioned {
+            new_state: Work::InProgress,
+            placement: None,
+        },
+    ))
     .unwrap();
 
     let entries = load_outbox_from_disk(&path).unwrap();
@@ -64,8 +66,8 @@ async fn mutate_captures_pre_state_snapshot_before_local_apply() {
         "pre_state must reflect the pre-mutation state, not post"
     );
     assert!(matches!(
-        entry.event,
-        StoryEvent::StateTransitioned {
+        entry.event.kind,
+        StoryEventKind::StateTransitioned {
             new_state: Work::InProgress,
             ..
         }
@@ -81,11 +83,13 @@ async fn mutate_pre_state_none_when_story_not_in_store_at_queue_time() {
     let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
     bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
 
-    orch.mutate(StoryEvent::TagAdded {
-        meta: meta(),
-        id: StoryId::new(999),
-        label: "blocked".to_string(),
-    })
+    orch.mutate(StoryEvent::new(
+        meta(),
+        StoryId::new(999),
+        StoryEventKind::TagAdded {
+            label: "blocked".to_string(),
+        },
+    ))
     .unwrap();
 
     let entries = load_outbox_from_disk(&path).unwrap();
@@ -100,11 +104,13 @@ async fn mutate_pre_state_none_when_story_not_in_store_at_queue_time() {
 async fn outbox_schema_back_compat_reads_legacy_bare_boardevent_file() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("legacy-outbox.json");
-    let legacy_event = StoryEvent::TagAdded {
-        meta: meta(),
-        id: StoryId::new(42),
-        label: "ready".to_string(),
-    };
+    let legacy_event = StoryEvent::new(
+        meta(),
+        StoryId::new(42),
+        StoryEventKind::TagAdded {
+            label: "ready".to_string(),
+        },
+    );
     let legacy_payload = serde_json::to_vec(&vec![legacy_event]).unwrap();
     std::fs::write(&path, legacy_payload).unwrap();
 
@@ -112,8 +118,8 @@ async fn outbox_schema_back_compat_reads_legacy_bare_boardevent_file() {
     assert_eq!(entries.len(), 1);
     let entry = entries.front().unwrap();
     assert!(matches!(
-        entry.event,
-        StoryEvent::TagAdded { id, .. } if id == StoryId::new(42)
+        &entry.event.kind,
+        StoryEventKind::TagAdded { .. } if entry.event.id == StoryId::new(42)
     ));
     assert!(
         entry.pre_state.is_none(),
@@ -127,12 +133,14 @@ async fn outbox_round_trips_new_shape_through_disk() {
     let path = dir.path().join("new-outbox.json");
     let pre = seed_story(7, Work::Acceptance);
     let queued = QueuedEvent::new(
-        StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(7),
-            new_state: Work::Accepted,
-            placement: None,
-        },
+        StoryEvent::new(
+            meta(),
+            StoryId::new(7),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::Accepted,
+                placement: None,
+            },
+        ),
         Some(pre.clone()),
     );
     let payload = serde_json::to_vec(&vec![queued]).unwrap();
@@ -150,12 +158,14 @@ async fn outbox_round_trips_new_shape_through_disk() {
 fn classify_conflict_returns_none_for_slice_a_pending_real_classifier() {
     let pre = seed_story(1, Work::NotStarted);
     let cur = seed_story(1, Work::InProgress);
-    let event = StoryEvent::StateTransitioned {
-        meta: meta(),
-        id: StoryId::new(1),
-        new_state: Work::InProgress,
-        placement: None,
-    };
+    let event = StoryEvent::new(
+        meta(),
+        StoryId::new(1),
+        StoryEventKind::StateTransitioned {
+            new_state: Work::InProgress,
+            placement: None,
+        },
+    );
     assert_eq!(classify_conflict(Some(&pre), &event, Some(&cur)), None);
 }
 
@@ -175,12 +185,14 @@ async fn drain_resets_conflicts_pending_to_zero_in_slice_a() {
     bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 
-    orch.mutate_sync(StoryEvent::StateTransitioned {
-        meta: meta(),
-        id: StoryId::new(800),
-        new_state: Work::InProgress,
-        placement: None,
-    })
+    orch.mutate_sync(StoryEvent::new(
+        meta(),
+        StoryId::new(800),
+        StoryEventKind::StateTransitioned {
+            new_state: Work::InProgress,
+            placement: None,
+        },
+    ))
     .unwrap();
 
     let _ = orch.drain_pending().await.unwrap();

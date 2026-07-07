@@ -3,7 +3,7 @@ use std::sync::Arc;
 use serde_json::Map;
 use serde_json::Value;
 
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{StoryId, Work};
 use crate::sync::RefreshDriver;
@@ -69,10 +69,11 @@ pub(in crate::bridge) async fn handle_move_story(
     let story_id = StoryId::new(id);
 
     if was_closed && !target.closes_issue() {
-        r.mutate_sync(StoryEvent::StoryReopened {
-            meta: meta.clone(),
-            id: story_id,
-        })
+        r.mutate_sync(StoryEvent::new(
+            meta.clone(),
+            story_id,
+            StoryEventKind::StoryReopened,
+        ))
         .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
     }
 
@@ -83,11 +84,13 @@ pub(in crate::bridge) async fn handle_move_story(
             .map(|s| s.state() == target_state)
             .unwrap_or(false);
         if !already_labeled {
-            r.mutate_sync(StoryEvent::TagAdded {
-                meta: meta.clone(),
-                id: story_id,
-                label: label.to_string(),
-            })
+            r.mutate_sync(StoryEvent::new(
+                meta.clone(),
+                story_id,
+                StoryEventKind::TagAdded {
+                    label: label.to_string(),
+                },
+            ))
             .map_err(|e| format!("#{id} tag-add enqueue failed: {e}"))?;
         }
     }
@@ -97,38 +100,48 @@ pub(in crate::bridge) async fn handle_move_story(
             let state = target
                 .workflow_state()
                 .ok_or_else(|| format!("#{id} move target has no workflow state"))?;
-            r.mutate_sync(StoryEvent::StateTransitioned {
-                meta: meta.clone(),
-                id: story_id,
-                new_state: state.clone(),
-                placement: crate::board::placement_from_target(
-                    &target_str.to_ascii_lowercase().replace([' ', '_'], "-"),
-                    &crate::workflow::board_middle_stage_ids(crate::workflow::current_workflow()),
-                ),
-            })
+            r.mutate_sync(StoryEvent::new(
+                meta.clone(),
+                story_id,
+                StoryEventKind::StateTransitioned {
+                    new_state: state.clone(),
+                    placement: crate::board::placement_from_target(
+                        &target_str.to_ascii_lowercase().replace([' ', '_'], "-"),
+                        &crate::workflow::board_middle_stage_ids(
+                            crate::workflow::current_workflow(),
+                        ),
+                    ),
+                },
+            ))
             .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
             if matches!(state, Work::Accepted) && !was_closed {
-                r.mutate_sync(StoryEvent::StoryClosed {
-                    meta: meta.clone(),
-                    id: story_id,
-                    reason: Some(rationale.clone()),
-                })
+                r.mutate_sync(StoryEvent::new(
+                    meta.clone(),
+                    story_id,
+                    StoryEventKind::StoryClosed {
+                        reason: Some(rationale.clone()),
+                    },
+                ))
                 .map_err(|e| format!("#{id} accept-close enqueue failed: {e}"))?;
             }
         }
         TargetState::Retired => {
-            r.mutate_sync(StoryEvent::StateTransitioned {
-                meta: meta.clone(),
-                id: story_id,
-                new_state: Work::Retired,
-                placement: None,
-            })
+            r.mutate_sync(StoryEvent::new(
+                meta.clone(),
+                story_id,
+                StoryEventKind::StateTransitioned {
+                    new_state: Work::Retired,
+                    placement: None,
+                },
+            ))
             .map_err(|e| format!("#{id} retire-state enqueue failed: {e}"))?;
-            r.mutate_sync(StoryEvent::StoryClosed {
-                meta: meta.clone(),
-                id: story_id,
-                reason: Some(format!("retired: {rationale}")),
-            })
+            r.mutate_sync(StoryEvent::new(
+                meta.clone(),
+                story_id,
+                StoryEventKind::StoryClosed {
+                    reason: Some(format!("retired: {rationale}")),
+                },
+            ))
             .map_err(|e| format!("#{id} retire enqueue failed: {e}"))?;
         }
     }
@@ -136,11 +149,11 @@ pub(in crate::bridge) async fn handle_move_story(
     scheduling::apply_scheduling(r, dispatch, id, &target, position, scheduling_target).await?;
 
     let body = audit_comment_body(&actor_short, &from_display, &target, position, &rationale);
-    r.mutate_sync(StoryEvent::FreeCommentAppended {
+    r.mutate_sync(StoryEvent::new(
         meta,
-        id: story_id,
-        body,
-    })
+        story_id,
+        StoryEventKind::FreeCommentAppended { body },
+    ))
     .map_err(|e| format!("#{id} audit-comment enqueue failed: {e}"))?;
 
     let pos_msg = match position {

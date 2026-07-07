@@ -59,13 +59,11 @@ pub(crate) async fn handle_edit_story(
             ts: chrono::Utc::now(),
             peer_id: crate::product_management::story::peer::PeerId::local(),
         };
-        r.mutate_sync(
-            crate::product_management::story::events::StoryEvent::AcceptorAssigned {
-                meta,
-                id: crate::product_management::story::StoryId::new(id),
-                acceptor,
-            },
-        )
+        r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+            meta,
+            crate::product_management::story::StoryId::new(id),
+            crate::product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
+        ))
         .map_err(|e| format!("#{id} acceptor enqueue failed: {e}"))?;
         r.drain_pending()
             .await

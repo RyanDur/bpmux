@@ -1,5 +1,5 @@
 use super::{apply, created, meta, seeded, story_at};
-use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::{Acceptor, StoryId, StoryKind, Tag, Work};
 
 #[test]
@@ -7,14 +7,16 @@ fn story_created_event_populates_the_central_store() {
     let store = seeded();
     apply(
         &store,
-        StoryEvent::StoryCreated {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(500),
-            title: "new story".to_string(),
-            body: "body text".to_string(),
-            initial_state: Work::NotStarted,
-            story_type: StoryKind::Feature,
-        },
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(500),
+            StoryEventKind::StoryCreated {
+                title: "new story".to_string(),
+                body: "body text".to_string(),
+                initial_state: Work::NotStarted,
+                story_type: StoryKind::Feature,
+            },
+        ),
     );
     let story = story_at(&store, 500).expect("story exists");
     assert_eq!(story.title, "new story");
@@ -29,12 +31,14 @@ fn state_transitioned_event_updates_existing_story() {
     created(&store, 1, "t", Work::NotStarted);
     apply(
         &store,
-        StoryEvent::StateTransitioned {
-            meta: meta("dev", 2026, "local"),
-            id: StoryId::new(1),
-            new_state: Work::InProgress,
-            placement: None,
-        },
+        StoryEvent::new(
+            meta("dev", 2026, "local"),
+            StoryId::new(1),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ),
     );
     assert_eq!(story_at(&store, 1).unwrap().state, Work::InProgress);
 }
@@ -44,12 +48,14 @@ fn state_transitioned_event_silently_drops_when_story_missing() {
     let store = seeded();
     apply(
         &store,
-        StoryEvent::StateTransitioned {
-            meta: meta("dev", 2026, "local"),
-            id: StoryId::new(999),
-            new_state: Work::InProgress,
-            placement: None,
-        },
+        StoryEvent::new(
+            meta("dev", 2026, "local"),
+            StoryId::new(999),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ),
     );
     assert!(story_at(&store, 999).is_none());
 }
@@ -65,11 +71,13 @@ fn acceptor_assigned_event_sets_the_stored_acceptor_field() {
     );
     apply(
         &store,
-        StoryEvent::AcceptorAssigned {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(8),
-            acceptor: Acceptor::Owner,
-        },
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(8),
+            StoryEventKind::AcceptorAssigned {
+                acceptor: Acceptor::Owner,
+            },
+        ),
     );
     assert_eq!(
         story_at(&store, 8).unwrap().acceptor(),
@@ -88,11 +96,13 @@ fn tag_set_event_sets_the_typed_tags_field_directly() {
     );
     apply(
         &store,
-        StoryEvent::TagSet {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(15),
-            tag: Tag::DeskCheckFail,
-        },
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(15),
+            StoryEventKind::TagSet {
+                tag: Tag::DeskCheckFail,
+            },
+        ),
     );
     assert_eq!(
         story_at(&store, 15).unwrap().tags(),
@@ -101,11 +111,13 @@ fn tag_set_event_sets_the_typed_tags_field_directly() {
     );
     apply(
         &store,
-        StoryEvent::TagSet {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(15),
-            tag: Tag::DeskCheckFail,
-        },
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(15),
+            StoryEventKind::TagSet {
+                tag: Tag::DeskCheckFail,
+            },
+        ),
     );
     assert_eq!(
         story_at(&store, 15).unwrap().tags(),
@@ -114,11 +126,13 @@ fn tag_set_event_sets_the_typed_tags_field_directly() {
     );
     apply(
         &store,
-        StoryEvent::TagUnset {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(15),
-            tag: Tag::DeskCheckFail,
-        },
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(15),
+            StoryEventKind::TagUnset {
+                tag: Tag::DeskCheckFail,
+            },
+        ),
     );
     assert!(
         story_at(&store, 15).unwrap().tags().is_empty(),

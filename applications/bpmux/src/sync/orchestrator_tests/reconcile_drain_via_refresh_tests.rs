@@ -7,7 +7,7 @@ use chrono::{TimeZone, Utc};
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::bind_seeded_refresh;
@@ -40,12 +40,14 @@ async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
     bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
     orchestrator
-        .mutate_sync(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(1),
-            new_state: Work::Acceptance,
-            placement: None,
-        })
+        .mutate_sync(StoryEvent::new(
+            meta(),
+            StoryId::new(1),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::Acceptance,
+                placement: None,
+            },
+        ))
         .unwrap();
     let drained = orchestrator.drain_pending().await.unwrap();
     assert_eq!(drained, 1);
@@ -74,8 +76,8 @@ async fn reconcile_dual_state_labels_emits_tag_remove_for_stale_in_progress_labe
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
     assert!(matches!(
-        &pushed[0],
-        StoryEvent::TagRemoved { id, label, .. } if *id == StoryId::new(450) && label == "in progress"
+        &pushed[0].kind,
+        StoryEventKind::TagRemoved { label } if pushed[0].id == StoryId::new(450) && label == "in progress"
     ));
 }
 
@@ -126,7 +128,7 @@ async fn reconcile_marks_the_ready_label_stale_for_a_not_started_non_member() {
     );
     let pushed = adapter.pushed_events();
     assert!(matches!(
-        &pushed[0],
-        StoryEvent::TagRemoved { id, label, .. } if *id == StoryId::new(453) && label == "ready"
+        &pushed[0].kind,
+        StoryEventKind::TagRemoved { label } if pushed[0].id == StoryId::new(453) && label == "ready"
     ));
 }

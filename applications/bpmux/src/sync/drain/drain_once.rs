@@ -1,4 +1,4 @@
-use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::sync::{SourceAdapter, SyncError, is_permanent_push_failure};
 
 use super::super::{
@@ -38,11 +38,13 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 )
             ) && kind.is_none()
             {
-                self.apply_story_event(&StoryEvent::ConflictResolved {
-                    meta: cache_fill_meta(),
-                    id: event.story_id(),
-                    origin: ConflictResolveOrigin::DrainAutoReclassify,
-                });
+                self.apply_story_event(&StoryEvent::new(
+                    cache_fill_meta(),
+                    event.story_id(),
+                    StoryEventKind::ConflictResolved {
+                        origin: ConflictResolveOrigin::DrainAutoReclassify,
+                    },
+                ));
                 crate::diag::log_diag(&format!(
                     "orchestrator: conflict auto-resolved on drain re-classify for #{}",
                     event.story_id().value()
@@ -75,11 +77,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                                 | ConflictKind::External
                         )
                     ) {
-                        self.apply_story_event(&StoryEvent::ConflictDetected {
-                            meta: cache_fill_meta(),
-                            id: event.story_id(),
-                            kind: divergent,
-                        });
+                        self.apply_story_event(&StoryEvent::new(
+                            cache_fill_meta(),
+                            event.story_id(),
+                            StoryEventKind::ConflictDetected { kind: divergent },
+                        ));
                         crate::diag::log_diag(&format!(
                             "orchestrator: conflict-detected {divergent:?} on #{}; left in outbox for slice-B click-to-resolve",
                             event.story_id().value()

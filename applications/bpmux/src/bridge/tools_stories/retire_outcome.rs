@@ -1,6 +1,6 @@
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
 use crate::product_management::story::StoryId;
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::sync::RefreshDriver;
 use std::sync::Arc;
@@ -30,25 +30,31 @@ pub(crate) async fn handle_retire_outcome(
         ts: chrono::Utc::now(),
         peer_id: PeerId::local(),
     };
-    r.mutate_sync(StoryEvent::StateTransitioned {
-        meta: meta(),
-        id: StoryId::new(outcome_id),
-        new_state: crate::product_management::story::Work::Retired,
-        placement: None,
-    })
+    r.mutate_sync(StoryEvent::new(
+        meta(),
+        StoryId::new(outcome_id),
+        StoryEventKind::StateTransitioned {
+            new_state: crate::product_management::story::Work::Retired,
+            placement: None,
+        },
+    ))
     .map_err(|e| format!("#{outcome_id} retire state-transition failed: {e}"))?;
-    r.mutate_sync(StoryEvent::StoryClosed {
-        meta: meta(),
-        id: StoryId::new(outcome_id),
-        reason: Some(format!("retired: {reason}")),
-    })
+    r.mutate_sync(StoryEvent::new(
+        meta(),
+        StoryId::new(outcome_id),
+        StoryEventKind::StoryClosed {
+            reason: Some(format!("retired: {reason}")),
+        },
+    ))
     .map_err(|e| format!("#{outcome_id} retire enqueue failed: {e}"))?;
     if !outcome.is_retired() {
-        r.mutate_sync(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(outcome_id),
-            label: "retired".to_string(),
-        })
+        r.mutate_sync(StoryEvent::new(
+            meta(),
+            StoryId::new(outcome_id),
+            StoryEventKind::TagAdded {
+                label: "retired".to_string(),
+            },
+        ))
         .map_err(|e| format!("#{outcome_id} retire-tag enqueue failed: {e}"))?;
     }
 

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::events::StoryEventKind;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Stage, Story, StoryId, Work};
 use crate::workflow::StageId;
@@ -73,9 +73,12 @@ pub fn react_to_story(state: &BoardPlacements, action: &StoryAction) -> Option<B
 
 pub(crate) fn placement_edge(state: &BoardPlacements, action: &StoryAction) -> Option<BoardAction> {
     let (id, placement) = match action {
-        StoryAction::Event(StoryEvent::StateTransitioned { id, placement, .. }) => (*id, placement),
-        StoryAction::Events(events) => events.iter().rev().find_map(|event| match event {
-            StoryEvent::StateTransitioned { id, placement, .. } => Some((*id, placement)),
+        StoryAction::Event(event) => match &event.kind {
+            StoryEventKind::StateTransitioned { placement, .. } => (event.id, placement),
+            _ => return None,
+        },
+        StoryAction::Events(events) => events.iter().rev().find_map(|event| match &event.kind {
+            StoryEventKind::StateTransitioned { placement, .. } => Some((event.id, placement)),
             _ => None,
         })?,
         _ => return None,

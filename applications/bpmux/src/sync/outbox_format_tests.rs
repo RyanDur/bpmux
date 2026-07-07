@@ -4,7 +4,9 @@ use chrono::{TimeZone, Utc};
 
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::conflict::{ConflictKind, ConflictResolveOrigin};
-use crate::product_management::story::events::{EventMeta, LabelDerivedFields, StoryEvent};
+use crate::product_management::story::events::{
+    EventMeta, LabelDerivedFields, StoryEvent, StoryEventKind,
+};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{
     Acceptor, CastVerdict, FreeComment, Stage, Story, StoryId, StoryKind, Tag, Verdict, Work,
@@ -43,11 +45,13 @@ fn fixture_story() -> Story {
 }
 
 fn fixture_tag_added() -> StoryEvent {
-    StoryEvent::TagAdded {
-        meta: fixture_meta(),
-        id: StoryId::new(700),
-        label: "ready".to_string(),
-    }
+    StoryEvent::new(
+        fixture_meta(),
+        StoryId::new(700),
+        StoryEventKind::TagAdded {
+            label: "ready".to_string(),
+        },
+    )
 }
 
 fn assert_byte_round_trip(fixture: &str) {
@@ -97,8 +101,8 @@ fn legacy_bare_event_round_trips_byte_identically() {
 fn a_row_missing_the_placement_key_defaults_and_normalizes_on_rewrite() {
     let parsed: QueuedEvent =
         serde_json::from_str(FIX_ABSENT_PLACEMENT).expect("pre-placement row deserializes");
-    match &parsed.event {
-        StoryEvent::StateTransitioned { placement, .. } => assert_eq!(placement, &None),
+    match &parsed.event.kind {
+        StoryEventKind::StateTransitioned { placement, .. } => assert_eq!(placement, &None),
         other => panic!("fixture is a StateTransitioned row; got {other:?}"),
     }
     assert_eq!(
@@ -112,8 +116,8 @@ fn a_row_missing_the_placement_key_defaults_and_normalizes_on_rewrite() {
 fn a_row_missing_the_etag_key_defaults_and_normalizes_on_rewrite() {
     let parsed: QueuedEvent =
         serde_json::from_str(FIX_ABSENT_ETAG).expect("pre-etag row deserializes");
-    match &parsed.event {
-        StoryEvent::BodyFetched { etag, .. } => assert_eq!(etag, &None),
+    match &parsed.event.kind {
+        StoryEventKind::BodyFetched { etag, .. } => assert_eq!(etag, &None),
         other => panic!("fixture is a BodyFetched row; got {other:?}"),
     }
     assert_eq!(
@@ -168,33 +172,33 @@ fn a_current_shape_outbox_file_loads_and_rewrites_byte_identically() {
 }
 
 fn variant_name(event: &StoryEvent) -> &'static str {
-    match event {
-        StoryEvent::StoryCreated { .. } => "StoryCreated",
-        StoryEvent::StateTransitioned { .. } => "StateTransitioned",
-        StoryEvent::TagAdded { .. } => "TagAdded",
-        StoryEvent::TagRemoved { .. } => "TagRemoved",
-        StoryEvent::TagSet { .. } => "TagSet",
-        StoryEvent::TagUnset { .. } => "TagUnset",
-        StoryEvent::IterationSlotSet { .. } => "IterationSlotSet",
-        StoryEvent::IterationSlotCleared { .. } => "IterationSlotCleared",
-        StoryEvent::VerdictCast { .. } => "VerdictCast",
-        StoryEvent::FreeCommentAppended { .. } => "FreeCommentAppended",
-        StoryEvent::BodyFetched { .. } => "BodyFetched",
-        StoryEvent::FreeCommentsFetched { .. } => "FreeCommentsFetched",
-        StoryEvent::VerdictsFetched { .. } => "VerdictsFetched",
-        StoryEvent::StoryClosed { .. } => "StoryClosed",
-        StoryEvent::StoryReopened { .. } => "StoryReopened",
-        StoryEvent::AcceptorAssigned { .. } => "AcceptorAssigned",
-        StoryEvent::ParentEpicSet { .. } => "ParentEpicSet",
-        StoryEvent::ParentEpicUnset { .. } => "ParentEpicUnset",
-        StoryEvent::CurrentIterationDesignated { .. } => "CurrentIterationDesignated",
-        StoryEvent::CurrentIterationCleared { .. } => "CurrentIterationCleared",
-        StoryEvent::StoryRefreshed { .. } => "StoryRefreshed",
-        StoryEvent::LabelsRefreshed { .. } => "LabelsRefreshed",
-        StoryEvent::TitleUpdated { .. } => "TitleUpdated",
-        StoryEvent::BodyUpdated { .. } => "BodyUpdated",
-        StoryEvent::ConflictDetected { .. } => "ConflictDetected",
-        StoryEvent::ConflictResolved { .. } => "ConflictResolved",
+    match &event.kind {
+        StoryEventKind::StoryCreated { .. } => "StoryCreated",
+        StoryEventKind::StateTransitioned { .. } => "StateTransitioned",
+        StoryEventKind::TagAdded { .. } => "TagAdded",
+        StoryEventKind::TagRemoved { .. } => "TagRemoved",
+        StoryEventKind::TagSet { .. } => "TagSet",
+        StoryEventKind::TagUnset { .. } => "TagUnset",
+        StoryEventKind::IterationSlotSet { .. } => "IterationSlotSet",
+        StoryEventKind::IterationSlotCleared => "IterationSlotCleared",
+        StoryEventKind::VerdictCast { .. } => "VerdictCast",
+        StoryEventKind::FreeCommentAppended { .. } => "FreeCommentAppended",
+        StoryEventKind::BodyFetched { .. } => "BodyFetched",
+        StoryEventKind::FreeCommentsFetched { .. } => "FreeCommentsFetched",
+        StoryEventKind::VerdictsFetched { .. } => "VerdictsFetched",
+        StoryEventKind::StoryClosed { .. } => "StoryClosed",
+        StoryEventKind::StoryReopened => "StoryReopened",
+        StoryEventKind::AcceptorAssigned { .. } => "AcceptorAssigned",
+        StoryEventKind::ParentEpicSet { .. } => "ParentEpicSet",
+        StoryEventKind::ParentEpicUnset => "ParentEpicUnset",
+        StoryEventKind::CurrentIterationDesignated => "CurrentIterationDesignated",
+        StoryEventKind::CurrentIterationCleared => "CurrentIterationCleared",
+        StoryEventKind::StoryRefreshed { .. } => "StoryRefreshed",
+        StoryEventKind::LabelsRefreshed { .. } => "LabelsRefreshed",
+        StoryEventKind::TitleUpdated { .. } => "TitleUpdated",
+        StoryEventKind::BodyUpdated { .. } => "BodyUpdated",
+        StoryEventKind::ConflictDetected { .. } => "ConflictDetected",
+        StoryEventKind::ConflictResolved { .. } => "ConflictResolved",
     }
 }
 
@@ -202,143 +206,185 @@ fn every_variant() -> Vec<StoryEvent> {
     let meta = fixture_meta;
     let id = StoryId::new(700);
     vec![
-        StoryEvent::StoryCreated {
-            meta: meta(),
+        StoryEvent::new(
+            meta(),
             id,
-            title: "t".to_string(),
-            body: "b".to_string(),
-            initial_state: Work::NotStarted,
-            story_type: StoryKind::Feature,
-        },
-        StoryEvent::StateTransitioned {
-            meta: meta(),
-            id,
-            new_state: Work::InProgress,
-            placement: Some(Stage::DeskCheck.id()),
-        },
-        StoryEvent::TagAdded {
-            meta: meta(),
-            id,
-            label: "ready".to_string(),
-        },
-        StoryEvent::TagRemoved {
-            meta: meta(),
-            id,
-            label: "ready".to_string(),
-        },
-        StoryEvent::TagSet {
-            meta: meta(),
-            id,
-            tag: Tag::DeskCheckFail,
-        },
-        StoryEvent::TagUnset {
-            meta: meta(),
-            id,
-            tag: Tag::DeskCheckFail,
-        },
-        StoryEvent::IterationSlotSet {
-            meta: meta(),
-            id,
-            name: "Pegasus".to_string(),
-            position: 100,
-        },
-        StoryEvent::IterationSlotCleared { meta: meta(), id },
-        StoryEvent::VerdictCast {
-            meta: meta(),
-            id,
-            verdict: Verdict::Fail {
-                step: "acceptance".into(),
+            StoryEventKind::StoryCreated {
+                title: "t".to_string(),
+                body: "b".to_string(),
+                initial_state: Work::NotStarted,
+                story_type: StoryKind::Feature,
             },
-            payload: Some("reason".to_string()),
-        },
-        StoryEvent::FreeCommentAppended {
-            meta: meta(),
+        ),
+        StoryEvent::new(
+            meta(),
             id,
-            body: "comment".to_string(),
-        },
-        StoryEvent::BodyFetched {
-            meta: meta(),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: Some(Stage::DeskCheck.id()),
+            },
+        ),
+        StoryEvent::new(
+            meta(),
             id,
-            body: "body".to_string(),
-            etag: Some("W/\"etag\"".to_string()),
-        },
-        StoryEvent::FreeCommentsFetched {
-            meta: meta(),
+            StoryEventKind::TagAdded {
+                label: "ready".to_string(),
+            },
+        ),
+        StoryEvent::new(
+            meta(),
             id,
-            comments: vec![FreeComment {
-                body: "c".to_string(),
-                author: "pm".to_string(),
-                ts: Utc.with_ymd_and_hms(2026, 7, 7, 12, 0, 0).unwrap(),
-            }],
-        },
-        StoryEvent::VerdictsFetched {
-            meta: meta(),
+            StoryEventKind::TagRemoved {
+                label: "ready".to_string(),
+            },
+        ),
+        StoryEvent::new(
+            meta(),
             id,
-            verdicts: vec![CastVerdict {
-                verdict: Verdict::Succeed {
-                    step: "in-progress".into(),
+            StoryEventKind::TagSet {
+                tag: Tag::DeskCheckFail,
+            },
+        ),
+        StoryEvent::new(
+            meta(),
+            id,
+            StoryEventKind::TagUnset {
+                tag: Tag::DeskCheckFail,
+            },
+        ),
+        StoryEvent::new(
+            meta(),
+            id,
+            StoryEventKind::IterationSlotSet {
+                name: "Pegasus".to_string(),
+                position: 100,
+            },
+        ),
+        StoryEvent::new(meta(), id, StoryEventKind::IterationSlotCleared),
+        StoryEvent::new(
+            meta(),
+            id,
+            StoryEventKind::VerdictCast {
+                verdict: Verdict::Fail {
+                    step: "acceptance".into(),
                 },
-                ts: Utc.with_ymd_and_hms(2026, 7, 7, 12, 0, 0).unwrap(),
-                actor: "dev".to_string(),
-                payload: None,
-            }],
-        },
-        StoryEvent::StoryClosed {
-            meta: meta(),
-            id,
-            reason: Some("done".to_string()),
-        },
-        StoryEvent::StoryReopened { meta: meta(), id },
-        StoryEvent::AcceptorAssigned {
-            meta: meta(),
-            id,
-            acceptor: Acceptor::Team,
-        },
-        StoryEvent::ParentEpicSet {
-            meta: meta(),
-            id,
-            epic_id: EpicId::new(9),
-        },
-        StoryEvent::ParentEpicUnset { meta: meta(), id },
-        StoryEvent::CurrentIterationDesignated { meta: meta(), id },
-        StoryEvent::CurrentIterationCleared { meta: meta(), id },
-        StoryEvent::StoryRefreshed {
-            meta: meta(),
-            id,
-            story: Box::new(fixture_story()),
-        },
-        StoryEvent::LabelsRefreshed {
-            meta: meta(),
-            id,
-            fields: LabelDerivedFields {
-                raw_labels: vec!["feature".to_string()],
-                acceptor: Some(Acceptor::Team),
-                parent_epic: Some(EpicId::new(9)),
-                tags: vec![Tag::DeskCheckFail],
-                ready_order: Some(100),
-                iteration_slot: None,
+                payload: Some("reason".to_string()),
             },
-        },
-        StoryEvent::TitleUpdated {
-            meta: meta(),
+        ),
+        StoryEvent::new(
+            meta(),
             id,
-            title: "new title".to_string(),
-        },
-        StoryEvent::BodyUpdated {
-            meta: meta(),
+            StoryEventKind::FreeCommentAppended {
+                body: "comment".to_string(),
+            },
+        ),
+        StoryEvent::new(
+            meta(),
             id,
-            body: "new body".to_string(),
-        },
-        StoryEvent::ConflictDetected {
-            meta: meta(),
+            StoryEventKind::BodyFetched {
+                body: "body".to_string(),
+                etag: Some("W/\"etag\"".to_string()),
+            },
+        ),
+        StoryEvent::new(
+            meta(),
             id,
-            kind: ConflictKind::DivergentState,
-        },
-        StoryEvent::ConflictResolved {
-            meta: meta(),
+            StoryEventKind::FreeCommentsFetched {
+                comments: vec![FreeComment {
+                    body: "c".to_string(),
+                    author: "pm".to_string(),
+                    ts: Utc.with_ymd_and_hms(2026, 7, 7, 12, 0, 0).unwrap(),
+                }],
+            },
+        ),
+        StoryEvent::new(
+            meta(),
             id,
-            origin: ConflictResolveOrigin::OperatorAction,
-        },
+            StoryEventKind::VerdictsFetched {
+                verdicts: vec![CastVerdict {
+                    verdict: Verdict::Succeed {
+                        step: "in-progress".into(),
+                    },
+                    ts: Utc.with_ymd_and_hms(2026, 7, 7, 12, 0, 0).unwrap(),
+                    actor: "dev".to_string(),
+                    payload: None,
+                }],
+            },
+        ),
+        StoryEvent::new(
+            meta(),
+            id,
+            StoryEventKind::StoryClosed {
+                reason: Some("done".to_string()),
+            },
+        ),
+        StoryEvent::new(meta(), id, StoryEventKind::StoryReopened),
+        StoryEvent::new(
+            meta(),
+            id,
+            StoryEventKind::AcceptorAssigned {
+                acceptor: Acceptor::Team,
+            },
+        ),
+        StoryEvent::new(
+            meta(),
+            id,
+            StoryEventKind::ParentEpicSet {
+                epic_id: EpicId::new(9),
+            },
+        ),
+        StoryEvent::new(meta(), id, StoryEventKind::ParentEpicUnset),
+        StoryEvent::new(meta(), id, StoryEventKind::CurrentIterationDesignated),
+        StoryEvent::new(meta(), id, StoryEventKind::CurrentIterationCleared),
+        StoryEvent::new(
+            meta(),
+            id,
+            StoryEventKind::StoryRefreshed {
+                story: Box::new(fixture_story()),
+            },
+        ),
+        StoryEvent::new(
+            meta(),
+            id,
+            StoryEventKind::LabelsRefreshed {
+                fields: LabelDerivedFields {
+                    raw_labels: vec!["feature".to_string()],
+                    acceptor: Some(Acceptor::Team),
+                    parent_epic: Some(EpicId::new(9)),
+                    tags: vec![Tag::DeskCheckFail],
+                    ready_order: Some(100),
+                    iteration_slot: None,
+                },
+            },
+        ),
+        StoryEvent::new(
+            meta(),
+            id,
+            StoryEventKind::TitleUpdated {
+                title: "new title".to_string(),
+            },
+        ),
+        StoryEvent::new(
+            meta(),
+            id,
+            StoryEventKind::BodyUpdated {
+                body: "new body".to_string(),
+            },
+        ),
+        StoryEvent::new(
+            meta(),
+            id,
+            StoryEventKind::ConflictDetected {
+                kind: ConflictKind::DivergentState,
+            },
+        ),
+        StoryEvent::new(
+            meta(),
+            id,
+            StoryEventKind::ConflictResolved {
+                origin: ConflictResolveOrigin::OperatorAction,
+            },
+        ),
     ]
 }
 

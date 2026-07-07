@@ -1,4 +1,4 @@
-use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Story, StoryId};
 use crate::sync::{SourceAdapter, SyncError};
@@ -17,18 +17,18 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     pub(super) fn update_body(&self, number: u64, body: String) -> Result<(), SyncError> {
-        self.mutate(StoryEvent::BodyUpdated {
-            meta: cache_fill_meta(),
-            id: StoryId::new(number),
-            body,
-        })
+        self.mutate(StoryEvent::new(
+            cache_fill_meta(),
+            StoryId::new(number),
+            StoryEventKind::BodyUpdated { body },
+        ))
     }
 
     pub(super) fn update_title(&self, number: u64, title: String) -> Result<(), SyncError> {
-        self.mutate(StoryEvent::TitleUpdated {
-            meta: cache_fill_meta(),
-            id: StoryId::new(number),
-            title,
-        })
+        self.mutate(StoryEvent::new(
+            cache_fill_meta(),
+            StoryId::new(number),
+            StoryEventKind::TitleUpdated { title },
+        ))
     }
 }

@@ -3,7 +3,7 @@ use super::helpers::{ensure_iteration_in_canonical_store, require_purpose};
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::product_management::iteration::Iteration;
 use crate::product_management::story::StoryId;
-use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::sync::RefreshDriver;
 use std::sync::Arc;
 
@@ -70,18 +70,22 @@ fn renumber_iteration_order(
             continue;
         }
         if let Some(old_position) = iteration.iteration_order {
-            r.mutate_sync(StoryEvent::TagRemoved {
-                meta: meta_for(agent_name),
-                id: StoryId::new(*number),
-                label: GhLabelCodec.encode_iteration_order(old_position),
-            })
+            r.mutate_sync(StoryEvent::new(
+                meta_for(agent_name),
+                StoryId::new(*number),
+                StoryEventKind::TagRemoved {
+                    label: GhLabelCodec.encode_iteration_order(old_position),
+                },
+            ))
             .map_err(|e| format!("#{number} iteration-order clear enqueue failed: {e}"))?;
         }
-        r.mutate_sync(StoryEvent::TagAdded {
-            meta: meta_for(agent_name),
-            id: StoryId::new(*number),
-            label: GhLabelCodec.encode_iteration_order(new_position),
-        })
+        r.mutate_sync(StoryEvent::new(
+            meta_for(agent_name),
+            StoryId::new(*number),
+            StoryEventKind::TagAdded {
+                label: GhLabelCodec.encode_iteration_order(new_position),
+            },
+        ))
         .map_err(|e| format!("#{number} iteration-order set enqueue failed: {e}"))?;
         updates.push(Iteration {
             iteration_order: Some(new_position),

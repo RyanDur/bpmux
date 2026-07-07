@@ -2,7 +2,7 @@ use super::labels_refreshed;
 use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::integrations::github::mapper::{decode_story_metadata, outbound_state_label};
-use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::{StoryId, Work};
 use crate::sync::SyncError;
 
@@ -61,13 +61,15 @@ pub(in crate::integrations::github) async fn push_story_closed(
     )
     .await?;
     match inner.close_story(number).await {
-        Ok(value) => Ok(
-            decode_story_metadata(&value).map(|story| StoryEvent::StoryRefreshed {
-                meta: crate::sync::cache_fill_meta(),
-                id: StoryId::new(number),
-                story: Box::new(story),
-            }),
-        ),
+        Ok(value) => Ok(decode_story_metadata(&value).map(|story| {
+            StoryEvent::new(
+                crate::sync::cache_fill_meta(),
+                StoryId::new(number),
+                StoryEventKind::StoryRefreshed {
+                    story: Box::new(story),
+                },
+            )
+        })),
         Err(e) => match crate::sync::classify_close_error(e) {
             SyncError::AlreadyClosed => Ok(None),
             other => Err(other),
@@ -80,13 +82,15 @@ pub(in crate::integrations::github) async fn push_story_reopened(
     number: u64,
 ) -> Result<Option<StoryEvent>, SyncError> {
     let value = inner.reopen_story(number).await.map_err(SyncError::Other)?;
-    Ok(
-        decode_story_metadata(&value).map(|story| StoryEvent::StoryRefreshed {
-            meta: crate::sync::cache_fill_meta(),
-            id: StoryId::new(number),
-            story: Box::new(story),
-        }),
-    )
+    Ok(decode_story_metadata(&value).map(|story| {
+        StoryEvent::new(
+            crate::sync::cache_fill_meta(),
+            StoryId::new(number),
+            StoryEventKind::StoryRefreshed {
+                story: Box::new(story),
+            },
+        )
+    }))
 }
 
 pub(in crate::integrations::github) async fn push_body_updated(

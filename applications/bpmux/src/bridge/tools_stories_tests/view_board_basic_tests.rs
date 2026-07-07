@@ -253,7 +253,7 @@ async fn view_board_buckets_concluded_stories_into_retired_or_accepted_column() 
 #[tokio::test]
 async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -309,27 +309,26 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     );
     assert!(
         pushed.iter().any(|e| matches!(
-            e,
-            StoryEvent::StoryClosed {
-                id,
+            &e.kind,
+            StoryEventKind::StoryClosed {
                 reason: Some(r),
                 ..
-            } if *id == StoryId::new(301) && r == "superseded by #999 — won't ship"
+            } if e.id == StoryId::new(301) && r == "superseded by #999 — won't ship"
         )),
         "StoryClosed event must be present with the reason payload"
     );
     assert!(
         pushed.iter().any(|e| matches!(
-            e,
-            StoryEvent::TagAdded { id, label, .. } if *id == StoryId::new(301) && label == "retired"
+            &e.kind,
+            StoryEventKind::TagAdded { label, .. } if e.id == StoryId::new(301) && label == "retired"
         )),
         "TagAdded 'retired' event must fire for retire-class reason"
     );
     assert!(
         pushed.iter().any(|e| matches!(
-            e,
-            StoryEvent::StateTransitioned { id, new_state, .. }
-                if *id == StoryId::new(301)
+            &e.kind,
+            StoryEventKind::StateTransitioned { new_state, .. }
+                if e.id == StoryId::new(301)
                     && *new_state == crate::product_management::story::Work::Retired
         )),
         "StateTransitioned → Retired must fire for retire-class reason"
@@ -339,7 +338,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
 #[tokio::test]
 async fn close_story_accept_disposition_transitions_state_to_accepted() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -383,17 +382,17 @@ async fn close_story_accept_disposition_transitions_state_to_accepted() {
     let pushed = adapter.pushed_events();
     assert!(
         pushed.iter().any(|e| matches!(
-            e,
-            StoryEvent::StateTransitioned { id, new_state, .. }
-                if *id == StoryId::new(302) && *new_state == Work::Accepted
+            &e.kind,
+            StoryEventKind::StateTransitioned { new_state, .. }
+                if e.id == StoryId::new(302) && *new_state == Work::Accepted
         )),
         "StateTransitioned → Accepted must fire for accept-class close: {pushed:?}"
     );
     assert!(
         pushed.iter().any(|e| matches!(
-            e,
-            StoryEvent::StoryClosed { id, reason: Some(r), .. }
-                if *id == StoryId::new(302) && r == "owner verified the outcome directly"
+            &e.kind,
+            StoryEventKind::StoryClosed { reason: Some(r), .. }
+                if e.id == StoryId::new(302) && r == "owner verified the outcome directly"
         )),
         "StoryClosed carries the close reason to the GH push: {pushed:?}"
     );

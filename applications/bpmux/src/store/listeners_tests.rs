@@ -168,16 +168,18 @@ fn state_transitioned(
     actor: &str,
     new_state: crate::product_management::story::Work,
 ) -> crate::product_management::story::events::StoryEvent {
-    crate::product_management::story::events::StoryEvent::StateTransitioned {
-        meta: crate::product_management::story::events::EventMeta {
+    crate::product_management::story::events::StoryEvent::new(
+        crate::product_management::story::events::EventMeta {
             actor: actor.to_string(),
             ts: chrono::Utc::now(),
             peer_id: crate::product_management::story::peer::PeerId::local(),
         },
-        id: crate::product_management::story::StoryId::new(id),
-        new_state,
-        placement: None,
-    }
+        crate::product_management::story::StoryId::new(id),
+        crate::product_management::story::events::StoryEventKind::StateTransitioned {
+            new_state,
+            placement: None,
+        },
+    )
 }
 
 async fn drain_roster_presence(

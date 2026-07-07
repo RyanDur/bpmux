@@ -34,7 +34,7 @@ fn bind_epics(
 #[tokio::test]
 async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -79,12 +79,11 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
     assert!(matches!(
-        &pushed[0],
-        StoryEvent::ParentEpicSet {
-            id,
+        &pushed[0].kind,
+        StoryEventKind::ParentEpicSet {
             epic_id,
             ..
-        } if *id == StoryId::new(300) && *epic_id == EpicId::new(457)
+        } if pushed[0].id == StoryId::new(300) && *epic_id == EpicId::new(457)
     ));
 }
 
@@ -162,7 +161,7 @@ async fn set_parent_epic_rejects_non_epic_parent() {
 #[tokio::test]
 async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -201,8 +200,8 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
     assert!(matches!(
-        &pushed[0],
-        StoryEvent::ParentEpicUnset { id, .. } if *id == StoryId::new(301)
+        &pushed[0].kind,
+        StoryEventKind::ParentEpicUnset if pushed[0].id == StoryId::new(301)
     ));
 }
 
@@ -233,7 +232,7 @@ async fn set_parent_epic_rejects_self_parent() {
 #[tokio::test]
 async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -273,10 +272,13 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
     let drained = orchestrator.drain_pending().await.unwrap();
     assert_eq!(drained, 2, "StoryCreated + ParentEpicSet both drain");
     let pushed = adapter.pushed_events();
-    assert!(matches!(pushed[0], StoryEvent::StoryCreated { .. }));
     assert!(matches!(
-        pushed[1],
-        StoryEvent::ParentEpicSet {
+        pushed[0].kind,
+        StoryEventKind::StoryCreated { .. }
+    ));
+    assert!(matches!(
+        pushed[1].kind,
+        StoryEventKind::ParentEpicSet {
             epic_id,
             ..
         } if epic_id == EpicId::new(500)

@@ -54,12 +54,11 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
             return Box::pin(async {});
         };
         let actor_if_delivered =
-            |event: &crate::product_management::story::events::StoryEvent| match event {
-                crate::product_management::story::events::StoryEvent::StateTransitioned {
-                    meta,
+            |event: &crate::product_management::story::events::StoryEvent| match &event.kind {
+                crate::product_management::story::events::StoryEventKind::StateTransitioned {
                     new_state: Work::Acceptance,
                     ..
-                } => Some(crate::routing::short_name(&meta.actor).to_string()),
+                } => Some(crate::routing::short_name(&event.meta.actor).to_string()),
                 _ => None,
             };
         let delivering = match story_action {

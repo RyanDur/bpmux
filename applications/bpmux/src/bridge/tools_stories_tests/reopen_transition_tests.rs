@@ -9,7 +9,7 @@ mod reopen_on_state_transition_tests {
     #![allow(clippy::unwrap_used)]
     use super::*;
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Stage, Story, StoryId, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -56,7 +56,7 @@ mod reopen_on_state_transition_tests {
         let pushed = adapter.pushed_events();
         assert!(
             pushed.iter().any(
-                |e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(7110))
+                |e| matches!(&e.kind, StoryEventKind::StoryReopened if e.id == StoryId::new(7110))
             ),
             "start_story on a concluded story must emit StoryReopened: {pushed:?}"
         );
@@ -77,7 +77,7 @@ mod reopen_on_state_transition_tests {
         let pushed = adapter.pushed_events();
         assert!(
             !pushed.iter().any(
-                |e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(7111))
+                |e| matches!(&e.kind, StoryEventKind::StoryReopened if e.id == StoryId::new(7111))
             ),
             "start_story on open story must NOT emit StoryReopened: {pushed:?}"
         );
@@ -99,7 +99,7 @@ mod reopen_on_state_transition_tests {
         let pushed = adapter.pushed_events();
         assert!(
             pushed.iter().any(
-                |e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(7120))
+                |e| matches!(&e.kind, StoryEventKind::StoryReopened if e.id == StoryId::new(7120))
             ),
             "deliver_story on a concluded story must emit StoryReopened: {pushed:?}"
         );
@@ -119,7 +119,7 @@ mod reopen_on_state_transition_tests {
         let pushed = adapter.pushed_events();
         assert!(
             pushed.iter().any(
-                |e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(7130))
+                |e| matches!(&e.kind, StoryEventKind::StoryReopened if e.id == StoryId::new(7130))
             ),
             "pass_desk_check on a concluded story must emit StoryReopened: {pushed:?}"
         );
@@ -171,12 +171,18 @@ mod reopen_on_state_transition_tests {
         orch.drain_pending().await.unwrap();
         let story = orch.story(7200).unwrap();
         assert_eq!(story.state, Work::InProgress);
-        let rework_placement = adapter.pushed_events().iter().rev().find_map(|e| match e {
-            StoryEvent::StateTransitioned { id, placement, .. } if *id == StoryId::new(7200) => {
-                Some(placement.clone())
-            }
-            _ => None,
-        });
+        let rework_placement = adapter
+            .pushed_events()
+            .iter()
+            .rev()
+            .find_map(|e| match &e.kind {
+                StoryEventKind::StateTransitioned { placement, .. }
+                    if e.id == StoryId::new(7200) =>
+                {
+                    Some(placement.clone())
+                }
+                _ => None,
+            });
         assert_eq!(
             rework_placement,
             Some(None),

@@ -1,5 +1,5 @@
 use super::{InnerState, typed_label_mirror};
-use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::{CastVerdict, FreeComment};
 
 pub(super) fn apply_push_event(
@@ -7,84 +7,82 @@ pub(super) fn apply_push_event(
     event: &StoryEvent,
     context: &crate::sync::PushContext,
 ) {
-    match event {
-        StoryEvent::FreeCommentAppended { id, body, meta } => {
+    match &event.kind {
+        StoryEventKind::FreeCommentAppended { body } => {
             let entry = FreeComment {
                 body: body.clone(),
-                author: meta.actor.clone(),
-                ts: meta.ts,
+                author: event.meta.actor.clone(),
+                ts: event.meta.ts,
             };
-            s.free_comments.entry(id.value()).or_default().push(entry);
+            s.free_comments
+                .entry(event.id.value())
+                .or_default()
+                .push(entry);
         }
-        StoryEvent::VerdictCast {
-            id,
-            verdict,
-            payload,
-            meta,
-        } => {
+        StoryEventKind::VerdictCast { verdict, payload } => {
             let entry = CastVerdict {
                 verdict: verdict.clone(),
-                ts: meta.ts,
-                actor: meta.actor.clone(),
+                ts: event.meta.ts,
+                actor: event.meta.actor.clone(),
                 payload: payload.clone(),
             };
-            s.verdicts.entry(id.value()).or_default().push(entry);
+            s.verdicts.entry(event.id.value()).or_default().push(entry);
         }
-        StoryEvent::BodyFetched { id, body, .. } => {
-            s.bodies.insert(id.value(), body.clone());
+        StoryEventKind::BodyFetched { body, .. } => {
+            s.bodies.insert(event.id.value(), body.clone());
         }
-        StoryEvent::TagAdded { id, label, .. } => {
-            let labels = s.labels.entry(id.value()).or_default();
+        StoryEventKind::TagAdded { label } => {
+            let labels = s.labels.entry(event.id.value()).or_default();
             if !labels.iter().any(|l| l.eq_ignore_ascii_case(label)) {
                 labels.push(label.clone());
             }
         }
-        StoryEvent::TagRemoved { id, label, .. } => {
-            if let Some(labels) = s.labels.get_mut(&id.value()) {
+        StoryEventKind::TagRemoved { label } => {
+            if let Some(labels) = s.labels.get_mut(&event.id.value()) {
                 labels.retain(|l| !l.eq_ignore_ascii_case(label));
             }
         }
-        StoryEvent::TagSet { id, tag, .. } => typed_label_mirror::tag_set(s, id.value(), *tag),
-        StoryEvent::TagUnset { id, tag, .. } => typed_label_mirror::tag_unset(s, id.value(), *tag),
-        StoryEvent::IterationSlotSet {
-            id, name, position, ..
-        } => typed_label_mirror::iteration_slot_set(s, id.value(), name, *position),
-        StoryEvent::IterationSlotCleared { id, .. } => {
-            typed_label_mirror::iteration_slot_cleared(s, id.value())
+        StoryEventKind::TagSet { tag } => typed_label_mirror::tag_set(s, event.id.value(), *tag),
+        StoryEventKind::TagUnset { tag } => {
+            typed_label_mirror::tag_unset(s, event.id.value(), *tag)
         }
-        StoryEvent::StoryClosed { id, .. } => typed_label_mirror::story_closed(s, id.value()),
-        StoryEvent::StoryReopened { id, .. } => {
-            s.closed.remove(&id.value());
+        StoryEventKind::IterationSlotSet { name, position } => {
+            typed_label_mirror::iteration_slot_set(s, event.id.value(), name, *position)
         }
-        StoryEvent::StateTransitioned { id, new_state, .. } => {
+        StoryEventKind::IterationSlotCleared => {
+            typed_label_mirror::iteration_slot_cleared(s, event.id.value())
+        }
+        StoryEventKind::StoryClosed { .. } => typed_label_mirror::story_closed(s, event.id.value()),
+        StoryEventKind::StoryReopened => {
+            s.closed.remove(&event.id.value());
+        }
+        StoryEventKind::StateTransitioned { new_state, .. } => {
             typed_label_mirror::state_transitioned(
                 s,
-                id.value(),
+                event.id.value(),
                 new_state.clone(),
                 context.member_of_current_iteration,
             )
         }
-        StoryEvent::CurrentIterationDesignated { id, .. } => {
-            typed_label_mirror::current_iteration_designated(s, id.value())
+        StoryEventKind::CurrentIterationDesignated => {
+            typed_label_mirror::current_iteration_designated(s, event.id.value())
         }
-        StoryEvent::CurrentIterationCleared { id, .. } => {
-            typed_label_mirror::current_iteration_cleared(s, id.value())
+        StoryEventKind::CurrentIterationCleared => {
+            typed_label_mirror::current_iteration_cleared(s, event.id.value())
         }
-        StoryEvent::StoryCreated {
-            id,
+        StoryEventKind::StoryCreated {
             title,
             body,
             initial_state,
             story_type,
-            meta,
         } => {
-            let story = s.stories.entry(id.value()).or_insert_with(|| {
+            let story = s.stories.entry(event.id.value()).or_insert_with(|| {
                 crate::product_management::story::Story::new_minimal(
-                    *id,
+                    event.id,
                     title.clone(),
                     initial_state.clone(),
-                    meta.ts,
-                    meta.actor.clone(),
+                    event.meta.ts,
+                    event.meta.actor.clone(),
                 )
             });
             story.state = initial_state.clone();
@@ -94,23 +92,23 @@ pub(super) fn apply_push_event(
                 story.body = Some(body.clone());
             }
         }
-        StoryEvent::AcceptorAssigned { id, acceptor, .. } => {
-            typed_label_mirror::acceptor_assigned(s, id.value(), *acceptor)
+        StoryEventKind::AcceptorAssigned { acceptor } => {
+            typed_label_mirror::acceptor_assigned(s, event.id.value(), *acceptor)
         }
-        StoryEvent::ParentEpicSet { id, epic_id, .. } => {
-            typed_label_mirror::parent_epic_set(s, id.value(), epic_id.value())
+        StoryEventKind::ParentEpicSet { epic_id } => {
+            typed_label_mirror::parent_epic_set(s, event.id.value(), epic_id.value())
         }
-        StoryEvent::ParentEpicUnset { id, .. } => {
-            typed_label_mirror::parent_epic_unset(s, id.value())
+        StoryEventKind::ParentEpicUnset => {
+            typed_label_mirror::parent_epic_unset(s, event.id.value())
         }
-        StoryEvent::BodyUpdated { id, body, .. } => {
-            s.bodies.insert(id.value(), body.clone());
-            if let Some(story) = s.stories.get_mut(&id.value()) {
+        StoryEventKind::BodyUpdated { body } => {
+            s.bodies.insert(event.id.value(), body.clone());
+            if let Some(story) = s.stories.get_mut(&event.id.value()) {
                 story.body = Some(body.clone());
             }
         }
-        StoryEvent::TitleUpdated { id, title, .. } => {
-            if let Some(story) = s.stories.get_mut(&id.value()) {
+        StoryEventKind::TitleUpdated { title } => {
+            if let Some(story) = s.stories.get_mut(&event.id.value()) {
                 story.title = title.clone();
             }
         }

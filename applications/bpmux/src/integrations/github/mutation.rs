@@ -1,7 +1,7 @@
 use crate::bridge::tracker::OctocrabStoryTracker;
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::product_management::label_codec::LabelCodec;
-use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::sync::SyncError;
 
 use super::mutation_events::{
@@ -17,71 +17,89 @@ pub(super) async fn apply_push_event(
     event: &StoryEvent,
     context: &crate::sync::PushContext,
 ) -> Result<Option<StoryEvent>, SyncError> {
-    match event {
-        StoryEvent::StoryCreated { .. } => Ok(None),
-        StoryEvent::StateTransitioned { id, new_state, .. } => {
+    match &event.kind {
+        StoryEventKind::StoryCreated { .. } => Ok(None),
+        StoryEventKind::StateTransitioned { new_state, .. } => {
             push_state_transitioned(
                 inner,
-                id.value(),
+                event.story_id().value(),
                 new_state.clone(),
                 context.member_of_current_iteration,
             )
             .await
         }
-        StoryEvent::StoryClosed { id, reason, .. } => {
-            push_story_closed(inner, id.value(), reason).await
+        StoryEventKind::StoryClosed { reason } => {
+            push_story_closed(inner, event.story_id().value(), reason).await
         }
-        StoryEvent::StoryReopened { id, .. } => push_story_reopened(inner, id.value()).await,
-        StoryEvent::VerdictCast {
-            meta,
-            id,
-            verdict,
-            payload,
-        } => push_verdict_cast(inner, id.value(), meta, verdict, payload.as_deref()).await,
-        StoryEvent::FreeCommentAppended { id, body, .. } => {
-            push_free_comment_appended(inner, id.value(), body).await
+        StoryEventKind::StoryReopened => push_story_reopened(inner, event.story_id().value()).await,
+        StoryEventKind::VerdictCast { verdict, payload } => {
+            push_verdict_cast(
+                inner,
+                event.story_id().value(),
+                event.meta(),
+                verdict,
+                payload.as_deref(),
+            )
+            .await
         }
-        StoryEvent::TagAdded { id, label, .. } => push_tag_added(inner, id.value(), label).await,
-        StoryEvent::TagRemoved { id, label, .. } => {
-            push_tag_removed(inner, id.value(), label).await
+        StoryEventKind::FreeCommentAppended { body } => {
+            push_free_comment_appended(inner, event.story_id().value(), body).await
         }
-        StoryEvent::TagSet { id, tag, .. } => {
-            push_tag_added(inner, id.value(), GhLabelCodec.encode_tag(*tag)).await
+        StoryEventKind::TagAdded { label } => {
+            push_tag_added(inner, event.story_id().value(), label).await
         }
-        StoryEvent::TagUnset { id, tag, .. } => {
-            push_tag_removed(inner, id.value(), GhLabelCodec.encode_tag(*tag)).await
+        StoryEventKind::TagRemoved { label } => {
+            push_tag_removed(inner, event.story_id().value(), label).await
         }
-        StoryEvent::IterationSlotSet {
-            id, name, position, ..
-        } => push_iteration_slot_set(inner, id.value(), name, *position).await,
-        StoryEvent::IterationSlotCleared { id, .. } => {
-            push_iteration_slot_cleared(inner, id.value()).await
+        StoryEventKind::TagSet { tag } => {
+            push_tag_added(
+                inner,
+                event.story_id().value(),
+                GhLabelCodec.encode_tag(*tag),
+            )
+            .await
         }
-        StoryEvent::AcceptorAssigned { id, acceptor, .. } => {
-            push_acceptor_assigned(inner, id.value(), *acceptor).await
+        StoryEventKind::TagUnset { tag } => {
+            push_tag_removed(
+                inner,
+                event.story_id().value(),
+                GhLabelCodec.encode_tag(*tag),
+            )
+            .await
         }
-        StoryEvent::ParentEpicSet { id, epic_id, .. } => {
-            push_parent_epic_set(inner, id.value(), *epic_id).await
+        StoryEventKind::IterationSlotSet { name, position } => {
+            push_iteration_slot_set(inner, event.story_id().value(), name, *position).await
         }
-        StoryEvent::ParentEpicUnset { id, .. } => push_parent_epic_unset(inner, id.value()).await,
-        StoryEvent::CurrentIterationDesignated { id, .. } => {
-            push_current_iteration_designated(inner, id.value()).await
+        StoryEventKind::IterationSlotCleared => {
+            push_iteration_slot_cleared(inner, event.story_id().value()).await
         }
-        StoryEvent::CurrentIterationCleared { id, .. } => {
-            push_current_iteration_cleared(inner, id.value()).await
+        StoryEventKind::AcceptorAssigned { acceptor } => {
+            push_acceptor_assigned(inner, event.story_id().value(), *acceptor).await
         }
-        StoryEvent::BodyUpdated { id, body, .. } => {
-            push_body_updated(inner, id.value(), body).await
+        StoryEventKind::ParentEpicSet { epic_id } => {
+            push_parent_epic_set(inner, event.story_id().value(), *epic_id).await
         }
-        StoryEvent::TitleUpdated { id, title, .. } => {
-            push_title_updated(inner, id.value(), title).await
+        StoryEventKind::ParentEpicUnset => {
+            push_parent_epic_unset(inner, event.story_id().value()).await
         }
-        StoryEvent::BodyFetched { .. }
-        | StoryEvent::FreeCommentsFetched { .. }
-        | StoryEvent::VerdictsFetched { .. }
-        | StoryEvent::StoryRefreshed { .. }
-        | StoryEvent::LabelsRefreshed { .. }
-        | StoryEvent::ConflictDetected { .. }
-        | StoryEvent::ConflictResolved { .. } => Ok(None),
+        StoryEventKind::CurrentIterationDesignated => {
+            push_current_iteration_designated(inner, event.story_id().value()).await
+        }
+        StoryEventKind::CurrentIterationCleared => {
+            push_current_iteration_cleared(inner, event.story_id().value()).await
+        }
+        StoryEventKind::BodyUpdated { body } => {
+            push_body_updated(inner, event.story_id().value(), body).await
+        }
+        StoryEventKind::TitleUpdated { title } => {
+            push_title_updated(inner, event.story_id().value(), title).await
+        }
+        StoryEventKind::BodyFetched { .. }
+        | StoryEventKind::FreeCommentsFetched { .. }
+        | StoryEventKind::VerdictsFetched { .. }
+        | StoryEventKind::StoryRefreshed { .. }
+        | StoryEventKind::LabelsRefreshed { .. }
+        | StoryEventKind::ConflictDetected { .. }
+        | StoryEventKind::ConflictResolved { .. } => Ok(None),
     }
 }

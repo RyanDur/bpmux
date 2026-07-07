@@ -4,7 +4,7 @@
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::integrations::github::mapper::decode_story_metadata;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Story, StoryId, StoryKind, Work};
@@ -78,16 +78,16 @@ fn create_story_event_does_not_seed_iteration_membership() {
     )));
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch);
-    handle.dispatch(AppAction::Story(StoryAction::Event(
-        StoryEvent::StoryCreated {
-            meta: meta(),
-            id: StoryId::new(200),
+    handle.dispatch(AppAction::Story(StoryAction::Event(StoryEvent::new(
+        meta(),
+        StoryId::new(200),
+        StoryEventKind::StoryCreated {
             title: "freshly-created".to_string(),
             body: "no membership at filing-time".to_string(),
             initial_state: Work::NotStarted,
             story_type: StoryKind::Feature,
         },
-    )));
+    ))));
     let s = orch.story(200).expect("story present");
     let json = crate::view::board::story_to_board_json(&GhLabelCodec, &s, s.state.as_str());
     let obj = json.as_object().expect("object");

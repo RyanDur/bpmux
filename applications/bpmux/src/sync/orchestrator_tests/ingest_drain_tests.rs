@@ -6,7 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Stage, Story, StoryId, StoryKind, Work};
@@ -52,14 +52,16 @@ async fn mutate_applies_event_locally_and_enqueues_for_push() {
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     orchestrator
-        .mutate(StoryEvent::StoryCreated {
-            meta: meta(),
-            id: StoryId::new(100),
-            title: "test".to_string(),
-            body: "b".to_string(),
-            initial_state: Work::NotStarted,
-            story_type: StoryKind::Feature,
-        })
+        .mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(100),
+            StoryEventKind::StoryCreated {
+                title: "test".to_string(),
+                body: "b".to_string(),
+                initial_state: Work::NotStarted,
+                story_type: StoryKind::Feature,
+            },
+        ))
         .unwrap();
     assert_eq!(orchestrator.all_stories().len(), 1);
     assert_eq!(orchestrator.story(100).unwrap().title, "test");
@@ -82,12 +84,14 @@ async fn drain_once_pushes_pending_events_to_adapter() {
         Work::NotStarted,
     )])));
     orchestrator
-        .mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(1),
-            new_state: Work::Acceptance,
-            placement: None,
-        })
+        .mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(1),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::Acceptance,
+                placement: None,
+            },
+        ))
         .unwrap();
     let drained = orchestrator.drain_once().await.unwrap();
     assert_eq!(drained, 1);
@@ -108,12 +112,14 @@ async fn drain_once_requeues_event_on_adapter_failure() {
         Work::NotStarted,
     )])));
     orchestrator
-        .mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(1),
-            new_state: Work::Acceptance,
-            placement: None,
-        })
+        .mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(1),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::Acceptance,
+                placement: None,
+            },
+        ))
         .unwrap();
     adapter.set_push_failures(true);
     let result = orchestrator.drain_once().await;
@@ -144,20 +150,24 @@ async fn drain_once_handles_multiple_events_in_order() {
         seed_story(2, Work::NotStarted),
     ])));
     orchestrator
-        .mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(1),
-            new_state: Work::Acceptance,
-            placement: None,
-        })
+        .mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(1),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::Acceptance,
+                placement: None,
+            },
+        ))
         .unwrap();
     orchestrator
-        .mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(2),
-            new_state: Work::InProgress,
-            placement: None,
-        })
+        .mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(2),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
         .unwrap();
     assert_eq!(orchestrator.snapshot_status().pending_events, 2);
     let drained = orchestrator.drain_once().await.unwrap();
@@ -191,12 +201,14 @@ async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
     );
 
     orchestrator
-        .mutate(StoryEvent::IterationSlotSet {
-            meta: meta(),
-            id: StoryId::new(1687),
-            name: "Pegasus".to_string(),
-            position: 106,
-        })
+        .mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(1687),
+            StoryEventKind::IterationSlotSet {
+                name: "Pegasus".to_string(),
+                position: 106,
+            },
+        ))
         .unwrap();
     assert_eq!(
         orchestrator

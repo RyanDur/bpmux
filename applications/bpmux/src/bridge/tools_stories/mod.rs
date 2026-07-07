@@ -24,6 +24,7 @@ mod metadata_epic;
 mod metadata_iteration;
 mod metadata_iteration_readiness;
 mod metadata_outcome;
+mod metadata_outcome_bands;
 mod outcome_mapping;
 mod reorder;
 mod retire_outcome;

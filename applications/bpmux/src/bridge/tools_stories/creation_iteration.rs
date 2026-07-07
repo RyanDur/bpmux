@@ -60,22 +60,22 @@ pub(crate) async fn handle_create_iteration(
         ts: filed_at,
         peer_id: crate::product_management::story::peer::PeerId::local(),
     };
-    r.mutate_sync(
-        crate::product_management::story::events::StoryEvent::TagAdded {
-            meta: meta.clone(),
-            id: StoryId::new(id),
+    r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+        meta.clone(),
+        StoryId::new(id),
+        crate::product_management::story::events::StoryEventKind::TagAdded {
             label: "iteration".to_string(),
         },
-    )
+    ))
     .map_err(|e| format!("#{id} iteration label enqueue failed: {e}"))?;
-    r.mutate_sync(
-        crate::product_management::story::events::StoryEvent::TagAdded {
-            meta,
-            id: StoryId::new(id),
+    r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+        meta,
+        StoryId::new(id),
+        crate::product_management::story::events::StoryEventKind::TagAdded {
             label: crate::integrations::github::gh_label_codec::GhLabelCodec
                 .encode_iteration_order(next_order),
         },
-    )
+    ))
     .map_err(|e| format!("#{id} iteration-order label enqueue failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Iteration(
         crate::product_management::iteration::IterationAction::Upserted(vec![Iteration {

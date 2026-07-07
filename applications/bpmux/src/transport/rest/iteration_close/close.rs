@@ -135,23 +135,22 @@ pub(crate) async fn close_iteration_canonical(
         peer_id: crate::product_management::story::peer::PeerId::local(),
     };
     refresh
-        .mutate_sync(
-            crate::product_management::story::events::StoryEvent::CurrentIterationCleared {
-                meta: meta(),
-                id: crate::product_management::story::StoryId::new(iteration_id),
-            },
-        )
+        .mutate_sync(crate::product_management::story::events::StoryEvent::new(
+            meta(),
+            crate::product_management::story::StoryId::new(iteration_id),
+            crate::product_management::story::events::StoryEventKind::CurrentIterationCleared,
+        ))
         .map_err(|e| format!("#{iteration_id} current-designation-clear enqueue failed: {e}"))?;
     refresh
-        .mutate_sync(
-            crate::product_management::story::events::StoryEvent::StoryClosed {
-                meta: meta(),
-                id: crate::product_management::story::StoryId::new(iteration_id),
+        .mutate_sync(crate::product_management::story::events::StoryEvent::new(
+            meta(),
+            crate::product_management::story::StoryId::new(iteration_id),
+            crate::product_management::story::events::StoryEventKind::StoryClosed {
                 reason: Some(
                     "iteration-close (terminal; promote-on-close retired #1556)".to_string(),
                 ),
             },
-        )
+        ))
         .map_err(|e| format!("#{iteration_id} iteration-close enqueue failed: {e}"))?;
     if let Some(iteration) = refresh.iteration(
         crate::product_management::iteration::IterationId::new(iteration_id),

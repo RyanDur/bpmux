@@ -6,7 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Stage, Story, StoryId, Work};
@@ -32,19 +32,23 @@ mod slice_7_2_mutation_id_dispatch {
             seed_story(102, Work::NotStarted),
         ])));
 
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(101),
-            new_state: Work::InProgress,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(101),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(102),
-            new_state: Work::InProgress,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(102),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
         .unwrap();
 
         let action_a = rx.try_recv().expect("first dispatch");
@@ -69,12 +73,14 @@ mod slice_7_2_mutation_id_dispatch {
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
         orch.ingest_once().await.unwrap();
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(201),
-            new_state: Work::InProgress,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(201),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
         .unwrap();
     }
 
@@ -90,12 +96,14 @@ mod slice_7_2_mutation_id_dispatch {
             301,
             Work::NotStarted,
         )])));
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(301),
-            new_state: Work::InProgress,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(301),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
         .unwrap();
 
         let action = rx.try_recv().expect("dispatch fires");
@@ -132,12 +140,14 @@ mod slice_7_3_drain_one_by_id {
             401,
             Work::NotStarted,
         )])));
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(401),
-            new_state: Work::InProgress,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(401),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
         .unwrap();
 
         let id = orch
@@ -162,12 +172,14 @@ mod slice_7_3_drain_one_by_id {
             601,
             Work::NotStarted,
         )])));
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(601),
-            new_state: Work::InProgress,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(601),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
         .unwrap();
         adapter.set_push_failures(true);
 
@@ -200,12 +212,14 @@ mod slice_7_3_drain_one_by_id {
             701,
             Work::NotStarted,
         )])));
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(701),
-            new_state: Work::InProgress,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(701),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
         .unwrap();
         assert_eq!(orch.story(701).map(|s| s.state), Some(Work::InProgress));
 
@@ -230,12 +244,14 @@ mod slice_7_4_drain_one_by_id_falsifiers {
             801,
             Work::NotStarted,
         )])));
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(801),
-            new_state: Work::InProgress,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(801),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
         .unwrap();
         adapter.set_permanent_push_failures(true);
 
@@ -261,19 +277,23 @@ mod slice_7_4_drain_one_by_id_falsifiers {
             seed_story(901, Work::NotStarted),
             seed_story(902, Work::NotStarted),
         ])));
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(901),
-            new_state: Work::InProgress,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(901),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(902),
-            new_state: Work::InProgress,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(902),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
         .unwrap();
 
         let pending = orch.snapshot_pending_for_test();
@@ -302,18 +322,22 @@ mod slice_7_4_drain_one_by_id_falsifiers {
             1001,
             Work::NotStarted,
         )])));
-        orch.mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(1001),
-            new_state: Work::InProgress,
-            placement: None,
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(1001),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(1001),
-            label: "blocked".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(1001),
+            StoryEventKind::TagAdded {
+                label: "blocked".to_string(),
+            },
+        ))
         .unwrap();
 
         let pending = orch.snapshot_pending_for_test();
@@ -327,7 +351,10 @@ mod slice_7_4_drain_one_by_id_falsifiers {
 
         let pushed = adapter.pushed_events();
         assert_eq!(pushed.len(), 2);
-        assert!(matches!(pushed[0], StoryEvent::StateTransitioned { .. }));
-        assert!(matches!(pushed[1], StoryEvent::TagAdded { .. }));
+        assert!(matches!(
+            pushed[0].kind,
+            StoryEventKind::StateTransitioned { .. }
+        ));
+        assert!(matches!(pushed[1].kind, StoryEventKind::TagAdded { .. }));
     }
 }

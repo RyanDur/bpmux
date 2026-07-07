@@ -2,19 +2,21 @@ use super::status::{record_error, record_ingest_success};
 use super::types::cache_fill_meta;
 use super::{CastVerdict, FreeComment, SyncOrchestrator};
 use crate::product_management::story::StoryId;
-use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::sync::{ConditionalBody, SourceAdapter, SyncError};
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub async fn fetch_body(&self, number: u64) -> Result<String, SyncError> {
         match self.adapter.fetch_story_body(number).await {
             Ok(body) => {
-                let event = StoryEvent::BodyFetched {
-                    meta: cache_fill_meta(),
-                    id: StoryId::new(number),
-                    body: body.clone(),
-                    etag: None,
-                };
+                let event = StoryEvent::new(
+                    cache_fill_meta(),
+                    StoryId::new(number),
+                    StoryEventKind::BodyFetched {
+                        body: body.clone(),
+                        etag: None,
+                    },
+                );
                 self.apply_story_event(&event);
                 record_ingest_success(&self.status);
                 Ok(body)
@@ -41,12 +43,14 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 Ok(ConditionalBody::NotModified)
             }
             Ok(ConditionalBody::Modified { body, etag }) => {
-                let event = StoryEvent::BodyFetched {
-                    meta: cache_fill_meta(),
-                    id: StoryId::new(number),
-                    body: body.clone(),
-                    etag: etag.clone(),
-                };
+                let event = StoryEvent::new(
+                    cache_fill_meta(),
+                    StoryId::new(number),
+                    StoryEventKind::BodyFetched {
+                        body: body.clone(),
+                        etag: etag.clone(),
+                    },
+                );
                 self.apply_story_event(&event);
                 record_ingest_success(&self.status);
                 Ok(ConditionalBody::Modified { body, etag })
@@ -64,11 +68,13 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub async fn fetch_free_comments(&self, number: u64) -> Result<Vec<FreeComment>, SyncError> {
         match self.adapter.fetch_free_comments(number).await {
             Ok(comments) => {
-                let event = StoryEvent::FreeCommentsFetched {
-                    meta: cache_fill_meta(),
-                    id: StoryId::new(number),
-                    comments: comments.clone(),
-                };
+                let event = StoryEvent::new(
+                    cache_fill_meta(),
+                    StoryId::new(number),
+                    StoryEventKind::FreeCommentsFetched {
+                        comments: comments.clone(),
+                    },
+                );
                 self.apply_story_event(&event);
                 record_ingest_success(&self.status);
                 Ok(comments)
@@ -83,11 +89,13 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub async fn fetch_verdicts(&self, number: u64) -> Result<Vec<CastVerdict>, SyncError> {
         match self.adapter.fetch_verdicts(number).await {
             Ok(verdicts) => {
-                let event = StoryEvent::VerdictsFetched {
-                    meta: cache_fill_meta(),
-                    id: StoryId::new(number),
-                    verdicts: verdicts.clone(),
-                };
+                let event = StoryEvent::new(
+                    cache_fill_meta(),
+                    StoryId::new(number),
+                    StoryEventKind::VerdictsFetched {
+                        verdicts: verdicts.clone(),
+                    },
+                );
                 self.apply_story_event(&event);
                 record_ingest_success(&self.status);
                 Ok(verdicts)

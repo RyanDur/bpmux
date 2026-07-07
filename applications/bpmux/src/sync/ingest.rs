@@ -1,7 +1,7 @@
 use super::SyncOrchestrator;
 use super::status::{record_error, record_ingest_success};
 use crate::product_management::story::StoryId;
-use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::events::StoryEventKind;
 use crate::sync::{SourceAdapter, SyncError};
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
@@ -41,13 +41,13 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     p.iter()
                         .filter(|q| {
                             matches!(
-                                q.event,
-                                StoryEvent::TagAdded { .. }
-                                    | StoryEvent::TagRemoved { .. }
-                                    | StoryEvent::TagSet { .. }
-                                    | StoryEvent::TagUnset { .. }
-                                    | StoryEvent::IterationSlotSet { .. }
-                                    | StoryEvent::IterationSlotCleared { .. }
+                                q.event.kind,
+                                StoryEventKind::TagAdded { .. }
+                                    | StoryEventKind::TagRemoved { .. }
+                                    | StoryEventKind::TagSet { .. }
+                                    | StoryEventKind::TagUnset { .. }
+                                    | StoryEventKind::IterationSlotSet { .. }
+                                    | StoryEventKind::IterationSlotCleared
                             )
                         })
                         .map(|q| q.event.story_id())

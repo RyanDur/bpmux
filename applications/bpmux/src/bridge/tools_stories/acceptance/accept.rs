@@ -138,25 +138,31 @@ pub(crate) async fn accept_via_canonical_store(
     };
     refresh
         .mutate_batch_sync(vec![
-            crate::product_management::story::events::StoryEvent::VerdictCast {
-                meta: meta.clone(),
-                id: StoryId::new(id),
-                verdict: crate::product_management::story::Verdict::Succeed {
-                    step: "acceptance".into(),
+            crate::product_management::story::events::StoryEvent::new(
+                meta.clone(),
+                StoryId::new(id),
+                crate::product_management::story::events::StoryEventKind::VerdictCast {
+                    verdict: crate::product_management::story::Verdict::Succeed {
+                        step: "acceptance".into(),
+                    },
+                    payload: bypass.map(format_bypass_payload),
                 },
-                payload: bypass.map(format_bypass_payload),
-            },
-            crate::product_management::story::events::StoryEvent::StateTransitioned {
-                meta: meta.clone(),
-                id: StoryId::new(id),
-                new_state,
-                placement,
-            },
-            crate::product_management::story::events::StoryEvent::StoryClosed {
+            ),
+            crate::product_management::story::events::StoryEvent::new(
+                meta.clone(),
+                StoryId::new(id),
+                crate::product_management::story::events::StoryEventKind::StateTransitioned {
+                    new_state,
+                    placement,
+                },
+            ),
+            crate::product_management::story::events::StoryEvent::new(
                 meta,
-                id: StoryId::new(id),
-                reason: None,
-            },
+                StoryId::new(id),
+                crate::product_management::story::events::StoryEventKind::StoryClosed {
+                    reason: None,
+                },
+            ),
         ])
         .map_err(|e| format!("#{id} accept enqueue failed: {e}"))?;
     Ok(())

@@ -129,7 +129,7 @@ async fn pass_desk_check_blocks_when_would_file_bug_true_without_force() {
 #[tokio::test]
 async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, Work};
     use crate::sync::{RefreshDriver, SyncOrchestrator};
     use chrono::{TimeZone, Utc};
@@ -167,8 +167,8 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     let pushed = adapter.pushed_events();
     let gate_event = pushed
         .iter()
-        .find_map(|e| match e {
-            StoryEvent::VerdictCast { id, payload, .. } if *id == StoryId::new(777) => {
+        .find_map(|e| match &e.kind {
+            StoryEventKind::VerdictCast { payload, .. } if e.id == StoryId::new(777) => {
                 Some(payload.clone())
             }
             _ => None,

@@ -1,6 +1,6 @@
 use super::acceptance_test_path::validate_acceptance_test_path_at_pickup;
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string, role_from_name};
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{StoryId, Verdict, Work};
 use crate::sync::RefreshDriver;
@@ -68,25 +68,30 @@ pub(crate) async fn handle_start_story(
         };
         let mut events = Vec::new();
         if was_closed {
-            events.push(StoryEvent::StoryReopened {
-                meta: meta.clone(),
-                id: StoryId::new(id),
-            });
+            events.push(StoryEvent::new(
+                meta.clone(),
+                StoryId::new(id),
+                StoryEventKind::StoryReopened,
+            ));
         }
-        events.push(StoryEvent::VerdictCast {
-            meta: meta.clone(),
-            id: StoryId::new(id),
-            verdict: Verdict::Succeed {
-                step: "ready".into(),
+        events.push(StoryEvent::new(
+            meta.clone(),
+            StoryId::new(id),
+            StoryEventKind::VerdictCast {
+                verdict: Verdict::Succeed {
+                    step: "ready".into(),
+                },
+                payload: Some(pickup_payload.clone()),
             },
-            payload: Some(pickup_payload.clone()),
-        });
-        events.push(StoryEvent::StateTransitioned {
+        ));
+        events.push(StoryEvent::new(
             meta,
-            id: StoryId::new(id),
-            new_state: Work::InProgress,
-            placement: None,
-        });
+            StoryId::new(id),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ));
         r.mutate_batch_sync(events)
             .map_err(|e| format!("#{id} start enqueue failed: {e}"))?;
         return Ok(match reject_lead {

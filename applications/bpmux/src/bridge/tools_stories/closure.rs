@@ -62,31 +62,31 @@ pub(crate) async fn handle_close_story(
             terminal_state,
             crate::product_management::story::Work::Retired
         ) {
-            r.mutate_sync(
-                crate::product_management::story::events::StoryEvent::TagAdded {
-                    meta: meta.clone(),
-                    id: StoryId::new(id),
+            r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+                meta.clone(),
+                StoryId::new(id),
+                crate::product_management::story::events::StoryEventKind::TagAdded {
                     label: "retired".to_string(),
                 },
-            )
+            ))
             .map_err(|e| format!("#{id} retired-tag enqueue failed: {e}"))?;
         }
-        r.mutate_sync(
-            crate::product_management::story::events::StoryEvent::StateTransitioned {
-                meta: meta.clone(),
-                id: StoryId::new(id),
+        r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+            meta.clone(),
+            StoryId::new(id),
+            crate::product_management::story::events::StoryEventKind::StateTransitioned {
                 new_state: terminal_state,
                 placement: None,
             },
-        )
+        ))
         .map_err(|e| format!("#{id} close-state enqueue failed: {e}"))?;
-        r.mutate_sync(
-            crate::product_management::story::events::StoryEvent::StoryClosed {
-                meta,
-                id: StoryId::new(id),
+        r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+            meta,
+            StoryId::new(id),
+            crate::product_management::story::events::StoryEventKind::StoryClosed {
                 reason: Some(reason.to_string()),
             },
-        )
+        ))
         .map_err(|e| format!("#{id} close enqueue failed: {e}"))?;
         r.drain_pending()
             .await

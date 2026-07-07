@@ -8,7 +8,7 @@ use crate::transport::protocol::ClientMessage;
 #[tokio::test]
 async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -49,15 +49,15 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
     assert!(matches!(
-        &pushed[0],
-        StoryEvent::FreeCommentAppended { id, .. } if *id == StoryId::new(123)
+        &pushed[0].kind,
+        StoryEventKind::FreeCommentAppended { .. } if pushed[0].id == StoryId::new(123)
     ));
 }
 
 #[tokio::test]
 async fn label_story_migrated_path_enqueues_tag_added_event() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, Tag, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -100,15 +100,15 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
     assert!(matches!(
-        &pushed[0],
-        StoryEvent::TagSet { id, tag, .. } if *id == StoryId::new(200) && *tag == Tag::DeskCheckFail
+        &pushed[0].kind,
+        StoryEventKind::TagSet { tag, .. } if pushed[0].id == StoryId::new(200) && *tag == Tag::DeskCheckFail
     ));
 }
 
 #[tokio::test]
 async fn label_story_migrated_path_enqueues_tag_removed_event() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, Tag, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -161,19 +161,19 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 2);
     assert!(matches!(
-        &pushed[0],
-        StoryEvent::TagSet { id, tag, .. } if *id == StoryId::new(200) && *tag == Tag::DeskCheckFail
+        &pushed[0].kind,
+        StoryEventKind::TagSet { tag, .. } if pushed[0].id == StoryId::new(200) && *tag == Tag::DeskCheckFail
     ));
     assert!(matches!(
-        &pushed[1],
-        StoryEvent::TagUnset { id, tag, .. } if *id == StoryId::new(200) && *tag == Tag::DeskCheckFail
+        &pushed[1].kind,
+        StoryEventKind::TagUnset { tag, .. } if pushed[1].id == StoryId::new(200) && *tag == Tag::DeskCheckFail
     ));
 }
 
 #[tokio::test]
 async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Stage, Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -222,27 +222,25 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         "acceptor + gate + state events pushed; state-label reaping is the transition export's concern now: {pushed:?}"
     );
     assert!(matches!(
-        &pushed[0],
-        StoryEvent::AcceptorAssigned {
-            id, acceptor, ..
-        } if *id == StoryId::new(201) && *acceptor == crate::product_management::story::Acceptor::Owner
+        &pushed[0].kind,
+        StoryEventKind::AcceptorAssigned {
+            acceptor, ..
+        } if pushed[0].id == StoryId::new(201) && *acceptor == crate::product_management::story::Acceptor::Owner
     ));
     assert!(matches!(
-        &pushed[1],
-        StoryEvent::VerdictCast {
-            id,
+        &pushed[1].kind,
+        StoryEventKind::VerdictCast {
             verdict: Verdict::Succeed { step },
             payload: None,
             ..
-        } if *id == StoryId::new(201) && step.as_str() == "desk-check"
+        } if pushed[1].id == StoryId::new(201) && step.as_str() == "desk-check"
     ));
     assert!(matches!(
-        &pushed[2],
-        StoryEvent::StateTransitioned {
-            id,
+        &pushed[2].kind,
+        StoryEventKind::StateTransitioned {
             new_state: Work::Acceptance,
             ..
-        } if *id == StoryId::new(201)
+        } if pushed[2].id == StoryId::new(201)
     ));
     let labels = adapter.labels_for(201);
     assert!(
@@ -254,7 +252,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
 #[tokio::test]
 async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Stage, Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -308,20 +306,18 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         "the transition export strips the stale desk-check label and applies in progress at the adapter; got {labels:?}"
     );
     assert!(matches!(
-        &pushed[0],
-        StoryEvent::VerdictCast {
-            id,
+        &pushed[0].kind,
+        StoryEventKind::VerdictCast {
             verdict: Verdict::Fail { step },
             payload: Some(p),
             ..
-        } if *id == StoryId::new(202) && p == substantive_reason && step.as_str() == "desk-check"
+        } if pushed[0].id == StoryId::new(202) && p == substantive_reason && step.as_str() == "desk-check"
     ));
     assert!(matches!(
-        &pushed[1],
-        StoryEvent::StateTransitioned {
-            id,
+        &pushed[1].kind,
+        StoryEventKind::StateTransitioned {
             new_state: Work::InProgress,
             ..
-        } if *id == StoryId::new(202)
+        } if pushed[1].id == StoryId::new(202)
     ));
 }

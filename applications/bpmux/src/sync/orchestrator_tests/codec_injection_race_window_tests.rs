@@ -6,7 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Stage, Story, StoryId, Work};
@@ -97,9 +97,9 @@ mod codec_injection_substrate {
         orch.snapshot_pending_for_test()
             .iter()
             .map(|q| {
-                let (k, l) = match &q.event {
-                    StoryEvent::TagAdded { label, .. } => ("A", label.clone()),
-                    StoryEvent::TagRemoved { label, .. } => ("R", label.clone()),
+                let (k, l) = match &q.event.kind {
+                    StoryEventKind::TagAdded { label } => ("A", label.clone()),
+                    StoryEventKind::TagRemoved { label } => ("R", label.clone()),
                     _ => ("?", String::new()),
                 };
                 (k.to_string(), l)
@@ -118,17 +118,21 @@ mod codec_injection_substrate {
             8801,
         )])));
 
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(8801),
-            label: "STUB|Andromeda:100".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(8801),
+            StoryEventKind::TagAdded {
+                label: "STUB|Andromeda:100".to_string(),
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(8801),
-            label: "STUB|Andromeda:200".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(8801),
+            StoryEventKind::TagAdded {
+                label: "STUB|Andromeda:200".to_string(),
+            },
+        ))
         .unwrap();
 
         let labels = queue_labels(&orch);
@@ -150,17 +154,21 @@ mod codec_injection_substrate {
             8802,
         )])));
 
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(8802),
-            label: "STUB|Andromeda:100".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(8802),
+            StoryEventKind::TagAdded {
+                label: "STUB|Andromeda:100".to_string(),
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(8802),
-            label: "STUB|Pegasus:50".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(8802),
+            StoryEventKind::TagAdded {
+                label: "STUB|Pegasus:50".to_string(),
+            },
+        ))
         .unwrap();
 
         let labels = queue_labels(&orch);

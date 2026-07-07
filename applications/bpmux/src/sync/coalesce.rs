@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use crate::integrations::github::mapper::stage_github_label;
-use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::{Stage, Story};
 
 use super::{MutationId, QueuedEvent};
@@ -20,9 +20,9 @@ pub(super) fn coalesce_iteration_label_events(
     new_id: MutationId,
     new_pre_state: &Option<Story>,
 ) -> bool {
-    let (id, label, is_add) = match new_event {
-        StoryEvent::TagAdded { id, label, .. } => (*id, label.clone(), true),
-        StoryEvent::TagRemoved { id, label, .. } => (*id, label.clone(), false),
+    let (id, label, is_add) = match &new_event.kind {
+        StoryEventKind::TagAdded { label, .. } => (new_event.id, label.clone(), true),
+        StoryEventKind::TagRemoved { label, .. } => (new_event.id, label.clone(), false),
         _ => return false,
     };
     let Some(prefix) = iteration_prefix_class(codec, &label) else {
@@ -31,14 +31,11 @@ pub(super) fn coalesce_iteration_label_events(
     let class_indices: Vec<usize> = queue
         .iter()
         .enumerate()
-        .filter_map(|(i, q)| match &q.event {
-            StoryEvent::TagAdded {
-                id: n, label: l, ..
-            }
-            | StoryEvent::TagRemoved {
-                id: n, label: l, ..
-            } if *n == id
-                && iteration_prefix_class(codec, l).as_deref() == Some(prefix.as_str()) =>
+        .filter_map(|(i, q)| match &q.event.kind {
+            StoryEventKind::TagAdded { label: l, .. }
+            | StoryEventKind::TagRemoved { label: l, .. }
+                if q.event.id == id
+                    && iteration_prefix_class(codec, l).as_deref() == Some(prefix.as_str()) =>
             {
                 Some(i)
             }
@@ -51,9 +48,9 @@ pub(super) fn coalesce_iteration_label_events(
     let mut first_r_idx: Option<usize> = None;
     let mut last_a_idx: Option<usize> = None;
     for &i in &class_indices {
-        match &queue[i].event {
-            StoryEvent::TagRemoved { .. } if first_r_idx.is_none() => first_r_idx = Some(i),
-            StoryEvent::TagAdded { .. } => last_a_idx = Some(i),
+        match &queue[i].event.kind {
+            StoryEventKind::TagRemoved { .. } if first_r_idx.is_none() => first_r_idx = Some(i),
+            StoryEventKind::TagAdded { .. } => last_a_idx = Some(i),
             _ => {}
         }
     }

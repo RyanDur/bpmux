@@ -7,7 +7,7 @@ use std::sync::atomic::AtomicU64;
 use chrono::Utc;
 
 pub use crate::persist::PersistError;
-use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::{CastVerdict, FreeComment};
 
 mod coalesce;
@@ -158,11 +158,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     ts: Utc::now(),
                     peer_id: crate::product_management::story::peer::PeerId::local(),
                 };
-                self.mutate(StoryEvent::TagRemoved {
+                self.mutate(StoryEvent::new(
                     meta,
-                    id: story.id,
-                    label: stale_label,
-                })?;
+                    story.id,
+                    StoryEventKind::TagRemoved { label: stale_label },
+                ))?;
                 repairs += 1;
             }
         }

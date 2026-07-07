@@ -12,7 +12,7 @@ fn td() -> crate::store::Dispatch {
 #[tokio::test]
 async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Stage, Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -73,21 +73,19 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
         "gate + state events pushed; state-label reaping is the transition export's concern now"
     );
     assert!(matches!(
-        &pushed[0],
-        StoryEvent::VerdictCast {
-            id,
+        &pushed[0].kind,
+        StoryEventKind::VerdictCast {
             verdict: Verdict::Succeed { step },
             payload: Some(p),
             ..
-        } if *id == StoryId::new(203) && step.as_str() == "ready" && p.contains("paraphrase content") && p.contains("reframing content")
+        } if pushed[0].id == StoryId::new(203) && step.as_str() == "ready" && p.contains("paraphrase content") && p.contains("reframing content")
     ));
     assert!(matches!(
-        &pushed[1],
-        StoryEvent::StateTransitioned {
-            id,
+        &pushed[1].kind,
+        StoryEventKind::StateTransitioned {
             new_state: Work::InProgress,
             ..
-        } if *id == StoryId::new(203)
+        } if pushed[1].id == StoryId::new(203)
     ));
     let labels = adapter.labels_for(203);
     assert!(
@@ -99,7 +97,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
 #[tokio::test]
 async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_state_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Stage, Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -150,23 +148,21 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         "gate + state events pushed; state-label reaping is the transition export's concern now: {pushed:?}"
     );
     assert!(matches!(
-        &pushed[0],
-        StoryEvent::VerdictCast {
-            id,
+        &pushed[0].kind,
+        StoryEventKind::VerdictCast {
             verdict: Verdict::Succeed { step },
             payload: Some(p),
             ..
-        } if *id == StoryId::new(204) && step.as_str() == "in-progress" && p == "drove the falsifier scenario end-to-end"
+        } if pushed[0].id == StoryId::new(204) && step.as_str() == "in-progress" && p == "drove the falsifier scenario end-to-end"
     ));
     assert!(
         matches!(
-            &pushed[1],
-            StoryEvent::StateTransitioned {
-                id,
+            &pushed[1].kind,
+            StoryEventKind::StateTransitioned {
                 new_state: Work::InProgress,
                 placement: Some(stage),
                 ..
-            } if *id == StoryId::new(204) && stage.as_str() == "desk-check"
+            } if pushed[1].id == StoryId::new(204) && stage.as_str() == "desk-check"
         ),
         "deliver carries the desk-check fine placement on the transition (the fine stage is set even though the coarse state stays InProgress): {pushed:?}"
     );
@@ -180,7 +176,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
 #[tokio::test]
 async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -227,29 +223,26 @@ async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
         "gate + state + close events pushed; state-label reaping is the transition export's concern now: {pushed:?}"
     );
     assert!(matches!(
-        &pushed[0],
-        StoryEvent::VerdictCast {
-            id,
+        &pushed[0].kind,
+        StoryEventKind::VerdictCast {
             verdict: Verdict::Succeed { step },
             payload: None,
             ..
-        } if *id == StoryId::new(205) && step.as_str() == "acceptance"
+        } if pushed[0].id == StoryId::new(205) && step.as_str() == "acceptance"
     ));
     assert!(matches!(
-        &pushed[1],
-        StoryEvent::StateTransitioned {
-            id,
+        &pushed[1].kind,
+        StoryEventKind::StateTransitioned {
             new_state: Work::Accepted,
             ..
-        } if *id == StoryId::new(205)
+        } if pushed[1].id == StoryId::new(205)
     ));
     assert!(matches!(
-        &pushed[2],
-        StoryEvent::StoryClosed {
-            id,
+        &pushed[2].kind,
+        StoryEventKind::StoryClosed {
             reason: None,
             ..
-        } if *id == StoryId::new(205)
+        } if pushed[2].id == StoryId::new(205)
     ));
     let labels = adapter.labels_for(205);
     assert!(
@@ -261,7 +254,7 @@ async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
 #[tokio::test]
 async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -305,12 +298,11 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
     );
     assert!(
         pushed.iter().any(|e| matches!(
-            e,
-            StoryEvent::StateTransitioned {
-                id,
+            &e.kind,
+            StoryEventKind::StateTransitioned {
                 new_state: Work::Accepted,
                 ..
-            } if *id == StoryId::new(5070)
+            } if e.id == StoryId::new(5070)
         )),
         "must emit StateTransitioned(Accepted) → adapter strips stale state labels + adds 'accepted'"
     );
@@ -330,7 +322,7 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
 #[tokio::test]
 async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -391,21 +383,19 @@ async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
         "gate + state events pushed; state-label reaping is the transition export's concern now: {pushed:?}"
     );
     assert!(matches!(
-        &pushed[0],
-        StoryEvent::VerdictCast {
-            id,
+        &pushed[0].kind,
+        StoryEventKind::VerdictCast {
             verdict: Verdict::Fail { step },
             payload: Some(p),
             ..
-        } if *id == StoryId::new(206) && step.as_str() == "acceptance" && p == "scope mismatch"
+        } if pushed[0].id == StoryId::new(206) && step.as_str() == "acceptance" && p == "scope mismatch"
     ));
     assert!(matches!(
-        &pushed[1],
-        StoryEvent::StateTransitioned {
-            id,
+        &pushed[1].kind,
+        StoryEventKind::StateTransitioned {
             new_state: Work::NotStarted,
             ..
-        } if *id == StoryId::new(206)
+        } if pushed[1].id == StoryId::new(206)
     ));
     let labels = adapter.labels_for(206);
     assert!(
@@ -417,7 +407,7 @@ async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
 #[tokio::test]
 async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, StoryKind, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -479,18 +469,17 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 2);
     assert!(matches!(
-        &pushed[0],
-        StoryEvent::StoryCreated {
-            id,
+        &pushed[0].kind,
+        StoryEventKind::StoryCreated {
             initial_state: Work::NotStarted,
             story_type: StoryKind::Bug,
             ..
-        } if *id == StoryId::new(51)
+        } if pushed[0].id == StoryId::new(51)
     ));
     assert!(
         matches!(
-            &pushed[1],
-            StoryEvent::AcceptorAssigned { id, acceptor, .. } if *id == StoryId::new(51) && *acceptor == crate::product_management::story::Acceptor::Team
+            &pushed[1].kind,
+            StoryEventKind::AcceptorAssigned { acceptor, .. } if pushed[1].id == StoryId::new(51) && *acceptor == crate::product_management::story::Acceptor::Team
         ),
         "the 'As an agent (pm or dev)' multi-role use-axis derives the team acceptor, assigned at create (#1787); got {:?}",
         &pushed[1]

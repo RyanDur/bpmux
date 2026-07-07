@@ -33,12 +33,11 @@ pub(crate) async fn handle_designate_current_iteration(
         .filter(|it| it.is_current && it.id != IterationId::new(iteration_id))
         .collect();
     for it in &prior {
-        r.mutate_sync(
-            crate::product_management::story::events::StoryEvent::CurrentIterationCleared {
-                meta: meta(),
-                id: StoryId::new(it.id.value()),
-            },
-        )
+        r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+            meta(),
+            StoryId::new(it.id.value()),
+            crate::product_management::story::events::StoryEventKind::CurrentIterationCleared,
+        ))
         .map_err(|e| {
             format!(
                 "#{} current-designation-clear enqueue failed: {e}",
@@ -46,12 +45,11 @@ pub(crate) async fn handle_designate_current_iteration(
             )
         })?;
     }
-    r.mutate_sync(
-        crate::product_management::story::events::StoryEvent::CurrentIterationDesignated {
-            meta: meta(),
-            id: StoryId::new(iteration_id),
-        },
-    )
+    r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+        meta(),
+        StoryId::new(iteration_id),
+        crate::product_management::story::events::StoryEventKind::CurrentIterationDesignated,
+    ))
     .map_err(|e| format!("#{iteration_id} current-designation enqueue failed: {e}"))?;
     let mut updates: Vec<crate::product_management::iteration::Iteration> = prior
         .into_iter()
@@ -95,13 +93,11 @@ pub(crate) async fn handle_close_pre_pickup_review(
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::story::peer::PeerId::local(),
     };
-    r.mutate_sync(
-        crate::product_management::story::events::StoryEvent::TagAdded {
-            meta,
-            id: StoryId::new(iteration_id),
-            label,
-        },
-    )
+    r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+        meta,
+        StoryId::new(iteration_id),
+        crate::product_management::story::events::StoryEventKind::TagAdded { label },
+    ))
     .map_err(|e| format!("#{iteration_id} review-close enqueue failed: {e}"))?;
     r.drain_pending()
         .await
@@ -146,13 +142,11 @@ pub(crate) async fn handle_dev_ok_iteration(
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::story::peer::PeerId::local(),
     };
-    r.mutate_sync(
-        crate::product_management::story::events::StoryEvent::TagAdded {
-            meta,
-            id: StoryId::new(iteration_id),
-            label,
-        },
-    )
+    r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+        meta,
+        StoryId::new(iteration_id),
+        crate::product_management::story::events::StoryEventKind::TagAdded { label },
+    ))
     .map_err(|e| format!("#{iteration_id} dev-OK enqueue failed: {e}"))?;
     r.drain_pending()
         .await

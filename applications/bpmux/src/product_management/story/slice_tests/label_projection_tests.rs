@@ -1,6 +1,6 @@
 use super::{apply, created, meta, minimal, seed, seeded, story_at};
 use crate::product_management::epic::EpicId;
-use crate::product_management::story::events::{LabelDerivedFields, StoryEvent};
+use crate::product_management::story::events::{LabelDerivedFields, StoryEvent, StoryEventKind};
 use crate::product_management::story::{Acceptor, StoryId, StoryKind, Tag, Work};
 
 #[test]
@@ -9,11 +9,13 @@ fn acceptor_assigned_lands_typed_without_any_label_projection_1551() {
     created(&store, 1, "t", Work::Acceptance);
     apply(
         &store,
-        StoryEvent::AcceptorAssigned {
-            meta: meta("designer", 2026, "local"),
-            id: StoryId::new(1),
-            acceptor: Acceptor::Team,
-        },
+        StoryEvent::new(
+            meta("designer", 2026, "local"),
+            StoryId::new(1),
+            StoryEventKind::AcceptorAssigned {
+                acceptor: Acceptor::Team,
+            },
+        ),
     );
     assert_eq!(
         story_at(&store, 1).unwrap().acceptor(),
@@ -29,11 +31,13 @@ fn tag_added_unknown_label_is_dropped() {
     created(&store, 1, "t", Work::NotStarted);
     apply(
         &store,
-        StoryEvent::TagAdded {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(1),
-            label: "high-priority".to_string(),
-        },
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(1),
+            StoryEventKind::TagAdded {
+                label: "high-priority".to_string(),
+            },
+        ),
     );
     assert!(
         story_at(&store, 1).unwrap().tags().is_empty(),
@@ -47,27 +51,33 @@ fn generic_label_churn_does_not_clobber_the_typed_tags_field() {
     created(&store, 1, "t", Work::NotStarted);
     apply(
         &store,
-        StoryEvent::TagSet {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(1),
-            tag: Tag::DeskCheckFail,
-        },
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(1),
+            StoryEventKind::TagSet {
+                tag: Tag::DeskCheckFail,
+            },
+        ),
     );
     apply(
         &store,
-        StoryEvent::TagAdded {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(1),
-            label: "high-priority".to_string(),
-        },
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(1),
+            StoryEventKind::TagAdded {
+                label: "high-priority".to_string(),
+            },
+        ),
     );
     apply(
         &store,
-        StoryEvent::TagRemoved {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(1),
-            label: "high-priority".to_string(),
-        },
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(1),
+            StoryEventKind::TagRemoved {
+                label: "high-priority".to_string(),
+            },
+        ),
     );
     assert_eq!(
         story_at(&store, 1).unwrap().tags(),
@@ -81,14 +91,16 @@ fn story_created_event_carries_story_type() {
     let store = seeded();
     apply(
         &store,
-        StoryEvent::StoryCreated {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(1),
-            title: "t".to_string(),
-            body: "b".to_string(),
-            initial_state: Work::NotStarted,
-            story_type: StoryKind::Bug,
-        },
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(1),
+            StoryEventKind::StoryCreated {
+                title: "t".to_string(),
+                body: "b".to_string(),
+                initial_state: Work::NotStarted,
+                story_type: StoryKind::Bug,
+            },
+        ),
     );
     assert_eq!(
         story_at(&store, 1).unwrap().story_type(),
@@ -108,15 +120,17 @@ fn labels_refreshed_assigns_the_ready_order_field_from_adapter_decoded_fields() 
     );
     apply(
         &store,
-        StoryEvent::LabelsRefreshed {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(18),
-            fields: LabelDerivedFields {
-                raw_labels: vec!["ready-order.3".to_string()],
-                ready_order: Some(3),
-                ..Default::default()
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(18),
+            StoryEventKind::LabelsRefreshed {
+                fields: LabelDerivedFields {
+                    raw_labels: vec!["ready-order.3".to_string()],
+                    ready_order: Some(3),
+                    ..Default::default()
+                },
             },
-        },
+        ),
     );
     assert_eq!(
         story_at(&store, 18).unwrap().ready_order(),
@@ -131,22 +145,24 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
     seed(&store, vec![minimal(77, "membered", Work::InProgress)]);
     apply(
         &store,
-        StoryEvent::LabelsRefreshed {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(77),
-            fields: LabelDerivedFields {
-                raw_labels: vec![
-                    "parent-epic-#7".to_string(),
-                    "parent-iteration-#1655.106".to_string(),
-                    "awaiting dev".to_string(),
-                ],
-                acceptor: Some(Acceptor::Dev),
-                parent_epic: Some(EpicId::new(7)),
-                tags: Vec::new(),
-                ready_order: None,
-                iteration_slot: None,
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(77),
+            StoryEventKind::LabelsRefreshed {
+                fields: LabelDerivedFields {
+                    raw_labels: vec![
+                        "parent-epic-#7".to_string(),
+                        "parent-iteration-#1655.106".to_string(),
+                        "awaiting dev".to_string(),
+                    ],
+                    acceptor: Some(Acceptor::Dev),
+                    parent_epic: Some(EpicId::new(7)),
+                    tags: Vec::new(),
+                    ready_order: None,
+                    iteration_slot: None,
+                },
             },
-        },
+        ),
     );
     let s = story_at(&store, 77).expect("story exists");
     assert_eq!(s.parent_epic(), Some(EpicId::new(7)));

@@ -8,7 +8,7 @@ mod write_path_tests;
 
 use chrono::{TimeZone, Utc};
 
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Story, StoryId, StoryKey, Work};
@@ -56,13 +56,15 @@ fn minimal(id: u64, title: &str, state: Work) -> Story {
 fn created(store: &SeededStore, id: u64, title: &str, state: Work) {
     apply(
         store,
-        StoryEvent::StoryCreated {
-            meta: meta("pm", 2026, "local"),
-            id: StoryId::new(id),
-            title: title.to_string(),
-            body: "b".to_string(),
-            initial_state: state,
-            story_type: crate::product_management::story::StoryKind::Feature,
-        },
+        StoryEvent::new(
+            meta("pm", 2026, "local"),
+            StoryId::new(id),
+            StoryEventKind::StoryCreated {
+                title: title.to_string(),
+                body: "b".to_string(),
+                initial_state: state,
+                story_type: crate::product_management::story::StoryKind::Feature,
+            },
+        ),
     );
 }

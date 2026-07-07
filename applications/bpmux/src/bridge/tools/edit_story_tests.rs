@@ -114,7 +114,7 @@ async fn edit_story_with_both_title_and_body_updates_both() {
 
 #[tokio::test]
 async fn edit_story_body_returns_optimistically_and_pushes_via_the_drain() {
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::StoryEventKind;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(1234, "[Feature] t", "old body")]);
@@ -142,9 +142,9 @@ async fn edit_story_body_returns_optimistically_and_pushes_via_the_drain() {
 
     assert!(
         adapter.pushed_events().iter().any(|e| matches!(
-            e,
-            StoryEvent::BodyUpdated { id, body, .. }
-                if *id == StoryId::new(1234) && body == "## What\n\nnew body content"
+            &e.kind,
+            StoryEventKind::BodyUpdated { body, .. }
+                if e.id == StoryId::new(1234) && body == "## What\n\nnew body content"
         )),
         "the async drain pushes BodyUpdated to the adapter: {:?}",
         adapter.pushed_events()
@@ -155,7 +155,7 @@ async fn edit_story_body_returns_optimistically_and_pushes_via_the_drain() {
 async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
     use crate::product_management::story::Acceptor;
     use crate::product_management::story::events::EventMeta;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 
     let refresh = build_refresh(vec![seed_story(1234, "title", "body")]).await;
     let meta = EventMeta {
@@ -164,11 +164,13 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
         peer_id: crate::product_management::story::peer::PeerId::local(),
     };
     refresh
-        .mutate_sync(StoryEvent::AcceptorAssigned {
+        .mutate_sync(StoryEvent::new(
             meta,
-            id: StoryId::new(1234),
-            acceptor: Acceptor::Dev,
-        })
+            StoryId::new(1234),
+            StoryEventKind::AcceptorAssigned {
+                acceptor: Acceptor::Dev,
+            },
+        ))
         .unwrap();
     refresh.drain_pending().await.unwrap();
     assert_eq!(

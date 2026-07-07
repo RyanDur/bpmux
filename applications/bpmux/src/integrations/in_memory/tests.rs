@@ -4,7 +4,7 @@ use chrono::{TimeZone, Utc};
 
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::epic::EpicId;
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{FreeComment, Story, StoryId, Work};
 use crate::sync::{SourceAdapter, SyncError};
@@ -89,12 +89,14 @@ async fn fetch_free_comments_returns_seeded() {
 #[tokio::test]
 async fn push_event_records_the_event() {
     let adapter = InMemorySourceAdapter::new();
-    let event = StoryEvent::StateTransitioned {
-        meta: meta(),
-        id: StoryId::new(10),
-        new_state: Work::Acceptance,
-        placement: None,
-    };
+    let event = StoryEvent::new(
+        meta(),
+        StoryId::new(10),
+        StoryEventKind::StateTransitioned {
+            new_state: Work::Acceptance,
+            placement: None,
+        },
+    );
     adapter
         .push_event(&event, &crate::sync::PushContext::default())
         .await
@@ -108,12 +110,14 @@ async fn push_event_records_the_event() {
 async fn push_event_errs_when_configured_to_fail() {
     let adapter = InMemorySourceAdapter::new();
     adapter.set_push_failures(true);
-    let event = StoryEvent::StateTransitioned {
-        meta: meta(),
-        id: StoryId::new(10),
-        new_state: Work::Acceptance,
-        placement: None,
-    };
+    let event = StoryEvent::new(
+        meta(),
+        StoryId::new(10),
+        StoryEventKind::StateTransitioned {
+            new_state: Work::Acceptance,
+            placement: None,
+        },
+    );
     let result = adapter
         .push_event(&event, &crate::sync::PushContext::default())
         .await;
@@ -127,18 +131,22 @@ async fn push_event_errs_when_configured_to_fail() {
 #[tokio::test]
 async fn multiple_pushed_events_preserve_order() {
     let adapter = InMemorySourceAdapter::new();
-    let e1 = StoryEvent::StateTransitioned {
-        meta: meta(),
-        id: StoryId::new(1),
-        new_state: Work::InProgress,
-        placement: None,
-    };
-    let e2 = StoryEvent::StateTransitioned {
-        meta: meta(),
-        id: StoryId::new(2),
-        new_state: Work::Acceptance,
-        placement: None,
-    };
+    let e1 = StoryEvent::new(
+        meta(),
+        StoryId::new(1),
+        StoryEventKind::StateTransitioned {
+            new_state: Work::InProgress,
+            placement: None,
+        },
+    );
+    let e2 = StoryEvent::new(
+        meta(),
+        StoryId::new(2),
+        StoryEventKind::StateTransitioned {
+            new_state: Work::Acceptance,
+            placement: None,
+        },
+    );
     adapter
         .push_event(&e1, &crate::sync::PushContext::default())
         .await
@@ -187,14 +195,16 @@ async fn create_story_propagates_failure_when_push_failures_set() {
 #[tokio::test]
 async fn push_event_accepts_story_created_variant() {
     let adapter = InMemorySourceAdapter::new();
-    let event = StoryEvent::StoryCreated {
-        meta: meta(),
-        id: StoryId::new(99),
-        title: "t".to_string(),
-        body: "b".to_string(),
-        initial_state: Work::NotStarted,
-        story_type: crate::product_management::story::StoryKind::Feature,
-    };
+    let event = StoryEvent::new(
+        meta(),
+        StoryId::new(99),
+        StoryEventKind::StoryCreated {
+            title: "t".to_string(),
+            body: "b".to_string(),
+            initial_state: Work::NotStarted,
+            story_type: crate::product_management::story::StoryKind::Feature,
+        },
+    );
     adapter
         .push_event(&event, &crate::sync::PushContext::default())
         .await
@@ -209,11 +219,13 @@ async fn tag_added_surfaces_ordering_label_in_ingested_iteration_slot() {
     adapter.seed_stories(vec![seed_story(42, "ordering-target")]);
     adapter
         .push_event(
-            &StoryEvent::TagAdded {
-                meta: meta(),
-                id: StoryId::new(42),
-                label: "iteration-Unscheduled.300".to_string(),
-            },
+            &StoryEvent::new(
+                meta(),
+                StoryId::new(42),
+                StoryEventKind::TagAdded {
+                    label: "iteration-Unscheduled.300".to_string(),
+                },
+            ),
             &crate::sync::PushContext::default(),
         )
         .await
@@ -237,11 +249,13 @@ async fn tag_removed_drops_ordering_label_from_ingested_iteration_slot() {
     adapter.seed_labels(42, vec!["iteration-Unscheduled.300".to_string()]);
     adapter
         .push_event(
-            &StoryEvent::TagRemoved {
-                meta: meta(),
-                id: StoryId::new(42),
-                label: "iteration-Unscheduled.300".to_string(),
-            },
+            &StoryEvent::new(
+                meta(),
+                StoryId::new(42),
+                StoryEventKind::TagRemoved {
+                    label: "iteration-Unscheduled.300".to_string(),
+                },
+            ),
             &crate::sync::PushContext::default(),
         )
         .await
@@ -260,11 +274,13 @@ async fn parent_epic_set_surfaces_in_ingested_metadata() {
     adapter.seed_stories(vec![seed_story(42, "child")]);
     adapter
         .push_event(
-            &StoryEvent::ParentEpicSet {
-                meta: meta(),
-                id: StoryId::new(42),
-                epic_id: EpicId::new(7),
-            },
+            &StoryEvent::new(
+                meta(),
+                StoryId::new(42),
+                StoryEventKind::ParentEpicSet {
+                    epic_id: EpicId::new(7),
+                },
+            ),
             &crate::sync::PushContext::default(),
         )
         .await
@@ -290,21 +306,20 @@ async fn parent_epic_unset_clears_in_ingested_metadata() {
     adapter.seed_stories(vec![seed_story(42, "child")]);
     adapter
         .push_event(
-            &StoryEvent::ParentEpicSet {
-                meta: meta(),
-                id: StoryId::new(42),
-                epic_id: EpicId::new(7),
-            },
+            &StoryEvent::new(
+                meta(),
+                StoryId::new(42),
+                StoryEventKind::ParentEpicSet {
+                    epic_id: EpicId::new(7),
+                },
+            ),
             &crate::sync::PushContext::default(),
         )
         .await
         .unwrap();
     adapter
         .push_event(
-            &StoryEvent::ParentEpicUnset {
-                meta: meta(),
-                id: StoryId::new(42),
-            },
+            &StoryEvent::new(meta(), StoryId::new(42), StoryEventKind::ParentEpicUnset),
             &crate::sync::PushContext::default(),
         )
         .await
@@ -327,11 +342,13 @@ async fn parent_epic_event_no_ops_for_unseeded_story() {
     let adapter = InMemorySourceAdapter::new();
     adapter
         .push_event(
-            &StoryEvent::ParentEpicSet {
-                meta: meta(),
-                id: StoryId::new(999),
-                epic_id: EpicId::new(1),
-            },
+            &StoryEvent::new(
+                meta(),
+                StoryId::new(999),
+                StoryEventKind::ParentEpicSet {
+                    epic_id: EpicId::new(1),
+                },
+            ),
             &crate::sync::PushContext::default(),
         )
         .await

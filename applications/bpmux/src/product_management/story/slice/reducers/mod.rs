@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::action::StoryAction;
-use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::{Story, StoryId, StoryKey};
 
 mod comments;
@@ -50,51 +50,54 @@ pub fn reduce(state: &Stories, action: &StoryAction) -> Stories {
 
 fn apply_event(w: &mut Stories, event: &StoryEvent) {
     let id = event.story_id();
-    match event {
-        StoryEvent::StoryCreated {
-            meta,
-            id: n,
+    match &event.kind {
+        StoryEventKind::StoryCreated {
             title,
             body,
             initial_state,
             story_type,
-        } => apply_story_created(w, *n, meta, title, body, initial_state.clone(), *story_type),
-        StoryEvent::StateTransitioned { new_state, .. } => {
+        } => apply_story_created(
+            w,
+            id,
+            &event.meta,
+            title,
+            body,
+            initial_state.clone(),
+            *story_type,
+        ),
+        StoryEventKind::StateTransitioned { new_state, .. } => {
             apply_state_transitioned(w, id, new_state.clone())
         }
-        StoryEvent::VerdictCast {
-            meta,
-            verdict,
-            payload,
-            ..
-        } => apply_verdict_cast(w, id, meta, verdict.clone(), payload.clone()),
-        StoryEvent::FreeCommentAppended { meta, body, .. } => {
-            apply_free_comment_appended(w, id, meta, body)
+        StoryEventKind::VerdictCast { verdict, payload } => {
+            apply_verdict_cast(w, id, &event.meta, verdict.clone(), payload.clone())
         }
-        StoryEvent::BodyFetched { body, etag, .. } => apply_body_fetched(w, id, body, etag),
-        StoryEvent::FreeCommentsFetched { comments, .. } => {
+        StoryEventKind::FreeCommentAppended { body } => {
+            apply_free_comment_appended(w, id, &event.meta, body)
+        }
+        StoryEventKind::BodyFetched { body, etag } => apply_body_fetched(w, id, body, etag),
+        StoryEventKind::FreeCommentsFetched { comments } => {
             apply_free_comments_fetched(w, id, comments)
         }
-        StoryEvent::VerdictsFetched { verdicts, .. } => apply_verdicts_fetched(w, id, verdicts),
-        StoryEvent::StoryClosed { .. } => {}
-        StoryEvent::StoryReopened { .. } => {}
-        StoryEvent::AcceptorAssigned { acceptor, .. } => apply_acceptor_assigned(w, id, *acceptor),
-        StoryEvent::ParentEpicSet { epic_id, .. } => apply_parent_epic_set(w, id, *epic_id),
-        StoryEvent::ParentEpicUnset { .. } => apply_parent_epic_unset(w, id),
-        StoryEvent::TagSet { tag, .. } => apply_tag_set(w, id, *tag),
-        StoryEvent::TagUnset { tag, .. } => apply_tag_unset(w, id, *tag),
-        StoryEvent::IterationSlotSet { name, position, .. } => {
+        StoryEventKind::VerdictsFetched { verdicts } => apply_verdicts_fetched(w, id, verdicts),
+        StoryEventKind::StoryClosed { .. } => {}
+        StoryEventKind::StoryReopened => {}
+        StoryEventKind::AcceptorAssigned { acceptor } => apply_acceptor_assigned(w, id, *acceptor),
+        StoryEventKind::ParentEpicSet { epic_id } => apply_parent_epic_set(w, id, *epic_id),
+        StoryEventKind::ParentEpicUnset => apply_parent_epic_unset(w, id),
+        StoryEventKind::TagSet { tag } => apply_tag_set(w, id, *tag),
+        StoryEventKind::TagUnset { tag } => apply_tag_unset(w, id, *tag),
+        StoryEventKind::IterationSlotSet { name, position } => {
             apply_iteration_slot_set(w, id, name, *position)
         }
-        StoryEvent::IterationSlotCleared { .. } => apply_iteration_slot_cleared(w, id),
-        StoryEvent::TagAdded { .. }
-        | StoryEvent::TagRemoved { .. }
-        | StoryEvent::CurrentIterationDesignated { .. }
-        | StoryEvent::CurrentIterationCleared { .. } => {}
-        StoryEvent::StoryRefreshed { story, .. } => apply_story_refreshed(w, id, story),
-        StoryEvent::TitleUpdated { title, .. } => apply_title_updated(w, id, title),
-        StoryEvent::BodyUpdated { body, .. } => apply_body_updated(w, id, body),
-        StoryEvent::LabelsRefreshed { fields, .. } => apply_labels_refreshed(w, id, fields),
-        StoryEvent::ConflictDetected { .. } | StoryEvent::ConflictResolved { .. } => {}
+        StoryEventKind::IterationSlotCleared => apply_iteration_slot_cleared(w, id),
+        StoryEventKind::TagAdded { .. }
+        | StoryEventKind::TagRemoved { .. }
+        | StoryEventKind::CurrentIterationDesignated
+        | StoryEventKind::CurrentIterationCleared => {}
+        StoryEventKind::StoryRefreshed { story } => apply_story_refreshed(w, id, story),
+        StoryEventKind::TitleUpdated { title } => apply_title_updated(w, id, title),
+        StoryEventKind::BodyUpdated { body } => apply_body_updated(w, id, body),
+        StoryEventKind::LabelsRefreshed { fields } => apply_labels_refreshed(w, id, fields),
+        StoryEventKind::ConflictDetected { .. } | StoryEventKind::ConflictResolved { .. } => {}
     }
 }

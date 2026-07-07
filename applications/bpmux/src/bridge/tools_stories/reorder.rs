@@ -54,18 +54,18 @@ pub(crate) fn reorder_icebox_story_via_labels(
         return Ok(());
     }
     refresh
-        .mutate_sync(
-            crate::product_management::story::events::StoryEvent::IterationSlotSet {
-                meta: crate::product_management::story::events::EventMeta {
-                    actor: "pm".to_string(),
-                    ts: chrono::Utc::now(),
-                    peer_id: crate::product_management::story::peer::PeerId::local(),
-                },
-                id: target_id,
+        .mutate_sync(crate::product_management::story::events::StoryEvent::new(
+            crate::product_management::story::events::EventMeta {
+                actor: "pm".to_string(),
+                ts: chrono::Utc::now(),
+                peer_id: crate::product_management::story::peer::PeerId::local(),
+            },
+            target_id,
+            crate::product_management::story::events::StoryEventKind::IterationSlotSet {
                 name,
                 position: new_position,
             },
-        )
+        ))
         .map_err(|e| format!("IterationSlotSet #{id}: {e}"))?;
     Ok(())
 }

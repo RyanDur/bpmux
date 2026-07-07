@@ -1,5 +1,5 @@
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string, role_from_name};
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{Story, StoryId, Verdict, Work};
 use crate::sync::RefreshDriver;
@@ -137,18 +137,19 @@ fn cast_and_transition(
         peer_id: PeerId::local(),
     };
     r.mutate_batch_sync(vec![
-        StoryEvent::VerdictCast {
-            meta: meta.clone(),
-            id: StoryId::new(id),
-            verdict,
-            payload,
-        },
-        StoryEvent::StateTransitioned {
+        StoryEvent::new(
+            meta.clone(),
+            StoryId::new(id),
+            StoryEventKind::VerdictCast { verdict, payload },
+        ),
+        StoryEvent::new(
             meta,
-            id: StoryId::new(id),
-            new_state,
-            placement,
-        },
+            StoryId::new(id),
+            StoryEventKind::StateTransitioned {
+                new_state,
+                placement,
+            },
+        ),
     ])
     .map_err(|e| format!("#{id} stage judgment enqueue failed: {e}"))
 }

@@ -57,33 +57,37 @@ pub(crate) async fn handle_label_story(
         let (event, ok_msg) = match operation {
             "add" => (
                 if let Some(tag) = tag {
-                    crate::product_management::story::events::StoryEvent::TagSet {
+                    crate::product_management::story::events::StoryEvent::new(
                         meta,
-                        id: StoryId::new(id),
-                        tag,
-                    }
+                        StoryId::new(id),
+                        crate::product_management::story::events::StoryEventKind::TagSet { tag },
+                    )
                 } else {
-                    crate::product_management::story::events::StoryEvent::TagAdded {
+                    crate::product_management::story::events::StoryEvent::new(
                         meta,
-                        id: StoryId::new(id),
-                        label: label.to_string(),
-                    }
+                        StoryId::new(id),
+                        crate::product_management::story::events::StoryEventKind::TagAdded {
+                            label: label.to_string(),
+                        },
+                    )
                 },
                 format!("#{id} labeled '{label}'"),
             ),
             "remove" => (
                 if let Some(tag) = tag {
-                    crate::product_management::story::events::StoryEvent::TagUnset {
+                    crate::product_management::story::events::StoryEvent::new(
                         meta,
-                        id: StoryId::new(id),
-                        tag,
-                    }
+                        StoryId::new(id),
+                        crate::product_management::story::events::StoryEventKind::TagUnset { tag },
+                    )
                 } else {
-                    crate::product_management::story::events::StoryEvent::TagRemoved {
+                    crate::product_management::story::events::StoryEvent::new(
                         meta,
-                        id: StoryId::new(id),
-                        label: label.to_string(),
-                    }
+                        StoryId::new(id),
+                        crate::product_management::story::events::StoryEventKind::TagRemoved {
+                            label: label.to_string(),
+                        },
+                    )
                 },
                 format!("#{id} unlabeled '{label}'"),
             ),
@@ -124,15 +128,17 @@ pub(crate) async fn handle_comment_on_story(
     }
     if let Some(r) = refresh {
         ensure_story_in_canonical_store(r, id).await?;
-        let event = crate::product_management::story::events::StoryEvent::FreeCommentAppended {
-            meta: crate::product_management::story::events::EventMeta {
+        let event = crate::product_management::story::events::StoryEvent::new(
+            crate::product_management::story::events::EventMeta {
                 actor: crate::routing::short_name(agent_name).to_string(),
                 ts: chrono::Utc::now(),
                 peer_id: crate::product_management::story::peer::PeerId::local(),
             },
-            id: StoryId::new(id),
-            body: body.to_string(),
-        };
+            StoryId::new(id),
+            crate::product_management::story::events::StoryEventKind::FreeCommentAppended {
+                body: body.to_string(),
+            },
+        );
         r.mutate_sync(event)
             .map_err(|e| format!("#{id} enqueue failed: {e}"))?;
         return Ok(format!("#{id} commented"));

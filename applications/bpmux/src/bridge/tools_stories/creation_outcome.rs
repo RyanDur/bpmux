@@ -56,14 +56,14 @@ pub(crate) async fn handle_create_outcome(
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::story::peer::PeerId::local(),
     };
-    r.mutate_sync(
-        crate::product_management::story::events::StoryEvent::TagAdded {
-            meta,
-            id: StoryId::new(id),
+    r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+        meta,
+        StoryId::new(id),
+        crate::product_management::story::events::StoryEventKind::TagAdded {
             label: crate::integrations::github::gh_label_codec::GhLabelCodec
                 .encode_horizon(horizon),
         },
-    )
+    ))
     .map_err(|e| format!("#{id} outcome horizon label enqueue failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Outcome(
         crate::product_management::outcome::OutcomeAction::Upserted(vec![

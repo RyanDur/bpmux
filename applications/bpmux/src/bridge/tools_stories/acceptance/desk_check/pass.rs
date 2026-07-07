@@ -102,38 +102,35 @@ pub(crate) async fn handle_pass_desk_check(
         })?;
         let mut events = Vec::new();
         if was_closed {
-            events.push(
-                crate::product_management::story::events::StoryEvent::StoryReopened {
-                    meta: meta.clone(),
-                    id: StoryId::new(id),
-                },
-            );
+            events.push(crate::product_management::story::events::StoryEvent::new(
+                meta.clone(),
+                StoryId::new(id),
+                crate::product_management::story::events::StoryEventKind::StoryReopened,
+            ));
         }
-        events.push(
-            crate::product_management::story::events::StoryEvent::AcceptorAssigned {
-                meta: meta.clone(),
-                id: StoryId::new(id),
-                acceptor,
-            },
-        );
-        events.push(
-            crate::product_management::story::events::StoryEvent::VerdictCast {
-                meta: meta.clone(),
-                id: StoryId::new(id),
+        events.push(crate::product_management::story::events::StoryEvent::new(
+            meta.clone(),
+            StoryId::new(id),
+            crate::product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
+        ));
+        events.push(crate::product_management::story::events::StoryEvent::new(
+            meta.clone(),
+            StoryId::new(id),
+            crate::product_management::story::events::StoryEventKind::VerdictCast {
                 verdict: crate::product_management::story::Verdict::Succeed {
                     step: "desk-check".into(),
                 },
                 payload: bypass.clone().map(format_bypass_payload),
             },
-        );
-        events.push(
-            crate::product_management::story::events::StoryEvent::StateTransitioned {
-                meta,
-                id: StoryId::new(id),
+        ));
+        events.push(crate::product_management::story::events::StoryEvent::new(
+            meta,
+            StoryId::new(id),
+            crate::product_management::story::events::StoryEventKind::StateTransitioned {
                 new_state,
                 placement,
             },
-        );
+        ));
         r.mutate_batch_sync(events)
             .map_err(|e| format!("#{id} pass-desk-check enqueue failed: {e}"))?;
         return Ok(format!(

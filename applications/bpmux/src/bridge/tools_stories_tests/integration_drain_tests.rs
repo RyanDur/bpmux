@@ -176,7 +176,7 @@ async fn start_story_fetches_the_rework_lead_when_the_store_has_no_cached_verdic
 #[tokio::test]
 async fn reject_story_returns_optimistically_and_defers_gh_push_to_the_async_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -215,7 +215,7 @@ async fn reject_story_returns_optimistically_and_defers_gh_push_to_the_async_dra
     let pushed = adapter.pushed_events();
     assert!(
         pushed.iter().any(
-            |e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(4690))
+            |e| matches!(&e.kind, StoryEventKind::StoryReopened if e.id == StoryId::new(4690))
         ),
         "the async drain propagates StoryReopened to the adapter (#469 cascade-fix): {pushed:?}"
     );
@@ -233,7 +233,7 @@ async fn reject_story_returns_optimistically_and_defers_gh_push_to_the_async_dra
 #[tokio::test]
 async fn fail_desk_check_returns_optimistically_and_defers_gh_push_to_the_async_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Stage, Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -272,8 +272,8 @@ async fn fail_desk_check_returns_optimistically_and_defers_gh_push_to_the_async_
     let pushed = adapter.pushed_events();
     assert!(
         pushed.iter().any(|e| matches!(
-            e,
-            StoryEvent::StateTransitioned { id, new_state, .. } if *id == StoryId::new(4691) && *new_state == Work::InProgress
+            &e.kind,
+            StoryEventKind::StateTransitioned { new_state, .. } if e.id == StoryId::new(4691) && *new_state == Work::InProgress
         )),
         "the async drain propagates StateTransitioned(InProgress) to the adapter: {pushed:?}"
     );
@@ -282,7 +282,7 @@ async fn fail_desk_check_returns_optimistically_and_defers_gh_push_to_the_async_
 #[tokio::test]
 async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -320,7 +320,7 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
 
     let story_reopened = pushed
         .iter()
-        .any(|e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(469)));
+        .any(|e| matches!(&e.kind, StoryEventKind::StoryReopened if e.id == StoryId::new(469)));
     assert!(
         story_reopened,
         "reject_story on previously-Accepted must emit StoryReopened: {pushed:?}"
@@ -333,7 +333,7 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
 #[tokio::test]
 async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -365,7 +365,7 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     let pushed = adapter.pushed_events();
     let any_reopen = pushed
         .iter()
-        .any(|e| matches!(e, StoryEvent::StoryReopened { id, .. } if *id == StoryId::new(470)));
+        .any(|e| matches!(&e.kind, StoryEventKind::StoryReopened if e.id == StoryId::new(470)));
     assert!(
         !any_reopen,
         "reject on non-Accepted must NOT emit StoryReopened: {pushed:?}"
@@ -396,7 +396,7 @@ async fn a_transition_out_of_the_board_pushes_no_state_label_and_strips_the_stal
     use crate::integrations::github::gh_label_codec::GhLabelCodec;
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::label_codec::LabelCodec;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -417,12 +417,14 @@ async fn a_transition_out_of_the_board_pushes_no_state_label_and_strips_the_stal
     crate::store::bind_seeded_refresh(&orch, vec![], current_iteration_of(&[]), vec![]);
     orch.refresh_all().await.unwrap();
 
-    orch.mutate_sync(StoryEvent::StateTransitioned {
-        meta: crate::sync::cache_fill_meta(),
-        id: StoryId::new(471),
-        new_state: Work::NotStarted,
-        placement: None,
-    })
+    orch.mutate_sync(StoryEvent::new(
+        crate::sync::cache_fill_meta(),
+        StoryId::new(471),
+        StoryEventKind::StateTransitioned {
+            new_state: Work::NotStarted,
+            placement: None,
+        },
+    ))
     .unwrap();
     orch.drain_pending().await.unwrap();
 
@@ -450,7 +452,7 @@ async fn a_transition_out_of_the_board_pushes_no_state_label_and_strips_the_stal
 #[tokio::test]
 async fn a_transition_to_ready_for_a_current_iteration_member_pushes_the_ready_label() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
@@ -471,12 +473,14 @@ async fn a_transition_to_ready_for_a_current_iteration_member_pushes_the_ready_l
     crate::store::bind_seeded_refresh(&orch, vec![], current_iteration_of(&[472]), vec![]);
     orch.refresh_all().await.unwrap();
 
-    orch.mutate_sync(StoryEvent::StateTransitioned {
-        meta: crate::sync::cache_fill_meta(),
-        id: StoryId::new(472),
-        new_state: Work::NotStarted,
-        placement: None,
-    })
+    orch.mutate_sync(StoryEvent::new(
+        crate::sync::cache_fill_meta(),
+        StoryId::new(472),
+        StoryEventKind::StateTransitioned {
+            new_state: Work::NotStarted,
+            placement: None,
+        },
+    ))
     .unwrap();
     orch.drain_pending().await.unwrap();
 

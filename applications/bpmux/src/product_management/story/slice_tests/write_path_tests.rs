@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Story, StoryId, StoryKind, Work};
@@ -28,14 +28,16 @@ fn bound_orchestrator() -> (SeededStore, Arc<dyn RefreshDriver>) {
 }
 
 fn created(id: u64, title: &str) -> StoryEvent {
-    StoryEvent::StoryCreated {
-        meta: meta(),
-        id: StoryId::new(id),
-        title: title.to_string(),
-        body: "b".to_string(),
-        initial_state: Work::NotStarted,
-        story_type: StoryKind::Feature,
-    }
+    StoryEvent::new(
+        meta(),
+        StoryId::new(id),
+        StoryEventKind::StoryCreated {
+            title: title.to_string(),
+            body: "b".to_string(),
+            initial_state: Work::NotStarted,
+            story_type: StoryKind::Feature,
+        },
+    )
 }
 
 fn minimal_story(id: u64, title: &str) -> Story {
@@ -64,11 +66,13 @@ fn an_orchestrator_write_is_synchronously_visible_through_its_own_reads() {
 fn generic_tag_churn_has_no_domain_side_effect_after_the_middleware_retire() {
     let (_handle, orch) = bound_orchestrator();
     orch.mutate_sync(created(7, "labeled")).unwrap();
-    orch.mutate_sync(StoryEvent::TagAdded {
-        meta: meta(),
-        id: StoryId::new(7),
-        label: "some-generic-label".to_string(),
-    })
+    orch.mutate_sync(StoryEvent::new(
+        meta(),
+        StoryId::new(7),
+        StoryEventKind::TagAdded {
+            label: "some-generic-label".to_string(),
+        },
+    ))
     .unwrap();
     let story = orch.story(7).unwrap();
     assert!(

@@ -6,7 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{Stage, Story, StoryId, Work};
 use crate::store::SeededStore;
@@ -80,19 +80,21 @@ async fn end_to_end_seeded_adapter_through_mutate_and_drain() {
     orchestrator.ingest_once().await.unwrap();
     assert_eq!(orchestrator.story(42).unwrap().state, Work::NotStarted);
     orchestrator
-        .mutate(StoryEvent::StateTransitioned {
-            meta: meta(),
-            id: StoryId::new(42),
-            new_state: Work::InProgress,
-            placement: None,
-        })
+        .mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(42),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
         .unwrap();
     assert_eq!(orchestrator.story(42).unwrap().state, Work::InProgress);
     orchestrator.drain_once().await.unwrap();
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
-    match &pushed[0] {
-        StoryEvent::StateTransitioned { new_state, .. } => {
+    match &pushed[0].kind {
+        StoryEventKind::StateTransitioned { new_state, .. } => {
             assert_eq!(*new_state, Work::InProgress);
         }
         other => panic!("unexpected event: {other:?}"),

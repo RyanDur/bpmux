@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::events::StoryEvent;
+use super::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::Story;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -16,33 +16,33 @@ pub fn classify_conflict(
     event: &StoryEvent,
     _current: Option<&Story>,
 ) -> Option<ConflictKind> {
-    match event {
-        StoryEvent::TagAdded { .. }
-        | StoryEvent::TagRemoved { .. }
-        | StoryEvent::TagSet { .. }
-        | StoryEvent::TagUnset { .. }
-        | StoryEvent::IterationSlotSet { .. }
-        | StoryEvent::IterationSlotCleared { .. }
-        | StoryEvent::StateTransitioned { .. }
-        | StoryEvent::StoryClosed { .. }
-        | StoryEvent::StoryReopened { .. }
-        | StoryEvent::AcceptorAssigned { .. }
-        | StoryEvent::ParentEpicSet { .. }
-        | StoryEvent::ParentEpicUnset { .. }
-        | StoryEvent::CurrentIterationDesignated { .. }
-        | StoryEvent::CurrentIterationCleared { .. } => None,
-        StoryEvent::StoryCreated { .. }
-        | StoryEvent::VerdictCast { .. }
-        | StoryEvent::FreeCommentAppended { .. }
-        | StoryEvent::BodyFetched { .. }
-        | StoryEvent::FreeCommentsFetched { .. }
-        | StoryEvent::VerdictsFetched { .. }
-        | StoryEvent::StoryRefreshed { .. }
-        | StoryEvent::LabelsRefreshed { .. }
-        | StoryEvent::TitleUpdated { .. }
-        | StoryEvent::BodyUpdated { .. }
-        | StoryEvent::ConflictDetected { .. }
-        | StoryEvent::ConflictResolved { .. } => None,
+    match &event.kind {
+        StoryEventKind::TagAdded { .. }
+        | StoryEventKind::TagRemoved { .. }
+        | StoryEventKind::TagSet { .. }
+        | StoryEventKind::TagUnset { .. }
+        | StoryEventKind::IterationSlotSet { .. }
+        | StoryEventKind::IterationSlotCleared
+        | StoryEventKind::StateTransitioned { .. }
+        | StoryEventKind::StoryClosed { .. }
+        | StoryEventKind::StoryReopened
+        | StoryEventKind::AcceptorAssigned { .. }
+        | StoryEventKind::ParentEpicSet { .. }
+        | StoryEventKind::ParentEpicUnset
+        | StoryEventKind::CurrentIterationDesignated
+        | StoryEventKind::CurrentIterationCleared => None,
+        StoryEventKind::StoryCreated { .. }
+        | StoryEventKind::VerdictCast { .. }
+        | StoryEventKind::FreeCommentAppended { .. }
+        | StoryEventKind::BodyFetched { .. }
+        | StoryEventKind::FreeCommentsFetched { .. }
+        | StoryEventKind::VerdictsFetched { .. }
+        | StoryEventKind::StoryRefreshed { .. }
+        | StoryEventKind::LabelsRefreshed { .. }
+        | StoryEventKind::TitleUpdated { .. }
+        | StoryEventKind::BodyUpdated { .. }
+        | StoryEventKind::ConflictDetected { .. }
+        | StoryEventKind::ConflictResolved { .. } => None,
     }
 }
 

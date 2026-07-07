@@ -168,7 +168,7 @@ async fn select_stories_to_hydrate_returns_empty_when_all_hydrated() {
 
 #[tokio::test]
 async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
-    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let seed = SeededStore::new(vec![], vec![], vec![]);
@@ -177,14 +177,14 @@ async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
         9000,
         Work::NotStarted,
     )])));
-    seed.dispatch(AppAction::Story(StoryAction::Event(
-        StoryEvent::BodyFetched {
-            meta: crate::sync::cache_fill_meta(),
-            id: StoryId::new(9000),
+    seed.dispatch(AppAction::Story(StoryAction::Event(StoryEvent::new(
+        crate::sync::cache_fill_meta(),
+        StoryId::new(9000),
+        StoryEventKind::BodyFetched {
             body: "hydrated body content".to_string(),
             etag: Some("W/\"deadbeef\"".to_string()),
         },
-    )));
+    ))));
     let story = orch.story(9000).expect("story present");
     assert_eq!(story.body.as_deref(), Some("hydrated body content"));
     assert_eq!(story.body_etag.as_deref(), Some("W/\"deadbeef\""));
@@ -192,7 +192,7 @@ async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
 
 #[tokio::test]
 async fn local_body_mutate_invalidates_prior_etag() {
-    use crate::product_management::story::events::{EventMeta, StoryEvent};
+    use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
     use crate::product_management::story::peer::PeerId;
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
@@ -204,17 +204,17 @@ async fn local_body_mutate_invalidates_prior_etag() {
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed.clone()])));
     let mut updated = seed;
     updated.body = Some("v2".to_string());
-    handle.dispatch(AppAction::Story(StoryAction::Event(
-        StoryEvent::StoryRefreshed {
-            meta: EventMeta {
-                actor: "test".to_string(),
-                ts: Utc::now(),
-                peer_id: PeerId::local(),
-            },
-            id: StoryId::new(9100),
+    handle.dispatch(AppAction::Story(StoryAction::Event(StoryEvent::new(
+        EventMeta {
+            actor: "test".to_string(),
+            ts: Utc::now(),
+            peer_id: PeerId::local(),
+        },
+        StoryId::new(9100),
+        StoryEventKind::StoryRefreshed {
             story: Box::new(updated),
         },
-    )));
+    ))));
     let after = orch.story(9100).expect("story present");
     assert_eq!(after.body.as_deref(), Some("v2"));
     assert_eq!(
@@ -225,7 +225,7 @@ async fn local_body_mutate_invalidates_prior_etag() {
 
 #[tokio::test]
 async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh() {
-    use crate::product_management::story::events::{EventMeta, StoryEvent};
+    use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
     use crate::product_management::story::peer::PeerId;
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
@@ -234,17 +234,17 @@ async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh(
     let seed = seed_minimal(9200, Work::InProgress);
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed])));
     let labels = vec!["in progress".to_string(), "ready-order.300".to_string()];
-    handle.dispatch(AppAction::Story(StoryAction::Event(
-        StoryEvent::LabelsRefreshed {
-            meta: EventMeta {
-                actor: "test".to_string(),
-                ts: Utc::now(),
-                peer_id: PeerId::local(),
-            },
-            id: StoryId::new(9200),
+    handle.dispatch(AppAction::Story(StoryAction::Event(StoryEvent::new(
+        EventMeta {
+            actor: "test".to_string(),
+            ts: Utc::now(),
+            peer_id: PeerId::local(),
+        },
+        StoryId::new(9200),
+        StoryEventKind::LabelsRefreshed {
             fields: crate::integrations::github::mapper::project_labels(&labels),
         },
-    )));
+    ))));
     let after = orch.story(9200).expect("story present");
     assert_eq!(
         after.ready_order(),

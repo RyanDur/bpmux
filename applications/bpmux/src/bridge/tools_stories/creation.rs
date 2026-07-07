@@ -159,35 +159,31 @@ async fn create_and_broadcast_story_events(
         ts: chrono::Utc::now(),
         peer_id: crate::product_management::story::peer::PeerId::local(),
     };
-    r.mutate_sync(
-        crate::product_management::story::events::StoryEvent::StoryCreated {
-            meta: meta.clone(),
-            id: StoryId::new(id),
+    r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+        meta.clone(),
+        StoryId::new(id),
+        crate::product_management::story::events::StoryEventKind::StoryCreated {
             title: title.to_string(),
             body: composed_body,
             initial_state: crate::product_management::story::Work::NotStarted,
             story_type,
         },
-    )
+    ))
     .map_err(|e| format!("#{id} created but enqueue failed: {e}"))?;
     if let Some(acceptor) = acceptor {
-        r.mutate_sync(
-            crate::product_management::story::events::StoryEvent::AcceptorAssigned {
-                meta: meta.clone(),
-                id: StoryId::new(id),
-                acceptor,
-            },
-        )
+        r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+            meta.clone(),
+            StoryId::new(id),
+            crate::product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
+        ))
         .map_err(|e| format!("#{id} acceptor enqueue failed: {e}"))?;
     }
     if let Some(epic_id) = parent_epic {
-        r.mutate_sync(
-            crate::product_management::story::events::StoryEvent::ParentEpicSet {
-                meta,
-                id: StoryId::new(id),
-                epic_id,
-            },
-        )
+        r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+            meta,
+            StoryId::new(id),
+            crate::product_management::story::events::StoryEventKind::ParentEpicSet { epic_id },
+        ))
         .map_err(|e| format!("#{id} parent_epic enqueue failed: {e}"))?;
     }
     Ok(id)

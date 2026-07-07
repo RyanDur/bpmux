@@ -20,7 +20,7 @@ use std::sync::Arc;
 
 use bpmux::integrations::in_memory::InMemorySourceAdapter;
 use bpmux::product_management::story::events::EventMeta;
-use bpmux::product_management::story::events::StoryEvent;
+use bpmux::product_management::story::events::{StoryEvent, StoryEventKind};
 use bpmux::product_management::story::peer::PeerId;
 use bpmux::product_management::story::{Story, StoryId, Work};
 use bpmux::session::Session;
@@ -82,11 +82,13 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
         "rejected",
         "accepted",
     ] {
-        orch.mutate_sync(StoryEvent::TagRemoved {
-            meta: meta.clone(),
-            id: StoryId::new(909),
-            label: stale.to_string(),
-        })
+        orch.mutate_sync(StoryEvent::new(
+            meta.clone(),
+            StoryId::new(909),
+            StoryEventKind::TagRemoved {
+                label: stale.to_string(),
+            },
+        ))
         .unwrap();
     }
     let drained = orch.drain_pending().await.unwrap();
@@ -98,7 +100,9 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
     let pushed = adapter.pushed_events();
     let strip_count = pushed
         .iter()
-        .filter(|e| matches!(e, StoryEvent::TagRemoved { id, .. } if *id == StoryId::new(909)))
+        .filter(
+            |e| matches!(&e.kind, StoryEventKind::TagRemoved { .. } if e.id == StoryId::new(909)),
+        )
         .count();
     assert_eq!(strip_count, 8);
 

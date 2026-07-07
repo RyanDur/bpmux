@@ -2,7 +2,7 @@
 
 use super::board_placement::unplace_departed;
 use crate::board::{BoardAction, BoardPlacements, placement_edge, reduce};
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::{Stories, StoryAction};
 use crate::product_management::story::{Stage, Story, StoryId, Work};
@@ -39,34 +39,38 @@ fn board(placements: &[(u64, &str)]) -> BoardPlacements {
 }
 
 fn transition(id: u64, placement: Option<StageId>) -> StoryAction {
-    StoryAction::Event(StoryEvent::StateTransitioned {
-        meta: EventMeta {
+    StoryAction::Event(StoryEvent::new(
+        EventMeta {
             actor: "dev".to_string(),
             ts: Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
             peer_id: PeerId::local(),
         },
-        id: StoryId::new(id),
-        new_state: Work::InProgress,
-        placement,
-    })
+        StoryId::new(id),
+        StoryEventKind::StateTransitioned {
+            new_state: Work::InProgress,
+            placement,
+        },
+    ))
 }
 
 fn batched_intent(id: u64, placement: Option<StageId>) -> StoryAction {
     let StoryAction::Event(state) = transition(id, placement) else {
         unreachable!()
     };
-    let gate = StoryEvent::VerdictCast {
-        meta: EventMeta {
+    let gate = StoryEvent::new(
+        EventMeta {
             actor: "dev".to_string(),
             ts: Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
             peer_id: PeerId::local(),
         },
-        id: StoryId::new(id),
-        verdict: crate::product_management::story::Verdict::Succeed {
-            step: "in-progress".into(),
+        StoryId::new(id),
+        StoryEventKind::VerdictCast {
+            verdict: crate::product_management::story::Verdict::Succeed {
+                step: "in-progress".into(),
+            },
+            payload: None,
         },
-        payload: None,
-    };
+    );
     StoryAction::Events(vec![gate, state])
 }
 

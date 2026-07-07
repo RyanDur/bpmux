@@ -1,4 +1,4 @@
-use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::sync::{SourceAdapter, is_permanent_push_failure};
 
 use super::super::{
@@ -37,11 +37,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 self.remove_pending_by_id(id);
                 self.persist_outbox();
                 decrement_pending(&self.status);
-                self.apply_story_event(&StoryEvent::ConflictDetected {
-                    meta: cache_fill_meta(),
-                    id: event.story_id(),
-                    kind: divergent,
-                });
+                self.apply_story_event(&StoryEvent::new(
+                    cache_fill_meta(),
+                    event.story_id(),
+                    StoryEventKind::ConflictDetected { kind: divergent },
+                ));
                 crate::diag::log_diag(&format!(
                     "orchestrator: drain_one_by_id rolled back #{} ({divergent:?}); applying server_story",
                     event.story_id().value()

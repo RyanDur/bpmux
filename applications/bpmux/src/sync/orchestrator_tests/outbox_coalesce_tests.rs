@@ -6,7 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Story, StoryId, Work};
@@ -18,9 +18,9 @@ mod outbox_coalesce_1339_step_2e {
     use super::*;
 
     fn extract_label(event: &StoryEvent) -> Option<(&'static str, &str)> {
-        match event {
-            StoryEvent::TagAdded { label, .. } => Some(("A", label.as_str())),
-            StoryEvent::TagRemoved { label, .. } => Some(("R", label.as_str())),
+        match &event.kind {
+            StoryEventKind::TagAdded { label } => Some(("A", label.as_str())),
+            StoryEventKind::TagRemoved { label } => Some(("R", label.as_str())),
             _ => None,
         }
     }
@@ -46,41 +46,53 @@ mod outbox_coalesce_1339_step_2e {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed])));
 
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(7011),
-            label: "iteration-Pegasus.150".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7011),
+            StoryEventKind::TagAdded {
+                label: "iteration-Pegasus.150".to_string(),
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::TagRemoved {
-            meta: meta(),
-            id: StoryId::new(7011),
-            label: "iteration-Pegasus.300".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7011),
+            StoryEventKind::TagRemoved {
+                label: "iteration-Pegasus.300".to_string(),
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(7011),
-            label: "iteration-Pegasus.75".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7011),
+            StoryEventKind::TagAdded {
+                label: "iteration-Pegasus.75".to_string(),
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::TagRemoved {
-            meta: meta(),
-            id: StoryId::new(7011),
-            label: "iteration-Pegasus.150".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7011),
+            StoryEventKind::TagRemoved {
+                label: "iteration-Pegasus.150".to_string(),
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(7011),
-            label: "iteration-Pegasus.50".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7011),
+            StoryEventKind::TagAdded {
+                label: "iteration-Pegasus.50".to_string(),
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::TagRemoved {
-            meta: meta(),
-            id: StoryId::new(7011),
-            label: "iteration-Pegasus.75".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7011),
+            StoryEventKind::TagRemoved {
+                label: "iteration-Pegasus.75".to_string(),
+            },
+        ))
         .unwrap();
 
         let labels = queue_labels(&orch);
@@ -106,23 +118,29 @@ mod outbox_coalesce_1339_step_2e {
             Work::NotStarted,
         )])));
 
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(7012),
-            label: "iteration-Pegasus.100".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7012),
+            StoryEventKind::TagAdded {
+                label: "iteration-Pegasus.100".to_string(),
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(7012),
-            label: "iteration-order.50".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7012),
+            StoryEventKind::TagAdded {
+                label: "iteration-order.50".to_string(),
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(7012),
-            label: "iteration-Pegasus.50".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7012),
+            StoryEventKind::TagAdded {
+                label: "iteration-Pegasus.50".to_string(),
+            },
+        ))
         .unwrap();
 
         let labels = queue_labels(&orch);
@@ -148,30 +166,36 @@ mod outbox_coalesce_1339_step_2e {
             seed_story(7014, Work::NotStarted),
         ])));
 
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(7013),
-            label: "iteration-Pegasus.100".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7013),
+            StoryEventKind::TagAdded {
+                label: "iteration-Pegasus.100".to_string(),
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(7014),
-            label: "iteration-Pegasus.100".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7014),
+            StoryEventKind::TagAdded {
+                label: "iteration-Pegasus.100".to_string(),
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(7013),
-            label: "iteration-Pegasus.50".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7013),
+            StoryEventKind::TagAdded {
+                label: "iteration-Pegasus.50".to_string(),
+            },
+        ))
         .unwrap();
 
         let pending = orch.snapshot_pending_for_test();
         let by_story: Vec<(u64, String)> = pending
             .iter()
-            .filter_map(|q| match &q.event {
-                StoryEvent::TagAdded { id, label, .. } => Some((id.value(), label.clone())),
+            .filter_map(|q| match &q.event.kind {
+                StoryEventKind::TagAdded { label } => Some((q.event.id.value(), label.clone())),
                 _ => None,
             })
             .collect();
@@ -197,23 +221,29 @@ mod outbox_coalesce_1339_step_2e {
             Work::NotStarted,
         )])));
 
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(7015),
-            label: "blocked".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7015),
+            StoryEventKind::TagAdded {
+                label: "blocked".to_string(),
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::TagRemoved {
-            meta: meta(),
-            id: StoryId::new(7015),
-            label: "ready".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7015),
+            StoryEventKind::TagRemoved {
+                label: "ready".to_string(),
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(7015),
-            label: "in progress".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7015),
+            StoryEventKind::TagAdded {
+                label: "in progress".to_string(),
+            },
+        ))
         .unwrap();
 
         let labels = queue_labels(&orch);
@@ -236,23 +266,29 @@ mod outbox_coalesce_1339_step_2e {
             Work::NotStarted,
         )])));
 
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(7016),
-            label: "iteration-Pegasus.200".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7016),
+            StoryEventKind::TagAdded {
+                label: "iteration-Pegasus.200".to_string(),
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(7016),
-            label: "iteration-Pegasus.150".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7016),
+            StoryEventKind::TagAdded {
+                label: "iteration-Pegasus.150".to_string(),
+            },
+        ))
         .unwrap();
-        orch.mutate(StoryEvent::TagAdded {
-            meta: meta(),
-            id: StoryId::new(7016),
-            label: "iteration-Pegasus.100".to_string(),
-        })
+        orch.mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(7016),
+            StoryEventKind::TagAdded {
+                label: "iteration-Pegasus.100".to_string(),
+            },
+        ))
         .unwrap();
 
         let labels = queue_labels(&orch);

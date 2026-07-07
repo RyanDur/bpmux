@@ -87,31 +87,30 @@ pub(crate) async fn reject_via_canonical_store(
     };
     let mut events = Vec::new();
     if was_accepted {
-        events.push(
-            crate::product_management::story::events::StoryEvent::StoryReopened {
-                meta: meta.clone(),
-                id: StoryId::new(id),
-            },
-        );
+        events.push(crate::product_management::story::events::StoryEvent::new(
+            meta.clone(),
+            StoryId::new(id),
+            crate::product_management::story::events::StoryEventKind::StoryReopened,
+        ));
     }
-    events.push(
-        crate::product_management::story::events::StoryEvent::VerdictCast {
-            meta: meta.clone(),
-            id: StoryId::new(id),
+    events.push(crate::product_management::story::events::StoryEvent::new(
+        meta.clone(),
+        StoryId::new(id),
+        crate::product_management::story::events::StoryEventKind::VerdictCast {
             verdict: crate::product_management::story::Verdict::Fail {
                 step: "acceptance".into(),
             },
             payload: Some(reason),
         },
-    );
-    events.push(
-        crate::product_management::story::events::StoryEvent::StateTransitioned {
-            meta,
-            id: StoryId::new(id),
+    ));
+    events.push(crate::product_management::story::events::StoryEvent::new(
+        meta,
+        StoryId::new(id),
+        crate::product_management::story::events::StoryEventKind::StateTransitioned {
             placement,
             new_state,
         },
-    );
+    ));
     refresh
         .mutate_batch_sync(events)
         .map_err(|e| format!("#{id} reject enqueue failed: {e}"))?;
