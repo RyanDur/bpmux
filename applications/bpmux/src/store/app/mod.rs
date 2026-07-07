@@ -1,9 +1,11 @@
 use std::sync::Arc;
 
 use crate::product_management::epic::{EpicAction, EpicState};
+use crate::product_management::history::SharedHistory;
 use crate::product_management::iteration::{IterationAction, IterationState};
 use crate::product_management::outcome::{OutcomeAction, OutcomeState};
 use crate::product_management::story::slice::{Stories, StoryAction};
+use crate::store::board::history::PlacementHistory;
 use crate::store::board::{BoardAction, BoardPlacements};
 use crate::store::ci::{CiAction, CiState};
 use crate::store::reactions::{ReactionsAction, ReactionsState};
@@ -35,6 +37,8 @@ pub struct AppState {
     pub epics: Arc<EpicState>,
     pub stories: Arc<Stories>,
     pub board: Arc<BoardPlacements>,
+    pub shared_history: Arc<SharedHistory>,
+    pub local_history: Arc<PlacementHistory>,
 }
 
 impl AppState {

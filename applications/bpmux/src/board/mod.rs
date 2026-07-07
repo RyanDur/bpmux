@@ -7,10 +7,13 @@ use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Stage, Story, StoryId, Work};
 use crate::workflow::StageId;
 
+pub mod history;
 pub mod persistence;
 
 #[cfg(test)]
 mod boundary_tests;
+#[cfg(test)]
+mod history_tests;
 #[cfg(test)]
 mod persistence_tests;
 #[cfg(test)]

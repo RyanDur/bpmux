@@ -35,7 +35,7 @@ mod stores_tests;
 mod test_support;
 
 pub use action::PollKind;
-pub use app::{AppAction, AppState};
+pub use app::{AppAction, AppState, app_reduce};
 pub use ci::{
     BoxedFuture, CiAction, CiBroadcastListener, CiPollFetch, CiSessionBroadcaster, CiSnapshot,
     CiStateStoreWriter,

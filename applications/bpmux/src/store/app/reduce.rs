@@ -62,9 +62,18 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
             let board = board::react_to_story(&state.board, action)
                 .map(Arc::new)
                 .unwrap_or_else(|| state.board.clone());
+            let shared_history =
+                crate::product_management::history::react_to_story(&state.shared_history, action)
+                    .map(Arc::new)
+                    .unwrap_or_else(|| state.shared_history.clone());
+            let local_history = board::history::react_to_story(&state.local_history, action)
+                .map(Arc::new)
+                .unwrap_or_else(|| state.local_history.clone());
             AppState {
                 stories,
                 board,
+                shared_history,
+                local_history,
                 ..state.clone()
             }
         }

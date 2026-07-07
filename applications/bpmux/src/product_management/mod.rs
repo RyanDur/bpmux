@@ -42,6 +42,7 @@ macro_rules! entity_id {
 pub mod backlog;
 pub mod epic;
 pub mod evidence;
+pub mod history;
 pub mod iteration;
 pub mod label_codec;
 pub mod outcome;
@@ -57,5 +58,7 @@ mod boundary_tests;
 mod epic_tests;
 #[cfg(test)]
 mod evidence_tests;
+#[cfg(test)]
+mod history_tests;
 #[cfg(test)]
 mod scheduling_tests;
