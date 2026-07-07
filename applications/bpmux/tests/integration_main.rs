@@ -249,6 +249,8 @@ mod state_field_rederive;
 mod story59_acceptance;
 #[path = "integration_main_modules/story87_acceptance.rs"]
 mod story87_acceptance;
+#[path = "integration_main_modules/story_journey_e2e.rs"]
+mod story_journey_e2e;
 #[path = "integration_main_modules/story_state_transition_e2e.rs"]
 mod story_state_transition_e2e;
 #[path = "integration_main_modules/sync_status_changed_e2e.rs"]
