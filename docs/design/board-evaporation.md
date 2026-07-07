@@ -28,7 +28,7 @@ So board/ is mostly a façade; its genuine content is four clusters:
 | **Label CODECs** | `label_codec.rs` (the port *trait*), `adapters/gh_label_codec/*`, `adapters/github/label_fields.rs`, `adapters/relationship_block.rs`, `adapters/github/comment_codec.rs`, `adapters/in_memory/typed_label_mirror.rs` | `integrations/github` (the impl); the `LabelCodec` trait *port* stays domain-side per the gateway canon | backend-pure |
 | **GitHub MAPPERs** | `adapters/github/{story,iteration,outcome,epic}_decode.rs` (Value→domain) | `integrations/github` (mappers travel with the provider) | backend-pure |
 | **VIEW_MODELs** | `view_model/{story,iteration,outcome}.rs` (`StoryView`/`IterationView`/`OutcomeView`), `adapters/json.rs`, `adapters/relationships.rs` | read-model (`crate::view` — where `roadmap` already lives) | wire-FACING |
-| **PROJECTIONs** | `arrangement.rs` (`column_for`), `ready_order_label.rs` (`sort_board_ready_by_membership`), `velocity/*` | projection fns (`crate::view` / domain selectors) | backend-pure |
+| **PROJECTIONs** | `arrangement.rs` (`column_for`), `membership_order.rs` (`sort_board_ready_by_membership`), `velocity/*` | projection fns (`crate::view` / domain selectors) | backend-pure |
 | SYNC port + in-mem adapter | `sync.rs` (`SourceAdapter` port), `adapters/in_memory/*` | domain keeps the port; in-memory adapter → an adapters home | backend-pure |
 | entity | `peer.rs` (`PeerId`) | domain (`product_management/story/peer.rs`, beside `events.rs`) — **moves in slice 1**, see why below | backend-pure |
 
@@ -70,7 +70,7 @@ NOT part of this relocation.
    (`crate::product_management::story::{events, peer}`, `crate::sync`) — one mechanical
    fan-out over the shared consumer set, zero behavior change, wire byte-identical
    (174 files). `board/mod.rs` now declares only genuine content (adapters, arrangement,
-   label_codec, ready_order_label, sync, velocity, view_model + the SourceAdapter/SyncError
+   label_codec, membership_order, sync, velocity, view_model + the SourceAdapter/SyncError
    port re-export); every surviving `board::` reference names real board content. Two
    execution notes: `sync/orchestrator_tests/*` had been reaching back through the façade
    to `crate::sync` (where they already live) — that loop is cut; and the compiler caught
@@ -215,10 +215,13 @@ NOT part of this relocation.
    candidate (production is already clean; the tests inject the concrete legitimately).
 7. **PROJECTIONs + ports + in_memory → their per-consumer homes.** ✅ LANDED (2026-07-04),
    4 CI-green sub-slices. The who-consumes-it test decided each home:
-   - **7a `arrangement` + `ready_order_label` → `crate::view::board`; `velocity` →
+   - **7a `arrangement` + `membership_order` → `crate::view::board`; `velocity` →
      `crate::view::velocity`.** Pure projections (state→column, board-wire sort, delivery
      metrics) join the read-model; consumed by presentation edges (bridge render, transport
-     rest). Renamed the mis-named `ready_order_label_codec` test → `ready_order_label_tests`.
+     rest). Renamed the mis-named `ready_order_label_codec` test → `ready_order_label_tests`
+     (module and test file later renamed again, `ready_order_label.rs`/
+     `ready_order_label_tests.rs` → `membership_order.rs`/`membership_order_tests.rs`, to
+     retire the `ready_order` misnomer for good).
    - **7b `LabelCodec` port → `product_management::label_codec`.** The domain-level port (the
      plan's "port stays in the domain"), cross-cutting (view/sync/integrations/iteration).
    - **7c `SourceAdapter` port (`board/sync.rs`) → `crate::sync` as `sync/port.rs`.** The sync

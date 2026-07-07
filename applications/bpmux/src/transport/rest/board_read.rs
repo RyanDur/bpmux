@@ -47,7 +47,7 @@ pub async fn get_board(
     match tracker.fetch_board_stories().await {
         Ok(stories) => {
             let ordered =
-                crate::view::board::ready_order_label::sort_board_ready_by_membership(stories, &[]);
+                crate::view::board::membership_order::sort_board_ready_by_membership(stories, &[]);
             let body = serde_json::json!({
                 "stories": ordered,
                 "columns": super::board::board_columns_json(),
