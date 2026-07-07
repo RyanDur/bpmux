@@ -7,6 +7,9 @@ use harness::pty::TestBpmux;
 use harness::story_helpers::{create_target_story, extract_story_id};
 use std::time::Duration;
 
+const POLL_ATTEMPTS: u32 = 600;
+const POLL_INTERVAL: Duration = Duration::from_millis(100);
+
 async fn workflow_state(bridge: &TestBridge, id: u64) -> String {
     let story = bridge
         .call_tool("get_story", serde_json::json!({"id": id}))
@@ -19,6 +22,34 @@ async fn workflow_state(bridge: &TestBridge, id: u64) -> String {
         .to_string()
 }
 
+async fn wait_until_serving_reads(bridge: &TestBridge, who: &str) {
+    for _ in 0..POLL_ATTEMPTS {
+        if bridge
+            .call_tool("view_backlog", serde_json::json!({}))
+            .await
+            .is_ok()
+        {
+            return;
+        }
+        tokio::time::sleep(POLL_INTERVAL).await;
+    }
+    panic!("{who} bridge never started serving reads");
+}
+
+async fn wait_for_workflow_state(bridge: &TestBridge, id: u64, expected: &str) {
+    for _ in 0..POLL_ATTEMPTS {
+        if let Ok(story) = bridge
+            .call_tool("get_story", serde_json::json!({"id": id}))
+            .await
+            && story.get("workflow_state").and_then(|v| v.as_str()) == Some(expected)
+        {
+            return;
+        }
+        tokio::time::sleep(POLL_INTERVAL).await;
+    }
+    panic!("#{id} never reached workflow_state={expected}");
+}
+
 #[test]
 fn a_story_journeys_icebox_to_accepted_surviving_both_failure_loops() {
     let bpmux = TestBpmux::start_with_envs("human", &[("BPMUX_TEST_MODE", "1")]);
@@ -27,7 +58,9 @@ fn a_story_journeys_icebox_to_accepted_surviving_both_failure_loops() {
         let pm = TestBridge::connect(&bpmux, "pm").await;
         let dev = TestBridge::connect(&bpmux, "dev").await;
         let designer = TestBridge::connect(&bpmux, "designer").await;
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        wait_until_serving_reads(&pm, "pm").await;
+        wait_until_serving_reads(&dev, "dev").await;
+        wait_until_serving_reads(&designer, "designer").await;
 
         let id = create_target_story(
             &pm,
@@ -243,7 +276,7 @@ fn a_story_journeys_icebox_to_accepted_surviving_both_failure_loops() {
             "acceptance names the accept + close transitions; got {accept_msg}"
         );
 
-        tokio::time::sleep(Duration::from_millis(300)).await;
+        wait_for_workflow_state(&pm, id, "accepted").await;
         let story = pm
             .call_tool("get_story", serde_json::json!({"id": id}))
             .await
@@ -272,7 +305,7 @@ fn retiring_from_the_real_cli_ends_the_journey_closed() {
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let pm = TestBridge::connect(&bpmux, "pm").await;
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        wait_until_serving_reads(&pm, "pm").await;
 
         let id = create_target_story(
             &pm,
@@ -303,7 +336,7 @@ fn retiring_from_the_real_cli_ends_the_journey_closed() {
             String::from_utf8_lossy(&out.stderr)
         );
 
-        tokio::time::sleep(Duration::from_millis(300)).await;
+        wait_for_workflow_state(&pm, id, "retired").await;
         let story = pm
             .call_tool("get_story", serde_json::json!({"id": id}))
             .await
@@ -338,13 +371,28 @@ fn a_rejected_acceptance_reopens_the_closed_story_for_rework() {
     rt.block_on(async {
         let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
         let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        let mut ingested = false;
+        for _ in 0..POLL_ATTEMPTS {
+            if pm
+                .call_tool("get_story", serde_json::json!({"id": 700}))
+                .await
+                .is_ok()
+            {
+                ingested = true;
+                break;
+            }
+            tokio::time::sleep(POLL_INTERVAL).await;
+        }
+        assert!(
+            ingested,
+            "the mock-GH story reaches the canonical store via ingest before the walk begins"
+        );
 
         harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, &base_url, 700)
             .await;
 
         let mut labeled = false;
-        for _ in 0..50 {
+        for _ in 0..POLL_ATTEMPTS {
             if issue_state
                 .lock()
                 .unwrap()
@@ -355,13 +403,36 @@ fn a_rejected_acceptance_reopens_the_closed_story_for_rework() {
                 labeled = true;
                 break;
             }
-            tokio::time::sleep(Duration::from_millis(100)).await;
+            tokio::time::sleep(POLL_INTERVAL).await;
         }
         assert!(
             labeled,
             "the team-verifiable acceptor-label reached the GitHub mock (read-your-writes) before accept, so a slow-runner re-ingest cannot clobber the seeded acceptor"
         );
-        tokio::time::sleep(Duration::from_millis(1500)).await;
+
+        let mut acceptor_in_store = false;
+        for _ in 0..POLL_ATTEMPTS {
+            if let Ok(story) = pm
+                .call_tool("get_story", serde_json::json!({"id": 700}))
+                .await
+                && story
+                    .get("labels")
+                    .and_then(|v| v.as_array())
+                    .is_some_and(|labels| {
+                        labels
+                            .iter()
+                            .any(|l| l.get("name").and_then(|n| n.as_str()) == Some("awaiting team"))
+                    })
+            {
+                acceptor_in_store = true;
+                break;
+            }
+            tokio::time::sleep(POLL_INTERVAL).await;
+        }
+        assert!(
+            acceptor_in_store,
+            "the canonical store carries the seeded team-acceptor (re-ingest from the now-correct mock cannot clobber it) before accept fires"
+        );
 
         pm.call_tool(
             "accept_story",
@@ -371,12 +442,12 @@ fn a_rejected_acceptance_reopens_the_closed_story_for_rework() {
         .expect("accept_story should succeed against the seeded story");
 
         let mut closed = false;
-        for _ in 0..50 {
+        for _ in 0..POLL_ATTEMPTS {
             if issue_state.lock().unwrap().is_closed {
                 closed = true;
                 break;
             }
-            tokio::time::sleep(Duration::from_millis(100)).await;
+            tokio::time::sleep(POLL_INTERVAL).await;
         }
         assert!(
             closed,
@@ -394,16 +465,33 @@ fn a_rejected_acceptance_reopens_the_closed_story_for_rework() {
         .expect("reject after accept should succeed (the reopen round-trip)");
 
         let mut reopened = false;
-        for _ in 0..50 {
+        for _ in 0..POLL_ATTEMPTS {
             if !issue_state.lock().unwrap().is_closed {
                 reopened = true;
                 break;
             }
-            tokio::time::sleep(Duration::from_millis(100)).await;
+            tokio::time::sleep(POLL_INTERVAL).await;
         }
         assert!(
             reopened,
             "rejecting a concluded story pushes the reopen to GitHub — StoryReopened lands at the adapter"
+        );
+
+        let mut reject_visible = false;
+        for _ in 0..POLL_ATTEMPTS {
+            if let Ok(story) = pm
+                .call_tool("get_story", serde_json::json!({"id": 700}))
+                .await
+                && story.get("latest_reject").is_some_and(|r| !r.is_null())
+            {
+                reject_visible = true;
+                break;
+            }
+            tokio::time::sleep(POLL_INTERVAL).await;
+        }
+        assert!(
+            reject_visible,
+            "the reject gate-record is readable through get_story before re-pickup, so start_story's rework context cannot race a verdict-clobbering re-ingest"
         );
 
         let repickup = dev
