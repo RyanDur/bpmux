@@ -15,7 +15,7 @@ pub fn close_story_tool(description: &'static str) -> Tool {
             "disposition": {
                 "type": "string",
                 "enum": ["retire", "accept", "wontfix"],
-                "description": "Explicit closure disposition — read-canonical, NOT inferred from the reason wording. 'retire' or 'wontfix' lands the story Retired (closed && !accepted) — use for superseded / duplicate / won't-fix. 'accept' closes it as shipped. Defaults to 'accept' when omitted; pass 'retire' explicitly so a supersede is never mis-filed as accepted regardless of how the reason is phrased."
+                "description": "Explicit closure disposition — read-canonical, NOT inferred from the reason wording. 'retire' or 'wontfix' lands the story Retired — use for superseded / duplicate / won't-fix. 'accept' lands it Accepted (shipped). Defaults to 'retire' when omitted, so a supersede is never mis-filed as accepted regardless of how the reason is phrased; pass 'accept' explicitly to close as shipped."
             }
         },
         "required": ["id", "reason"]

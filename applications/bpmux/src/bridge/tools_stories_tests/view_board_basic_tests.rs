@@ -323,3 +323,66 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
         "StateTransitioned → Retired must fire for retire-class reason"
     );
 }
+
+#[tokio::test]
+async fn close_story_accept_disposition_transitions_state_to_accepted() {
+    use crate::integrations::in_memory::InMemorySourceAdapter;
+    use crate::product_management::story::events::StoryEvent;
+    use crate::product_management::story::{BoardState, Story};
+    use crate::sync::RefreshDriver;
+    use crate::sync::SyncOrchestrator;
+    use chrono::{TimeZone, Utc};
+    use std::sync::Arc;
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        StoryId::new(302),
+        "accept via close".into(),
+        BoardState::Acceptance,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    let orchestrator: Arc<dyn RefreshDriver> =
+        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    orchestrator.refresh_all().await.unwrap();
+
+    let mut args = serde_json::Map::new();
+    args.insert("id".into(), serde_json::json!(302));
+    args.insert(
+        "reason".into(),
+        serde_json::json!("owner verified the outcome directly"),
+    );
+    args.insert("disposition".into(), serde_json::json!("accept"));
+    let result = handle_close_story(&args, "pm:claude-code", Some(&orchestrator)).await;
+    assert!(
+        result.is_ok(),
+        "accept-disposition close should succeed: {result:?}"
+    );
+
+    let story = orchestrator.story(302).expect("story exists");
+    assert_eq!(
+        story.state,
+        BoardState::Accepted,
+        "disposition=accept concludes the story in the workflow — closing IS transitioning to a terminal state, never a bare GH-side close"
+    );
+
+    let pushed = adapter.pushed_events();
+    assert!(
+        pushed.iter().any(|e| matches!(
+            e,
+            StoryEvent::StateTransitioned { id, new_state, .. }
+                if *id == StoryId::new(302) && *new_state == BoardState::Accepted
+        )),
+        "StateTransitioned → Accepted must fire for accept-class close: {pushed:?}"
+    );
+    assert!(
+        pushed.iter().any(|e| matches!(
+            e,
+            StoryEvent::StoryClosed { id, reason: Some(r), .. }
+                if *id == StoryId::new(302) && r == "owner verified the outcome directly"
+        )),
+        "StoryClosed carries the close reason to the GH push: {pushed:?}"
+    );
+}

@@ -31,6 +31,15 @@ pub(crate) async fn handle_close_story(
         .get("disposition")
         .and_then(|v| v.as_str())
         .unwrap_or("retire");
+    let terminal_state = match disposition {
+        "retire" | "wontfix" => crate::product_management::story::BoardState::Retired,
+        "accept" => crate::product_management::story::BoardState::Accepted,
+        other => {
+            return Err(format!(
+                "unknown disposition '{other}' — expected one of: retire, wontfix, accept"
+            ));
+        }
+    };
     let trimmed_reason = reason.trim();
     if trimmed_reason.len() < REASON_CITE_MIN_CHARS {
         let err = serde_json::json!({
@@ -49,7 +58,10 @@ pub(crate) async fn handle_close_story(
             ts: chrono::Utc::now(),
             peer_id: crate::product_management::story::peer::PeerId::local(),
         };
-        if disposition == "retire" || disposition == "wontfix" {
+        if matches!(
+            terminal_state,
+            crate::product_management::story::BoardState::Retired
+        ) {
             r.mutate_sync(
                 crate::product_management::story::events::StoryEvent::TagAdded {
                     meta: meta.clone(),
@@ -58,16 +70,16 @@ pub(crate) async fn handle_close_story(
                 },
             )
             .map_err(|e| format!("#{id} retired-tag enqueue failed: {e}"))?;
-            r.mutate_sync(
-                crate::product_management::story::events::StoryEvent::StateTransitioned {
-                    meta: meta.clone(),
-                    id: StoryId::new(id),
-                    new_state: crate::product_management::story::BoardState::Retired,
-                    placement: None,
-                },
-            )
-            .map_err(|e| format!("#{id} retired-state enqueue failed: {e}"))?;
         }
+        r.mutate_sync(
+            crate::product_management::story::events::StoryEvent::StateTransitioned {
+                meta: meta.clone(),
+                id: StoryId::new(id),
+                new_state: terminal_state,
+                placement: None,
+            },
+        )
+        .map_err(|e| format!("#{id} close-state enqueue failed: {e}"))?;
         r.mutate_sync(
             crate::product_management::story::events::StoryEvent::StoryClosed {
                 meta,
