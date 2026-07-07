@@ -29,6 +29,8 @@ mod key_tests;
 #[cfg(test)]
 mod peer_tests;
 #[cfg(test)]
+mod rework_tests;
+#[cfg(test)]
 mod slice_tests;
 #[cfg(test)]
 mod story_type_tests;
