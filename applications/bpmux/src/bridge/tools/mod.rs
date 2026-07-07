@@ -51,6 +51,8 @@ mod list_lessons;
 mod list_peer_lessons;
 mod list_ready;
 #[cfg(test)]
+mod list_ready_tests;
+#[cfg(test)]
 mod outcome_mapping_tests;
 mod read_messages;
 #[cfg(test)]

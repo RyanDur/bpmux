@@ -125,6 +125,79 @@ fn building_iteration(id: u64, outcome_id: u64, stories: Vec<u64>) -> (Story, Ve
     (s, labels)
 }
 
+fn plain_member(id: u64) -> Story {
+    Story::new_minimal(
+        StoryId::new(id),
+        format!("member-{id}"),
+        Work::NotStarted,
+        Utc.with_ymd_and_hms(2026, 7, 7, 0, 0, 0).unwrap(),
+        "pm".into(),
+    )
+}
+
+fn flagged_iteration(id: u64, is_current: bool, complete: bool, stories: Vec<u64>) -> Iteration {
+    Iteration {
+        id: IterationId::new(id),
+        title: String::new(),
+        body: None,
+        filed_at: Utc.with_ymd_and_hms(2026, 7, 7, 0, 0, 0).unwrap(),
+        filed_by: "pm".into(),
+        outcome: None,
+        iteration_order: None,
+        stories: stories.into_iter().map(StoryId::new).collect(),
+        review_closers: Vec::new(),
+        dev_ok_by: Vec::new(),
+        is_current,
+        complete,
+    }
+}
+
+async fn board_ready_order(stories: Vec<Story>, iterations: Vec<Iteration>) -> Vec<u64> {
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(stories);
+    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    crate::store::bind_seeded_refresh(&refresh, vec![], iterations, vec![]);
+    refresh.refresh_all().await.unwrap();
+    ordered_board_stories(&refresh)
+        .iter()
+        .filter(|s| s["state"].as_str() == Some("ready"))
+        .map(|s| s["id"].as_u64().expect("ready story id is numeric"))
+        .collect()
+}
+
+#[tokio::test]
+async fn a_completed_iteration_flagged_current_puts_no_member_in_the_board_ready_column() {
+    let order = board_ready_order(
+        vec![plain_member(5001)],
+        vec![flagged_iteration(9000, true, true, vec![5001])],
+    )
+    .await;
+
+    assert!(
+        order.is_empty(),
+        "a completed iteration's member is Icebox, never in the board ready column; got {order:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_stale_completed_current_does_not_seed_the_board_ready_order() {
+    let order = board_ready_order(
+        vec![plain_member(5001), plain_member(5002)],
+        vec![
+            flagged_iteration(9000, true, true, vec![5001]),
+            flagged_iteration(9001, true, false, vec![5002, 5001]),
+        ],
+    )
+    .await;
+
+    assert_eq!(
+        order,
+        vec![5002, 5001],
+        "the open current iteration's membership order seeds the board ready order; the stale \
+         completed-current is ignored; got {order:?}"
+    );
+}
+
 #[tokio::test]
 async fn an_optimistic_reject_is_visible_on_the_board_snapshot_before_it_reaches_github() {
     let adapter = Arc::new(InMemorySourceAdapter::new());

@@ -9,9 +9,7 @@ pub(in crate::bridge) async fn handle_list_ready(
     refresh: &Arc<dyn RefreshDriver>,
     iterations: &[Iteration],
 ) -> Result<String, String> {
-    let current_order = iterations
-        .iter()
-        .find(|iteration| iteration.is_current)
+    let current_order = crate::product_management::iteration::label::current_iteration(iterations)
         .map(|iteration| iteration.stories.clone())
         .unwrap_or_default();
     let ready: Vec<Story> = refresh

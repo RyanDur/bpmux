@@ -2,7 +2,7 @@ use super::SyncOrchestrator;
 use crate::product_management::epic::{self, Epic};
 use crate::product_management::iteration::{self, Iteration};
 use crate::product_management::outcome::{self, Outcome};
-use crate::product_management::story::{Stage, Story, StoryId, StoryKey};
+use crate::product_management::story::{self, Stage, Story, StoryId};
 use crate::sync::SourceAdapter;
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
@@ -13,13 +13,13 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub(super) fn read_story(&self, id: StoryId) -> Option<Story> {
         self.select
             .get()
-            .and_then(|s| s.select(|state| state.stories.get(&StoryKey::Saved(id)).cloned()))
+            .and_then(|s| s.select(|state| story::slice::get(&state.stories, id)))
     }
 
     pub(super) fn read_all_stories(&self) -> Vec<Story> {
         self.select
             .get()
-            .map(|s| s.select(|state| state.stories.values().cloned().collect()))
+            .map(|s| s.select(|state| story::slice::all(&state.stories)))
             .unwrap_or_default()
     }
 

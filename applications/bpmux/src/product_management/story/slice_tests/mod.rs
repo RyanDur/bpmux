@@ -4,6 +4,7 @@ mod hydration_reduce_tests;
 mod label_projection_tests;
 mod lifecycle_reduce_tests;
 mod parent_epic_reduce_tests;
+mod selector_tests;
 mod write_path_tests;
 
 use chrono::{TimeZone, Utc};

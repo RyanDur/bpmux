@@ -14,11 +14,10 @@ pub(crate) fn ordered_board_stories(
             crate::view::board::story_to_board_json(&codec, s, &state)
         })
         .collect();
-    let current_order: Vec<u64> = iterations
-        .iter()
-        .find(|iteration| iteration.is_current)
-        .map(|iteration| iteration.stories.iter().map(|id| id.value()).collect())
-        .unwrap_or_default();
+    let current_order: Vec<u64> =
+        crate::product_management::iteration::label::current_iteration(&iterations)
+            .map(|iteration| iteration.stories.iter().map(|id| id.value()).collect())
+            .unwrap_or_default();
     crate::view::board::ready_order_label::sort_board_ready_by_membership(items, &current_order)
 }
 

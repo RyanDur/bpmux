@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use super::super::{tools, tools_stories};
-use crate::product_management::story::{StoryId, StoryKind};
 
 fn require_refresh<'a>(
     refresh: Option<&'a Arc<dyn crate::sync::RefreshDriver>>,
@@ -12,17 +11,11 @@ fn require_refresh<'a>(
 
 pub(crate) fn dispatch_view_velocity(select: &crate::store::Select) -> Result<String, String> {
     let (shared, local, iterations, feature_ids) = select.select(|state| {
-        let feature_ids: std::collections::HashSet<StoryId> = state
-            .stories
-            .values()
-            .filter(|story| matches!(story.story_type(), StoryKind::Feature))
-            .map(|story| story.id)
-            .collect();
         (
             state.shared_history.clone(),
             state.local_history.clone(),
             crate::product_management::iteration::all(&state.iterations),
-            feature_ids,
+            crate::product_management::story::slice::feature_ids(&state.stories),
         )
     });
     let view =
