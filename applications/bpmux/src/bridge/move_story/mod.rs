@@ -60,7 +60,12 @@ pub(in crate::bridge) async fn handle_move_story(
     let from_display = current_state_display(prior.as_ref(), from_fine).to_string();
     let was_closed = prior.as_ref().map(|s| s.is_concluded()).unwrap_or(false);
 
-    let scheduling_target = if matches!(target, TargetState::Workflow(BoardState::Ready)) {
+    let is_epic = r
+        .epic(crate::product_management::epic::EpicId::new(id))
+        .is_some();
+    let scheduling_target = if !is_epic
+        && matches!(target, TargetState::Workflow(BoardState::Ready))
+    {
         match current_iteration_id(&r.iterations()) {
             Some(iteration_id) => Some(iteration_id),
             None => {

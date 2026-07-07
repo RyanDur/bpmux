@@ -1,8 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::bridge::dispatch::dispatch_move_story;
-use crate::integrations::github::mapper::decode_iteration_from_story;
+use crate::integrations::github::mapper::{decode_epic_from_story, decode_iteration_from_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
+use crate::product_management::epic::Epic;
 use crate::product_management::iteration::{Iteration, IterationAction};
 use crate::product_management::story::{BoardState, Story, StoryId};
 use crate::store::{AppAction, Dispatch, SeededStore};
@@ -58,7 +59,12 @@ async fn build_orchestrator(
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
         .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
         .collect();
-    let seed = SeededStore::new(vec![], iterations, vec![]);
+    let epics: Vec<Epic> = seeds
+        .iter()
+        .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("epic")))
+        .map(|(story, _)| decode_epic_from_story(story, false))
+        .collect();
+    let seed = SeededStore::new(vec![], iterations, epics);
     seed.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
     (orch, seed)
@@ -165,6 +171,49 @@ async fn a_move_to_ready_without_a_current_iteration_is_refused_before_mutating(
         BoardState::Icebox,
         "the refusal happens in the validation phase — no state mutation leaked"
     );
+}
+
+fn epic_story(id: u64) -> (Story, Vec<String>) {
+    let s = Story::new_minimal(
+        StoryId::new(id),
+        format!("[Epic] grouping-{id}"),
+        BoardState::Icebox,
+        Utc.with_ymd_and_hms(2026, 7, 7, 0, 0, 0).unwrap(),
+        "pm".to_string(),
+    );
+    (s, vec!["epic".to_string()])
+}
+
+#[tokio::test]
+async fn an_epic_move_to_ready_never_schedules_it_into_the_iteration() {
+    let (orch, seed) = build_orchestrator(vec![
+        current_iteration_story(7000),
+        epic_story(4001),
+        icebox_story(5001),
+    ])
+    .await;
+
+    move_story(&orch, &seed, 4001, "ready", None)
+        .await
+        .expect("an epic accepts state moves — epics mirror GH issue states");
+    move_story(&orch, &seed, 5001, "ready", None)
+        .await
+        .expect("a story schedules normally alongside");
+
+    assert_eq!(
+        current_members(&orch),
+        vec![5001],
+        "epics group stories and never ride the iteration — only the story joined"
+    );
+}
+
+#[tokio::test]
+async fn an_epic_move_to_ready_needs_no_current_iteration() {
+    let (orch, seed) = build_orchestrator(vec![epic_story(4001)]).await;
+
+    move_story(&orch, &seed, 4001, "ready", None)
+        .await
+        .expect("an epic's state move has no scheduling meaning — no iteration required");
 }
 
 #[tokio::test]
