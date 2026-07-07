@@ -109,7 +109,7 @@ describe('stateDeltaDecoder', () => {
     }
   })
 
-  test('decodes an epics delta of board-story-shaped epics on their own channel', () => {
+  test('decodes an epics delta of honest epic-shaped objects on their own channel', () => {
     const result = stateDeltaDecoder.validate({
       domain: 'epics',
       epics: [
@@ -117,8 +117,7 @@ describe('stateDeltaDecoder', () => {
           id: 1100,
           title: '[Epic] Visual coherence',
           state: 'in-progress',
-          labels: ['epic'],
-          assignees: [],
+          closed: false,
           created_at: '2026-05-18T00:00:00Z',
           body: '## User job\n\nSee the epic as a meta-card.\n'
         }
@@ -128,6 +127,7 @@ describe('stateDeltaDecoder', () => {
     if (result.type === 'ok' && result.data.domain === 'epics') {
       expect(result.data.epics[0].id).toBe(1100)
       expect(result.data.epics[0].state).toBe('in-progress')
+      expect(result.data.epics[0].closed).toBe(false)
     }
   })
 

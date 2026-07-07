@@ -13,6 +13,7 @@ import {
   ACCEPTED_COLUMN,
   ICEBOX_COLUMN,
   RETIRED_COLUMN,
+  type Epic as EpicData,
   type Story,
   type ColumnState,
   type GroupSpec
@@ -39,7 +40,7 @@ interface BoardTabsProps {
   stories: Story[]
   iterations: BoardIterationData[]
   groupOrder: GroupSpec[]
-  epics: Story[]
+  epics: EpicData[]
   epicTitleById: Map<number, string>
   iterationContainerStories: Story[]
   grouped: Map<ColumnState, Story[]>

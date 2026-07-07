@@ -8,6 +8,7 @@ import {
   middleColumnIds,
   storyTypeFromLabels,
   type BoardColumn,
+  type Epic,
   type GroupSpec,
   type Story,
   type ColumnState
@@ -15,7 +16,7 @@ import {
 
 export interface UseBoardDataResult {
   stories: Story[]
-  epics: Story[]
+  epics: Epic[]
   epicTitleById: Map<number, string>
   iterationContainerStories: Story[]
   flatBoardStories: Story[]
@@ -28,7 +29,7 @@ export const useBoardData = (
   data: Story[] | null,
   iterations: BoardIterationData[],
   readyOrder?: number[],
-  wireEpics: Story[] = [],
+  wireEpics: Epic[] = [],
   columns: BoardColumn[] = []
 ): UseBoardDataResult => {
   const stories = useMemo(() => data ?? [], [data])

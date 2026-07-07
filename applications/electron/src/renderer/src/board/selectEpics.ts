@@ -1,7 +1,7 @@
-import type { Story } from './types'
+import type { Epic } from './types'
 
 export interface EpicsState {
-  epics: Story[]
+  epics: Epic[]
 }
 
-export const selectEpics = (state: EpicsState): Story[] => state.epics
+export const selectEpics = (state: EpicsState): Epic[] => state.epics

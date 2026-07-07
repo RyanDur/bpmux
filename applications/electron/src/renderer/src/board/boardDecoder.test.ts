@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { column, story } from './boardDecoder'
+import { column, epic, story } from './boardDecoder'
 
 const validStory = {
   id: 2,
@@ -108,6 +108,62 @@ describe('story decoder', () => {
   test('rejects a non-object payload', () => {
     expect(story.validate(null).type).toBe('error')
     expect(story.validate('nope').type).toBe('error')
+  })
+})
+
+describe('epic decoder', () => {
+  test('decodes an honest epic wire object (id, title, state, closed, created_at, body)', () => {
+    const result = epic.validate({
+      id: 1100,
+      title: '[Epic] Visual coherence',
+      state: 'in-progress',
+      closed: false,
+      created_at: '2026-05-18T00:00:00Z',
+      body: 'b'
+    })
+    expect(result.type).toBe('ok')
+    if (result.type === 'ok') {
+      expect(result.data.id).toBe(1100)
+      expect(result.data.state).toBe('in-progress')
+      expect(result.data.closed).toBe(false)
+    }
+  })
+
+  test('decodes a closed epic', () => {
+    const result = epic.validate({
+      id: 1184,
+      title: 'retired epic',
+      state: 'icebox',
+      closed: true,
+      created_at: '2026-05-18T00:00:00Z',
+      body: ''
+    })
+    expect(result.type).toBe('ok')
+    if (result.type === 'ok') expect(result.data.closed).toBe(true)
+  })
+
+  test('rejects an epic wearing the story gh_state costume instead of closed', () => {
+    const result = epic.validate({
+      id: 1100,
+      title: 'e',
+      state: 'in-progress',
+      gh_state: 'open',
+      created_at: '2026-05-18T00:00:00Z',
+      body: ''
+    })
+    expect(result.type).toBe('error')
+  })
+
+  test('rejects a non-boolean closed', () => {
+    const result = epic.validate({
+      id: 1100,
+      title: 'e',
+      state: 'in-progress',
+      closed: 'open',
+      created_at: '2026-05-18T00:00:00Z',
+      body: ''
+    })
+    expect(result.type).toBe('error')
   })
 })
 

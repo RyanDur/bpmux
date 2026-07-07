@@ -2,7 +2,7 @@ import { applyStateDelta, applyStateSnapshot, emptyMirrorState } from '../state-
 import { asMessageType } from '../messageType'
 import { SessionActionType, type SessionAction, type HistoryMessage } from './actions'
 import type { ChatMessage, CommentWire, ConnectionStatus, TimelineEventWire } from '../types'
-import type { BoardColumn, Story } from '../../board/types'
+import type { BoardColumn, Epic, Story } from '../../board/types'
 import type { RoadmapCard, RoadmapOutcomeData } from '../../board/selectRoadmap'
 import type { BoardIterationData } from '../../board/selectIterations'
 import type { MirrorState } from '../state-delta'
@@ -14,7 +14,7 @@ export interface SessionSnapshot {
   mirror: MirrorState
   stories: Story[]
   columns: BoardColumn[]
-  epics: Story[]
+  epics: Epic[]
   boardInvalidateTick: number
   reconnectTick: number
   outcomes: RoadmapOutcomeData[]

@@ -3,6 +3,7 @@ import {
   GROUP_ORDER,
   groupStoriesIn,
   middleColumnIds,
+  type Epic,
   type GroupSpec,
   type Story,
   type ColumnState
@@ -50,7 +51,16 @@ export const buildProps = (
   stories: Story[],
   groupOrder: GroupSpec[] = GROUP_ORDER
 ): Parameters<typeof BoardTabs>[0] => {
-  const epics = stories.filter((s) => s.labels.includes('epic'))
+  const epics: Epic[] = stories
+    .filter((s) => s.labels.includes('epic'))
+    .map((s) => ({
+      id: s.id,
+      title: s.title,
+      state: s.state,
+      closed: s.gh_state === 'closed',
+      created_at: s.created_at,
+      body: s.body
+    }))
   const epicTitleById = new Map(epics.map((e) => [e.id, e.title]))
   const iterationContainerStories = stories.filter(
     (s) => s.labels.includes('iteration') || s.state === 'icebox'

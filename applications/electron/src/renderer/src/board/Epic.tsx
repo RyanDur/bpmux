@@ -3,7 +3,7 @@ import MiniBoard from './MiniBoard'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { useEpicCollapse } from './useEpicCollapse'
 import { RENDERER_IDENTITY } from '../transport/session'
-import { deriveEpicState, type Story } from './types'
+import { deriveEpicState, type Epic as EpicData, type Story } from './types'
 import {
   breakdownAriaLabel,
   breakdownFor,
@@ -16,7 +16,7 @@ import {
 } from './epicSummary'
 
 interface Props {
-  epics: Story[]
+  epics: EpicData[]
   stories: Story[]
   onOpen: (n: number) => void
 }

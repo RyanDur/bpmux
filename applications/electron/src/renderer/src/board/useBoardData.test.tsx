@@ -2,13 +2,23 @@ import { describe, expect, test } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useBoardData } from './useBoardData'
 import type { BoardIterationData } from './selectIterations'
-import { GROUP_ORDER, type BoardColumn, type Story } from './types'
+import { GROUP_ORDER, type BoardColumn, type Epic, type Story } from './types'
 const story = (overrides: Partial<Story>): Story => ({
   id: 0,
   title: 'story',
   state: 'icebox',
   labels: [],
   assignees: [],
+  created_at: '2026-05-24T00:00:00Z',
+  body: '',
+  ...overrides
+})
+
+const anEpic = (overrides: Partial<Epic>): Epic => ({
+  id: 0,
+  title: 'epic',
+  state: 'in-progress',
+  closed: false,
   created_at: '2026-05-24T00:00:00Z',
   body: '',
   ...overrides
@@ -61,8 +71,8 @@ describe('#1547 facet 1 — iterationContainerStories gates on membership, not w
 
 describe('epics are sourced from the wire param, not derived from the story stream', () => {
   test('active epics from the wire param surface as epics, retired ones are excluded', () => {
-    const active = story({ id: 8000, state: 'in-progress', labels: ['epic'] })
-    const retired = story({ id: 8001, state: 'icebox', labels: ['epic'], gh_state: 'closed' })
+    const active = anEpic({ id: 8000, state: 'in-progress' })
+    const retired = anEpic({ id: 8001, state: 'icebox', closed: true })
     const { result } = renderHook(() => useBoardData([], [], [], [active, retired]))
     expect(result.current.epics.map((e) => e.id)).toEqual([8000])
   })
@@ -74,8 +84,8 @@ describe('epics are sourced from the wire param, not derived from the story stre
   })
 
   test('epicTitleById is built from the wire epics, including titles for retired epics', () => {
-    const active = story({ id: 8000, title: 'Active epic', labels: ['epic'] })
-    const retired = story({ id: 8001, title: 'Retired epic', labels: ['epic'], gh_state: 'closed' })
+    const active = anEpic({ id: 8000, title: 'Active epic' })
+    const retired = anEpic({ id: 8001, title: 'Retired epic', closed: true })
     const { result } = renderHook(() => useBoardData([], [], [], [active, retired]))
     expect(result.current.epicTitleById.get(8000)).toBe('Active epic')
     expect(result.current.epicTitleById.get(8001)).toBe('Retired epic')

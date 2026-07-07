@@ -10,7 +10,7 @@ import {
 } from './types'
 import type { RoadmapCard, RoadmapOutcomeData } from '../board/selectRoadmap'
 import type { BoardIterationData } from '../board/selectIterations'
-import { column, story } from '../board/boardDecoder'
+import { column, epic, story } from '../board/boardDecoder'
 
 const ciState = D.literalUnion('unknown', 'green', 'red', 'running', 'quota_exhausted')
 
@@ -170,7 +170,7 @@ export const stateDeltaDecoder: D.Decoder<StateDeltaPayload> = D.oneOf(
     required: { domain: D.literal('stories'), stories: D.array(story) },
     optional: { columns: D.array(column) }
   }),
-  D.object({ required: { domain: D.literal('epics'), epics: D.array(story) } }),
+  D.object({ required: { domain: D.literal('epics'), epics: D.array(epic) } }),
   D.object({ required: { domain: D.literal('outcomes'), outcomes: D.array(roadmapOutcome) } }),
   D.object({
     required: { domain: D.literal('iterations'), iterations: D.array(boardIteration) }

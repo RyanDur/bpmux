@@ -84,7 +84,7 @@ pub(crate) fn board_epics(refresh: &Arc<dyn crate::sync::RefreshDriver>) -> Vec<
                 "id": epic.id.value(),
                 "title": epic.title,
                 "state": derived.as_str(),
-                "gh_state": if epic.is_closed { "closed" } else { "open" },
+                "closed": epic.is_closed,
                 "labels": ["epic"],
                 "assignees": [],
                 "created_at": epic.filed_at.to_rfc3339(),

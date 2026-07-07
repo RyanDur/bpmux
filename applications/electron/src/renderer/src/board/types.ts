@@ -111,6 +111,15 @@ export interface Story {
   readiness?: IterationReadiness | null
 }
 
+export interface Epic {
+  id: number
+  title: string
+  state: StoryState
+  closed: boolean
+  created_at: string
+  body: string
+}
+
 export interface GroupSpec {
   state: ColumnState
   label: string
@@ -156,15 +165,8 @@ export const groupOrderFrom = (columns: readonly BoardColumn[]): GroupSpec[] => 
 export const groupOrderOrFallback = (columns: readonly BoardColumn[]): GroupSpec[] =>
   columns.length > 0 ? groupOrderFrom(columns) : GROUP_ORDER
 
-export const isActiveEpic = (story: Story): boolean => {
-  if (storyTypeFromLabels(story.labels) !== 'epic') return false
-  return columnFor(story.state, story.gh_state === 'closed') !== RETIRED_COLUMN
-}
-
-export const isActiveIteration = (story: Story): boolean => {
-  if (storyTypeFromLabels(story.labels) !== 'iteration') return false
-  return columnFor(story.state, story.gh_state === 'closed') !== RETIRED_COLUMN
-}
+export const isActiveEpic = (epic: Epic): boolean =>
+  !(epic.closed && epic.state !== ACCEPTED_COLUMN) && epic.state !== RETIRED_COLUMN
 
 export const isClosedIterationMarker = (story: Story): boolean => {
   if (storyTypeFromLabels(story.labels) !== 'iteration') return false

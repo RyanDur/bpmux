@@ -27,6 +27,17 @@ const acceptor = D.literalUnion('team', 'owner', 'dev')
 
 const horizon = D.literalUnion('now', 'next', 'later')
 
+export const epic = D.object({
+  required: {
+    id: D.number,
+    title: D.string,
+    state: storyState,
+    closed: D.boolean,
+    created_at: D.string,
+    body: D.string
+  }
+})
+
 export const story = D.object({
   required: {
     id: D.number,
