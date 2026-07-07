@@ -46,6 +46,7 @@ pub mod history;
 pub mod history_persistence;
 pub mod iteration;
 pub mod label_codec;
+pub mod metrics;
 pub mod outcome;
 pub mod roadmap;
 pub mod scheduling;
@@ -63,5 +64,7 @@ mod evidence_tests;
 mod history_persistence_tests;
 #[cfg(test)]
 mod history_tests;
+#[cfg(test)]
+mod metrics_tests;
 #[cfg(test)]
 mod scheduling_tests;
