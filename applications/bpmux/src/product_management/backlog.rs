@@ -9,7 +9,7 @@ use crate::product_management::story::Story;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BacklogColumn {
     Icebox,
-    ReadyForWork,
+    ReadyForDevelopment,
     Current,
     Accepted,
 }
@@ -26,7 +26,7 @@ pub fn backlog_column(story: &Story, iterations: &[Iteration]) -> Option<Backlog
             if on_board && in_current_iteration(story.id, iterations) {
                 Some(BacklogColumn::Current)
             } else if in_any_iteration(story.id, iterations) {
-                Some(BacklogColumn::ReadyForWork)
+                Some(BacklogColumn::ReadyForDevelopment)
             } else {
                 Some(BacklogColumn::Icebox)
             }

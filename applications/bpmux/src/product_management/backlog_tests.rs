@@ -44,7 +44,7 @@ fn a_member_of_a_complete_but_still_current_iteration_is_not_current_work() {
     let iterations = [complete_but_still_current_iteration(1, &[10])];
     assert_eq!(
         backlog_column(&story(10, Work::InProgress), &iterations),
-        Some(BacklogColumn::ReadyForWork),
+        Some(BacklogColumn::ReadyForDevelopment),
         "after close and before the next designation, a complete iteration's members are planned work, not the current board — the canonical current-predicate excludes complete iterations"
     );
 }
@@ -76,7 +76,7 @@ fn a_planned_story_in_a_non_current_iteration_is_ready_for_work() {
     let iterations = [iteration(1, true, &[10]), iteration(2, false, &[20])];
     assert_eq!(
         backlog_column(&story(20, Work::NotStarted), &iterations),
-        Some(BacklogColumn::ReadyForWork),
+        Some(BacklogColumn::ReadyForDevelopment),
         "planned work — in an iteration on the roadmap, but not the current one"
     );
 }
@@ -158,6 +158,6 @@ fn grouping_places_every_non_archived_story_in_exactly_one_column() {
     };
     assert_eq!(ids(BacklogColumn::Current), vec![1]);
     assert_eq!(ids(BacklogColumn::Accepted), vec![2]);
-    assert_eq!(ids(BacklogColumn::ReadyForWork), vec![3]);
+    assert_eq!(ids(BacklogColumn::ReadyForDevelopment), vec![3]);
     assert_eq!(ids(BacklogColumn::Icebox), vec![4]);
 }
