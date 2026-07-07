@@ -14,6 +14,7 @@ pub(super) async fn dispatch(
     args: serde_json::Map<String, Value>,
     session: &Arc<session::Session>,
     dispatcher: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     let refresh_ref: Option<&Arc<dyn RefreshDriver>> = Some(refresh);
     match tool {
@@ -94,12 +95,7 @@ pub(super) async fn dispatch(
         "view_backlog" => bridge::dispatch_view_backlog(refresh_ref).await,
         "submit_verdict" => bridge::dispatch_submit_verdict(args, agent, session).await,
         "view_verdicts" => bridge::dispatch_view_verdicts(args, session, refresh_ref).await,
-        "view_velocity" => {
-            let messages = session
-                .read_messages()
-                .map_err(|e| format!("view_velocity: read messages: {e}"))?;
-            bridge::dispatch_view_velocity(messages, refresh_ref).await
-        }
+        "view_velocity" => bridge::dispatch_view_velocity(select),
         "view_story_commits" => bridge::dispatch_view_story_commits(args).await,
         "view_commit_diff" => bridge::dispatch_view_commit_diff(args).await,
         _ => Err(format!(

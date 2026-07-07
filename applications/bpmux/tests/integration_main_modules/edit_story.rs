@@ -86,7 +86,8 @@ async fn edit_story_replaces_body_at_canonical_store() {
         .merge(gated)
         .with_state(Arc::clone(&session))
         .layer(Extension(test_refresh))
-        .layer(Extension(dispatch));
+        .layer(Extension(dispatch))
+        .layer(Extension(app_store.selector()));
 
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
     let port = listener.local_addr().expect("addr").port();

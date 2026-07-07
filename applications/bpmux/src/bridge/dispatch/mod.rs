@@ -4,6 +4,9 @@ mod story;
 mod transition;
 mod view;
 
+#[cfg(test)]
+mod view_velocity_tests;
+
 pub(crate) use iteration::{
     dispatch_add_story_to_iteration, dispatch_close_iteration, dispatch_close_pre_pickup_review,
     dispatch_create_iteration, dispatch_designate_current_iteration, dispatch_dev_ok_iteration,

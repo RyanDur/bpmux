@@ -37,8 +37,8 @@ async fn bpmux_velocity_reaches_the_gated_rpc_read_off_mcp() {
     let parsed: serde_json::Value =
         serde_json::from_str(stdout(&out).trim()).expect("velocity returns parseable JSON off MCP");
     assert!(
-        parsed.get("window_days").is_some(),
-        "velocity returns the VelocityMetricsView contract off MCP (non-vacuous: the metrics object, not empty / a route-404); stdout: {}",
+        parsed.get("velocity_window_iterations").is_some() && parsed.get("rework").is_some(),
+        "velocity returns the selector-fed MetricsView contract off MCP (non-vacuous: the metrics object, not empty / a route-404); stdout: {}",
         stdout(&out)
     );
 }

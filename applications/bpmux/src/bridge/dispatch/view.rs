@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use super::super::{WsSink, tools, tools_stories};
+use super::super::{tools, tools_stories};
+use crate::product_management::story::{StoryId, StoryKind};
 
 fn require_refresh<'a>(
     refresh: Option<&'a Arc<dyn crate::sync::RefreshDriver>>,
@@ -9,12 +10,24 @@ fn require_refresh<'a>(
     refresh.ok_or_else(|| format!("{tool} requires canonical store"))
 }
 
-pub(crate) async fn dispatch_view_velocity(
-    messages: Vec<crate::message::Message>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
-) -> Result<String, String> {
-    let no_ws: tokio::sync::Mutex<Option<WsSink>> = tokio::sync::Mutex::new(None);
-    tools::handle_view_velocity(|| async move { Ok(messages) }, &no_ws, refresh).await
+pub(crate) fn dispatch_view_velocity(select: &crate::store::Select) -> Result<String, String> {
+    let (shared, local, iterations, feature_ids) = select.select(|state| {
+        let feature_ids: std::collections::HashSet<StoryId> = state
+            .stories
+            .values()
+            .filter(|story| matches!(story.story_type(), StoryKind::Feature))
+            .map(|story| story.id)
+            .collect();
+        (
+            state.shared_history.clone(),
+            state.local_history.clone(),
+            crate::product_management::iteration::all(&state.iterations),
+            feature_ids,
+        )
+    });
+    let view =
+        tools::build_velocity_view(&shared, &local, &iterations, |id| feature_ids.contains(&id));
+    serde_json::to_string_pretty(&view).map_err(|e| format!("serialize view_velocity: {e}"))
 }
 
 pub(crate) async fn dispatch_view_story_commits(

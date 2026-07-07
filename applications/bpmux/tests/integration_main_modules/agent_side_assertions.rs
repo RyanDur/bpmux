@@ -569,12 +569,8 @@ fn accept_story_is_idempotent_on_already_closed() {
     });
 }
 
-/// AC (#209a): view_velocity returns JSON metrics parsed from the
-/// session log. With a fresh session and no delivered stories, the
-/// metrics are zero/sparse — proves the compute path runs end-to-end
-/// through the bridge, not just the unit tests.
 #[test]
-fn view_velocity_returns_metrics_with_sparse_flag_on_empty_session() {
+fn view_velocity_routes_through_rpc_to_selector_fed_metrics_on_empty_session() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -587,18 +583,26 @@ fn view_velocity_returns_metrics_with_sparse_flag_on_empty_session() {
             .await
             .expect("view_velocity should succeed");
 
-        let body = serde_json::to_string(&metrics).expect("serialize");
-        assert!(
-            body.contains("\"delivered_in_window\""),
-            "metrics should expose delivered_in_window. got: {body}"
+        assert_eq!(
+            metrics["velocity_window_iterations"], 1,
+            "MCP view_velocity now routes to the server's selector-fed compute. got: {metrics}"
         );
         assert!(
-            body.contains("\"sparse\": true") || body.contains("\"sparse\":true"),
-            "fresh session has no deliveries — sparse should be true. got: {body}"
+            metrics["velocity"].is_null(),
+            "an empty server store has no complete iteration — velocity is null, not a self-computed zero. got: {metrics}"
+        );
+        assert_eq!(
+            metrics["iterations"],
+            serde_json::json!([]),
+            "no complete iterations yet. got: {metrics}"
+        );
+        assert_eq!(
+            metrics["rework"]["total"], 0,
+            "no placements yet. got: {metrics}"
         );
         assert!(
-            body.contains("\"window_days\""),
-            "metrics should expose window_days. got: {body}"
+            metrics.get("delivered_in_window").is_none(),
+            "the chat-parse VelocityMetricsView keys are gone — the self-compute path is retired. got: {metrics}"
         );
 
         dev.close().await;

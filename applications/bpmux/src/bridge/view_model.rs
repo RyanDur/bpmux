@@ -102,30 +102,3 @@ impl From<&crate::bookmark::Bookmark> for BookmarkView {
         }
     }
 }
-
-#[derive(Debug, Clone, Serialize)]
-pub struct VelocityMetricsView {
-    pub window_days: i64,
-    pub delivered_in_window: usize,
-    pub delivered_per_day: f64,
-    pub median_pickup_to_deliver_hours: Option<f64>,
-    pub median_deliver_to_accept_hours: Option<f64>,
-    pub rework_rate: Option<f64>,
-    pub sparse: bool,
-    pub note: Option<String>,
-}
-
-impl From<&crate::view::velocity::VelocityMetrics> for VelocityMetricsView {
-    fn from(m: &crate::view::velocity::VelocityMetrics) -> Self {
-        Self {
-            window_days: m.window_days,
-            delivered_in_window: m.delivered_in_window,
-            delivered_per_day: m.delivered_per_day,
-            median_pickup_to_deliver_hours: m.median_pickup_to_deliver_hours,
-            median_deliver_to_accept_hours: m.median_deliver_to_accept_hours,
-            rework_rate: m.rework_rate,
-            sparse: m.sparse,
-            note: m.note.clone(),
-        }
-    }
-}

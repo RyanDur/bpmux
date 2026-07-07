@@ -96,9 +96,6 @@ pub(super) async fn dispatch_tool_call(
         "get_sync_status" => tools::handle_get_sync_status(port).await,
         "view_story_commits" => tools::handle_view_story_commits(&args).await,
         "view_commit_diff" => tools::handle_view_commit_diff(&args).await,
-        "view_velocity" => {
-            tools::handle_view_velocity(|| tools::fetch_messages_via_http(port), &ws_tx, None).await
-        }
         "start_story"
         | "deliver_story"
         | "pass_desk_check"
@@ -129,7 +126,8 @@ pub(super) async fn dispatch_tool_call(
         | "view_comments"
         | "view_backlog"
         | "submit_verdict"
-        | "view_verdicts" => {
+        | "view_verdicts"
+        | "view_velocity" => {
             let current_name = name.lock().await.clone();
             rpc_client::dispatch_via_rpc(port, request.name.as_ref(), &current_name, &args).await
         }

@@ -93,8 +93,4 @@ pub(in crate::server) fn test_routes(enabled: bool) -> SessionRouter {
             "/api/test/fail_desk_check",
             axum::routing::post(transport::test_routes::post_test_fail_desk_check),
         )
-        .route(
-            "/api/test/view_velocity",
-            axum::routing::post(transport::test_routes::post_test_view_velocity),
-        )
 }

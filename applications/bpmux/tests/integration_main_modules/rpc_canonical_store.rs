@@ -118,7 +118,8 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
         .merge(gated)
         .with_state(Arc::clone(&session))
         .layer(Extension(test_refresh))
-        .layer(Extension(dispatch));
+        .layer(Extension(dispatch))
+        .layer(Extension(app_store.selector()));
 
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
     let port = listener.local_addr().expect("addr").port();

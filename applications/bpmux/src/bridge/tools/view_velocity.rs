@@ -1,82 +1,116 @@
-use std::future::Future;
+use std::num::NonZeroUsize;
 
-use tokio::sync::Mutex;
+use serde::Serialize;
 
-use super::helpers::{WsSink, ws_send};
+use crate::board::flow::{Position, ReworkBreakdown, desk_check_rework, sub_section_timings};
+use crate::board::history::PlacementHistory;
+use crate::product_management::history::SharedHistory;
+use crate::product_management::iteration::Iteration;
+use crate::product_management::metrics::{
+    acceptance_rejection_rate, lead_time_median_hours, velocity, velocity_series,
+};
+use crate::product_management::story::StoryId;
 
-pub(in crate::bridge) const VIEW_VELOCITY_MARKER: &str = "__BPMUX_VIEW_VELOCITY__";
+const VELOCITY_WINDOW: NonZeroUsize = NonZeroUsize::MIN;
 
-pub(in crate::bridge) async fn fetch_messages_via_http(
-    port: u16,
-) -> Result<Vec<crate::message::Message>, String> {
-    let url = crate::transport::local_url::api_url(port, "/api/messages?limit=2000");
-    let body = reqwest::get(&url)
-        .await
-        .map_err(|e| format!("failed to fetch: {e}"))?
-        .text()
-        .await
-        .map_err(|e| format!("failed to read response: {e}"))?;
-    serde_json::from_str(&body).map_err(|e| format!("parse messages: {e}: {body}"))
+#[derive(Debug, Serialize)]
+pub(in crate::bridge) struct MetricsView {
+    pub velocity: Option<f64>,
+    pub velocity_window_iterations: usize,
+    pub iterations: Vec<IterationVelocity>,
+    pub lead_time_median_hours: Option<f64>,
+    pub acceptance_rejection_rate: Option<f64>,
+    pub sub_section_timings: Vec<SubSectionTiming>,
+    pub rework: ReworkView,
 }
 
-pub(in crate::bridge) async fn handle_view_velocity<F, Fut>(
-    fetch_messages: F,
-    ws_tx: &Mutex<Option<WsSink>>,
-    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
-) -> Result<String, String>
-where
-    F: FnOnce() -> Fut,
-    Fut: Future<Output = Result<Vec<crate::message::Message>, String>>,
-{
-    let messages = fetch_messages().await?;
-
-    let mut unique_numbers: std::collections::HashSet<u64> = std::collections::HashSet::new();
-    for m in &messages {
-        if let Some(hash_idx) = m.text.find('#')
-            && let Some((num_str, _)) = m.text[hash_idx + 1..]
-                .find(|c: char| !c.is_ascii_digit())
-                .map(|i| m.text[hash_idx + 1..].split_at(i))
-            && let Ok(n) = num_str.parse::<u64>()
-        {
-            unique_numbers.insert(n);
-        }
-    }
-    let mut feature_numbers: std::collections::HashSet<u64> = std::collections::HashSet::new();
-    for n in unique_numbers {
-        if is_feature_for_velocity(n, refresh) {
-            feature_numbers.insert(n);
-        }
-    }
-
-    let metrics = crate::view::velocity::compute(&messages, chrono::Utc::now(), |n| {
-        feature_numbers.contains(&n)
-    });
-
-    let marker_msg = crate::transport::protocol::ClientMessage::Send {
-        text: VIEW_VELOCITY_MARKER.to_string(),
-        to: None,
-        addressee: None,
-        message_type: Some("system".to_string()),
-    };
-    match serde_json::to_string(&marker_msg) {
-        Ok(json) => {
-            if let Err(e) = ws_send(ws_tx, json).await {
-                crate::diag::log_diag(&format!("view_velocity marker send failed: {e}"));
-            }
-        }
-        Err(e) => crate::diag::log_diag(&format!("view_velocity marker serialize failed: {e}")),
-    }
-
-    let view = crate::bridge::view_model::VelocityMetricsView::from(&metrics);
-    serde_json::to_string_pretty(&view).map_err(|e| format!("serialize: {e}"))
+#[derive(Debug, Serialize)]
+pub(in crate::bridge) struct IterationVelocity {
+    pub iteration: u64,
+    pub accepted_features: usize,
 }
 
-pub(in crate::bridge) fn is_feature_for_velocity(
-    n: u64,
-    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
-) -> bool {
-    refresh.and_then(|r| r.story(n)).is_some_and(|s| {
-        use crate::product_management::story::StoryKind;
-        matches!(s.story_type(), StoryKind::Feature)
-    })
+#[derive(Debug, Serialize)]
+pub(in crate::bridge) struct SubSectionTiming {
+    pub position: PositionView,
+    pub median_hours: f64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub(in crate::bridge) enum PositionView {
+    Stage { id: String },
+    State { id: String },
+}
+
+#[derive(Debug, Serialize)]
+pub(in crate::bridge) struct ReworkView {
+    pub total: usize,
+    pub per_story: Vec<ReworkStory>,
+}
+
+#[derive(Debug, Serialize)]
+pub(in crate::bridge) struct ReworkStory {
+    pub story: u64,
+    pub reentries: usize,
+}
+
+impl From<Position> for PositionView {
+    fn from(position: Position) -> Self {
+        match position {
+            Position::Placement(stage) => PositionView::Stage {
+                id: stage.as_str().to_string(),
+            },
+            Position::Coarse(work) => PositionView::State {
+                id: work.as_str().to_string(),
+            },
+        }
+    }
+}
+
+impl From<ReworkBreakdown> for ReworkView {
+    fn from(breakdown: ReworkBreakdown) -> Self {
+        Self {
+            total: breakdown.total,
+            per_story: breakdown
+                .per_story
+                .into_iter()
+                .map(|(story, reentries)| ReworkStory {
+                    story: story.value(),
+                    reentries,
+                })
+                .collect(),
+        }
+    }
+}
+
+pub(in crate::bridge) fn build_velocity_view(
+    shared: &SharedHistory,
+    local: &PlacementHistory,
+    iterations: &[Iteration],
+    is_feature: impl Fn(StoryId) -> bool,
+) -> MetricsView {
+    let series = velocity_series(shared, iterations, &is_feature)
+        .into_iter()
+        .map(|(iteration, accepted_features)| IterationVelocity {
+            iteration: iteration.value(),
+            accepted_features,
+        })
+        .collect();
+    let timings = sub_section_timings(local)
+        .into_iter()
+        .map(|(position, median_hours)| SubSectionTiming {
+            position: position.into(),
+            median_hours,
+        })
+        .collect();
+    MetricsView {
+        velocity: velocity(shared, iterations, &is_feature, VELOCITY_WINDOW),
+        velocity_window_iterations: VELOCITY_WINDOW.get(),
+        iterations: series,
+        lead_time_median_hours: lead_time_median_hours(shared),
+        acceptance_rejection_rate: acceptance_rejection_rate(shared),
+        sub_section_timings: timings,
+        rework: desk_check_rework(local).into(),
+    }
 }

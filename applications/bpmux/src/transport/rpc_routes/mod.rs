@@ -28,6 +28,7 @@ pub async fn post_rpc_tool(
     State(session): State<Arc<session::Session>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
+    axum::Extension(select): axum::Extension<crate::store::Select>,
     headers: HeaderMap,
     Path(tool): Path<String>,
     Json(body): Json<Value>,
@@ -82,7 +83,17 @@ pub async fn post_rpc_tool(
     let prior_state = transition_id
         .filter(|_| !is_read_only_tool(&tool))
         .and_then(|id| story_state_label(&refresh, id));
-    match dispatch(&refresh, &tool, &agent, args, &session, &dispatcher).await {
+    match dispatch(
+        &refresh,
+        &tool,
+        &agent,
+        args,
+        &session,
+        &dispatcher,
+        &select,
+    )
+    .await
+    {
         Ok(message) => {
             if tool == "view_backlog" {
                 fire_view_backlog_marker(&session);

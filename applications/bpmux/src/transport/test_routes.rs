@@ -491,32 +491,3 @@ pub async fn post_test_fire_sync_status(
         Json(serde_json::json!({ "dispatched": true })),
     )
 }
-
-#[derive(Debug, Deserialize)]
-pub struct ViewVelocityReq {
-    pub messages: Vec<Message>,
-}
-
-pub async fn post_test_view_velocity(
-    axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
-    Json(req): Json<ViewVelocityReq>,
-) -> impl IntoResponse {
-    let Some(refresh) = refresh else {
-        return test_route_unavailable();
-    };
-    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
-    match bridge::dispatch_view_velocity(req.messages, Some(refresh_ref)).await {
-        Ok(metrics_json) => {
-            let parsed: serde_json::Value = serde_json::from_str(&metrics_json)
-                .unwrap_or(serde_json::Value::String(metrics_json));
-            (
-                StatusCode::OK,
-                Json(serde_json::json!({ "metrics": parsed })),
-            )
-        }
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": e })),
-        ),
-    }
-}

@@ -103,6 +103,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         .layer(axum::Extension(ci_log_store))
         .layer(axum::Extension(electron_capture_lock))
         .layer(axum::Extension(orchestrator))
+        .layer(axum::Extension(store.selector()))
         .layer(axum::Extension(store))
         .layer(axum::Extension(dispatch))
         .layer(axum::Extension(pty_registry))

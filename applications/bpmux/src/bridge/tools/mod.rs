@@ -108,8 +108,6 @@ mod view_story_timeline;
 mod view_story_timeline_tests;
 mod view_tokens;
 mod view_velocity;
-#[cfg(test)]
-mod view_velocity_render;
 mod view_verdicts;
 #[cfg(test)]
 mod view_verdicts_render;
@@ -163,7 +161,7 @@ pub(in crate::bridge) use view_roadmap::handle_view_roadmap;
 pub(in crate::bridge) use view_story_commits::handle_view_story_commits;
 pub(in crate::bridge) use view_story_timeline::handle_view_story_timeline;
 pub(in crate::bridge) use view_tokens::handle_view_tokens;
-pub(in crate::bridge) use view_velocity::{fetch_messages_via_http, handle_view_velocity};
+pub(in crate::bridge) use view_velocity::build_velocity_view;
 pub(in crate::bridge) use view_verdicts::handle_view_verdicts;
 
 pub use view_backlog::VIEW_BACKLOG_MARKER;
