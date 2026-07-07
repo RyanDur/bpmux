@@ -151,7 +151,7 @@ mod stage_verb_behavior {
 
     #[tokio::test]
     async fn stage_verbs_require_the_story_in_the_middle() {
-        let orch = seeded(8106, BoardState::Ready, &["chore"]).await;
+        let orch = seeded(8106, BoardState::NotStarted, &["chore"]).await;
         let err = handle_pass_stage(&pass_args(8106), "dev:claude-code", Some(&orch))
             .await
             .expect_err("a ready story has no stage to judge");

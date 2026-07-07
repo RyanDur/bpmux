@@ -39,7 +39,7 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
     let seeded = Story::new_minimal(
         StoryId::new(909),
         "slice 1 reap parity".into(),
-        BoardState::Ready,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 4, 28, 0, 0, 0).unwrap(),
         "dev".into(),
     );

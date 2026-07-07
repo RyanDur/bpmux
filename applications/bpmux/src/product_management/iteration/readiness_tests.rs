@@ -32,7 +32,7 @@ fn iteration(id: u64) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         "Iteration Vela".to_string(),
-        BoardState::Ready,
+        BoardState::NotStarted,
         Utc::now(),
         "pm".to_string(),
     );
@@ -263,7 +263,7 @@ fn outcome_with(id: u64, iterations: Vec<u64>) -> Outcome {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Outcome #{id}"),
-        BoardState::Icebox,
+        BoardState::NotStarted,
         Utc::now(),
         "pm".to_string(),
     );

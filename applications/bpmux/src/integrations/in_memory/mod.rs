@@ -111,7 +111,11 @@ impl SourceAdapter for InMemorySourceAdapter {
         Ok(s.verdicts.get(&number).cloned().unwrap_or_default())
     }
 
-    async fn push_event(&self, event: &StoryEvent) -> Result<Option<StoryEvent>, SyncError> {
+    async fn push_event(
+        &self,
+        event: &StoryEvent,
+        context: &crate::sync::PushContext,
+    ) -> Result<Option<StoryEvent>, SyncError> {
         let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         if s.permanent_push_failures {
             return Err(SyncError::ValidationRejected(
@@ -122,7 +126,7 @@ impl SourceAdapter for InMemorySourceAdapter {
             return Err(SyncError::SourceUnreachable("push test failure".into()));
         }
         s.pushed_events.push(event.clone());
-        mutation::apply_push_event(&mut s, event);
+        mutation::apply_push_event(&mut s, event, context);
         Ok(None)
     }
 
@@ -140,7 +144,7 @@ impl SourceAdapter for InMemorySourceAdapter {
         let story = Story::new_minimal(
             StoryId::new(number),
             title.to_string(),
-            crate::product_management::story::BoardState::Icebox,
+            crate::product_management::story::BoardState::NotStarted,
             chrono::Utc::now(),
             "in-memory".to_string(),
         );

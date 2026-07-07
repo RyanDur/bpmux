@@ -18,7 +18,7 @@ mod reorder_story_icebox_label_substrate_tests_1301 {
         let s = Story::new_minimal(
             StoryId::new(id),
             format!("story-{id}"),
-            BoardState::Icebox,
+            BoardState::NotStarted,
             Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
             "pm".to_string(),
         );

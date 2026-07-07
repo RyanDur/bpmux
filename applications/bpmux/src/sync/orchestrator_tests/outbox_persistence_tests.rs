@@ -42,7 +42,7 @@ mod outbox_persistence {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             10,
-            BoardState::Ready,
+            BoardState::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -67,7 +67,7 @@ mod outbox_persistence {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             20,
-            BoardState::Ready,
+            BoardState::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -94,7 +94,7 @@ mod outbox_persistence {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             90,
-            BoardState::Ready,
+            BoardState::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -130,7 +130,7 @@ mod outbox_persistence {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             30,
-            BoardState::Ready,
+            BoardState::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -156,7 +156,7 @@ mod outbox_persistence {
         handle_a.bind_refresh(&orch_a_dyn);
         handle_a.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             40,
-            BoardState::Ready,
+            BoardState::NotStarted,
         )])));
         orch_a
             .mutate(StoryEvent::StateTransitioned {
@@ -190,7 +190,7 @@ mod outbox_persistence {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             60,
-            BoardState::Ready,
+            BoardState::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -223,7 +223,7 @@ mod outbox_persistence {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             65,
-            BoardState::Ready,
+            BoardState::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -253,7 +253,7 @@ mod outbox_persistence {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             66,
-            BoardState::Ready,
+            BoardState::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -282,8 +282,8 @@ mod outbox_persistence {
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
-            seed_story(70, BoardState::Ready),
-            seed_story(71, BoardState::Ready),
+            seed_story(70, BoardState::NotStarted),
+            seed_story(71, BoardState::NotStarted),
         ])));
         for n in [70u64, 71] {
             orch.mutate(StoryEvent::StateTransitioned {
@@ -317,7 +317,7 @@ mod outbox_persistence {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             80,
-            BoardState::Ready,
+            BoardState::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -346,9 +346,9 @@ mod outbox_persistence {
         let handle_a = SeededStore::new(vec![], vec![], vec![]);
         handle_a.bind_refresh(&orch_a_dyn);
         handle_a.dispatch(AppAction::Story(StoryAction::Seeded(vec![
-            seed_story(50, BoardState::Ready),
-            seed_story(51, BoardState::Ready),
-            seed_story(52, BoardState::Ready),
+            seed_story(50, BoardState::NotStarted),
+            seed_story(51, BoardState::NotStarted),
+            seed_story(52, BoardState::NotStarted),
         ])));
         for n in [50u64, 51, 52] {
             orch_a
@@ -396,7 +396,7 @@ mod outbox_persistence {
     #[tokio::test]
     async fn refresh_story_populates_store_so_subsequent_mutate_lands() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        adapter.seed_stories(vec![seed_story(777, BoardState::Ready)]);
+        adapter.seed_stories(vec![seed_story(777, BoardState::NotStarted)]);
         let orch = Arc::new(SyncOrchestrator::new(adapter));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);

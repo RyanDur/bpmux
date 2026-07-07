@@ -37,7 +37,7 @@ fn seed(id: u64, title: &str, story_type: StoryKind, labels: &[&str]) -> (Story,
     let mut s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        BoardState::Icebox,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -53,7 +53,7 @@ fn seed_outcome(id: u64, title: &str, labels: &[&str]) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        BoardState::Icebox,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -64,7 +64,7 @@ fn iteration_in_outcome(id: u64, outcome: u64) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration #{id}"),
-        BoardState::Icebox,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

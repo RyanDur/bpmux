@@ -13,7 +13,7 @@ async fn build_orchestrator() -> Arc<dyn RefreshDriver> {
     let story = Story::new_minimal(
         StoryId::new(200),
         "t".into(),
-        BoardState::Ready,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

@@ -2,7 +2,11 @@ use super::{InnerState, typed_label_mirror};
 use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{CastVerdict, FreeComment};
 
-pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
+pub(super) fn apply_push_event(
+    s: &mut InnerState,
+    event: &StoryEvent,
+    context: &crate::sync::PushContext,
+) {
     match event {
         StoryEvent::FreeCommentAppended { id, body, meta } => {
             let entry = FreeComment {
@@ -53,7 +57,12 @@ pub(super) fn apply_push_event(s: &mut InnerState, event: &StoryEvent) {
             s.closed.remove(&id.value());
         }
         StoryEvent::StateTransitioned { id, new_state, .. } => {
-            typed_label_mirror::state_transitioned(s, id.value(), new_state.clone())
+            typed_label_mirror::state_transitioned(
+                s,
+                id.value(),
+                new_state.clone(),
+                context.member_of_current_iteration,
+            )
         }
         StoryEvent::CurrentIterationDesignated { id, .. } => {
             typed_label_mirror::current_iteration_designated(s, id.value())

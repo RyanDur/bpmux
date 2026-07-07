@@ -32,15 +32,15 @@ async fn build_orchestrator(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn Refresh
 #[tokio::test]
 async fn moving_loose_icebox_story_into_position_lands_in_unscheduled() {
     let orch = build_orchestrator(vec![
-        seed_story_with_labels(3100, BoardState::Icebox, vec!["icebox".into()]),
+        seed_story_with_labels(3100, BoardState::NotStarted, vec!["icebox".into()]),
         seed_story_with_labels(
             3101,
-            BoardState::Icebox,
+            BoardState::NotStarted,
             vec!["iteration-Unscheduled.100".into()],
         ),
         seed_story_with_labels(
             3102,
-            BoardState::Icebox,
+            BoardState::NotStarted,
             vec!["iteration-Unscheduled.200".into()],
         ),
     ])
@@ -62,7 +62,7 @@ async fn moving_loose_icebox_story_into_position_lands_in_unscheduled() {
 async fn move_into_icebox_preserves_iteration_membership_when_story_already_in_named_container() {
     let orch = build_orchestrator(vec![seed_story_with_labels(
         3200,
-        BoardState::Ready,
+        BoardState::NotStarted,
         vec!["iteration-Pegasus.100".into(), "ready".into()],
     )])
     .await;

@@ -34,7 +34,7 @@ fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
 #[tokio::test]
 async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(1, BoardState::Ready)]);
+    adapter.seed_stories(vec![seed_story(1, BoardState::NotStarted)]);
     let orchestrator: Arc<dyn RefreshDriver> =
         Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
@@ -96,7 +96,7 @@ async fn reconcile_dual_state_labels_is_no_op_when_labels_match_state() {
 #[tokio::test]
 async fn reconcile_keeps_the_ready_label_for_a_projected_ready_member_stored_icebox() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(452, BoardState::Icebox)]);
+    adapter.seed_stories(vec![seed_story(452, BoardState::NotStarted)]);
     adapter.seed_labels(452, vec!["ready".to_string(), "feature".to_string()]);
     let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
@@ -113,7 +113,7 @@ async fn reconcile_keeps_the_ready_label_for_a_projected_ready_member_stored_ice
 #[tokio::test]
 async fn reconcile_marks_the_ready_label_stale_for_a_stored_ready_non_member() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(453, BoardState::Ready)]);
+    adapter.seed_stories(vec![seed_story(453, BoardState::NotStarted)]);
     adapter.seed_labels(453, vec!["ready".to_string(), "feature".to_string()]);
     let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();

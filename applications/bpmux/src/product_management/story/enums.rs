@@ -2,8 +2,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BoardState {
-    Icebox,
-    Ready,
+    NotStarted,
     InProgress,
     Acceptance,
     Accepted,
@@ -27,8 +26,7 @@ impl<'de> Deserialize<'de> for BoardState {
 impl BoardState {
     pub fn as_str(&self) -> &'static str {
         match self {
-            BoardState::Icebox => "icebox",
-            BoardState::Ready => "ready",
+            BoardState::NotStarted => "not-started",
             BoardState::InProgress => "in-progress",
             BoardState::Acceptance => "acceptance",
             BoardState::Accepted => "accepted",
@@ -38,8 +36,7 @@ impl BoardState {
 
     pub fn github_label(&self) -> &'static str {
         match self {
-            BoardState::Icebox => "icebox",
-            BoardState::Ready => "ready",
+            BoardState::NotStarted => "",
             BoardState::InProgress => "in progress",
             BoardState::Acceptance => "delivered",
             BoardState::Accepted => "accepted",
@@ -49,8 +46,7 @@ impl BoardState {
 
     pub fn parse(s: &str) -> Option<Self> {
         match s {
-            "icebox" => Some(BoardState::Icebox),
-            "ready" => Some(BoardState::Ready),
+            "not-started" | "icebox" | "ready" => Some(BoardState::NotStarted),
             "in-progress" | "in_progress" | "desk-check" | "desk_check" => {
                 Some(BoardState::InProgress)
             }

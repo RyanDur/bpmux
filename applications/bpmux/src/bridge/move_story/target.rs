@@ -4,9 +4,13 @@ use serde_json::Value;
 use crate::product_management::story::{BoardState, Stage};
 
 const TARGET_STATE_RETIRED: &str = "retired";
+const TARGET_STATE_ICEBOX: &str = "icebox";
+const TARGET_STATE_READY: &str = "ready";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum TargetState {
+    Icebox,
+    Ready,
     Workflow(BoardState),
     Retired,
 }
@@ -14,10 +18,18 @@ pub(super) enum TargetState {
 impl TargetState {
     pub(super) fn parse(s: &str) -> Result<Self, String> {
         let normalized = s.to_ascii_lowercase();
+        if normalized == TARGET_STATE_ICEBOX {
+            return Ok(Self::Icebox);
+        }
+        if normalized == TARGET_STATE_READY {
+            return Ok(Self::Ready);
+        }
         if normalized == TARGET_STATE_RETIRED {
             return Ok(Self::Retired);
         }
-        if let Some(state) = BoardState::parse(&normalized) {
+        if let Some(state) = BoardState::parse(&normalized)
+            && state != BoardState::NotStarted
+        {
             return Ok(Self::Workflow(state));
         }
         let middle = crate::workflow::board_middle_stage_ids(crate::workflow::current_workflow());
@@ -31,9 +43,20 @@ impl TargetState {
         ))
     }
 
+    pub(super) fn workflow_state(&self) -> Option<BoardState> {
+        match self {
+            Self::Icebox | Self::Ready => Some(BoardState::NotStarted),
+            Self::Workflow(state) => Some(state.clone()),
+            Self::Retired => None,
+        }
+    }
+
     pub(super) fn as_label(&self) -> Option<&'static str> {
         match self {
-            Self::Workflow(BoardState::Icebox) => None,
+            Self::Icebox => None,
+            Self::Ready => {
+                Some(crate::product_management::scheduling::ProjectedState::Ready.github_label())
+            }
             Self::Workflow(state) => Some(state.github_label()),
             Self::Retired => Some(BoardState::Retired.github_label()),
         }
@@ -45,6 +68,8 @@ impl TargetState {
 
     pub(super) fn as_display(&self) -> &'static str {
         match self {
+            Self::Icebox => TARGET_STATE_ICEBOX,
+            Self::Ready => TARGET_STATE_READY,
             Self::Workflow(state) => state.as_str(),
             Self::Retired => BoardState::Retired.as_str(),
         }
@@ -86,12 +111,13 @@ pub(super) fn require_nonempty(
 pub(super) fn current_state_display(
     story: Option<&crate::product_management::story::Story>,
     fine: Option<Stage>,
+    iterations: &[crate::product_management::iteration::Iteration],
 ) -> &'static str {
+    use crate::product_management::scheduling::projected_state;
     match story {
         Some(s) if s.is_concluded() => "retired-or-accepted",
         Some(s) => match &s.state {
-            BoardState::Icebox => "icebox",
-            BoardState::Ready => "ready",
+            BoardState::NotStarted => projected_state(s, iterations).as_str(),
             BoardState::InProgress => match fine {
                 Some(Stage::DeskCheck) => "desk-check",
                 _ => "in-progress",

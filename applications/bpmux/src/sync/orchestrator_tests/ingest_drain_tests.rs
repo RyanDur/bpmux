@@ -18,7 +18,7 @@ use crate::sync::SyncOrchestrator;
 async fn ingest_once_populates_store_from_adapter() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![
-        seed_story(1, BoardState::Ready),
+        seed_story(1, BoardState::NotStarted),
         seed_story(2, BoardState::Acceptance),
     ]);
     let orchestrator = Arc::new(SyncOrchestrator::new(adapter));
@@ -57,7 +57,7 @@ async fn mutate_applies_event_locally_and_enqueues_for_push() {
             id: StoryId::new(100),
             title: "test".to_string(),
             body: "b".to_string(),
-            initial_state: BoardState::Ready,
+            initial_state: BoardState::NotStarted,
             story_type: StoryKind::Feature,
         })
         .unwrap();
@@ -79,7 +79,7 @@ async fn drain_once_pushes_pending_events_to_adapter() {
     handle.bind_refresh(&orch_dyn);
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
         1,
-        BoardState::Ready,
+        BoardState::NotStarted,
     )])));
     orchestrator
         .mutate(StoryEvent::StateTransitioned {
@@ -105,7 +105,7 @@ async fn drain_once_requeues_event_on_adapter_failure() {
     handle.bind_refresh(&orch_dyn);
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
         1,
-        BoardState::Ready,
+        BoardState::NotStarted,
     )])));
     orchestrator
         .mutate(StoryEvent::StateTransitioned {
@@ -140,8 +140,8 @@ async fn drain_once_handles_multiple_events_in_order() {
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
-        seed_story(1, BoardState::Ready),
-        seed_story(2, BoardState::Ready),
+        seed_story(1, BoardState::NotStarted),
+        seed_story(2, BoardState::NotStarted),
     ])));
     orchestrator
         .mutate(StoryEvent::StateTransitioned {
@@ -171,7 +171,7 @@ async fn drain_once_handles_multiple_events_in_order() {
 #[tokio::test]
 async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let seeded = seed_story(1687, BoardState::Ready);
+    let seeded = seed_story(1687, BoardState::NotStarted);
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(1687, vec!["iteration-Pegasus.125".to_string()]);
     let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));

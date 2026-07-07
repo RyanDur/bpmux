@@ -41,10 +41,7 @@ pub(in crate::bridge) async fn handle_move_story(
     authorization::enforce_move_authorization(agent_name)?;
 
     if position.is_some() {
-        let allows_position = matches!(
-            target,
-            TargetState::Workflow(BoardState::Ready) | TargetState::Workflow(BoardState::Icebox)
-        );
+        let allows_position = matches!(target, TargetState::Ready | TargetState::Icebox);
         if !allows_position {
             return Err(format!(
                 "'position' only meaningful for ready/icebox columns; target_state={} ignores ordering",
@@ -57,7 +54,8 @@ pub(in crate::bridge) async fn handle_move_story(
         .ok_or("move_story requires refresh (RefreshDriver) — tracker fallback not supported")?;
     let prior = Some(crate::bridge::tools_stories::ensure_story_in_canonical_store(r, id).await?);
     let from_fine = prior.as_ref().and_then(|s| r.story_fine_stage(s));
-    let from_display = current_state_display(prior.as_ref(), from_fine).to_string();
+    let from_display =
+        current_state_display(prior.as_ref(), from_fine, &r.iterations()).to_string();
     let was_closed = prior.as_ref().map(|s| s.is_concluded()).unwrap_or(false);
 
     let scheduling_target = scheduling::resolve_scheduling_target(r, id, &target)?;
@@ -79,10 +77,7 @@ pub(in crate::bridge) async fn handle_move_story(
     }
 
     if let Some(label) = target.as_label() {
-        let target_state = match &target {
-            TargetState::Workflow(state) => state.clone(),
-            TargetState::Retired => BoardState::Retired,
-        };
+        let target_state = target.workflow_state().unwrap_or(BoardState::Retired);
         let already_labeled = prior
             .as_ref()
             .map(|s| s.state() == target_state)
@@ -98,7 +93,10 @@ pub(in crate::bridge) async fn handle_move_story(
     }
 
     match &target {
-        TargetState::Workflow(state) => {
+        TargetState::Icebox | TargetState::Ready | TargetState::Workflow(_) => {
+            let state = target
+                .workflow_state()
+                .ok_or_else(|| format!("#{id} move target has no workflow state"))?;
             r.mutate_sync(StoryEvent::StateTransitioned {
                 meta: meta.clone(),
                 id: story_id,

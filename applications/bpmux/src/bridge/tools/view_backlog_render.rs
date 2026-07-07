@@ -56,7 +56,7 @@ async fn backlog_summary_via_dispatch(
 #[tokio::test]
 async fn a_stored_ready_story_outside_the_current_iteration_reports_in_icebox_not_ready() {
     let summary = backlog_summary_via_dispatch(
-        vec![story(300, "loose ready", BoardState::Ready)],
+        vec![story(300, "loose ready", BoardState::NotStarted)],
         current_iteration_of(&[]),
     )
     .await;
@@ -77,7 +77,7 @@ async fn a_stored_ready_story_outside_the_current_iteration_reports_in_icebox_no
 #[tokio::test]
 async fn a_stored_icebox_current_iteration_member_reports_in_ready() {
     let summary = backlog_summary_via_dispatch(
-        vec![story(301, "scheduled member", BoardState::Icebox)],
+        vec![story(301, "scheduled member", BoardState::NotStarted)],
         current_iteration_of(&[301]),
     )
     .await;
@@ -113,7 +113,7 @@ fn accepted_state_counted_as_accepted() {
 
 #[test]
 fn ready_state_populates_samples() {
-    let stories = vec![story(101, "ready story", BoardState::Ready)];
+    let stories = vec![story(101, "ready story", BoardState::NotStarted)];
     let summary = build_backlog_summary(&stories, &current_iteration_of(&[101]));
     assert_eq!(summary["ready_count"], 1);
     assert_eq!(summary["ready_samples"][0], "#101 ready story");
@@ -141,7 +141,7 @@ fn in_work_middle_stages_count_as_in_progress_acceptance_is_the_rail_only() {
 
 #[test]
 fn icebox_state_counted_as_icebox() {
-    let stories = vec![story(107, "icy", BoardState::Icebox)];
+    let stories = vec![story(107, "icy", BoardState::NotStarted)];
     assert_eq!(build_backlog_summary(&stories, &[])["icebox_count"], 1);
 }
 
@@ -157,7 +157,7 @@ fn retired_story_lands_in_retired_count() {
 #[test]
 fn samples_cap_at_sample_limit() {
     let stories: Vec<Story> = (0..8)
-        .map(|i| story(200 + i, &format!("ready {i}"), BoardState::Ready))
+        .map(|i| story(200 + i, &format!("ready {i}"), BoardState::NotStarted))
         .collect();
     let members: Vec<u64> = (0..8).map(|i| 200 + i).collect();
     let summary = build_backlog_summary(&stories, &current_iteration_of(&members));

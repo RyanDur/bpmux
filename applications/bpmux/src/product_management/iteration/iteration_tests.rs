@@ -11,7 +11,7 @@ fn iteration_story(body: Option<String>) -> Story {
     let mut story = Story::new_minimal(
         StoryId::new(710),
         "Iteration Crux".to_string(),
-        BoardState::Ready,
+        BoardState::NotStarted,
         chrono::Utc::now(),
         "pm".to_string(),
     );

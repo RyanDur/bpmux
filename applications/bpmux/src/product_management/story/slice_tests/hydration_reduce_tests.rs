@@ -7,7 +7,7 @@ use crate::product_management::story::{BoardState, FreeComment, StoryId, Verdict
 #[test]
 fn verdict_cast_event_accumulates() {
     let store = seeded();
-    created(&store, 1, "t", BoardState::Ready);
+    created(&store, 1, "t", BoardState::NotStarted);
     apply(
         &store,
         StoryEvent::VerdictCast {
@@ -50,7 +50,7 @@ fn verdict_cast_event_accumulates() {
 #[test]
 fn free_comment_appended_event_accumulates() {
     let store = seeded();
-    created(&store, 1, "t", BoardState::Ready);
+    created(&store, 1, "t", BoardState::NotStarted);
     apply(
         &store,
         StoryEvent::FreeCommentAppended {
@@ -69,7 +69,7 @@ fn free_comment_appended_event_accumulates() {
 #[test]
 fn body_fetched_event_populates_lazy_body() {
     let store = seeded();
-    seed(&store, vec![minimal(1, "t", BoardState::Ready)]);
+    seed(&store, vec![minimal(1, "t", BoardState::NotStarted)]);
     assert_eq!(story_at(&store, 1).unwrap().body, None);
     apply(
         &store,
@@ -89,7 +89,7 @@ fn body_fetched_event_populates_lazy_body() {
 #[test]
 fn free_comments_fetched_event_replaces_lazy_field() {
     let store = seeded();
-    seed(&store, vec![minimal(1, "t", BoardState::Ready)]);
+    seed(&store, vec![minimal(1, "t", BoardState::NotStarted)]);
     let comments = vec![FreeComment {
         body: "c1".to_string(),
         author: "pm".to_string(),

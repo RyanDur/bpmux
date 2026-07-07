@@ -78,4 +78,18 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             }
         });
     }
+
+    pub(super) fn push_context_for(&self, event: &StoryEvent) -> crate::sync::PushContext {
+        crate::sync::PushContext {
+            member_of_current_iteration: match event {
+                StoryEvent::StateTransitioned { id, .. } => {
+                    crate::product_management::scheduling::in_current_iteration(
+                        *id,
+                        &self.read_iterations(),
+                    )
+                }
+                _ => false,
+            },
+        }
+    }
 }

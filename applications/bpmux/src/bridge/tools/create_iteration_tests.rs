@@ -35,7 +35,7 @@ fn seed_iteration_story(id: u64, name: &str, is_closed: bool) -> (Story, Vec<Str
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration {name}"),
-        BoardState::Icebox,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 10, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );

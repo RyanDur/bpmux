@@ -24,7 +24,7 @@ fn icebox_story(id: u64) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("story-{id}"),
-        BoardState::Icebox,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 7, 7, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
@@ -35,7 +35,7 @@ fn current_iteration_story(id: u64) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration #{id}"),
-        BoardState::Icebox,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 7, 7, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
@@ -168,7 +168,7 @@ async fn a_move_to_ready_without_a_current_iteration_is_refused_before_mutating(
     );
     assert_eq!(
         orch.story(5001).expect("story stays visible").state(),
-        BoardState::Icebox,
+        BoardState::NotStarted,
         "the refusal happens in the validation phase — no state mutation leaked"
     );
 }
@@ -177,7 +177,7 @@ fn epic_story(id: u64) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("[Epic] grouping-{id}"),
-        BoardState::Icebox,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 7, 7, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
@@ -237,7 +237,7 @@ async fn a_move_to_icebox_removes_the_story_from_its_iteration() {
     );
     assert_eq!(
         orch.story(5001).expect("story stays visible").state(),
-        BoardState::Icebox,
+        BoardState::NotStarted,
         "the story itself returns to icebox"
     );
 }

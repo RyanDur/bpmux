@@ -134,7 +134,7 @@ fn ready_story(id: u64) -> crate::product_management::story::Story {
     crate::product_management::story::Story::new_minimal(
         StoryId::new(id),
         format!("ready {id}"),
-        BoardState::Ready,
+        BoardState::NotStarted,
         chrono::Utc::now(),
         "pm".to_string(),
     )
@@ -282,7 +282,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
     store.dispatch(AppAction::Story(StoryAction::Event(state_transitioned(
         901,
         "pm",
-        BoardState::Ready,
+        BoardState::NotStarted,
     ))));
 
     let members = drain_roster_presence(&mut rx).await;

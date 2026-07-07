@@ -23,7 +23,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     let seeded = Story::new_minimal(
         StoryId::new(203),
         "t".into(),
-        BoardState::Ready,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -348,7 +348,21 @@ async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
     adapter.seed_stories(vec![seeded]);
     let orchestrator: Arc<dyn RefreshDriver> =
         Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let current = crate::product_management::iteration::Iteration {
+        id: crate::product_management::iteration::IterationId::new(9000),
+        title: String::new(),
+        body: None,
+        filed_at: Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        filed_by: "pm".to_string(),
+        outcome: None,
+        iteration_order: None,
+        stories: vec![StoryId::new(206)],
+        review_closers: Vec::new(),
+        dev_ok_by: Vec::new(),
+        is_current: true,
+        complete: false,
+    };
+    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![current], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -358,7 +372,7 @@ async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = orchestrator.story(206).unwrap();
-    assert_eq!(story.state, BoardState::Ready);
+    assert_eq!(story.state, BoardState::NotStarted);
     let gates = story.verdicts.as_ref().expect("verdicts seeded");
     assert!(
         gates.iter().any(|g| g.verdict
@@ -389,7 +403,7 @@ async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
         &pushed[1],
         StoryEvent::StateTransitioned {
             id,
-            new_state: BoardState::Ready,
+            new_state: BoardState::NotStarted,
             ..
         } if *id == StoryId::new(206)
     ));
@@ -414,7 +428,7 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
     adapter.seed_stories(vec![Story::new_minimal(
         StoryId::new(50),
         "seed".into(),
-        BoardState::Ready,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     )]);
@@ -450,7 +464,7 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
         .story(51)
         .expect("StoryCreated event applied to store");
     assert_eq!(story.title, "[Bug] live-verify failure");
-    assert_eq!(story.state, BoardState::Icebox);
+    assert_eq!(story.state, BoardState::NotStarted);
     assert_eq!(
         story.story_type,
         StoryKind::Bug,
@@ -468,7 +482,7 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
         &pushed[0],
         StoryEvent::StoryCreated {
             id,
-            initial_state: BoardState::Icebox,
+            initial_state: BoardState::NotStarted,
             story_type: StoryKind::Bug,
             ..
         } if *id == StoryId::new(51)
@@ -556,7 +570,7 @@ async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
     let seeded = Story::new_minimal(
         StoryId::new(1524),
         "ready-queue drag".into(),
-        BoardState::Ready,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 6, 6, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -618,7 +632,7 @@ async fn start_story_leads_with_the_latest_reject_not_an_older_one() {
     let seeded = Story::new_minimal(
         StoryId::new(1525),
         "twice-rejected".into(),
-        BoardState::Ready,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 6, 6, 0, 0, 0).unwrap(),
         "pm".into(),
     );

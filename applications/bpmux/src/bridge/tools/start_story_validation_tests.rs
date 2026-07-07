@@ -55,7 +55,7 @@ mod gate_retire_1348 {
         let orch = seeded_orchestrator(
             9101,
             "[Feature] gherkin-only body",
-            BoardState::Ready,
+            BoardState::NotStarted,
             StoryKind::Feature,
             body,
         )
@@ -109,7 +109,7 @@ mod gate_retire_1348 {
         let orch = seeded_orchestrator(
             9103,
             "[Bug] gherkin-only body",
-            BoardState::Ready,
+            BoardState::NotStarted,
             StoryKind::Bug,
             body,
         )
@@ -131,7 +131,7 @@ mod gate_retire_1348 {
         let orch = seeded_orchestrator(
             9104,
             "[Feature] backward-compat ATP path",
-            BoardState::Ready,
+            BoardState::NotStarted,
             StoryKind::Feature,
             &body,
         )

@@ -6,15 +6,25 @@ use super::stage::Stage;
 #[test]
 fn story_state_parse_round_trips_via_as_str() {
     for state in [
-        BoardState::Icebox,
-        BoardState::Ready,
+        BoardState::NotStarted,
         BoardState::InProgress,
         BoardState::Acceptance,
         BoardState::Accepted,
+        BoardState::Retired,
     ] {
         let s = state.as_str();
         assert_eq!(BoardState::parse(s), Some(state), "parse({s:?}) round-trip");
     }
+}
+
+#[test]
+fn story_state_parse_accepts_the_legacy_icebox_and_ready_strings_as_not_started() {
+    assert_eq!(BoardState::parse("icebox"), Some(BoardState::NotStarted));
+    assert_eq!(BoardState::parse("ready"), Some(BoardState::NotStarted));
+    assert_eq!(
+        BoardState::parse("not-started"),
+        Some(BoardState::NotStarted)
+    );
 }
 
 #[test]
@@ -39,8 +49,7 @@ fn story_state_parse_returns_none_for_unknown() {
 #[test]
 fn story_state_serde_round_trips_via_canonical_string() {
     for state in [
-        BoardState::Icebox,
-        BoardState::Ready,
+        BoardState::NotStarted,
         BoardState::InProgress,
         BoardState::Acceptance,
         BoardState::Accepted,
@@ -50,6 +59,18 @@ fn story_state_serde_round_trips_via_canonical_string() {
         assert_eq!(json, format!("\"{}\"", state.as_str()));
         let back: BoardState = serde_json::from_str(&json).unwrap();
         assert_eq!(back, state, "serde round-trip for {state:?}");
+    }
+}
+
+#[test]
+fn story_state_deserializes_persisted_legacy_icebox_and_ready_rows() {
+    for legacy in ["\"icebox\"", "\"ready\""] {
+        let back: BoardState = serde_json::from_str(legacy).unwrap();
+        assert_eq!(
+            back,
+            BoardState::NotStarted,
+            "persisted StoryCreated/StateTransitioned rows carrying {legacy} must keep deserializing after the collapse"
+        );
     }
 }
 
@@ -74,8 +95,11 @@ fn story_state_acceptance_wire_vocab_parses_and_keeps_legacy_delivered_alias() {
 
 #[test]
 fn story_state_github_label_canonical_form_per_variant() {
-    assert_eq!(BoardState::Icebox.github_label(), "icebox");
-    assert_eq!(BoardState::Ready.github_label(), "ready");
+    assert_eq!(
+        BoardState::NotStarted.github_label(),
+        "",
+        "not-started has NO static GitHub label — the outbound mirror derives ready-vs-absence from membership"
+    );
     assert_eq!(BoardState::InProgress.github_label(), "in progress");
     assert_eq!(BoardState::Acceptance.github_label(), "delivered");
     assert_eq!(BoardState::Accepted.github_label(), "accepted");
@@ -83,7 +107,7 @@ fn story_state_github_label_canonical_form_per_variant() {
 }
 
 #[test]
-fn story_state_github_labels_round_trip_except_ready_which_is_membership_derived() {
+fn story_state_github_labels_round_trip_except_not_started_which_is_membership_derived() {
     for state in [
         BoardState::InProgress,
         BoardState::Acceptance,
@@ -96,12 +120,9 @@ fn story_state_github_labels_round_trip_except_ready_which_is_membership_derived
         assert_eq!(parsed, state, "state_from_labels round-trip for {state:?}");
     }
     assert_eq!(
-        crate::integrations::github::mapper::state_from_labels(
-            &[BoardState::Ready.github_label().to_string()],
-            false
-        ),
-        BoardState::Icebox,
-        "the ready label is outbound-only — scheduling decodes from iteration membership, so the label alone falls through to the Icebox fallback"
+        crate::integrations::github::mapper::state_from_labels(&["ready".to_string()], false),
+        BoardState::NotStarted,
+        "the ready label is outbound-only — scheduling decodes from iteration membership, so the label alone falls through to the not-started fallback"
     );
 }
 
@@ -117,12 +138,7 @@ fn story_state_github_label_diverges_from_as_str_for_in_progress_and_acceptance(
         BoardState::Acceptance.as_str(),
         "Acceptance: the domain wire says `acceptance`, the GitHub edge keeps the historical `delivered` label"
     );
-    for state in [
-        BoardState::Icebox,
-        BoardState::Ready,
-        BoardState::Accepted,
-        BoardState::Retired,
-    ] {
+    for state in [BoardState::Accepted, BoardState::Retired] {
         assert_eq!(
             state.github_label(),
             state.as_str(),

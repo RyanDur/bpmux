@@ -2,10 +2,8 @@ use super::*;
 
 #[test]
 fn target_state_parses_canonical_spellings() {
-    assert_eq!(
-        TargetState::parse("ready").unwrap(),
-        TargetState::Workflow(BoardState::Ready)
-    );
+    assert_eq!(TargetState::parse("ready").unwrap(), TargetState::Ready);
+    assert_eq!(TargetState::parse("icebox").unwrap(), TargetState::Icebox);
     assert_eq!(
         TargetState::parse("In-Progress").unwrap(),
         TargetState::Workflow(BoardState::InProgress)
@@ -49,8 +47,8 @@ fn closes_issue_is_true_only_for_terminal_states() {
     assert!(TargetState::Retired.closes_issue());
     assert!(TargetState::Workflow(BoardState::Accepted).closes_issue());
     assert!(!TargetState::Workflow(BoardState::Acceptance).closes_issue());
-    assert!(!TargetState::Workflow(BoardState::Ready).closes_issue());
-    assert!(!TargetState::Workflow(BoardState::Icebox).closes_issue());
+    assert!(!TargetState::Ready.closes_issue());
+    assert!(!TargetState::Icebox.closes_issue());
 }
 
 #[test]
@@ -107,7 +105,7 @@ fn audit_comment_body_includes_actor_transition_position_rationale() {
     let body = audit_comment_body(
         "dev",
         "delivered",
-        &TargetState::Workflow(BoardState::Ready),
+        &TargetState::Ready,
         Some(3),
         "rework after desk-check",
     );
@@ -122,7 +120,7 @@ fn audit_comment_body_omits_position_segment_when_none() {
     let body = audit_comment_body(
         "pm",
         "icebox",
-        &TargetState::Workflow(BoardState::Ready),
+        &TargetState::Ready,
         None,
         "next-iteration promote",
     );

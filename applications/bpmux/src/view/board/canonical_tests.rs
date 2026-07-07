@@ -27,7 +27,7 @@ fn story_struct_has_no_iteration_id_field_in_board_json_projection() {
     let story = Story::new_minimal(
         StoryId::new(100),
         "carrier-test".to_string(),
-        BoardState::Icebox,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
@@ -84,7 +84,7 @@ fn create_story_event_does_not_seed_iteration_membership() {
             id: StoryId::new(200),
             title: "freshly-created".to_string(),
             body: "no membership at filing-time".to_string(),
-            initial_state: BoardState::Icebox,
+            initial_state: BoardState::NotStarted,
             story_type: StoryKind::Feature,
         },
     )));

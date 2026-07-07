@@ -44,7 +44,7 @@ fn stacked_rejected_needs_fixes_ready_for_accept_decodes_to_ready() {
         "needs fixes".to_string(),
         "rejected".to_string(),
     ];
-    assert_eq!(state_from_labels(&stacked, false), BoardState::Ready);
+    assert_eq!(state_from_labels(&stacked, false), BoardState::NotStarted);
 }
 
 #[test]
@@ -78,7 +78,7 @@ fn stacked_delivered_ready_for_accept_decodes_to_delivered() {
 fn ready_state_buckets_to_ready_column() {
     assert_eq!(
         column_of(
-            &story_in(BoardState::Ready),
+            &story_in(BoardState::NotStarted),
             None,
             &current_iteration_of(&[1])
         ),
@@ -105,7 +105,7 @@ fn retired_state_buckets_to_retired_column() {
 
 #[test]
 fn empty_labels_open_decodes_icebox() {
-    assert_eq!(state_from_labels(&[], false), BoardState::Icebox);
+    assert_eq!(state_from_labels(&[], false), BoardState::NotStarted);
 }
 
 #[test]
@@ -118,5 +118,5 @@ fn case_insensitive_label_matching() {
     // #1146 slice 3: stale "REJECTED" label projects to Ready
     // (post-collapse semantics; case-insensitivity preserved).
     let stacked = vec!["REJECTED".to_string(), "Ready For Accept".to_string()];
-    assert_eq!(state_from_labels(&stacked, false), BoardState::Ready);
+    assert_eq!(state_from_labels(&stacked, false), BoardState::NotStarted);
 }

@@ -41,7 +41,7 @@ fn child(
     let parent_label = format!("parent-epic-#{parent}");
     let type_label = GhLabelCodec.encode_story_type(story_type);
     let mut labels = vec![parent_label.as_str(), type_label.as_str()];
-    if state != BoardState::Icebox {
+    if state != BoardState::NotStarted {
         labels.push(state.github_label());
     }
     decoded(number, &format!("child #{number}"), &labels)
@@ -115,7 +115,7 @@ async fn returns_single_child_with_parent_epic_match() {
     let store = store_with_current_members(
         vec![
             epic(100),
-            child(101, 100, StoryKind::Feature, BoardState::Ready),
+            child(101, 100, StoryKind::Feature, BoardState::NotStarted),
         ],
         &[101],
     )
@@ -134,8 +134,8 @@ async fn returns_single_child_with_parent_epic_match() {
 async fn returns_multiple_children_sorted_by_number() {
     let store = store_with(vec![
         epic(100),
-        child(105, 100, StoryKind::Feature, BoardState::Ready),
-        child(102, 100, StoryKind::Bug, BoardState::Icebox),
+        child(105, 100, StoryKind::Feature, BoardState::NotStarted),
+        child(102, 100, StoryKind::Bug, BoardState::NotStarted),
         child(108, 100, StoryKind::Chore, BoardState::Accepted),
     ])
     .await;
@@ -153,8 +153,8 @@ async fn excludes_stories_with_different_parent() {
     let store = store_with(vec![
         epic(100),
         epic(200),
-        child(101, 100, StoryKind::Feature, BoardState::Ready),
-        child(201, 200, StoryKind::Feature, BoardState::Ready),
+        child(101, 100, StoryKind::Feature, BoardState::NotStarted),
+        child(201, 200, StoryKind::Feature, BoardState::NotStarted),
     ])
     .await;
     let result = handle_list_epic_children(&args(100), &store).await.unwrap();
@@ -168,7 +168,7 @@ async fn excludes_stories_with_different_parent() {
 async fn excludes_stories_without_parent_epic() {
     let store = store_with(vec![
         epic(100),
-        child(101, 100, StoryKind::Feature, BoardState::Ready),
+        child(101, 100, StoryKind::Feature, BoardState::NotStarted),
         child_without_parent(202),
     ])
     .await;
@@ -208,7 +208,12 @@ async fn rejects_missing_epic_number_arg() {
 async fn handles_large_epic_with_ten_children() {
     let mut stories = vec![epic(100)];
     for n in 1..=10 {
-        stories.push(child(100 + n, 100, StoryKind::Feature, BoardState::Icebox));
+        stories.push(child(
+            100 + n,
+            100,
+            StoryKind::Feature,
+            BoardState::NotStarted,
+        ));
     }
     let store = store_with(stories).await;
     let result = handle_list_epic_children(&args(100), &store).await.unwrap();

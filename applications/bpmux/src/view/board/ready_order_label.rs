@@ -1,4 +1,4 @@
-use crate::product_management::story::BoardState;
+use crate::product_management::scheduling::ProjectedState;
 
 pub fn sort_board_ready_by_membership(
     stories: Vec<serde_json::Value>,
@@ -17,7 +17,7 @@ pub fn sort_board_ready_by_membership(
         }
     }
     for (state, list) in by_state.iter_mut() {
-        if BoardState::parse(state) == Some(BoardState::Ready) {
+        if state == ProjectedState::Ready.as_str() {
             list.sort_by_cached_key(|s| {
                 let number = s.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
                 match current_order.iter().position(|&id| id == number) {

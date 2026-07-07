@@ -28,8 +28,8 @@ mod slice_7_2_mutation_id_dispatch {
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
-            seed_story(101, BoardState::Ready),
-            seed_story(102, BoardState::Ready),
+            seed_story(101, BoardState::NotStarted),
+            seed_story(102, BoardState::NotStarted),
         ])));
 
         orch.mutate(StoryEvent::StateTransitioned {
@@ -64,7 +64,7 @@ mod slice_7_2_mutation_id_dispatch {
     #[tokio::test]
     async fn mutate_without_action_tx_does_not_panic() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        adapter.seed_stories(vec![seed_story(201, BoardState::Ready)]);
+        adapter.seed_stories(vec![seed_story(201, BoardState::NotStarted)]);
         let orch = Arc::new(SyncOrchestrator::new(adapter));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
@@ -88,7 +88,7 @@ mod slice_7_2_mutation_id_dispatch {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             301,
-            BoardState::Ready,
+            BoardState::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -130,7 +130,7 @@ mod slice_7_3_drain_one_by_id {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             401,
-            BoardState::Ready,
+            BoardState::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -160,7 +160,7 @@ mod slice_7_3_drain_one_by_id {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             601,
-            BoardState::Ready,
+            BoardState::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -198,7 +198,7 @@ mod slice_7_3_drain_one_by_id {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             701,
-            BoardState::Ready,
+            BoardState::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -231,7 +231,7 @@ mod slice_7_4_drain_one_by_id_falsifiers {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             801,
-            BoardState::Ready,
+            BoardState::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -261,8 +261,8 @@ mod slice_7_4_drain_one_by_id_falsifiers {
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
-            seed_story(901, BoardState::Ready),
-            seed_story(902, BoardState::Ready),
+            seed_story(901, BoardState::NotStarted),
+            seed_story(902, BoardState::NotStarted),
         ])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),
@@ -303,7 +303,7 @@ mod slice_7_4_drain_one_by_id_falsifiers {
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             1001,
-            BoardState::Ready,
+            BoardState::NotStarted,
         )])));
         orch.mutate(StoryEvent::StateTransitioned {
             meta: meta(),

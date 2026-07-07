@@ -28,8 +28,13 @@ pub(in crate::integrations::github) async fn push_state_transitioned(
     inner: &OctocrabStoryTracker,
     number: u64,
     new_state: BoardState,
+    member_of_current_iteration: bool,
 ) -> Result<Option<StoryEvent>, SyncError> {
-    let keep = outbound_state_label(&new_state);
+    let Some(keep) = outbound_state_label(&new_state, member_of_current_iteration) else {
+        strip_state_labels(inner, number, "").await?;
+        let labels = inner.get_story_labels(number).await;
+        return Ok(Some(labels_refreshed(number, labels)));
+    };
     strip_state_labels(inner, number, keep).await?;
     let labels = inner
         .add_label(number, keep)

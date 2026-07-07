@@ -53,7 +53,7 @@ fn a_member_of_a_complete_but_still_current_iteration_is_not_current_work() {
 fn a_stored_icebox_member_of_the_current_iteration_derives_ready_and_is_current() {
     let iterations = [iteration(1, true, &[10])];
     assert_eq!(
-        backlog_column(&story(10, BoardState::Icebox), &iterations),
+        backlog_column(&story(10, BoardState::NotStarted), &iterations),
         Some(BacklogColumn::Current),
         "design-doc divergence #3: membership in the current iteration IS the scheduling truth — a stored-Icebox member projects Ready and belongs to the current board"
     );
@@ -63,7 +63,7 @@ fn a_stored_icebox_member_of_the_current_iteration_derives_ready_and_is_current(
 fn a_board_position_story_in_the_current_iteration_is_current_work() {
     let iterations = [iteration(1, true, &[10, 11, 12])];
     for state in [
-        BoardState::Ready,
+        BoardState::NotStarted,
         BoardState::InProgress,
         BoardState::Acceptance,
     ] {
@@ -79,7 +79,7 @@ fn a_board_position_story_in_the_current_iteration_is_current_work() {
 fn a_planned_story_in_a_non_current_iteration_is_ready_for_work() {
     let iterations = [iteration(1, true, &[10]), iteration(2, false, &[20])];
     assert_eq!(
-        backlog_column(&story(20, BoardState::Ready), &iterations),
+        backlog_column(&story(20, BoardState::NotStarted), &iterations),
         Some(BacklogColumn::ReadyForWork),
         "planned work — in an iteration on the roadmap, but not the current one"
     );
@@ -89,7 +89,7 @@ fn a_planned_story_in_a_non_current_iteration_is_ready_for_work() {
 fn an_unplanned_story_is_icebox() {
     let iterations = [iteration(1, true, &[10])];
     assert_eq!(
-        backlog_column(&story(99, BoardState::Ready), &iterations),
+        backlog_column(&story(99, BoardState::NotStarted), &iterations),
         Some(BacklogColumn::Icebox),
         "unplanned work — referenced by no iteration"
     );
@@ -140,10 +140,10 @@ fn an_accepted_story_stays_in_the_accepted_column() {
 fn grouping_places_every_non_archived_story_in_exactly_one_column() {
     let iterations = [iteration(1, true, &[1, 2]), iteration(2, false, &[3])];
     let stories = vec![
-        story(1, BoardState::Ready),
+        story(1, BoardState::NotStarted),
         story(2, BoardState::Accepted),
-        story(3, BoardState::Ready),
-        story(4, BoardState::Icebox),
+        story(3, BoardState::NotStarted),
+        story(4, BoardState::NotStarted),
         story(5, BoardState::Retired),
     ];
     let grouped = group_by_backlog_column(&stories, &iterations);

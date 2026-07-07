@@ -48,7 +48,7 @@ async fn get_story_canonical_only_returns_placeholder_when_body_missing() {
     seed.bind_refresh(&refresh);
     seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
         8001,
-        BoardState::Ready,
+        BoardState::NotStarted,
     )])));
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(8001));
@@ -73,7 +73,7 @@ async fn get_story_canonical_only_returns_placeholder_when_body_missing() {
 #[tokio::test]
 async fn get_story_serves_cached_body_from_canonical_store() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut story = seed_minimal(8002, BoardState::Ready);
+    let mut story = seed_minimal(8002, BoardState::NotStarted);
     story.body = Some("# real body\n\ncached body content from prior hydrate".to_string());
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let seed = SeededStore::new(vec![], vec![], vec![]);
@@ -117,13 +117,13 @@ async fn get_story_does_not_call_adapter_fetch_body_when_body_missing() {
 #[tokio::test]
 async fn select_stories_to_hydrate_picks_active_states_with_missing_body() {
     use crate::bridge::select_stories_to_hydrate;
-    let mut active = seed_minimal(100, BoardState::Ready);
+    let mut active = seed_minimal(100, BoardState::NotStarted);
     active.body = None;
     let mut hydrated = seed_minimal(101, BoardState::InProgress);
     hydrated.body = Some("already-cached".to_string());
     let mut accepted = seed_minimal(102, BoardState::Accepted);
     accepted.body = None;
-    let mut icebox = seed_minimal(103, BoardState::Icebox);
+    let mut icebox = seed_minimal(103, BoardState::NotStarted);
     icebox.body = None;
     let mut delivered = seed_minimal(104, BoardState::Acceptance);
     delivered.body = None;
@@ -147,7 +147,7 @@ async fn select_stories_to_hydrate_caps_at_limit() {
     use crate::bridge::select_stories_to_hydrate;
     let stories: Vec<Story> = (0..10)
         .map(|i| {
-            let mut s = seed_minimal(200 + i, BoardState::Ready);
+            let mut s = seed_minimal(200 + i, BoardState::NotStarted);
             s.body = None;
             s
         })
@@ -160,7 +160,7 @@ async fn select_stories_to_hydrate_caps_at_limit() {
 #[tokio::test]
 async fn select_stories_to_hydrate_returns_empty_when_all_hydrated() {
     use crate::bridge::select_stories_to_hydrate;
-    let mut s = seed_minimal(300, BoardState::Ready);
+    let mut s = seed_minimal(300, BoardState::NotStarted);
     s.body = Some("already".to_string());
     let picks = select_stories_to_hydrate(&[s], 5, &current_iteration_of(&[300]));
     assert!(picks.is_empty(), "no missing-body stories = empty picks");
@@ -175,7 +175,7 @@ async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
     seed.bind_refresh(&orch);
     seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
         9000,
-        BoardState::Ready,
+        BoardState::NotStarted,
     )])));
     seed.dispatch(AppAction::Story(StoryAction::Event(
         StoryEvent::BodyFetched {
@@ -198,7 +198,7 @@ async fn local_body_mutate_invalidates_prior_etag() {
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch);
-    let mut seed = seed_minimal(9100, BoardState::Ready);
+    let mut seed = seed_minimal(9100, BoardState::NotStarted);
     seed.body = Some("v1".to_string());
     seed.body_etag = Some("W/\"etag-v1\"".to_string());
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed.clone()])));
@@ -258,7 +258,7 @@ async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh(
 async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
     use crate::sync::ConditionalBody;
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_minimal(9001, BoardState::Ready)]);
+    adapter.seed_stories(vec![seed_minimal(9001, BoardState::NotStarted)]);
     adapter.seed_body(9001, "real body".into());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
@@ -274,14 +274,14 @@ async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
 #[tokio::test]
 async fn select_stories_to_revalidate_picks_already_hydrated_active_stories() {
     use crate::bridge::select_stories_to_revalidate;
-    let mut active_with_body = seed_minimal(700, BoardState::Ready);
+    let mut active_with_body = seed_minimal(700, BoardState::NotStarted);
     active_with_body.body = Some("body".to_string());
     active_with_body.body_etag = Some("etag-700".to_string());
     let mut active_no_body = seed_minimal(701, BoardState::InProgress);
     active_no_body.body = None;
     let mut accepted_with_body = seed_minimal(702, BoardState::Accepted);
     accepted_with_body.body = Some("body".to_string());
-    let mut icebox_with_body = seed_minimal(703, BoardState::Icebox);
+    let mut icebox_with_body = seed_minimal(703, BoardState::NotStarted);
     icebox_with_body.body = Some("body".to_string());
     let stories = vec![
         active_with_body,
@@ -315,7 +315,7 @@ async fn select_stories_to_revalidate_caps_at_limit() {
     use crate::bridge::select_stories_to_revalidate;
     let stories: Vec<Story> = (0..10)
         .map(|i| {
-            let mut s = seed_minimal(800 + i, BoardState::Ready);
+            let mut s = seed_minimal(800 + i, BoardState::NotStarted);
             s.body = Some("body".to_string());
             s
         })
@@ -333,7 +333,7 @@ async fn get_story_returns_hydrated_flag_in_response() {
     seed.bind_refresh(&refresh);
     seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
         8004,
-        BoardState::Ready,
+        BoardState::NotStarted,
     )])));
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(8004));

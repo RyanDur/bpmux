@@ -105,7 +105,11 @@ async fn handler_errors_when_story_not_in_board() {
 
 #[tokio::test]
 async fn enriches_body_for_rejected_story_via_typed_gates() {
-    let story = make_story(443, BoardState::Ready, Some("original story body text"));
+    let story = make_story(
+        443,
+        BoardState::NotStarted,
+        Some("original story body text"),
+    );
     let gates = vec![
         CastVerdict {
             verdict: Verdict::Succeed {
@@ -162,7 +166,7 @@ async fn enriches_body_for_needs_fixes_story_via_typed_gates() {
 
 #[tokio::test]
 async fn does_not_enrich_body_for_non_rework_story() {
-    let story = make_story(100, BoardState::Ready, Some("original body"));
+    let story = make_story(100, BoardState::NotStarted, Some("original body"));
     let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 100});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
@@ -175,7 +179,7 @@ async fn does_not_enrich_body_for_non_rework_story() {
 
 #[tokio::test]
 async fn enriches_body_for_ready_story_post_reject_via_transition_history() {
-    let story = make_story(700, BoardState::Ready, Some("original body"));
+    let story = make_story(700, BoardState::NotStarted, Some("original body"));
     let gates = vec![
         CastVerdict {
             verdict: Verdict::Succeed {
@@ -286,7 +290,7 @@ async fn does_not_enrich_body_when_most_recent_transition_is_forward() {
 
 #[tokio::test]
 async fn skips_enrichment_when_no_rework_verdicts() {
-    let story = make_story(50, BoardState::Ready, Some("plain body"));
+    let story = make_story(50, BoardState::NotStarted, Some("plain body"));
     let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![(50, vec![])]).await;
     let args = serde_json::json!({"id": 50});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
@@ -319,7 +323,7 @@ async fn output_derives_is_closed_from_workflow_conclusion() {
 
 #[tokio::test]
 async fn stored_gh_mirror_never_reaches_the_wire_for_an_active_story() {
-    let story = make_story(102, BoardState::Ready, Some("body"));
+    let story = make_story(102, BoardState::NotStarted, Some("body"));
     let (_store, orch) =
         seeded_orchestrator_membered(vec![(story, Vec::new())], vec![], &[102]).await;
     let args = serde_json::json!({"id": 102});
@@ -352,7 +356,7 @@ async fn concluded_story_reports_closed_while_the_gh_close_is_still_pending() {
 
 #[tokio::test]
 async fn surfaces_typed_label_chips_and_never_state_labels() {
-    let story = make_story(1207, BoardState::Ready, Some("body"));
+    let story = make_story(1207, BoardState::NotStarted, Some("body"));
     let labels = vec![
         "bug".to_string(),
         "ready".to_string(),
@@ -390,7 +394,7 @@ async fn surfaces_typed_label_chips_and_never_state_labels() {
 
 #[tokio::test]
 async fn labels_reencode_from_typed_fields_without_state_synthesis() {
-    let story = make_story(1208, BoardState::Icebox, Some("body"));
+    let story = make_story(1208, BoardState::NotStarted, Some("body"));
     let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 1208});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
@@ -413,7 +417,7 @@ async fn labels_reencode_from_typed_fields_without_state_synthesis() {
 
 #[tokio::test]
 async fn cache_miss_eagerly_fetches_body_via_refresh_driver() {
-    let story = make_story(1226, BoardState::Ready, None);
+    let story = make_story(1226, BoardState::NotStarted, None);
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![story]);
     adapter.seed_body(
@@ -442,7 +446,7 @@ async fn cache_miss_eagerly_fetches_body_via_refresh_driver() {
 
 #[tokio::test]
 async fn cache_miss_returns_placeholder_when_the_fetch_cannot_hydrate() {
-    let story = make_story(1226, BoardState::Ready, None);
+    let story = make_story(1226, BoardState::NotStarted, None);
     let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 1226});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
@@ -463,7 +467,7 @@ async fn cache_miss_returns_placeholder_when_the_fetch_cannot_hydrate() {
 
 #[tokio::test]
 async fn cache_hit_does_not_refetch_when_body_already_present() {
-    let story = make_story(1226, BoardState::Ready, Some("already-cached body"));
+    let story = make_story(1226, BoardState::NotStarted, Some("already-cached body"));
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![story]);
     adapter.seed_body(
@@ -489,7 +493,7 @@ fn make_iteration(id: u64, name: &str, body: &str) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration {name}"),
-        BoardState::Ready,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -519,7 +523,7 @@ fn make_member(id: u64, title: &str, iteration_id: u64, position: u32) -> (Story
     let s = Story::new_minimal(
         StoryId::new(id),
         title.into(),
-        BoardState::Ready,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -661,7 +665,7 @@ async fn get_story_excludes_closed_member_stories_from_derivation_1462() {
 
 #[tokio::test]
 async fn rejected_story_hydrates_latest_reject_verbatim_via_read_through() {
-    let story = make_story(1524, BoardState::Ready, Some("base story body"));
+    let story = make_story(1524, BoardState::NotStarted, Some("base story body"));
     let reason = "drag srt does not persist and does not have the same drag css as the iteration";
     let gates = vec![
         CastVerdict {
@@ -715,7 +719,7 @@ async fn rejected_story_hydrates_latest_reject_verbatim_via_read_through() {
 
 #[tokio::test]
 async fn non_rejected_story_carries_no_latest_reject() {
-    let story = make_story(500, BoardState::Ready, Some("body"));
+    let story = make_story(500, BoardState::NotStarted, Some("body"));
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![story]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
@@ -739,7 +743,7 @@ async fn non_rejected_story_carries_no_latest_reject() {
 
 #[tokio::test]
 async fn latest_reject_survives_an_iteration_move() {
-    let story = make_story(1524, BoardState::Ready, Some("base body"));
+    let story = make_story(1524, BoardState::NotStarted, Some("base body"));
     let reason = "drag srt does not persist and does not have the same drag css as the iteration";
     let gates = vec![CastVerdict {
         verdict: Verdict::Fail {
@@ -795,7 +799,7 @@ async fn latest_reject_survives_an_iteration_move() {
 
 #[tokio::test]
 async fn get_story_stays_unhydrated_when_gate_fetch_fails() {
-    let story = make_story(442, BoardState::Ready, Some("body"));
+    let story = make_story(442, BoardState::NotStarted, Some("body"));
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.set_ingest_failures(true);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));

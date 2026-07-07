@@ -104,7 +104,7 @@ pub(super) fn stale_state_labels_for(
         other => other.github_label(),
     };
     let canonical_state_labels = [
-        BoardState::Ready.github_label(),
+        ProjectedState::Ready.github_label(),
         stage_github_label(Stage::Dev),
         stage_github_label(Stage::DeskCheck),
         BoardState::Acceptance.github_label(),

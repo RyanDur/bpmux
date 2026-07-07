@@ -31,7 +31,7 @@ async fn driver(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
 #[tokio::test]
 async fn returns_false_when_no_story_in_flight() {
     let refresh = driver(vec![
-        seed(BoardState::Ready, 1),
+        seed(BoardState::NotStarted, 1),
         seed(BoardState::Acceptance, 2),
         seed(BoardState::Accepted, 3),
     ])
@@ -43,7 +43,7 @@ async fn returns_false_when_no_story_in_flight() {
 #[tokio::test]
 async fn returns_true_when_a_story_is_in_progress() {
     let refresh = driver(vec![
-        seed(BoardState::Ready, 1),
+        seed(BoardState::NotStarted, 1),
         seed(BoardState::InProgress, 2),
         seed(BoardState::Acceptance, 3),
     ])

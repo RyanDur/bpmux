@@ -119,9 +119,9 @@ fn state_from_labels_retired_label_open_issue_returns_retired() {
 }
 
 #[test]
-fn state_from_labels_rejected_label_projects_to_ready() {
+fn state_from_labels_rejected_label_decodes_to_not_started_rework() {
     let labels = vec!["delivered".to_string(), "rejected".to_string()];
-    assert_eq!(state_from_labels(&labels, false), BoardState::Ready);
+    assert_eq!(state_from_labels(&labels, false), BoardState::NotStarted);
 }
 
 #[test]
@@ -149,19 +149,19 @@ fn state_from_labels_in_progress_resolves_alongside_a_stale_ready_label() {
 }
 
 #[test]
-fn state_from_labels_ready_label_is_not_a_scheduling_input_open_story_decodes_icebox() {
+fn state_from_labels_ready_label_is_not_a_scheduling_input_open_story_decodes_not_started() {
     let labels = vec!["ready".to_string()];
     assert_eq!(
         state_from_labels(&labels, false),
-        BoardState::Icebox,
+        BoardState::NotStarted,
         "the ready label stops resolving scheduling — a ready-labeled open story decodes to the stored fallback; current-iteration membership is the scheduling truth"
     );
 }
 
 #[test]
-fn state_from_labels_icebox_is_the_default() {
+fn state_from_labels_not_started_is_the_open_default() {
     let labels = vec!["Feature".to_string()];
-    assert_eq!(state_from_labels(&labels, false), BoardState::Icebox);
+    assert_eq!(state_from_labels(&labels, false), BoardState::NotStarted);
 }
 
 #[test]
@@ -172,10 +172,10 @@ fn state_from_labels_is_case_insensitive() {
 
 #[test]
 fn state_to_label_ready_is_outbound_only_the_decoder_ignores_it() {
-    let labels = vec![state_to_label(BoardState::Ready).to_string()];
+    let labels = vec![state_to_label(BoardState::NotStarted).to_string()];
     assert_eq!(
         state_from_labels(&labels, false),
-        BoardState::Icebox,
+        BoardState::NotStarted,
         "the outbound ready label is a human-readable mirror, never a decode input — scheduling decodes from iteration membership"
     );
 }
@@ -268,7 +268,7 @@ fn decode_story_metadata_forces_terminal_state_from_gh_state() {
     });
     assert_eq!(
         decode_story_metadata(&open).unwrap().state,
-        BoardState::Icebox,
+        BoardState::NotStarted,
         "an open issue with no state labels decodes to a non-terminal state"
     );
     assert_eq!(

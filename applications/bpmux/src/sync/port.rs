@@ -47,6 +47,11 @@ pub fn classify_close_error(msg: String) -> SyncError {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct PushContext {
+    pub member_of_current_iteration: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConditionalBody {
     NotModified,
@@ -116,6 +121,7 @@ pub trait SourceAdapter: Send + Sync {
     fn push_event(
         &self,
         event: &StoryEvent,
+        context: &PushContext,
     ) -> impl std::future::Future<Output = Result<Option<StoryEvent>, SyncError>> + Send;
 
     fn create_story(

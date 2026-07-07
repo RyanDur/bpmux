@@ -33,7 +33,7 @@ fn created(id: u64, title: &str) -> StoryEvent {
         id: StoryId::new(id),
         title: title.to_string(),
         body: "b".to_string(),
-        initial_state: BoardState::Ready,
+        initial_state: BoardState::NotStarted,
         story_type: StoryKind::Feature,
     }
 }
@@ -42,7 +42,7 @@ fn minimal_story(id: u64, title: &str) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        BoardState::Icebox,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 7, 3, 0, 0, 0).unwrap(),
         "pm".to_string(),
     )
@@ -57,7 +57,7 @@ fn an_orchestrator_write_is_synchronously_visible_through_its_own_reads() {
          (synchronous dispatch — read-your-write holds)",
     );
     assert_eq!(read_back.title, "written");
-    assert_eq!(read_back.state, BoardState::Ready);
+    assert_eq!(read_back.state, BoardState::NotStarted);
 }
 
 #[test]

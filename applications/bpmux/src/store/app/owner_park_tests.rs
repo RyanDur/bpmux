@@ -51,7 +51,10 @@ fn dev_member(presence: Presence) -> RosterMember {
 
 #[test]
 fn with_no_current_iteration_a_stored_ready_story_does_not_block_the_owner_park() {
-    let stories = vec![owner_parked_delivery(100), story(200, BoardState::Ready)];
+    let stories = vec![
+        owner_parked_delivery(100),
+        story(200, BoardState::NotStarted),
+    ];
     let changes = owner_park_presence(&stories, &[], &[dev_member(Presence::Online)], Some("dev"));
     assert_eq!(
         changes,
@@ -62,7 +65,10 @@ fn with_no_current_iteration_a_stored_ready_story_does_not_block_the_owner_park(
 
 #[test]
 fn a_projected_ready_member_keeps_the_ready_queue_non_empty_and_lifts_the_park() {
-    let stories = vec![owner_parked_delivery(100), story(200, BoardState::Icebox)];
+    let stories = vec![
+        owner_parked_delivery(100),
+        story(200, BoardState::NotStarted),
+    ];
     let changes = owner_park_presence(
         &stories,
         &current_iteration_of(&[200]),

@@ -274,7 +274,7 @@ async fn label_story_rejects_invalid_operation_in_migrated_path() {
     let seeded = Story::new_minimal(
         StoryId::new(42),
         "t".into(),
-        BoardState::Ready,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );

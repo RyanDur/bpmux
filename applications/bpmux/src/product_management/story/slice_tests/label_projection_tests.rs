@@ -26,7 +26,7 @@ fn acceptor_assigned_lands_typed_without_any_label_projection_1551() {
 #[test]
 fn tag_added_unknown_label_is_dropped() {
     let store = seeded();
-    created(&store, 1, "t", BoardState::Ready);
+    created(&store, 1, "t", BoardState::NotStarted);
     apply(
         &store,
         StoryEvent::TagAdded {
@@ -44,7 +44,7 @@ fn tag_added_unknown_label_is_dropped() {
 #[test]
 fn generic_label_churn_does_not_clobber_the_typed_tags_field() {
     let store = seeded();
-    created(&store, 1, "t", BoardState::Ready);
+    created(&store, 1, "t", BoardState::NotStarted);
     apply(
         &store,
         StoryEvent::TagSet {
@@ -86,7 +86,7 @@ fn story_created_event_carries_story_type() {
             id: StoryId::new(1),
             title: "t".to_string(),
             body: "b".to_string(),
-            initial_state: BoardState::Ready,
+            initial_state: BoardState::NotStarted,
             story_type: StoryKind::Bug,
         },
     );
@@ -100,7 +100,7 @@ fn story_created_event_carries_story_type() {
 #[test]
 fn labels_refreshed_assigns_the_ready_order_field_from_adapter_decoded_fields() {
     let store = seeded();
-    created(&store, 18, "orderable", BoardState::Ready);
+    created(&store, 18, "orderable", BoardState::NotStarted);
     assert_eq!(
         story_at(&store, 18).unwrap().ready_order(),
         None,

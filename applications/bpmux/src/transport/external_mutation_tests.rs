@@ -120,7 +120,7 @@ async fn external_label_change_propagates_to_bpmux_state_after_refresh() {
     let initial = refresh.story(202).expect("seeded story");
     assert_eq!(
         initial.state,
-        crate::product_management::story::BoardState::Icebox,
+        crate::product_management::story::BoardState::NotStarted,
         "no state-bearing label → Icebox"
     );
 
@@ -255,7 +255,7 @@ async fn external_re_open_returns_the_story_to_the_label_derived_state_after_ref
     let updated = refresh.story(505).expect("story still present");
     assert_eq!(
         updated.state,
-        crate::product_management::story::BoardState::Icebox,
+        crate::product_management::story::BoardState::NotStarted,
         "post-refresh, an externally-reopened issue with no labels returns to icebox"
     );
 }
@@ -313,7 +313,7 @@ async fn external_label_remove_clears_state_back_to_icebox_after_refresh() {
     let updated = refresh.story(606).expect("story still present");
     assert_eq!(
         updated.state,
-        crate::product_management::story::BoardState::Icebox,
+        crate::product_management::story::BoardState::NotStarted,
         "post-refresh, bpmux state clears back to Icebox after externally-removed label"
     );
 }

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::product_management::iteration::IterationId;
 use crate::product_management::iteration::label::current_iteration_id;
-use crate::product_management::story::{BoardState, StoryId};
+use crate::product_management::story::StoryId;
 use crate::sync::RefreshDriver;
 
 use super::target::TargetState;
@@ -15,7 +15,7 @@ pub(super) fn resolve_scheduling_target(
     let is_epic = r
         .epic(crate::product_management::epic::EpicId::new(id))
         .is_some();
-    if is_epic || !matches!(target, TargetState::Workflow(BoardState::Ready)) {
+    if is_epic || !matches!(target, TargetState::Ready) {
         return Ok(None);
     }
     match current_iteration_id(&r.iterations()) {
@@ -36,7 +36,7 @@ pub(super) async fn apply_scheduling(
     position: Option<usize>,
     scheduling_target: Option<IterationId>,
 ) -> Result<(), String> {
-    if matches!(target, TargetState::Workflow(BoardState::Icebox)) {
+    if matches!(target, TargetState::Icebox) {
         crate::bridge::tools_stories::iteration_members::remove_member_everywhere(r, dispatch, id)
             .await
             .map_err(|e| format!("#{id} unschedule (iteration-member removal) failed: {e}"))?;

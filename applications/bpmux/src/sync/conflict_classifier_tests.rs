@@ -35,7 +35,7 @@ fn seed_story(id: u64, state: BoardState) -> Story {
 #[tokio::test]
 async fn mutate_captures_pre_state_snapshot_before_local_apply() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(500, BoardState::Ready)]);
+    adapter.seed_stories(vec![seed_story(500, BoardState::NotStarted)]);
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("outbox.json");
     let orch = Arc::new(SyncOrchestrator::with_outbox_path(adapter, path.clone()).unwrap());
@@ -60,7 +60,7 @@ async fn mutate_captures_pre_state_snapshot_before_local_apply() {
         .expect("pre_state captured at queue-time");
     assert_eq!(
         pre.state,
-        BoardState::Ready,
+        BoardState::NotStarted,
         "pre_state must reflect the pre-mutation state, not post"
     );
     assert!(matches!(
@@ -148,7 +148,7 @@ async fn outbox_round_trips_new_shape_through_disk() {
 
 #[test]
 fn classify_conflict_returns_none_for_slice_a_pending_real_classifier() {
-    let pre = seed_story(1, BoardState::Ready);
+    let pre = seed_story(1, BoardState::NotStarted);
     let cur = seed_story(1, BoardState::InProgress);
     let event = StoryEvent::StateTransitioned {
         meta: meta(),
@@ -170,7 +170,7 @@ fn conflict_kind_serde_round_trip() {
 #[tokio::test]
 async fn drain_resets_conflicts_pending_to_zero_in_slice_a() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(800, BoardState::Ready)]);
+    adapter.seed_stories(vec![seed_story(800, BoardState::NotStarted)]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();

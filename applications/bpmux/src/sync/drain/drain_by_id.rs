@@ -50,7 +50,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     server_story: current.map(Box::new),
                 }
             }
-            None => match self.adapter.push_event(&event).await {
+            None => match self
+                .adapter
+                .push_event(&event, &self.push_context_for(&event))
+                .await
+            {
                 Ok(follow_up) => {
                     self.remove_pending_by_id(id);
                     self.persist_outbox();

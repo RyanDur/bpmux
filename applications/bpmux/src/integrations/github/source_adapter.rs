@@ -120,8 +120,12 @@ impl SourceAdapter for GitHubSourceAdapter {
         Ok(decode_verdicts(&raw))
     }
 
-    async fn push_event(&self, event: &StoryEvent) -> Result<Option<StoryEvent>, SyncError> {
-        mutation::apply_push_event(&self.inner, event).await
+    async fn push_event(
+        &self,
+        event: &StoryEvent,
+        context: &crate::sync::PushContext,
+    ) -> Result<Option<StoryEvent>, SyncError> {
+        mutation::apply_push_event(&self.inner, event, context).await
     }
 
     async fn create_story(

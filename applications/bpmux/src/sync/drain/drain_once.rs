@@ -97,7 +97,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 }
                 None => {}
             }
-            match self.adapter.push_event(&event).await {
+            match self
+                .adapter
+                .push_event(&event, &self.push_context_for(&event))
+                .await
+            {
                 Ok(follow_up) => {
                     self.with_pending_mut(|p| {
                         if conflict_offset == 0 {

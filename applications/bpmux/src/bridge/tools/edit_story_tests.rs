@@ -21,7 +21,7 @@ fn seed_story(id: u64, title: &str, body: &str) -> Story {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        BoardState::Ready,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );

@@ -93,7 +93,7 @@ fn a_config_defined_third_middle_stage_renders_as_its_own_column_in_order() {
 #[test]
 fn default_scope_is_unchanged_full_board() {
     let stories = vec![
-        story(1, "ready one", BoardState::Ready),
+        story(1, "ready one", BoardState::NotStarted),
         story(2, "in-progress one", BoardState::InProgress),
     ];
     let out = build_board_text(
@@ -112,7 +112,7 @@ fn default_scope_is_unchanged_full_board() {
 
 #[test]
 fn a_card_surfaces_its_acceptor_so_the_team_sees_who_accepts() {
-    let mut s = story(77, "acceptor-visible", BoardState::Ready);
+    let mut s = story(77, "acceptor-visible", BoardState::NotStarted);
     s.acceptor = Some(crate::product_management::story::Acceptor::Owner);
     let stories = [s];
     let out = build_board_text(
@@ -131,7 +131,7 @@ fn a_card_surfaces_its_acceptor_so_the_team_sees_who_accepts() {
 
 #[test]
 fn a_card_without_an_acceptor_renders_no_acceptor_segment() {
-    let stories = [story(78, "no-acceptor-yet", BoardState::Ready)];
+    let stories = [story(78, "no-acceptor-yet", BoardState::NotStarted)];
     let out = build_board_text(
         &[],
         &stories,
@@ -149,7 +149,7 @@ fn a_card_without_an_acceptor_renders_no_acceptor_segment() {
 #[test]
 fn state_scope_renders_only_the_matching_bucket() {
     let stories = vec![
-        story(1, "ready one", BoardState::Ready),
+        story(1, "ready one", BoardState::NotStarted),
         story(2, "in-progress one", BoardState::InProgress),
     ];
     let scope = BoardScope {
@@ -172,8 +172,8 @@ fn state_scope_renders_only_the_matching_bucket() {
 #[test]
 fn iteration_scope_excludes_other_iterations() {
     let stories = vec![
-        story(10, "iter-one story", BoardState::Ready),
-        story(20, "iter-two story", BoardState::Ready),
+        story(10, "iter-one story", BoardState::NotStarted),
+        story(20, "iter-two story", BoardState::NotStarted),
     ];
     let iterations = vec![iteration_with(1, &[10]), iteration_with(2, &[20])];
     let scope = BoardScope {
@@ -194,7 +194,7 @@ fn iteration_scope_excludes_other_iterations() {
 
 #[test]
 fn iteration_scope_derives_membership_from_the_container_not_the_story() {
-    let stories = vec![story(30, "container-membered", BoardState::Ready)];
+    let stories = vec![story(30, "container-membered", BoardState::NotStarted)];
     let iterations = vec![iteration_with(5, &[30])];
     let scope = BoardScope {
         iteration: Some(5),
@@ -217,7 +217,7 @@ fn iteration_scope_derives_membership_from_the_container_not_the_story() {
 #[test]
 fn row_limit_caps_entries_but_count_reflects_full_total() {
     let stories: Vec<Story> = (0..10)
-        .map(|i| story(100 + i, &format!("ready {i}"), BoardState::Ready))
+        .map(|i| story(100 + i, &format!("ready {i}"), BoardState::NotStarted))
         .collect();
     let members: Vec<u64> = (0..10).map(|i| 100 + i).collect();
     let scope = BoardScope {
@@ -245,7 +245,7 @@ fn large_board_scoped_is_ingestible_while_full_is_not() {
                     "story {i} with a sufficiently long descriptive title to inflate the full board payload"
                 );
                 let state = if i % 2 == 0 {
-                    BoardState::Ready
+                    BoardState::NotStarted
                 } else {
                     BoardState::Accepted
                 };

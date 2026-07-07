@@ -6,7 +6,7 @@ use crate::product_management::story::{BoardState, StoryId};
 #[test]
 fn parent_epic_set_event_decodes_into_the_stored_parent_epic_field() {
     let store = seeded();
-    created(&store, 12, "child story", BoardState::Icebox);
+    created(&store, 12, "child story", BoardState::NotStarted);
     assert_eq!(
         story_at(&store, 12).unwrap().parent_epic(),
         None,
@@ -30,7 +30,7 @@ fn parent_epic_set_event_decodes_into_the_stored_parent_epic_field() {
 #[test]
 fn parent_epic_set_event_makes_story_read_its_parent_epic() {
     let store = seeded();
-    created(&store, 100, "child", BoardState::Ready);
+    created(&store, 100, "child", BoardState::NotStarted);
     apply(
         &store,
         StoryEvent::ParentEpicSet {
@@ -48,7 +48,7 @@ fn parent_epic_set_event_makes_story_read_its_parent_epic() {
 #[test]
 fn parent_epic_unset_event_makes_story_read_no_parent_epic() {
     let store = seeded();
-    created(&store, 101, "child", BoardState::Ready);
+    created(&store, 101, "child", BoardState::NotStarted);
     apply(
         &store,
         StoryEvent::ParentEpicSet {

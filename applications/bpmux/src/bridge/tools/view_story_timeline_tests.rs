@@ -227,7 +227,7 @@ async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
     let story = Story::new_minimal(
         StoryId::new(1524),
         "title".into(),
-        BoardState::Ready,
+        BoardState::NotStarted,
         Utc.with_ymd_and_hms(2026, 6, 6, 0, 0, 0).unwrap(),
         "pm".into(),
     );

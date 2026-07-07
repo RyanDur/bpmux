@@ -15,11 +15,18 @@ use super::mutation_events::{
 pub(super) async fn apply_push_event(
     inner: &OctocrabStoryTracker,
     event: &StoryEvent,
+    context: &crate::sync::PushContext,
 ) -> Result<Option<StoryEvent>, SyncError> {
     match event {
         StoryEvent::StoryCreated { .. } => Ok(None),
         StoryEvent::StateTransitioned { id, new_state, .. } => {
-            push_state_transitioned(inner, id.value(), new_state.clone()).await
+            push_state_transitioned(
+                inner,
+                id.value(),
+                new_state.clone(),
+                context.member_of_current_iteration,
+            )
+            .await
         }
         StoryEvent::StoryClosed { id, reason, .. } => {
             push_story_closed(inner, id.value(), reason).await

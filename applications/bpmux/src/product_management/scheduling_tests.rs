@@ -33,29 +33,20 @@ fn iteration(id: u64, is_current: bool, complete: bool, story_ids: &[u64]) -> It
 }
 
 #[test]
-fn a_stored_ready_story_in_the_current_iteration_projects_ready() {
+fn a_not_started_member_of_the_current_iteration_projects_ready() {
     let iterations = [iteration(1, true, false, &[10])];
     assert_eq!(
-        projected_state(&story(10, BoardState::Ready), &iterations),
+        projected_state(&story(10, BoardState::NotStarted), &iterations),
         ProjectedState::Ready
     );
 }
 
 #[test]
-fn a_stored_ready_story_outside_the_current_iteration_projects_icebox() {
+fn a_not_started_story_outside_the_current_iteration_projects_icebox() {
     let iterations = [iteration(1, true, false, &[10])];
     assert_eq!(
-        projected_state(&story(99, BoardState::Ready), &iterations),
+        projected_state(&story(99, BoardState::NotStarted), &iterations),
         ProjectedState::Icebox
-    );
-}
-
-#[test]
-fn a_stored_icebox_story_in_the_current_iteration_projects_ready() {
-    let iterations = [iteration(1, true, false, &[10])];
-    assert_eq!(
-        projected_state(&story(10, BoardState::Icebox), &iterations),
-        ProjectedState::Ready
     );
 }
 
@@ -66,7 +57,7 @@ fn a_story_in_a_future_iteration_projects_icebox() {
         iteration(2, false, false, &[20]),
     ];
     assert_eq!(
-        projected_state(&story(20, BoardState::Ready), &iterations),
+        projected_state(&story(20, BoardState::NotStarted), &iterations),
         ProjectedState::Icebox
     );
 }
@@ -91,11 +82,7 @@ fn a_non_not_started_state_passes_through_untouched() {
 fn with_no_current_iteration_designated_nothing_projects_ready() {
     let iterations = [iteration(2, false, false, &[10])];
     assert_eq!(
-        projected_state(&story(10, BoardState::Ready), &iterations),
-        ProjectedState::Icebox
-    );
-    assert_eq!(
-        projected_state(&story(10, BoardState::Icebox), &iterations),
+        projected_state(&story(10, BoardState::NotStarted), &iterations),
         ProjectedState::Icebox
     );
 }
@@ -104,7 +91,7 @@ fn with_no_current_iteration_designated_nothing_projects_ready() {
 fn a_complete_but_still_current_iteration_does_not_count_as_current() {
     let iterations = [iteration(1, true, true, &[10])];
     assert_eq!(
-        projected_state(&story(10, BoardState::Ready), &iterations),
+        projected_state(&story(10, BoardState::NotStarted), &iterations),
         ProjectedState::Icebox
     );
 }

@@ -10,7 +10,7 @@ pub fn stage_github_label(stage: Stage) -> &'static str {
 
 pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
     let state_labels = [
-        BoardState::Ready.github_label(),
+        crate::product_management::scheduling::ProjectedState::Ready.github_label(),
         stage_github_label(Stage::Dev),
         stage_github_label(Stage::DeskCheck),
         BoardState::Acceptance.github_label(),
@@ -55,7 +55,7 @@ pub(super) fn resolve_state_and_placement(
         return (BoardState::Accepted, None);
     }
     if has("rejected") {
-        return (BoardState::Ready, None);
+        return (BoardState::NotStarted, None);
     }
     if has("needs fixes") {
         return (BoardState::InProgress, None);
@@ -72,13 +72,22 @@ pub(super) fn resolve_state_and_placement(
     if has(stage_github_label(Stage::Dev)) {
         return (BoardState::InProgress, None);
     }
-    (BoardState::Icebox, None)
+    (BoardState::NotStarted, None)
 }
 
 pub fn state_to_label(state: BoardState) -> &'static str {
     state.github_label()
 }
 
-pub fn outbound_state_label(state: &BoardState) -> &'static str {
-    state.github_label()
+pub fn outbound_state_label(
+    state: &BoardState,
+    member_of_current_iteration: bool,
+) -> Option<&'static str> {
+    match state {
+        BoardState::NotStarted if member_of_current_iteration => {
+            Some(crate::product_management::scheduling::ProjectedState::Ready.github_label())
+        }
+        BoardState::NotStarted => None,
+        other => Some(other.github_label()),
+    }
 }

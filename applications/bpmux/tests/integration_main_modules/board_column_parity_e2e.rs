@@ -76,8 +76,8 @@ fn renderer_column_projection_agrees_with_rust_over_the_reachable_wire_space() {
     let non_member: Vec<Iteration> = Vec::new();
     let member = current_iteration_of(&[1]);
     let reachable: [(BoardState, Option<Stage>, &[Iteration], &str); 7] = [
-        (BoardState::Icebox, None, &non_member, "icebox"),
-        (BoardState::Ready, None, &member, "ready"),
+        (BoardState::NotStarted, None, &non_member, "icebox"),
+        (BoardState::NotStarted, None, &member, "ready"),
         (
             BoardState::InProgress,
             Some(Stage::Dev),
@@ -119,12 +119,12 @@ fn renderer_legacy_wire_states_still_bucket_into_live_columns() {
 #[test]
 fn open_workflow_states_bucket_one_to_one_to_their_columns() {
     assert_eq!(
-        column_of(&story_in(BoardState::Icebox), None, &[]),
+        column_of(&story_in(BoardState::NotStarted), None, &[]),
         Column::Icebox
     );
     assert_eq!(
         column_of(
-            &story_in(BoardState::Ready),
+            &story_in(BoardState::NotStarted),
             None,
             &current_iteration_of(&[1])
         ),
@@ -144,7 +144,7 @@ fn open_workflow_states_bucket_one_to_one_to_their_columns() {
 fn a_stored_ready_story_outside_the_current_iteration_buckets_to_icebox() {
     assert_eq!(
         column_of(
-            &story_in(BoardState::Ready),
+            &story_in(BoardState::NotStarted),
             None,
             &current_iteration_of(&[])
         ),
@@ -152,7 +152,7 @@ fn a_stored_ready_story_outside_the_current_iteration_buckets_to_icebox() {
         "ready-ness derives from current-iteration membership — a stored-Ready non-member is icebox on the board"
     );
     assert_eq!(
-        column_of(&story_in(BoardState::Ready), None, &[]),
+        column_of(&story_in(BoardState::NotStarted), None, &[]),
         Column::Icebox,
         "with no iteration at all, nothing is ready"
     );
