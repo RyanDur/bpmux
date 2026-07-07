@@ -8,8 +8,8 @@ pub(crate) fn ordered_board_stories(
     let items: Vec<serde_json::Value> = all
         .iter()
         .map(|s| {
-            let state = crate::board::state_label(&s.state, refresh.story_fine_stage(s));
-            crate::view::board::story_to_board_json(&codec, s, state)
+            let state = crate::board::wire_state(&s.state, refresh.story_held_stage(s).as_ref());
+            crate::view::board::story_to_board_json(&codec, s, &state)
         })
         .collect();
     let current_order: Vec<u64> = refresh
@@ -25,6 +25,43 @@ pub(crate) fn board_stories(
     refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
     ordered_board_stories(refresh)
+}
+
+pub(crate) fn board_columns_json() -> Vec<serde_json::Value> {
+    let workflow = crate::workflow::current_workflow();
+    let middle = crate::workflow::board_middle_stage_ids(workflow);
+    crate::view::board::arrangement::board_columns(&middle)
+        .iter()
+        .map(|column| {
+            let id = column_wire_id(column);
+            serde_json::json!({ "id": id, "label": title_case(&id) })
+        })
+        .collect()
+}
+
+fn column_wire_id(column: &crate::view::board::arrangement::Column) -> String {
+    use crate::view::board::arrangement::Column;
+    match column {
+        Column::Icebox => "icebox".to_string(),
+        Column::Ready => "ready".to_string(),
+        Column::Middle(stage) => stage.as_str().to_string(),
+        Column::Acceptance => "acceptance".to_string(),
+        Column::Accepted => "accepted".to_string(),
+        Column::Retired => "retired".to_string(),
+    }
+}
+
+fn title_case(id: &str) -> String {
+    id.split('-')
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<String>>()
+        .join(" ")
 }
 
 pub(crate) fn board_epics(refresh: &Arc<dyn crate::sync::RefreshDriver>) -> Vec<serde_json::Value> {

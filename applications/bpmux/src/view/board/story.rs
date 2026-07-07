@@ -8,7 +8,7 @@ use crate::product_management::story::{Story, most_recent_needs_work};
 pub struct StoryView {
     pub id: u64,
     pub title: String,
-    pub state: &'static str,
+    pub state: String,
     pub gh_state: &'static str,
     pub labels: Vec<String>,
     pub parent_epic: Option<EpicId>,
@@ -20,11 +20,11 @@ pub struct StoryView {
 }
 
 impl StoryView {
-    pub fn project<C: LabelCodec>(codec: &C, story: &Story, state: &'static str) -> Self {
+    pub fn project<C: LabelCodec>(codec: &C, story: &Story, state: &str) -> Self {
         Self {
             id: story.id.value(),
             title: story.title().to_string(),
-            state,
+            state: state.to_string(),
             gh_state: if story.is_concluded() {
                 "closed"
             } else {

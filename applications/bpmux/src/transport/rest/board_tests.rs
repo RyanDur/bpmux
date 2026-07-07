@@ -128,3 +128,30 @@ async fn board_iterations_carry_the_outcome_membership_join_key_for_the_drill() 
         "and its 1-based position within that outcome's ordered list, so the drill orders without a second round-trip"
     );
 }
+
+#[test]
+fn board_columns_json_lists_the_configured_columns_in_order() {
+    let columns = super::board::board_columns_json();
+    let ids: Vec<&str> = columns.iter().filter_map(|c| c["id"].as_str()).collect();
+    assert_eq!(
+        ids,
+        vec![
+            "icebox",
+            "ready",
+            "in-progress",
+            "desk-check",
+            "acceptance",
+            "accepted",
+            "retired"
+        ],
+        "the wire's columns are the config skeleton with the CONFIGURED middle stages in order"
+    );
+    let desk_check = columns
+        .iter()
+        .find(|c| c["id"] == "desk-check")
+        .expect("desk-check column present under the team config");
+    assert_eq!(
+        desk_check["label"], "Desk Check",
+        "labels render title-case from the stage id"
+    );
+}

@@ -105,9 +105,12 @@ pub fn fine_stage(story: &Story, board: &BoardPlacements) -> Option<Stage> {
 
 pub fn held_stage(story: &Story, board: &BoardPlacements) -> Option<StageId> {
     match &story.state {
-        BoardState::InProgress => {
-            Some(placement_of(board, story.id).unwrap_or_else(|| Stage::Dev.id()))
-        }
+        BoardState::InProgress => Some(placement_of(board, story.id).unwrap_or_else(|| {
+            crate::workflow::board_middle_stage_ids(crate::workflow::current_workflow())
+                .first()
+                .cloned()
+                .unwrap_or_else(|| Stage::Dev.id())
+        })),
         _ => None,
     }
 }
@@ -149,6 +152,13 @@ pub fn state_label(coarse: &BoardState, fine: Option<Stage>) -> &'static str {
         Some(Stage::DeskCheck) => "desk-check",
         Some(Stage::Dev) => "in-progress",
         None => coarse.as_str(),
+    }
+}
+
+pub fn wire_state(coarse: &BoardState, held: Option<&StageId>) -> String {
+    match (coarse, held) {
+        (BoardState::InProgress, Some(stage)) => stage.as_str().to_string(),
+        _ => coarse.as_str().to_string(),
     }
 }
 

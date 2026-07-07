@@ -32,6 +32,7 @@ pub async fn get_board(
         }
         let body = serde_json::json!({
             "stories": ordered_board_stories(refresh),
+            "columns": super::board::board_columns_json(),
             "fetched_at": chrono::Utc::now().to_rfc3339(),
         });
         return (StatusCode::OK, json_headers(), body.to_string());
@@ -49,6 +50,7 @@ pub async fn get_board(
                 crate::view::board::ready_order_label::sort_board_ready_by_membership(stories, &[]);
             let body = serde_json::json!({
                 "stories": ordered,
+                "columns": super::board::board_columns_json(),
                 "fetched_at": chrono::Utc::now().to_rfc3339(),
             });
             (StatusCode::OK, json_headers(), body.to_string())
