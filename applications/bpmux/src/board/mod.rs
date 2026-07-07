@@ -179,13 +179,34 @@ fn backward_target_id(from_id: &str, workflow: &WorkflowConfig) -> Option<String
         .map(|t| t.to.clone())
 }
 
+fn default_fail_target_id(from_id: &str, workflow: &WorkflowConfig) -> Option<String> {
+    let middle = crate::workflow::board_middle_stage_ids(workflow);
+    let stage_index = middle.iter().position(|stage| stage.as_str() == from_id)?;
+    match stage_index {
+        0 => Some(from_id.to_string()),
+        n => Some(middle[n - 1].as_str().to_string()),
+    }
+}
+
+fn fail_target_id(from_id: &str, workflow: &WorkflowConfig) -> Option<String> {
+    workflow
+        .fail_to_of(from_id)
+        .map(str::to_string)
+        .or_else(|| backward_target_id(from_id, workflow))
+        .or_else(|| default_fail_target_id(from_id, workflow))
+}
+
 pub fn advance(verdict: &Verdict, workflow: &WorkflowConfig) -> Option<Decision> {
     let target_id = match verdict {
         Verdict::Succeed { step } => next_state_id_in_order(step.as_str(), workflow)?,
-        Verdict::Fail { step } => backward_target_id(step.as_str(), workflow)?,
+        Verdict::Fail { step } => fail_target_id(step.as_str(), workflow)?,
     };
-    let coarse = BoardState::parse(&target_id)?;
     let middle = crate::workflow::board_middle_stage_ids(workflow);
+    let coarse = if middle.iter().any(|stage| stage.as_str() == target_id) {
+        BoardState::InProgress
+    } else {
+        BoardState::parse(&target_id)?
+    };
     Some(Decision {
         coarse,
         placement: placement_from_target(&target_id, &middle),

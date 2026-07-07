@@ -11,7 +11,7 @@ mod transition;
 
 pub use ci::{CiSnapshot, check_ci_green};
 pub use freshness::{EvidenceMessage, VerdictState, check_evidence_present, verdict_freshness};
-pub use role::{check_role_allowed, enforce_role_allowed};
+pub use role::{check_role_allowed, enforce_role_allowed, enforce_stage_judge};
 pub use transition::{
     PriorFire, check_self_mutation_refused, check_target_state_valid, resolve_transition,
 };

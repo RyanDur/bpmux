@@ -31,6 +31,66 @@ fn accept_dev_verifiable() -> Transition {
         .expect("bundled-default has dev-verifiable accept (chore-ownership-triad)")
 }
 
+mod stage_judge {
+    use super::super::gate::enforce_stage_judge;
+    use super::super::test_support::repo_workflow;
+    use super::*;
+
+    #[test]
+    fn no_judges_configured_means_anyone_may_judge() {
+        let workflow = bundled_default();
+        assert!(
+            enforce_stage_judge(&workflow, "in-progress", "designer", "designer:anyagent").is_ok()
+        );
+        assert!(enforce_stage_judge(&workflow, "in-progress", "pm", "pm:anyagent").is_ok());
+    }
+
+    #[test]
+    fn a_configured_judge_role_admits_that_role_and_refuses_others() {
+        let workflow = repo_workflow();
+        assert!(
+            enforce_stage_judge(&workflow, "desk-check", "designer", "designer:claude-code")
+                .is_ok()
+        );
+        let err = enforce_stage_judge(&workflow, "desk-check", "dev", "dev:claude-code")
+            .expect_err("dev is not desk-check's judge");
+        match err {
+            GateError::RoleNotAllowed {
+                actor_role,
+                attempted_transition,
+                allowed_roles,
+            } => {
+                assert_eq!(actor_role, "dev");
+                assert_eq!(attempted_transition, "judge:desk-check");
+                assert_eq!(allowed_roles, vec!["designer".to_string()]);
+            }
+            other => panic!("expected RoleNotAllowed, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_full_agent_id_judge_admits_exactly_that_agent() {
+        let mut workflow = bundled_default();
+        workflow
+            .state
+            .iter_mut()
+            .find(|s| s.id == "in-progress")
+            .expect("in-progress state")
+            .judges = vec!["qa:claude-code".to_string()];
+        assert!(enforce_stage_judge(&workflow, "in-progress", "qa", "qa:claude-code").is_ok());
+        assert!(
+            enforce_stage_judge(&workflow, "in-progress", "qa", "qa:other-agent").is_err(),
+            "an agent-id judge names ONE agent, not its whole role"
+        );
+    }
+
+    #[test]
+    fn owner_bypasses_a_configured_judge() {
+        let workflow = repo_workflow();
+        assert!(enforce_stage_judge(&workflow, "desk-check", "owner", "owner:human").is_ok());
+    }
+}
+
 #[test]
 fn owner_bypasses_team_verifiable_accept_via_superset_not_actor_list() {
     assert!(
