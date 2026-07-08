@@ -179,11 +179,12 @@ async fn drain_once_handles_multiple_events_in_order() {
 }
 
 #[tokio::test]
-async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
+async fn ingest_preserves_an_in_flight_label_mutation_against_a_pre_drain_refresh() {
+    use crate::product_management::story::Tag;
+
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = seed_story(1687, Work::NotStarted);
     adapter.seed_stories(vec![seeded]);
-    adapter.seed_labels(1687, vec!["iteration-Pegasus.125".to_string()]);
     let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
@@ -191,44 +192,31 @@ async fn ingest_preserves_an_in_flight_reorder_against_a_pre_drain_refresh() {
 
     orchestrator.ingest_once().await.unwrap();
     assert_eq!(
-        orchestrator
-            .story(1687)
-            .unwrap()
-            .iteration_slot()
-            .map(|slot| slot.position),
-        Some(125),
-        "baseline: story starts slotted at the old position"
+        orchestrator.story(1687).unwrap().tags(),
+        &[] as &[Tag],
+        "baseline: the source carries no tag yet"
     );
 
     orchestrator
         .mutate(StoryEvent::new(
             meta(),
             StoryId::new(1687),
-            StoryEventKind::IterationSlotSet {
-                name: "Pegasus".to_string(),
-                position: 106,
+            StoryEventKind::TagSet {
+                tag: Tag::DeskCheckFail,
             },
         ))
         .unwrap();
     assert_eq!(
-        orchestrator
-            .story(1687)
-            .unwrap()
-            .iteration_slot()
-            .map(|slot| slot.position),
-        Some(106),
-        "optimistic reorder moves the story to the new position"
+        orchestrator.story(1687).unwrap().tags(),
+        &[Tag::DeskCheckFail],
+        "optimistic label mutation lands the tag"
     );
 
     orchestrator.ingest_once().await.unwrap();
 
     assert_eq!(
-        orchestrator
-            .story(1687)
-            .unwrap()
-            .iteration_slot()
-            .map(|slot| slot.position),
-        Some(106),
-        "a refresh that reads the source before the reorder's write has drained must NOT clobber the un-acknowledged optimistic position"
+        orchestrator.story(1687).unwrap().tags(),
+        &[Tag::DeskCheckFail],
+        "a refresh that reads the source before the mutation's write has drained must NOT clobber the un-acknowledged optimistic tag"
     );
 }

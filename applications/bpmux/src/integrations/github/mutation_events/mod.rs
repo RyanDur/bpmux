@@ -3,7 +3,6 @@ use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 mod acceptor;
 mod comments;
 mod grouping;
-mod iteration_slot;
 mod labels;
 mod lifecycle;
 
@@ -12,9 +11,6 @@ pub(in crate::integrations::github) use comments::{push_free_comment_appended, p
 pub(in crate::integrations::github) use grouping::{
     push_current_iteration_cleared, push_current_iteration_designated, push_parent_epic_set,
     push_parent_epic_unset,
-};
-pub(in crate::integrations::github) use iteration_slot::{
-    push_iteration_slot_cleared, push_iteration_slot_set,
 };
 pub(in crate::integrations::github) use labels::{push_tag_added, push_tag_removed};
 pub(in crate::integrations::github) use lifecycle::{

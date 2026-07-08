@@ -1,16 +1,9 @@
 export const ITERATION_PREFIX = 'iteration-'
 export const ITERATION_ORDER_PREFIX = 'iteration-order.'
 export const PARENT_ITERATION_PREFIX = 'parent-iteration-#'
-export const UNSCHEDULED_ITERATION_NAME = 'Unscheduled'
-export const UNSCHEDULED_LABEL_PREFIX = `${ITERATION_PREFIX}${UNSCHEDULED_ITERATION_NAME}.`
 
 const ITERATION_LABEL_RE = /^iteration-(.+)\.(\d+)$/
 const PARENT_ITERATION_LABEL_RE = /^parent-iteration-#(\d+)\.(\d+)$/
-
-export interface IterationLabelParts {
-  name: string
-  position: number
-}
 
 export interface ParentIterationLabelParts {
   iterationId: number
@@ -27,21 +20,6 @@ export const parseParentIterationLabel = (label: string): ParentIterationLabelPa
   const match = label.match(PARENT_ITERATION_LABEL_RE)
   if (match === null) return null
   return { iterationId: parseInt(match[1], 10), position: parseInt(match[2], 10) }
-}
-
-export const unscheduledLabel = (position: number): string =>
-  `${UNSCHEDULED_LABEL_PREFIX}${position}`
-
-export const parseIterationLabel = (label: string): IterationLabelParts | null => {
-  const match = label.match(ITERATION_LABEL_RE)
-  if (match === null) return null
-  return { name: match[1], position: parseInt(match[2], 10) }
-}
-
-export const parseUnscheduledPosition = (label: string): number | null => {
-  if (!label.startsWith(UNSCHEDULED_LABEL_PREFIX)) return null
-  const n = parseInt(label.slice(UNSCHEDULED_LABEL_PREFIX.length), 10)
-  return Number.isNaN(n) ? null : n
 }
 
 export const isIterationPositionLabel = (label: string): boolean => {

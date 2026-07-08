@@ -31,11 +31,6 @@ pub enum StoryEventKind {
     TagUnset {
         tag: Tag,
     },
-    IterationSlotSet {
-        name: String,
-        position: u32,
-    },
-    IterationSlotCleared,
     VerdictCast {
         verdict: Verdict,
         payload: Option<String>,

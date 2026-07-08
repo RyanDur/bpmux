@@ -6,8 +6,7 @@ import {
   buildMembershipIndex,
   isIterationStory,
   isLooseStory,
-  positionInParentIteration,
-  positionInUnscheduled
+  positionInParentIteration
 } from './iterationMembers'
 
 export interface IterationMember {
@@ -21,14 +20,7 @@ export interface UseIterationMembersResult {
   setPending: (storyId: number, iterationId: number, position: number) => void
 }
 
-const compareLoose = (a: Story, b: Story): number => {
-  const ap = positionInUnscheduled(a)
-  const bp = positionInUnscheduled(b)
-  if (ap !== null && bp !== null) return ap - bp
-  if (ap !== null) return -1
-  if (bp !== null) return 1
-  return a.id - b.id
-}
+const compareLoose = (a: Story, b: Story): number => a.id - b.id
 
 export const useIterationMembers = (
   stories: Story[],

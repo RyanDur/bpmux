@@ -173,6 +173,30 @@ async fn a_move_to_ready_without_a_current_iteration_is_refused_before_mutating(
     );
 }
 
+#[tokio::test]
+async fn a_positioned_move_to_icebox_is_refused_because_the_icebox_is_unordered() {
+    let (orch, seed) =
+        build_orchestrator(vec![current_iteration_story(7000), icebox_story(5001)]).await;
+
+    move_story(&orch, &seed, 5001, "ready", Some(1))
+        .await
+        .expect("schedule the story first");
+
+    let err = move_story(&orch, &seed, 5001, "icebox", Some(1))
+        .await
+        .expect_err("a positioned move to the icebox must be refused");
+
+    assert!(
+        err.contains("icebox") && err.contains("unordered"),
+        "the refusal names the fact that the icebox is unordered; got {err}"
+    );
+    assert_eq!(
+        current_members(&orch),
+        vec![5001],
+        "the refusal happens before any mutation leaks — the story keeps its schedule"
+    );
+}
+
 fn epic_story(id: u64) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),

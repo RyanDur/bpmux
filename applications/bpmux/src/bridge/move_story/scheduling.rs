@@ -40,9 +40,6 @@ pub(super) async fn apply_scheduling(
         crate::bridge::tools_stories::iteration_members::remove_member_everywhere(r, dispatch, id)
             .await
             .map_err(|e| format!("#{id} unschedule (iteration-member removal) failed: {e}"))?;
-        if let Some(pos) = position {
-            crate::bridge::tools_stories::reorder_icebox_story_via_labels(r, id, pos)?;
-        }
     }
     let Some(iteration_id) = scheduling_target else {
         return Ok(());

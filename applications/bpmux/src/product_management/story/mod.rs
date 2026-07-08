@@ -55,12 +55,6 @@ pub struct FreeComment {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct IterationSlot {
-    pub name: String,
-    pub position: u32,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Story {
     pub id: StoryId,
     pub title: String,
@@ -80,8 +74,6 @@ pub struct Story {
     pub parent_epic: Option<EpicId>,
     #[serde(default)]
     pub tags: Vec<Tag>,
-    #[serde(default)]
-    pub iteration_slot: Option<IterationSlot>,
 }
 
 impl Story {
@@ -107,7 +99,6 @@ impl Story {
             acceptor: None,
             parent_epic: None,
             tags: Vec::new(),
-            iteration_slot: None,
         }
     }
 
@@ -141,10 +132,6 @@ impl Story {
 
     pub fn tags(&self) -> &[Tag] {
         &self.tags
-    }
-
-    pub fn iteration_slot(&self) -> Option<&IterationSlot> {
-        self.iteration_slot.as_ref()
     }
 
     pub fn body(&self) -> Option<&str> {

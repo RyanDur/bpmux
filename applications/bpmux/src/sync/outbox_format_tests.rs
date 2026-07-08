@@ -16,8 +16,8 @@ use crate::sync::{MutationId, QueuedEvent, load_outbox_from_disk};
 const FIX_QUEUED_TAG_ADDED: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}},"pre_state":null,"last_classification":null}"#;
 const FIX_QUEUED_TRANSITIONED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress","placement":"desk-check"}},"pre_state":null,"last_classification":null}"#;
 const FIX_QUEUED_VERDICT: &str = r#"{"id":0,"event":{"VerdictCast":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"verdict":{"Fail":{"step":"acceptance"}},"payload":"narrow viewport"}},"pre_state":null,"last_classification":null}"#;
-const FIX_QUEUED_REFRESHED: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[],"iteration_slot":null}}},"pre_state":null,"last_classification":null}"#;
-const FIX_QUEUED_WITH_PRESTATE: &str = r#"{"id":42,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}},"pre_state":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[],"iteration_slot":null},"last_classification":null}"#;
+const FIX_QUEUED_REFRESHED: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[]}}},"pre_state":null,"last_classification":null}"#;
+const FIX_QUEUED_WITH_PRESTATE: &str = r#"{"id":42,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}},"pre_state":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[]},"last_classification":null}"#;
 const FIX_LEGACY_BARE_EVENT: &str = r#"{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}}"#;
 
 const FIX_ABSENT_PLACEMENT: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress"}},"pre_state":null,"last_classification":null}"#;
@@ -89,14 +89,33 @@ fn queued_row_with_pre_state_round_trips_byte_identically() {
 }
 
 #[test]
-fn a_legacy_row_carrying_the_retired_ready_order_key_still_deserializes_into_a_story() {
-    let legacy = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[],"ready_order":100,"iteration_slot":null}}},"pre_state":null,"last_classification":null}"#;
+fn a_legacy_row_carrying_the_retired_keys_still_deserializes_into_a_story() {
+    let legacy = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[],"ready_order":100,"iteration_slot":{"name":"Pegasus","position":100}}}},"pre_state":null,"last_classification":null}"#;
     let parsed: QueuedEvent =
-        serde_json::from_str(legacy).expect("a legacy row carrying the retired key still loads");
+        serde_json::from_str(legacy).expect("a legacy row carrying the retired keys still loads");
     match &parsed.event.kind {
         StoryEventKind::StoryRefreshed { story } => assert_eq!(**story, fixture_story()),
         other => panic!("fixture is a StoryRefreshed row; got {other:?}"),
     }
+}
+
+#[test]
+fn a_legacy_outbox_file_row_carrying_an_iteration_slot_event_loads_and_drops() {
+    let legacy_slot_row = r#"{"id":0,"event":{"IterationSlotSet":{"meta":{"actor":"pm","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"name":"Pegasus","position":100}},"pre_state":null,"last_classification":null}"#;
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("board-outbox.json");
+    std::fs::write(&path, format!("[{legacy_slot_row},{FIX_QUEUED_TAG_ADDED}]")).unwrap();
+    let loaded =
+        load_outbox_from_disk(&path).expect("a legacy iteration-slot row loads without error");
+    assert_eq!(
+        loaded.len(),
+        1,
+        "the retired IterationSlotSet row is dropped at the wire boundary; only the surviving TagAdded row counts"
+    );
+    assert_eq!(
+        loaded.front().expect("one entry").event,
+        fixture_tag_added()
+    );
 }
 
 #[test]
@@ -190,8 +209,6 @@ fn variant_name(event: &StoryEvent) -> &'static str {
         StoryEventKind::TagRemoved { .. } => "TagRemoved",
         StoryEventKind::TagSet { .. } => "TagSet",
         StoryEventKind::TagUnset { .. } => "TagUnset",
-        StoryEventKind::IterationSlotSet { .. } => "IterationSlotSet",
-        StoryEventKind::IterationSlotCleared => "IterationSlotCleared",
         StoryEventKind::VerdictCast { .. } => "VerdictCast",
         StoryEventKind::FreeCommentAppended { .. } => "FreeCommentAppended",
         StoryEventKind::BodyFetched { .. } => "BodyFetched",
@@ -263,15 +280,6 @@ fn every_variant() -> Vec<StoryEvent> {
                 tag: Tag::DeskCheckFail,
             },
         ),
-        StoryEvent::new(
-            meta(),
-            id,
-            StoryEventKind::IterationSlotSet {
-                name: "Pegasus".to_string(),
-                position: 100,
-            },
-        ),
-        StoryEvent::new(meta(), id, StoryEventKind::IterationSlotCleared),
         StoryEvent::new(
             meta(),
             id,
@@ -363,7 +371,6 @@ fn every_variant() -> Vec<StoryEvent> {
                     acceptor: Some(Acceptor::Team),
                     parent_epic: Some(EpicId::new(9)),
                     tags: vec![Tag::DeskCheckFail],
-                    iteration_slot: None,
                 },
             },
         ),
@@ -405,7 +412,7 @@ fn every_story_event_variant_round_trips_through_serde() {
         variants.iter().map(variant_name).collect();
     assert_eq!(
         names.len(),
-        26,
+        24,
         "the exhaustive fixture set covers every variant exactly once — a new variant must be added here (variant_name's total match will force it at compile time)"
     );
     for event in variants {

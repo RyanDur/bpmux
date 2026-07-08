@@ -67,7 +67,7 @@ pub(crate) use metadata_outcome::handle_reprioritize_outcome;
 pub(crate) use outcome_mapping::{
     handle_reorder_outcome_iteration, handle_unmap_outcome_iteration,
 };
-pub(crate) use reorder::{handle_reorder_story, reorder_icebox_story_via_labels};
+pub(crate) use reorder::handle_reorder_story;
 pub(crate) use retire_outcome::handle_retire_outcome;
 #[cfg(test)]
 pub(crate) use signals::{

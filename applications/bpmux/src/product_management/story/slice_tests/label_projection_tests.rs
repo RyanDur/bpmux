@@ -128,7 +128,6 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
                     acceptor: Some(Acceptor::Dev),
                     parent_epic: Some(EpicId::new(7)),
                     tags: Vec::new(),
-                    iteration_slot: None,
                 },
             },
         ),

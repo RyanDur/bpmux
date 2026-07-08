@@ -214,61 +214,6 @@ async fn push_event_accepts_story_created_variant() {
 }
 
 #[tokio::test]
-async fn tag_added_surfaces_ordering_label_in_ingested_iteration_slot() {
-    let adapter = InMemorySourceAdapter::new();
-    adapter.seed_stories(vec![seed_story(42, "ordering-target")]);
-    adapter
-        .push_event(
-            &StoryEvent::new(
-                meta(),
-                StoryId::new(42),
-                StoryEventKind::TagAdded {
-                    label: "iteration-Unscheduled.300".to_string(),
-                },
-            ),
-            &crate::sync::PushContext::default(),
-        )
-        .await
-        .unwrap();
-    let stories = ingest_stories(&adapter).await;
-    let story = stories.iter().find(|s| s.id == StoryId::new(42)).unwrap();
-    assert_eq!(
-        story.iteration_slot,
-        Some(crate::product_management::story::IterationSlot {
-            name: "Unscheduled".to_string(),
-            position: 300,
-        }),
-        "TagAdded must land the ordering label at the edge and surface it as the typed iteration_slot at ingest so reorder round-trips survive drain"
-    );
-}
-
-#[tokio::test]
-async fn tag_removed_drops_ordering_label_from_ingested_iteration_slot() {
-    let adapter = InMemorySourceAdapter::new();
-    adapter.seed_stories(vec![seed_story(42, "ordering-target")]);
-    adapter.seed_labels(42, vec!["iteration-Unscheduled.300".to_string()]);
-    adapter
-        .push_event(
-            &StoryEvent::new(
-                meta(),
-                StoryId::new(42),
-                StoryEventKind::TagRemoved {
-                    label: "iteration-Unscheduled.300".to_string(),
-                },
-            ),
-            &crate::sync::PushContext::default(),
-        )
-        .await
-        .unwrap();
-    let stories = ingest_stories(&adapter).await;
-    let story = stories.iter().find(|s| s.id == StoryId::new(42)).unwrap();
-    assert_eq!(
-        story.iteration_slot, None,
-        "TagRemoved must drop the ordering label at the edge so no iteration_slot derives at ingest"
-    );
-}
-
-#[tokio::test]
 async fn parent_epic_set_surfaces_in_ingested_metadata() {
     let adapter = InMemorySourceAdapter::new();
     adapter.seed_stories(vec![seed_story(42, "child")]);

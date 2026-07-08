@@ -46,12 +46,6 @@ pub(super) fn apply_push_event(
         StoryEventKind::TagUnset { tag } => {
             typed_label_mirror::tag_unset(s, event.id.value(), *tag)
         }
-        StoryEventKind::IterationSlotSet { name, position } => {
-            typed_label_mirror::iteration_slot_set(s, event.id.value(), name, *position)
-        }
-        StoryEventKind::IterationSlotCleared => {
-            typed_label_mirror::iteration_slot_cleared(s, event.id.value())
-        }
         StoryEventKind::StoryClosed { .. } => typed_label_mirror::story_closed(s, event.id.value()),
         StoryEventKind::StoryReopened => {
             s.closed.remove(&event.id.value());

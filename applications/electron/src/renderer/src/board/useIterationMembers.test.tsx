@@ -31,4 +31,13 @@ describe('useIterationMembers attributes by the iterations ordered stories (pare
     const members = result.current.getMembersFor(2000)
     expect(members.map((m) => m.story.id)).toEqual([2001, 2002])
   })
+
+  test('the icebox is unordered — loose stories render in the natural id-order default, ignoring legacy iteration-position labels', () => {
+    const higherIdLowerLabel = makeStory({ id: 2002, labels: ['iteration-Unscheduled.100'] })
+    const lowerIdHigherLabel = makeStory({ id: 2001, labels: ['iteration-Unscheduled.900'] })
+    const { result } = renderHook(() =>
+      useIterationMembers([higherIdLowerLabel, lowerIdHigherLabel], [])
+    )
+    expect(result.current.sortedLoose.map((s) => s.id)).toEqual([2001, 2002])
+  })
 })

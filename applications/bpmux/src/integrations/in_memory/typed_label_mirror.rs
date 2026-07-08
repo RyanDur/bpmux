@@ -19,28 +19,6 @@ pub(super) fn tag_unset(s: &mut InnerState, number: u64, tag: Tag) {
         .retain(|l| !l.eq_ignore_ascii_case(label));
 }
 
-pub(super) fn iteration_slot_set(s: &mut InnerState, number: u64, name: &str, position: u32) {
-    let labels = s.labels.entry(number).or_default();
-    labels.retain(|l| !GhLabelCodec.is_iteration_label_loose(l));
-    labels.push(GhLabelCodec.encode_iteration(name, position));
-    if let Some(story) = s.stories.get_mut(&number) {
-        story.iteration_slot = Some(crate::product_management::story::IterationSlot {
-            name: name.to_string(),
-            position,
-        });
-    }
-}
-
-pub(super) fn iteration_slot_cleared(s: &mut InnerState, number: u64) {
-    s.labels
-        .entry(number)
-        .or_default()
-        .retain(|l| !GhLabelCodec.is_iteration_label_loose(l));
-    if let Some(story) = s.stories.get_mut(&number) {
-        story.iteration_slot = None;
-    }
-}
-
 pub(super) fn acceptor_assigned(s: &mut InnerState, number: u64, acceptor: Acceptor) {
     let labels = s.labels.entry(number).or_default();
     labels.retain(|l| GhLabelCodec.decode_acceptor(l).is_none());

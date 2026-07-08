@@ -46,8 +46,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                                     | StoryEventKind::TagRemoved { .. }
                                     | StoryEventKind::TagSet { .. }
                                     | StoryEventKind::TagUnset { .. }
-                                    | StoryEventKind::IterationSlotSet { .. }
-                                    | StoryEventKind::IterationSlotCleared
                             )
                         })
                         .map(|q| q.event.story_id())

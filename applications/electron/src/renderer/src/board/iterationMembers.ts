@@ -1,4 +1,3 @@
-import { parseUnscheduledPosition } from './labelSchema'
 import { storyTypeFromLabels, type Story, type IterationMembership } from './types'
 export interface DragPayload {
   storyId: number
@@ -40,14 +39,6 @@ export const positionInParentIteration = (
   const membership = index.get(storyId)
   if (membership && membership.iteration_id === iterationId) {
     return membership.position
-  }
-  return null
-}
-
-export const positionInUnscheduled = (story: Story): number | null => {
-  for (const label of story.labels) {
-    const n = parseUnscheduledPosition(label)
-    if (n !== null) return n
   }
   return null
 }

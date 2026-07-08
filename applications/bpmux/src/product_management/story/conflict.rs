@@ -21,8 +21,6 @@ pub fn classify_conflict(
         | StoryEventKind::TagRemoved { .. }
         | StoryEventKind::TagSet { .. }
         | StoryEventKind::TagUnset { .. }
-        | StoryEventKind::IterationSlotSet { .. }
-        | StoryEventKind::IterationSlotCleared
         | StoryEventKind::StateTransitioned { .. }
         | StoryEventKind::StoryClosed { .. }
         | StoryEventKind::StoryReopened

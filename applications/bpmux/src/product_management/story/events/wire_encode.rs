@@ -32,17 +32,6 @@ impl From<StoryEvent> for StoryEventWire {
             StoryEventKind::TagRemoved { label } => StoryEventWire::TagRemoved { meta, id, label },
             StoryEventKind::TagSet { tag } => StoryEventWire::TagSet { meta, id, tag },
             StoryEventKind::TagUnset { tag } => StoryEventWire::TagUnset { meta, id, tag },
-            StoryEventKind::IterationSlotSet { name, position } => {
-                StoryEventWire::IterationSlotSet {
-                    meta,
-                    id,
-                    name,
-                    position,
-                }
-            }
-            StoryEventKind::IterationSlotCleared => {
-                StoryEventWire::IterationSlotCleared { meta, id }
-            }
             StoryEventKind::VerdictCast { verdict, payload } => StoryEventWire::VerdictCast {
                 meta,
                 id,

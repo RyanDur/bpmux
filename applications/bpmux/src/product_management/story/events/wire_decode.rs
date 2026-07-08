@@ -1,10 +1,43 @@
+use serde::Deserialize;
+
 use super::StoryEvent;
 use super::kind::StoryEventKind;
 use super::wire::StoryEventWire;
+use crate::product_management::story::StoryId;
 
-impl From<StoryEventWire> for StoryEvent {
-    fn from(wire: StoryEventWire) -> StoryEvent {
-        match wire {
+pub(crate) struct DroppedLegacyEvent {
+    id: StoryId,
+    variant: &'static str,
+}
+
+impl std::fmt::Display for DroppedLegacyEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "outbox wire boundary dropped a retired {} event for story #{} (iteration_slot is retired)",
+            self.variant,
+            self.id.value()
+        )
+    }
+}
+
+impl TryFrom<StoryEventWire> for StoryEvent {
+    type Error = DroppedLegacyEvent;
+
+    fn try_from(wire: StoryEventWire) -> Result<StoryEvent, DroppedLegacyEvent> {
+        let event = match wire {
+            StoryEventWire::IterationSlotSet { id, .. } => {
+                return Err(DroppedLegacyEvent {
+                    id,
+                    variant: "IterationSlotSet",
+                });
+            }
+            StoryEventWire::IterationSlotCleared { id, .. } => {
+                return Err(DroppedLegacyEvent {
+                    id,
+                    variant: "IterationSlotCleared",
+                });
+            }
             StoryEventWire::StoryCreated {
                 meta,
                 id,
@@ -46,19 +79,6 @@ impl From<StoryEventWire> for StoryEvent {
             }
             StoryEventWire::TagUnset { meta, id, tag } => {
                 StoryEvent::new(meta, id, StoryEventKind::TagUnset { tag })
-            }
-            StoryEventWire::IterationSlotSet {
-                meta,
-                id,
-                name,
-                position,
-            } => StoryEvent::new(
-                meta,
-                id,
-                StoryEventKind::IterationSlotSet { name, position },
-            ),
-            StoryEventWire::IterationSlotCleared { meta, id } => {
-                StoryEvent::new(meta, id, StoryEventKind::IterationSlotCleared)
             }
             StoryEventWire::VerdictCast {
                 meta,
@@ -119,6 +139,23 @@ impl From<StoryEventWire> for StoryEvent {
             }
             StoryEventWire::ConflictResolved { meta, id, origin } => {
                 StoryEvent::new(meta, id, StoryEventKind::ConflictResolved { origin })
+            }
+        };
+        Ok(event)
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(from = "StoryEventWire")]
+pub(crate) struct TolerantStoryEvent(pub(crate) Option<StoryEvent>);
+
+impl From<StoryEventWire> for TolerantStoryEvent {
+    fn from(wire: StoryEventWire) -> TolerantStoryEvent {
+        match StoryEvent::try_from(wire) {
+            Ok(event) => TolerantStoryEvent(Some(event)),
+            Err(dropped) => {
+                eprintln!("{dropped}");
+                TolerantStoryEvent(None)
             }
         }
     }

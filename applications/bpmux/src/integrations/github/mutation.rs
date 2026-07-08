@@ -6,10 +6,9 @@ use crate::sync::SyncError;
 
 use super::mutation_events::{
     push_acceptor_assigned, push_body_updated, push_current_iteration_cleared,
-    push_current_iteration_designated, push_free_comment_appended, push_iteration_slot_cleared,
-    push_iteration_slot_set, push_parent_epic_set, push_parent_epic_unset, push_state_transitioned,
-    push_story_closed, push_story_reopened, push_tag_added, push_tag_removed, push_title_updated,
-    push_verdict_cast,
+    push_current_iteration_designated, push_free_comment_appended, push_parent_epic_set,
+    push_parent_epic_unset, push_state_transitioned, push_story_closed, push_story_reopened,
+    push_tag_added, push_tag_removed, push_title_updated, push_verdict_cast,
 };
 
 pub(super) async fn apply_push_event(
@@ -66,12 +65,6 @@ pub(super) async fn apply_push_event(
                 GhLabelCodec.encode_tag(*tag),
             )
             .await
-        }
-        StoryEventKind::IterationSlotSet { name, position } => {
-            push_iteration_slot_set(inner, event.story_id().value(), name, *position).await
-        }
-        StoryEventKind::IterationSlotCleared => {
-            push_iteration_slot_cleared(inner, event.story_id().value()).await
         }
         StoryEventKind::AcceptorAssigned { acceptor } => {
             push_acceptor_assigned(inner, event.story_id().value(), *acceptor).await

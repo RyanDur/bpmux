@@ -41,12 +41,19 @@ pub(in crate::bridge) async fn handle_move_story(
     authorization::enforce_move_authorization(agent_name)?;
 
     if position.is_some() {
-        let allows_position = matches!(target, TargetState::Ready | TargetState::Icebox);
-        if !allows_position {
-            return Err(format!(
-                "'position' only meaningful for ready/icebox columns; target_state={} ignores ordering",
-                target.as_display()
-            ));
+        match target {
+            TargetState::Ready => {}
+            TargetState::Icebox => {
+                return Err(format!(
+                    "#{id} cannot move to the icebox at a position: the icebox is unordered — move to icebox without a position"
+                ));
+            }
+            _ => {
+                return Err(format!(
+                    "'position' only meaningful for the ready column; target_state={} ignores ordering",
+                    target.as_display()
+                ));
+            }
         }
     }
 
@@ -170,11 +177,6 @@ pub(in crate::bridge) async fn handle_move_story(
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 #[path = "move_story_tests.rs"]
 mod tests;
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
-#[path = "move_story_icebox_label_substrate_tests_1301.rs"]
-mod move_story_icebox_label_substrate_tests_1301;
 
 #[cfg(test)]
 #[path = "move_story_ready_order_burst_tests.rs"]

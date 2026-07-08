@@ -15,7 +15,6 @@ mod notification_bridge_tests;
 mod observation_falsifier_tests;
 mod pickup_tests;
 mod reopen_transition_tests;
-mod reorder_icebox_tests;
 mod role_tests;
 mod signal_tests;
 mod stage_verb_tests;

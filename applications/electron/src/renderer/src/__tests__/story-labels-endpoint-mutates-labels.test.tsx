@@ -2,8 +2,8 @@ import { describe, expect, inject, it } from 'vitest'
 
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 
-describe('#1339 — POST /api/stories/:n/labels mutates raw_labels atomically', () => {
-  it('add+remove pair retags the story so the new label survives + the old does not', async () => {
+describe('POST /api/stories/:n/labels — retired iteration-position labels are recognized and dropped', () => {
+  it('an iteration-position label add/remove carries no wire meaning (the icebox is unordered)', async () => {
     const port = inject('bpmuxBackendPort')
     const authToken = inject('bpmuxAuthToken')
     const apiBase = `http://127.0.0.1:${port}`
@@ -39,7 +39,6 @@ describe('#1339 — POST /api/stories/:n/labels mutates raw_labels atomically', 
     }
     const story = boardBody.stories.find((s) => s.id === 7501)
     expect(story).toBeDefined()
-    expect(story?.labels).toContain('iteration-Cassiopeia.50')
-    expect(story?.labels).not.toContain('iteration-Cassiopeia.200')
+    expect(story?.labels.some((l) => l.startsWith('iteration-Cassiopeia'))).toBe(false)
   }, 20_000)
 })

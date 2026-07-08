@@ -37,9 +37,6 @@ pub(super) fn derive_typed_fields_from_labels(story: &mut Story, labels: &[Strin
     if story.parent_epic.is_none() {
         story.parent_epic = fields.parent_epic;
     }
-    if story.iteration_slot.is_none() {
-        story.iteration_slot = fields.iteration_slot;
-    }
 }
 
 pub(super) fn ingest_metadata(

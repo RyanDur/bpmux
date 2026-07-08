@@ -22,7 +22,6 @@ fn sample_story(state: Work, story_type: StoryKind) -> Story {
         acceptor: None,
         parent_epic: None,
         tags: Vec::new(),
-        iteration_slot: None,
     }
 }
 
@@ -383,10 +382,6 @@ impl crate::product_management::label_codec::LabelCodec for StubLabelCodec {
 fn substrate_test_story_to_board_json_works_with_arbitrary_codec_syntax() {
     let mut s = sample_story(Work::NotStarted, StoryKind::Feature);
     s.parent_epic = Some(EpicId::new(42));
-    s.iteration_slot = Some(crate::product_management::story::IterationSlot {
-        name: "Pegasus".to_string(),
-        position: 200,
-    });
     let json = story_to_board_json(&StubLabelCodec, &s, s.state.as_str());
     let labels: Vec<&str> = json["labels"]
         .as_array()
@@ -397,9 +392,5 @@ fn substrate_test_story_to_board_json_works_with_arbitrary_codec_syntax() {
     assert!(
         labels.contains(&"parent|42"),
         "stub-encoded parent-epic surfaces in wire labels: {labels:?}"
-    );
-    assert!(
-        labels.contains(&"iter|Pegasus:200"),
-        "stub-iteration-like label forwarded: {labels:?}"
     );
 }

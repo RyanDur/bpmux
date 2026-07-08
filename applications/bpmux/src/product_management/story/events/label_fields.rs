@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::product_management::epic::EpicId;
-use crate::product_management::story::{Acceptor, IterationSlot, Tag};
+use crate::product_management::story::{Acceptor, Tag};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct LabelDerivedFields {
@@ -12,6 +12,4 @@ pub struct LabelDerivedFields {
     pub parent_epic: Option<EpicId>,
     #[serde(default)]
     pub tags: Vec<Tag>,
-    #[serde(default)]
-    pub iteration_slot: Option<IterationSlot>,
 }

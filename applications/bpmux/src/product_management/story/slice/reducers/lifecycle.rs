@@ -27,7 +27,6 @@ pub(super) fn apply_story_created(
         acceptor: None,
         parent_epic: None,
         tags: Vec::new(),
-        iteration_slot: None,
     };
     w.insert(StoryKey::Saved(id), story);
 }
@@ -80,21 +79,6 @@ pub(super) fn apply_tag_set(w: &mut Stories, id: StoryId, tag: Tag) {
         && !story.tags.contains(&tag)
     {
         story.tags.push(tag);
-    }
-}
-
-pub(super) fn apply_iteration_slot_cleared(w: &mut Stories, id: StoryId) {
-    if let Some(story) = story_mut(w, id) {
-        story.iteration_slot = None;
-    }
-}
-
-pub(super) fn apply_iteration_slot_set(w: &mut Stories, id: StoryId, name: &str, position: u32) {
-    if let Some(story) = story_mut(w, id) {
-        story.iteration_slot = Some(crate::product_management::story::IterationSlot {
-            name: name.to_string(),
-            position,
-        });
     }
 }
 

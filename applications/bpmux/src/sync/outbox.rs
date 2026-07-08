@@ -4,9 +4,11 @@ use std::path::{Path, PathBuf};
 use serde::Deserialize;
 
 use super::PersistError;
-use crate::product_management::story::events::StoryEvent;
+use crate::product_management::story::Story;
+use crate::product_management::story::conflict::ConflictKind;
+use crate::product_management::story::events::TolerantStoryEvent;
 
-use super::QueuedEvent;
+use super::{MutationId, QueuedEvent};
 
 pub fn default_outbox_path() -> Result<PathBuf, std::io::Error> {
     if let Ok(p) = std::env::var("BPMUX_BOARD_OUTBOX_PATH")
@@ -21,17 +23,39 @@ pub fn default_outbox_path() -> Result<PathBuf, std::io::Error> {
 }
 
 #[derive(Deserialize)]
-#[serde(untagged)]
-enum OutboxEntryOnDisk {
-    NewShape(Box<QueuedEvent>),
-    LegacyShape(Box<StoryEvent>),
+pub(crate) struct QueuedEventOnDisk {
+    #[serde(default)]
+    id: MutationId,
+    event: TolerantStoryEvent,
+    #[serde(default)]
+    pre_state: Option<Story>,
+    #[serde(default)]
+    last_classification: Option<ConflictKind>,
 }
 
-impl From<OutboxEntryOnDisk> for QueuedEvent {
-    fn from(disk: OutboxEntryOnDisk) -> QueuedEvent {
-        match disk {
-            OutboxEntryOnDisk::NewShape(q) => *q,
-            OutboxEntryOnDisk::LegacyShape(event) => QueuedEvent::from_legacy(*event),
+impl QueuedEventOnDisk {
+    pub(crate) fn into_queued(self) -> Option<QueuedEvent> {
+        self.event.0.map(|event| QueuedEvent {
+            id: self.id,
+            event,
+            pre_state: self.pre_state,
+            last_classification: self.last_classification,
+        })
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum OutboxEntryOnDisk {
+    NewShape(Box<QueuedEventOnDisk>),
+    LegacyShape(Box<TolerantStoryEvent>),
+}
+
+impl OutboxEntryOnDisk {
+    fn into_queued(self) -> Option<QueuedEvent> {
+        match self {
+            OutboxEntryOnDisk::NewShape(q) => q.into_queued(),
+            OutboxEntryOnDisk::LegacyShape(event) => event.0.map(QueuedEvent::from_legacy),
         }
     }
 }
@@ -45,7 +69,10 @@ pub fn load_outbox_from_disk(path: &Path) -> Result<VecDeque<QueuedEvent>, Persi
         return Ok(VecDeque::new());
     }
     let entries: Vec<OutboxEntryOnDisk> = serde_json::from_slice(&bytes)?;
-    Ok(entries.into_iter().map(QueuedEvent::from).collect())
+    Ok(entries
+        .into_iter()
+        .filter_map(OutboxEntryOnDisk::into_queued)
+        .collect())
 }
 
 pub(super) fn persist_outbox_to_disk(

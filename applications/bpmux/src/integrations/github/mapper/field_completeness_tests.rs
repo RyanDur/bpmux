@@ -55,7 +55,6 @@ fn assert_metadata_axis_complete(decoded: &Story, labels: &[String]) {
         acceptor,
         parent_epic,
         tags,
-        iteration_slot,
     } = decoded;
 
     assert_eq!(*id, StoryId::new(42), "number must roundtrip from JSON");
@@ -77,15 +76,7 @@ fn assert_metadata_axis_complete(decoded: &Story, labels: &[String]) {
     assert_eq!(
         *tags,
         vec![crate::product_management::story::Tag::DeskCheckFail],
-        "tags must decode from the desk-check-fail label into the stored domain field at ingest"
-    );
-    assert_eq!(
-        *iteration_slot,
-        Some(crate::product_management::story::IterationSlot {
-            name: "Unscheduled".to_string(),
-            position: 7,
-        }),
-        "iteration_slot must decode from the iteration-<name>.<pos> label into the stored domain field at ingest"
+        "the iteration-<name>.<pos> label is recognized-and-dropped at ingest — it lands in NO visible tag now that iteration_slot is retired"
     );
     assert_eq!(
         filed_at.to_rfc3339(),

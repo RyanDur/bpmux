@@ -1,5 +1,3 @@
-use crate::product_management::story::StoryId;
-
 pub(crate) fn reorder_story_retired_error() -> String {
     serde_json::json!({
         "kind": "tool-retired",
@@ -16,56 +14,4 @@ pub(crate) async fn handle_reorder_story(
     _refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
     Err(reorder_story_retired_error())
-}
-
-pub(crate) fn reorder_icebox_story_via_labels(
-    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
-    id: u64,
-    position: usize,
-) -> Result<(), String> {
-    let story = refresh
-        .story(id)
-        .ok_or_else(|| format!("story #{id} not found in canonical store"))?;
-    let target_id = StoryId::new(id);
-    let current_slot = story.iteration_slot().cloned();
-    let name = current_slot
-        .as_ref()
-        .map(|slot| slot.name.clone())
-        .unwrap_or_else(|| "Unscheduled".to_string());
-    let other_positions: Vec<u32> = refresh
-        .all_stories()
-        .iter()
-        .filter(|s| s.id != target_id && !s.is_concluded())
-        .filter_map(|s| {
-            s.iteration_slot()
-                .filter(|slot| slot.name == name)
-                .map(|slot| slot.position)
-        })
-        .collect();
-    let insert_index = position.saturating_sub(1).min(other_positions.len());
-    let new_position = crate::product_management::iteration::label::compute_insert_position(
-        insert_index,
-        &other_positions,
-    );
-    if current_slot
-        .as_ref()
-        .is_some_and(|slot| slot.name == name && slot.position == new_position)
-    {
-        return Ok(());
-    }
-    refresh
-        .mutate_sync(crate::product_management::story::events::StoryEvent::new(
-            crate::product_management::story::events::EventMeta {
-                actor: "pm".to_string(),
-                ts: chrono::Utc::now(),
-                peer_id: crate::product_management::story::peer::PeerId::local(),
-            },
-            target_id,
-            crate::product_management::story::events::StoryEventKind::IterationSlotSet {
-                name,
-                position: new_position,
-            },
-        ))
-        .map_err(|e| format!("IterationSlotSet #{id}: {e}"))?;
-    Ok(())
 }

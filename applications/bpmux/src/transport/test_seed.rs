@@ -6,6 +6,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
+use crate::product_management::label_codec::LabelCodec;
 use crate::session;
 
 pub fn seed_api_enabled() -> bool {
@@ -228,25 +229,16 @@ pub async fn post_seed_stories(
                 peer_id: crate::product_management::story::peer::PeerId::local(),
             };
             let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
-            let event = match crate::product_management::iteration::label::parse_iteration_label(
-                &codec, label,
-            ) {
-                Some(parts) => crate::product_management::story::events::StoryEvent::new(
-                    tag_meta,
-                    crate::product_management::story::StoryId::new(s.id),
-                    crate::product_management::story::events::StoryEventKind::IterationSlotSet {
-                        name: parts.name,
-                        position: parts.position,
-                    },
-                ),
-                None => crate::product_management::story::events::StoryEvent::new(
-                    tag_meta,
-                    crate::product_management::story::StoryId::new(s.id),
-                    crate::product_management::story::events::StoryEventKind::TagAdded {
-                        label: label.clone(),
-                    },
-                ),
-            };
+            if codec.is_iteration_label_loose(label) {
+                continue;
+            }
+            let event = crate::product_management::story::events::StoryEvent::new(
+                tag_meta,
+                crate::product_management::story::StoryId::new(s.id),
+                crate::product_management::story::events::StoryEventKind::TagAdded {
+                    label: label.clone(),
+                },
+            );
             if let Err(e) = refresh.mutate_sync(event) {
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,

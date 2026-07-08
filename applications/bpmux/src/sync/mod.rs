@@ -32,6 +32,7 @@ pub use crate::product_management::story::conflict::{
 pub(crate) use backfill::backfill_shared_history;
 use coalesce::{coalesce_iteration_label_events, stale_state_labels_for};
 pub use driver::*;
+pub(crate) use outbox::QueuedEventOnDisk;
 pub use outbox::{default_outbox_path, load_outbox_from_disk};
 pub use port::*;
 pub use race_window::*;
