@@ -86,4 +86,8 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
             }
         })
     }
+
+    fn delivery_mode(&self) -> crate::kernel::DeliveryMode {
+        crate::kernel::DeliveryMode::Ordered
+    }
 }

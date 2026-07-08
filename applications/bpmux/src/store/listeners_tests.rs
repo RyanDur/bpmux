@@ -288,6 +288,88 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
     );
 }
 
+fn dev_presence(state: &AppState) -> Option<Presence> {
+    crate::store::roster::members(&state.roster)
+        .into_iter()
+        .find(|member| member.name == "dev")
+        .map(|member| member.presence)
+}
+
+#[tokio::test]
+async fn owner_park_worker_reentrant_dispatch_lands_the_presence_change_in_durable_state() {
+    use crate::product_management::story::Work;
+
+    let (hub, _rx, _dir) = fresh_hub();
+    let store = owner_park_kernel(hub);
+    seed_dev_online_kernel(&store);
+
+    store.dispatch(AppAction::Story(StoryAction::Seeded(vec![
+        owner_parked_story(900),
+    ])));
+    store.dispatch(AppAction::Story(StoryAction::Event(state_transitioned(
+        900,
+        "dev",
+        Work::Acceptance,
+    ))));
+
+    crate::store::test_support::eventually(
+        "re-entrant presence change reaches durable roster state",
+        || store.select(dev_presence) == Some(Presence::Blocked),
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn board_placement_reconciler_worker_reentrant_dispatch_unplaces_a_departed_story() {
+    let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));
+    store.add_listener(Arc::new(app::BoardPlacementReconciler));
+
+    let story = crate::product_management::story::StoryId::new(1);
+    store.dispatch(AppAction::Board(crate::board::BoardAction::StoryPlaced {
+        story,
+        stage: crate::workflow::StageId::from("desk-check"),
+    }));
+    store.dispatch(AppAction::Story(StoryAction::Seeded(vec![
+        owner_parked_story(1),
+    ])));
+
+    crate::store::test_support::eventually(
+        "the reconciler worker re-dispatches StoryUnplaced and the board reflects it",
+        || store.select(|state| crate::board::placement_of(&state.board, story).is_none()),
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn a_board_placement_burst_persists_the_final_board_with_no_placement_lost() {
+    let (hub, _rx, _dir) = fresh_hub();
+    let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));
+    store.add_listener(Arc::new(app::BoardPlacementPersister::new(hub.clone())));
+
+    for id in [1u64, 2, 3] {
+        store.dispatch(AppAction::Board(crate::board::BoardAction::StoryPlaced {
+            story: crate::product_management::story::StoryId::new(id),
+            stage: crate::workflow::StageId::from("desk-check"),
+        }));
+    }
+
+    let placed = |id: u64| {
+        crate::board::placement_of(
+            &crate::board::persistence::load(&hub.dir),
+            crate::product_management::story::StoryId::new(id),
+        )
+        .is_some()
+    };
+    crate::store::test_support::eventually("the coalesced placement burst is persisted", || {
+        placed(3)
+    })
+    .await;
+    assert!(
+        placed(1) && placed(2) && placed(3),
+        "the LATEST-STATE persister collapses the three-placement burst into one save yet persists ALL three placements — coalescing loses no change because it persists the current (final) board snapshot"
+    );
+}
+
 #[tokio::test]
 async fn roster_listener_emits_typed_state_delta() {
     let (hub, mut rx, _dir) = fresh_hub();

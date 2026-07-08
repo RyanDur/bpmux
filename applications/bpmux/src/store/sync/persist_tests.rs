@@ -1,17 +1,16 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use chrono::{TimeZone, Utc};
-use tempfile::TempDir;
 
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::kernel::{Dispatch, Listener, Reaction};
 use crate::product_management::story::StoryId;
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
-use crate::store::app::{AppAction, AppState};
-use crate::sync::{MutationId, QueuedWrite, load_outbox_from_disk};
+use crate::store::app::{AppAction, AppState, app_reduce};
+use crate::store::test_support::eventually;
+use crate::sync::{MutationId, QueuedEvent, QueuedWrite};
 
 use super::{OutboxPersister, OutboxSink, SyncAction};
 
@@ -37,36 +36,33 @@ fn one_write() -> QueuedWrite {
     )
 }
 
-fn reaction(previous: Arc<AppState>, current: Arc<AppState>) -> Reaction<AppState, AppAction> {
-    let dispatch: Dispatch<AppAction> = Arc::new(|_action: AppAction| {});
-    Reaction {
-        action: AppAction::Sync(SyncAction::WritePushed { id: MutationId(0) }),
-        previous,
-        current,
-        dispatch,
-    }
-}
-
 #[tokio::test]
-async fn a_stale_snapshot_never_overwrites_a_newer_one_on_disk() {
-    let dir = TempDir::new().expect("tempdir");
-    let path = dir.path().join("board-outbox.json");
-    let persister = OutboxPersister::new(OutboxSink::Path(path.clone()));
+async fn a_rapid_sync_burst_persists_only_the_latest_snapshot_never_the_stale_intermediate() {
+    let saves: Arc<Mutex<Vec<Vec<QueuedEvent>>>> = Arc::new(Mutex::new(Vec::new()));
+    let store = crate::kernel::Store::new(AppState::default(), Box::new(app_reduce));
+    store.add_listener(Arc::new(OutboxPersister::new(OutboxSink::Recording(
+        Arc::clone(&saves),
+    ))));
 
-    let with_one = Arc::new(AppState::default().with_outbox(vec![one_write()]));
+    let write = one_write();
+    let id = write.id;
+    store.dispatch(AppAction::Sync(SyncAction::WriteQueued { write }));
+    store.dispatch(AppAction::Sync(SyncAction::WritePushed { id }));
 
-    let first = persister.on_action(reaction(
-        Arc::new(AppState::default()),
-        Arc::clone(&with_one),
-    ));
-    let second = persister.on_action(reaction(with_one, Arc::new(AppState::default())));
+    eventually("the coalesced burst reaches the outbox sink", || {
+        !saves.lock().unwrap().is_empty()
+    })
+    .await;
+    tokio::task::yield_now().await;
 
-    second.await;
-    first.await;
-
-    let events = load_outbox_from_disk(&path).expect("outbox loads");
+    let saves = saves.lock().unwrap();
+    assert_eq!(
+        saves.len(),
+        1,
+        "under LATEST-STATE the two rapid sync changes coalesce: the persister saves exactly once, so a stale earlier snapshot can never overwrite a newer one; got {saves:?}"
+    );
     assert!(
-        events.is_empty(),
-        "the later empty-queue snapshot wins; a stale earlier save cannot clobber it"
+        saves[0].is_empty(),
+        "the surviving save is the LATEST snapshot (the drained, empty queue) — the intermediate non-empty snapshot is discarded before it can reach disk"
     );
 }

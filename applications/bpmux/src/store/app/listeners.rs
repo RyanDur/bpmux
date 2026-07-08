@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use super::{AppAction, AppState};
-use crate::kernel::{Listener, ListenerFuture, Reaction};
+use crate::kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
 use crate::store::ci::{self, CiBroadcastListener};
 use crate::store::reactions::{self, ReactionsAction, ReactionsBroadcastListener};
 use crate::store::roster::{self, RosterBroadcastListener};
@@ -37,6 +37,10 @@ impl Listener<AppState, AppAction> for RosterBroadcast {
             }
         })
     }
+
+    fn delivery_mode(&self) -> DeliveryMode {
+        DeliveryMode::Ordered
+    }
 }
 
 pub struct ReactionsBroadcast {
@@ -69,6 +73,10 @@ impl Listener<AppState, AppAction> for ReactionsBroadcast {
             }
         })
     }
+
+    fn delivery_mode(&self) -> DeliveryMode {
+        DeliveryMode::Ordered
+    }
 }
 
 pub struct CiBroadcast {
@@ -99,5 +107,9 @@ impl Listener<AppState, AppAction> for CiBroadcast {
                 listener.on_changed(&snapshot);
             }
         })
+    }
+
+    fn delivery_mode(&self) -> DeliveryMode {
+        DeliveryMode::Ordered
     }
 }

@@ -31,6 +31,10 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
             }
         })
     }
+
+    fn delivery_mode(&self) -> crate::kernel::DeliveryMode {
+        crate::kernel::DeliveryMode::LatestState
+    }
 }
 
 pub struct LocalHistoryPersister {
@@ -63,5 +67,9 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
                 crate::diag::log_diag(&format!("history: placement-history persist failed: {e}"));
             }
         })
+    }
+
+    fn delivery_mode(&self) -> crate::kernel::DeliveryMode {
+        crate::kernel::DeliveryMode::LatestState
     }
 }

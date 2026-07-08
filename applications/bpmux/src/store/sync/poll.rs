@@ -4,7 +4,7 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use crate::github::RateLimitObserver;
-use crate::kernel::{Listener, ListenerFuture, Reaction};
+use crate::kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
 use crate::store::app::{AppAction, AppState};
 use crate::sync::RefreshDriver;
 
@@ -112,5 +112,9 @@ impl Listener<AppState, AppAction> for SyncPoll {
             }
         }
         Box::pin(async {})
+    }
+
+    fn delivery_mode(&self) -> DeliveryMode {
+        DeliveryMode::FireAndForget
     }
 }

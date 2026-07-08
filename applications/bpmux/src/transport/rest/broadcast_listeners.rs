@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::kernel::{Listener, ListenerFuture, Reaction};
+use crate::kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
 use crate::store::{AppAction, AppState};
 
 pub struct OutcomeBroadcast {
@@ -25,6 +25,10 @@ impl Listener<AppState, AppAction> for OutcomeBroadcast {
             super::shared::broadcast_outcomes(&hub, &refresh);
             super::shared::broadcast_roadmap(&hub, &refresh);
         })
+    }
+
+    fn delivery_mode(&self) -> DeliveryMode {
+        DeliveryMode::Ordered
     }
 }
 
@@ -52,6 +56,10 @@ impl Listener<AppState, AppAction> for IterationBroadcast {
             super::shared::broadcast_roadmap(&hub, &refresh);
         })
     }
+
+    fn delivery_mode(&self) -> DeliveryMode {
+        DeliveryMode::Ordered
+    }
 }
 
 pub struct EpicBroadcast {
@@ -75,6 +83,10 @@ impl Listener<AppState, AppAction> for EpicBroadcast {
         Box::pin(async move {
             super::shared::broadcast_epics(&hub, &refresh);
         })
+    }
+
+    fn delivery_mode(&self) -> DeliveryMode {
+        DeliveryMode::Ordered
     }
 }
 
@@ -103,5 +115,9 @@ impl Listener<AppState, AppAction> for StoryBroadcast {
             super::shared::broadcast_iterations(&hub, &refresh);
             super::shared::broadcast_roadmap(&hub, &refresh);
         })
+    }
+
+    fn delivery_mode(&self) -> DeliveryMode {
+        DeliveryMode::Ordered
     }
 }

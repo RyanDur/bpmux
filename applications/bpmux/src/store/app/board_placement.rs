@@ -41,6 +41,10 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
             }
         })
     }
+
+    fn delivery_mode(&self) -> crate::kernel::DeliveryMode {
+        crate::kernel::DeliveryMode::Ordered
+    }
 }
 
 pub struct BoardPlacementPersister {
@@ -70,5 +74,9 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
                 crate::diag::log_diag(&format!("board: placement persist failed: {e}"));
             }
         })
+    }
+
+    fn delivery_mode(&self) -> crate::kernel::DeliveryMode {
+        crate::kernel::DeliveryMode::LatestState
     }
 }

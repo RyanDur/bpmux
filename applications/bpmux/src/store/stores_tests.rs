@@ -102,6 +102,39 @@ async fn reactions_action_drives_reducer_and_fires_listener() {
 }
 
 #[tokio::test]
+async fn a_distinct_channel_reaction_burst_broadcasts_once_per_channel_in_order() {
+    let orch = fresh_orch();
+    let rec = Arc::new(RecReactions::default());
+    orch.add_reactions_listener(rec.clone());
+
+    for channel in ["alpha", "beta", "gamma"] {
+        orch.dispatch(AppAction::Reactions(ReactionsAction::ReactionToggled {
+            channel: channel.to_string(),
+            message_key: "k1".to_string(),
+            emoji: "👍".to_string(),
+            user: "owner".to_string(),
+            ts_iso: "t0".to_string(),
+        }))
+        .await;
+    }
+
+    eventually("every distinct-channel toggle broadcasts", || {
+        rec.received.lock().unwrap().len() == 3
+    })
+    .await;
+    let received = rec.received.lock().unwrap();
+    let channels: Vec<String> = received
+        .iter()
+        .map(|(channel, _)| channel.clone())
+        .collect();
+    assert_eq!(
+        channels,
+        vec!["alpha", "beta", "gamma"],
+        "ReactionsBroadcast is ORDERED: a synchronous burst across distinct channels delivers one broadcast per channel, in dispatch order — coalescing (LATEST-STATE) would drop the alpha and beta effects and leave only gamma"
+    );
+}
+
+#[tokio::test]
 async fn reactions_toggle_off_clears_and_fires_listener() {
     let orch = fresh_orch();
     let rec = Arc::new(RecReactions::default());

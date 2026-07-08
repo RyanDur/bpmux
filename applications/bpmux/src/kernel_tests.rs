@@ -3,7 +3,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use crate::kernel::{Listener, ListenerFuture, Middleware, Reaction, Store};
+use crate::kernel::{DeliveryMode, Listener, ListenerFuture, Middleware, Reaction, Store};
 
 async fn eventually(label: &str, mut condition: impl FnMut() -> bool) {
     for _ in 0..400 {
@@ -140,4 +140,74 @@ async fn a_listener_can_dispatch_a_follow_up_action() {
     .await;
 
     assert_eq!(value_of(&store), 11);
+}
+
+struct RecordDeliveries {
+    mode: DeliveryMode,
+    log: Arc<Mutex<Vec<(i32, i32)>>>,
+}
+
+impl Listener<Counter, Count> for RecordDeliveries {
+    fn on_action(&self, reaction: Reaction<Counter, Count>) -> ListenerFuture {
+        let log = Arc::clone(&self.log);
+        let transition = (reaction.previous.value, reaction.current.value);
+        Box::pin(async move {
+            log.lock().unwrap().push(transition);
+        })
+    }
+
+    fn delivery_mode(&self) -> DeliveryMode {
+        self.mode
+    }
+}
+
+#[tokio::test]
+async fn latest_state_coalesces_a_synchronous_burst_and_feeds_the_high_water_mark_previous() {
+    let store = counter_store();
+    let log = Arc::new(Mutex::new(Vec::new()));
+    store.add_listener(Arc::new(RecordDeliveries {
+        mode: DeliveryMode::LatestState,
+        log: Arc::clone(&log),
+    }));
+
+    store.dispatch(Count::Increment);
+    store.dispatch(Count::Increment);
+    store.dispatch(Count::Increment);
+
+    eventually("the coalesced burst is delivered once", || {
+        log.lock().unwrap().len() == 1
+    })
+    .await;
+    tokio::task::yield_now().await;
+
+    assert_eq!(
+        *log.lock().unwrap(),
+        vec![(0, 3)],
+        "the two intermediate states are discarded; the single delivery carries current=3 and previous=0 — the worker's high-water mark, NOT the immediate predecessor 2 — so any slice that changed across the whole burst is still detectable"
+    );
+}
+
+#[tokio::test]
+async fn ordered_delivers_every_reaction_in_dispatch_order_without_coalescing() {
+    let store = counter_store();
+    let log = Arc::new(Mutex::new(Vec::new()));
+    store.add_listener(Arc::new(RecordDeliveries {
+        mode: DeliveryMode::Ordered,
+        log: Arc::clone(&log),
+    }));
+
+    store.dispatch(Count::Increment);
+    store.dispatch(Count::Increment);
+    store.dispatch(Count::Increment);
+
+    eventually("every reaction in the burst is delivered", || {
+        log.lock().unwrap().len() == 3
+    })
+    .await;
+
+    assert_eq!(
+        *log.lock().unwrap(),
+        vec![(0, 1), (1, 2), (2, 3)],
+        "the SAME burst under ORDERED yields one delivery per reaction, in dispatch order — proving ORDERED never coalesces"
+    );
 }

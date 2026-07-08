@@ -5,7 +5,7 @@ use tokio_util::sync::CancellationToken;
 use crate::ci::CiStateStore;
 use crate::github::RateLimitObserver;
 use crate::hub::Hub;
-use crate::kernel::{Dispatch, Listener, ListenerFuture, Reaction};
+use crate::kernel::{DeliveryMode, Dispatch, Listener, ListenerFuture, Reaction};
 use crate::store::{AppAction, AppState};
 use crate::transport::ci_watcher;
 
@@ -88,5 +88,9 @@ impl Listener<AppState, AppAction> for CiPoll {
             _ => {}
         }
         Box::pin(async {})
+    }
+
+    fn delivery_mode(&self) -> DeliveryMode {
+        DeliveryMode::FireAndForget
     }
 }
