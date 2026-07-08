@@ -53,7 +53,7 @@ const parseCreatedStoryNumber = (msg: unknown): number => {
   return Number(match![1])
 }
 
-const unscheduledOrder = (win: Page): Promise<number[]> => new BoardPage(win).unscheduledOrder()
+const readyOrder = (win: Page): Promise<number[]> => new BoardPage(win).storyOrder('Ready')
 
 test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle drive+capture', () => {
   test.setTimeout(90_000)
@@ -129,33 +129,67 @@ test.describe('#1569 — live-walk harness slice 2/2: full iteration lifecycle d
       expect(createY.ok, JSON.stringify(createY.json)).toBe(true)
       const storyIdY = parseCreatedStoryNumber(createY.json.message)
 
-      await switchToTab(win, 'Plan')
+      const readyX = await postTest(backendPort, token, 'move_story', {
+        id: storyIdX,
+        target_state: 'ready',
+        rationale: 'live-walk slice 2/2 reorder-step — X joins the designated iteration',
+        agent: 'pm:test'
+      })
+      expect(readyX.ok, JSON.stringify(readyX.json)).toBe(true)
+
+      const readyY = await postTest(backendPort, token, 'move_story', {
+        id: storyIdY,
+        target_state: 'ready',
+        rationale: 'live-walk slice 2/2 reorder-step — Y joins the designated iteration',
+        agent: 'pm:test'
+      })
+      expect(readyY.ok, JSON.stringify(readyY.json)).toBe(true)
+
+      await switchToTab(win, 'Now')
       await expect
-        .poll(() => unscheduledOrder(win), { timeout: 15_000 })
+        .poll(() => readyOrder(win), { timeout: 15_000 })
         .toEqual(expect.arrayContaining([storyIdX, storyIdY]))
-      const orderBefore = await unscheduledOrder(win)
+      const orderBefore = await readyOrder(win)
       expect(orderBefore.indexOf(storyIdX)).toBeLessThan(orderBefore.indexOf(storyIdY))
 
       const reorder = await postTest(backendPort, token, 'move_story', {
         id: storyIdY,
-        target_state: 'icebox',
+        target_state: 'ready',
         position: 1,
-        rationale: 'live-walk slice 2/2 reorder-step — promote Y above X in the backlog',
+        rationale: 'live-walk slice 2/2 reorder-step — promote Y above X within the iteration',
         agent: 'pm:test'
       })
       expect(reorder.ok, JSON.stringify(reorder.json)).toBe(true)
 
-      await switchToTab(win, 'Plan')
+      await switchToTab(win, 'Now')
       await expect
         .poll(
           async () => {
-            const order = await unscheduledOrder(win)
+            const order = await readyOrder(win)
             return order.indexOf(storyIdY) < order.indexOf(storyIdX)
           },
           { timeout: 15_000 }
         )
         .toBe(true)
       await capture(win, 'lifecycle-03-reordered')
+
+      const clearX = await postTest(backendPort, token, 'move_story', {
+        id: storyIdX,
+        target_state: 'icebox',
+        rationale:
+          'live-walk slice 2/2 reorder-step — clear the ready queue ahead of iteration close',
+        agent: 'pm:test'
+      })
+      expect(clearX.ok, JSON.stringify(clearX.json)).toBe(true)
+
+      const clearY = await postTest(backendPort, token, 'move_story', {
+        id: storyIdY,
+        target_state: 'icebox',
+        rationale:
+          'live-walk slice 2/2 reorder-step — clear the ready queue ahead of iteration close',
+        agent: 'pm:test'
+      })
+      expect(clearY.ok, JSON.stringify(clearY.json)).toBe(true)
 
       const renameTitle = `Iteration ${nameA}-RENAMED`
       const rename = await postTest(backendPort, token, 'edit_story', {

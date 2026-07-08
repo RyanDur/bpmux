@@ -112,14 +112,6 @@ export class BoardPage {
     return this.win.locator('.board-iteration-name')
   }
 
-  async unscheduledOrder(): Promise<number[]> {
-    return this.win
-      .locator('.board-iteration-card--unscheduled .board-story-navigate')
-      .evaluateAll((els) =>
-        els.map((el) => Number((el.getAttribute('aria-label') ?? '').match(/#(\d+)/)?.[1]))
-      )
-  }
-
   async openStory(storyId: number): Promise<void> {
     await this.storyNavigate(storyId).click({ position: { x: 4, y: 4 } })
   }
