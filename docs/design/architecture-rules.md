@@ -163,10 +163,14 @@ to gates elsewhere); bridge transaction-scripts (Phase 1); `is_closed` /
 New, refactor-safe: selector consolidation (view→domain selectors; stories
 currently have NO selector); the `!complete` current-iteration drift
 (`transport/rest/board.rs`); state-label 3-homes classification; shadow-field
-sheds (`Epic.state` — ignored by its own derivation; `story_type`;
-`iteration_slot`); drain trigger action→state; `EventMeta` envelope made
-structural (the 26-arm double-match); fitness locks for unowned seams
-(bridge→*, sync→store, integrations→store, view scope); reactions dual-write.
+sheds (`Epic.state` SHED (this slice); `iteration_slot` SHED (slice D);
+`story_type` KEEP — surveyed 2026-07-07: it is the canonical decode-once home
+for a story's kind (labels-over-title at `story_decode.rs:62`), read by live
+gate-class/signal-routing/chore-guard/ATP logic, pinned on the wire and outbox
+deliberately; retiring it would reintroduce multiple-authority re-derivation);
+drain trigger action→state; `EventMeta` envelope made structural (the 26-arm
+double-match); fitness locks for unowned seams (bridge→*, sync→store,
+integrations→store, view scope); reactions dual-write.
 
 Decided, not behavior-preserving at the shared edge (owner-approved
 2026-07-04): the desk-check label de-leak + local middle placement storage.

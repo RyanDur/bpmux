@@ -925,3 +925,32 @@ async fn re_accepted_after_reject_workflow_state_stays_accepted() {
         "re-accepted-after-reject (last gate = forward Accepted) stays accepted — the earlier reject is SUPERSEDED; guards the .last() primitive against an any-backward regression"
     );
 }
+
+#[tokio::test]
+async fn epic_view_workflow_state_derives_from_children_not_the_epics_own_shed_label() {
+    let epic_story = Story::new_minimal(
+        StoryId::new(700),
+        "[epic] parent".into(),
+        Work::Accepted,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    let epic = crate::integrations::github::mapper::decode_epic_from_story(&epic_story, false);
+    let mut child = make_story(701, Work::InProgress, None);
+    child.parent_epic = Some(crate::product_management::epic::EpicId::new(700));
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![child]);
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![epic]);
+    orch.refresh_all().await.unwrap();
+
+    let args = serde_json::json!({"id": 700});
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+        .await
+        .unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
+    assert_eq!(
+        parsed["workflow_state"], "in-progress",
+        "the epic view must report the CHILDREN-derived state (in-progress, from the one active child); Epic.state was shed, so this can never again read the epic's own label (which decoded as accepted)"
+    );
+}

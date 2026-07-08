@@ -1,6 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use crate::product_management::epic::{derive_epic_counts, derive_epic_state};
+use crate::integrations::github::mapper::decode_epic_from_story;
+use crate::product_management::epic::{
+    EpicAction, EpicState, derive_epic_counts, derive_epic_state, reduce,
+};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::scheduling::ProjectedState;
 use crate::product_management::story::{Story, StoryId, Work};
@@ -36,9 +39,9 @@ fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
 #[test]
 fn derive_epic_state_returns_icebox_for_empty_children_1450() {
     assert_eq!(
-        derive_epic_state(Work::NotStarted, &[], &[]),
+        derive_epic_state(&[], &[]),
         ProjectedState::Icebox,
-        "empty children must derive Icebox regardless of explicit state"
+        "empty children must derive Icebox"
     );
 }
 
@@ -50,7 +53,7 @@ fn derive_epic_state_returns_icebox_when_all_children_icebox_1450() {
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(Work::NotStarted, &refs, &[]),
+        derive_epic_state(&refs, &[]),
         ProjectedState::Icebox,
         "all-Icebox children derive Icebox"
     );
@@ -64,7 +67,7 @@ fn derive_epic_state_returns_ready_for_one_ready_no_active_1450() {
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(Work::NotStarted, &refs, &current_iteration_of(&[1])),
+        derive_epic_state(&refs, &current_iteration_of(&[1])),
         ProjectedState::Ready,
         "1+ Ready child + no active children derives Ready"
     );
@@ -79,7 +82,7 @@ fn derive_epic_state_returns_in_progress_for_active_child_1450() {
         ];
         let refs: Vec<&Story> = kids.iter().collect();
         assert_eq!(
-            derive_epic_state(Work::NotStarted, &refs, &current_iteration_of(&[1])),
+            derive_epic_state(&refs, &current_iteration_of(&[1])),
             ProjectedState::InProgress,
             "active-state {active_state:?} child derives InProgress at Epic-axis"
         );
@@ -91,7 +94,7 @@ fn derive_epic_state_returns_accepted_when_all_non_retired_accepted_1450() {
     let kids = [epic_child(1, Work::Accepted), epic_child(2, Work::Accepted)];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(Work::NotStarted, &refs, &[]),
+        derive_epic_state(&refs, &[]),
         ProjectedState::Accepted,
         "all-Accepted children derive Accepted"
     );
@@ -102,9 +105,9 @@ fn derive_epic_state_returns_retired_when_all_retired_1450() {
     let kids = [epic_child(1, Work::Retired), epic_child(2, Work::Retired)];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(Work::Accepted, &refs, &[]),
+        derive_epic_state(&refs, &[]),
         ProjectedState::Retired,
-        "all-Retired children derive Retired (overrides explicit Accepted)"
+        "all-Retired children derive Retired"
     );
 }
 
@@ -117,25 +120,9 @@ fn derive_epic_state_mixed_accepted_and_retired_no_active_derives_accepted_1450(
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(Work::NotStarted, &refs, &[]),
+        derive_epic_state(&refs, &[]),
         ProjectedState::Accepted,
         "mixed Accepted + Retired (no active) derives Accepted — retired don't block accept"
-    );
-}
-
-#[test]
-fn derive_epic_state_ignores_explicit_state_when_children_present_1450() {
-    let kids = [epic_child(1, Work::InProgress)];
-    let refs: Vec<&Story> = kids.iter().collect();
-    assert_eq!(
-        derive_epic_state(Work::Accepted, &refs, &[]),
-        ProjectedState::InProgress,
-        "post-1450: explicit_state is ignored — substrate IS source-of-truth (META-CANON #1)"
-    );
-    assert_eq!(
-        derive_epic_state(Work::Retired, &refs, &[]),
-        ProjectedState::InProgress,
-        "Retired explicit_state also ignored when active children present"
     );
 }
 
@@ -148,7 +135,7 @@ fn derive_epic_state_active_dominates_terminal_at_in_progress_axis_1450() {
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(Work::Accepted, &refs, &[]),
+        derive_epic_state(&refs, &[]),
         ProjectedState::InProgress,
         "1+ active child dominates Accepted/Retired siblings"
     );
@@ -162,7 +149,7 @@ fn derive_epic_state_not_started_non_member_child_derives_icebox() {
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(Work::NotStarted, &refs, &current_iteration_of(&[])),
+        derive_epic_state(&refs, &current_iteration_of(&[])),
         ProjectedState::Icebox,
         "a not-started child outside the current iteration projects Icebox, so the epic's only non-terminal child cannot make it Ready"
     );
@@ -177,7 +164,7 @@ fn derive_epic_state_ready_with_terminal_children_derives_ready_1450() {
     ];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(Work::NotStarted, &refs, &current_iteration_of(&[1])),
+        derive_epic_state(&refs, &current_iteration_of(&[1])),
         ProjectedState::Ready,
         "Ready + terminal-only siblings (no active) derives Ready — terminal don't block Ready"
     );
@@ -194,7 +181,7 @@ fn derive_epic_state_1189_paradox_regression_1450() {
     }
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
-        derive_epic_state(Work::NotStarted, &refs, &[]),
+        derive_epic_state(&refs, &[]),
         ProjectedState::Accepted,
         "#1189 paradox: Epic with 30 Accepted + 6 Retired children derives Accepted, NOT Icebox (owner-canon 2026-05-19 01:47 UTC)"
     );
@@ -207,7 +194,7 @@ fn derive_epic_state_does_not_return_non_epic_states_1450() {
         epic_child(2, Work::Acceptance),
     ];
     let refs: Vec<&Story> = kids.iter().collect();
-    let derived = derive_epic_state(Work::NotStarted, &refs, &[]);
+    let derived = derive_epic_state(&refs, &[]);
     assert!(
         matches!(
             derived,
@@ -425,5 +412,36 @@ fn derive_epic_counts_total_equals_sum_of_axes_1451() {
         counts.total_count,
         counts.accepted_count + counts.retired_count + counts.active_count + counts.icebox_count,
         "total_count is sum of 4 discriminated axes — no overlap, no gap"
+    );
+}
+
+#[test]
+fn epic_own_state_label_change_is_not_an_epic_change() {
+    let filed_at = Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap();
+    let story_not_started = Story::new_minimal(
+        StoryId::new(500),
+        "epic-500".to_string(),
+        Work::NotStarted,
+        filed_at,
+        "pm".to_string(),
+    );
+    let story_accepted = Story::new_minimal(
+        StoryId::new(500),
+        "epic-500".to_string(),
+        Work::Accepted,
+        filed_at,
+        "pm".to_string(),
+    );
+    let epic_before = decode_epic_from_story(&story_not_started, false);
+    let epic_after = decode_epic_from_story(&story_accepted, false);
+    let seeded = reduce(
+        &EpicState::default(),
+        &EpicAction::Seeded(vec![epic_before]),
+    )
+    .expect("seeding installs the epic");
+    let result = reduce(&seeded, &EpicAction::Upserted(vec![epic_after]));
+    assert!(
+        result.is_none(),
+        "an upsert differing only in the epic's own (shed) state label must reduce to None — the wire epic state derives from children, so that label never carried an observable difference"
     );
 }

@@ -75,11 +75,8 @@ pub(crate) fn board_epics(refresh: &Arc<dyn crate::sync::RefreshDriver>) -> Vec<
                 .iter()
                 .filter(|s| s.parent_epic() == Some(epic.id))
                 .collect();
-            let derived = crate::product_management::epic::derive_epic_state(
-                epic.state.clone(),
-                &children,
-                &iterations,
-            );
+            let derived =
+                crate::product_management::epic::derive_epic_state(&children, &iterations);
             serde_json::json!({
                 "id": epic.id.value(),
                 "title": epic.title,

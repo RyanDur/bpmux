@@ -1,6 +1,6 @@
 use crate::product_management::iteration::Iteration;
 use crate::product_management::scheduling::{ProjectedState, projected_state};
-use crate::product_management::story::{Story, Work};
+use crate::product_management::story::Story;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +13,6 @@ pub struct Epic {
     pub body: Option<String>,
     pub filed_at: DateTime<Utc>,
     pub filed_by: String,
-    pub state: Work,
     pub is_closed: bool,
 }
 
@@ -96,11 +95,7 @@ pub fn derive_epic_counts(children: &[&Story], iterations: &[Iteration]) -> Epic
     counts
 }
 
-pub fn derive_epic_state(
-    _epic_explicit_state: Work,
-    children: &[&Story],
-    iterations: &[Iteration],
-) -> ProjectedState {
+pub fn derive_epic_state(children: &[&Story], iterations: &[Iteration]) -> ProjectedState {
     if children.is_empty()
         || children
             .iter()

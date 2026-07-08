@@ -41,7 +41,6 @@ pub fn decode_epic_from_story(story: &Story, is_closed: bool) -> Epic {
         body: story.body().map(str::to_string),
         filed_at: story.filed_at(),
         filed_by: story.filed_by().to_string(),
-        state: story.state(),
         is_closed,
     }
 }

@@ -63,11 +63,23 @@ pub(super) async fn render_epic_detail(
     }
     let body_hydrated = body.is_some();
     let body_out = body.unwrap_or_else(|| NOT_HYDRATED_PLACEHOLDER.to_string());
+    let workflow_state = match refresh {
+        Some(r) => {
+            let stories = r.all_stories();
+            let children: Vec<&crate::product_management::story::Story> = stories
+                .iter()
+                .filter(|s| s.parent_epic() == Some(epic.id))
+                .collect();
+            let iterations = r.iterations();
+            crate::product_management::epic::derive_epic_state(&children, &iterations).as_str()
+        }
+        None => crate::product_management::scheduling::ProjectedState::Icebox.as_str(),
+    };
     let out = serde_json::json!({
         "id": id,
         "title": epic.title,
         "body": body_out,
-        "workflow_state": epic.state.as_str(),
+        "workflow_state": workflow_state,
         "is_closed": epic.is_closed,
         "labels": [{ "name": "epic" }],
         "parent_epic": serde_json::Value::Null,

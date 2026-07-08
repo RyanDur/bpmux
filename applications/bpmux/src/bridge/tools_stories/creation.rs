@@ -79,7 +79,6 @@ pub(crate) async fn handle_create_story(
                     body: Some(epic_body),
                     filed_at: chrono::Utc::now(),
                     filed_by: crate::routing::short_name(agent_name).to_string(),
-                    state: crate::product_management::story::Work::NotStarted,
                     is_closed: false,
                 },
             ]),
