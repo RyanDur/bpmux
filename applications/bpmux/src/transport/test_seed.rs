@@ -46,14 +46,23 @@ pub struct SeedReactionsBody {
 }
 
 pub async fn post_seed_reactions(
-    State(hub): State<Arc<hub::Hub>>,
+    axum::Extension(store): axum::Extension<Arc<crate::store::Store>>,
     Json(body): Json<SeedReactionsBody>,
 ) -> impl IntoResponse {
-    if let Err(e) = crate::reactions::save(&hub.dir, &body.store) {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("seed_reactions save failed: {e}"),
-        );
+    for (channel, list) in &body.store.channels {
+        for reaction in list {
+            store
+                .dispatch(crate::store::AppAction::Reactions(
+                    crate::store::ReactionsAction::ReactionToggled {
+                        channel: channel.clone(),
+                        message_key: reaction.message_key.clone(),
+                        emoji: reaction.emoji.clone(),
+                        user: reaction.user.clone(),
+                        ts_iso: reaction.reacted_at.clone(),
+                    },
+                ))
+                .await;
+        }
     }
     (StatusCode::CREATED, "seeded reactions".to_string())
 }

@@ -3,8 +3,10 @@ use std::collections::BTreeMap;
 use serde::Serialize;
 
 mod listeners;
+mod persistence;
 
 pub use listeners::ReactionsHubBroadcaster;
+pub use persistence::{from_store, to_store};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct AggregatedReaction {
@@ -65,6 +67,20 @@ pub fn reduce(state: &ReactionsState, action: &ReactionsAction) -> Option<Reacti
 
 pub fn channel_keys(state: &ReactionsState) -> Vec<String> {
     state.by_channel.keys().cloned().collect()
+}
+
+pub fn is_present(
+    state: &ReactionsState,
+    channel: &str,
+    message_key: &str,
+    emoji: &str,
+    user: &str,
+) -> bool {
+    state
+        .by_channel
+        .get(channel)
+        .and_then(|buckets| buckets.get(&(message_key.to_string(), emoji.to_string())))
+        .is_some_and(|reactors| reactors.iter().any(|(u, _)| u == user))
 }
 
 pub fn aggregated_for_channel(state: &ReactionsState, channel: &str) -> Vec<AggregatedReaction> {

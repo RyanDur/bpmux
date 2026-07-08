@@ -52,6 +52,18 @@ impl Store {
             .select(|state| reactions::aggregated_for_channel(&state.reactions, channel))
     }
 
+    pub fn reactions_is_present(
+        &self,
+        channel: &str,
+        message_key: &str,
+        emoji: &str,
+        user: &str,
+    ) -> bool {
+        self.app_store.select(|state| {
+            reactions::is_present(&state.reactions, channel, message_key, emoji, user)
+        })
+    }
+
     pub fn add_reactions_listener(&self, listener: Arc<dyn ReactionsBroadcastListener>) {
         self.reactions_listeners
             .lock()

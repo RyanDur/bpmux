@@ -404,6 +404,120 @@ async fn post_reaction_rest_handler_dispatches_through_orchestrator() {
 }
 
 #[tokio::test]
+async fn get_reactions_reads_the_store_selector_with_no_file_present() {
+    use crate::transport::rest::get_reactions;
+    use axum::body::{self, Body};
+    use axum::http::Request;
+    use tower::util::ServiceExt;
+
+    let dir = TempDir::new().expect("tempdir");
+    let (tx, _rx) = broadcast::channel::<Message>(64);
+    let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "test".to_string(), tx));
+    let orch: Arc<Store> = Arc::new(Store::new(
+        hub.clone(),
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+    ));
+
+    orch.dispatch(AppAction::Reactions(ReactionsAction::ReactionToggled {
+        channel: "broadcast".to_string(),
+        message_key: "k1".to_string(),
+        emoji: "👍".to_string(),
+        user: "owner".to_string(),
+        ts_iso: "2026-07-08T00:00:00Z".to_string(),
+    }))
+    .await;
+
+    assert!(
+        !crate::reactions::reactions_path(&hub.dir).exists(),
+        "no persister is registered on this store, so the data lives only in the store"
+    );
+
+    let router = axum::Router::new()
+        .route("/api/reactions", axum::routing::get(get_reactions))
+        .layer(axum::Extension(orch.clone()));
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/reactions?channel=broadcast")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    let bytes = body::to_bytes(response.into_body(), 4096).await.unwrap();
+    let agg: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(
+        agg.as_array().map(|a| a.len()),
+        Some(1),
+        "GET returns the store-held aggregate although reactions.json never existed"
+    );
+    assert_eq!(agg[0]["count"], 1);
+    assert!(
+        !crate::reactions::reactions_path(&hub.dir).exists(),
+        "GET must not read or materialize a reactions.json file",
+    );
+}
+
+#[tokio::test]
+async fn post_reaction_returns_present_from_the_post_dispatch_selector() {
+    use crate::transport::rest::post_reaction;
+    use axum::body::{self, Body};
+    use axum::http::Request;
+    use tower::util::ServiceExt;
+
+    let dir = TempDir::new().expect("tempdir");
+    let (tx, _rx) = broadcast::channel::<Message>(64);
+    let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "test".to_string(), tx));
+    let orch: Arc<Store> = Arc::new(Store::new(
+        hub.clone(),
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+    ));
+
+    let post = |orch: Arc<Store>, hub: Arc<Hub>| async move {
+        let router = axum::Router::new()
+            .route("/api/reactions", axum::routing::post(post_reaction))
+            .layer(axum::Extension(orch))
+            .with_state(hub);
+        let body_text = serde_json::to_string(&serde_json::json!({
+            "channel": "broadcast",
+            "message_key": "k1",
+            "emoji": "👍",
+            "user": "owner"
+        }))
+        .unwrap();
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/reactions")
+                    .header("Content-Type", "application/json")
+                    .body(Body::from(body_text))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let bytes = body::to_bytes(response.into_body(), 4096).await.unwrap();
+        let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        value["present"].as_bool().unwrap()
+    };
+
+    assert!(
+        post(orch.clone(), hub.clone()).await,
+        "first toggle reports present via the post-dispatch selector read"
+    );
+    assert!(
+        !post(orch.clone(), hub.clone()).await,
+        "second toggle reports absent via the post-dispatch selector read"
+    );
+}
+
+#[tokio::test]
 async fn ws_dispatch_roster_join_populates_store_with_identity() {
     let orch = fresh_orch();
     let rec = Arc::new(RecRoster::default());

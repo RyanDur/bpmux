@@ -13,11 +13,10 @@ use crate::hub;
 use crate::transport::rest::shared::{err_body, json_headers};
 
 pub async fn get_reactions(
-    State(hub): State<Arc<hub::Hub>>,
+    axum::Extension(store): axum::Extension<Arc<crate::store::Store>>,
     Query(params): Query<ReactionsChannelQuery>,
 ) -> impl IntoResponse {
-    let store = crate::reactions::load(&hub.dir);
-    let agg = crate::reactions::aggregate_for_channel(&store, &params.channel);
+    let agg = store.reactions_aggregated_for_channel(&params.channel);
     (
         StatusCode::OK,
         json_headers(),
@@ -49,18 +48,7 @@ pub async fn apply_reaction_toggle(
     store: &Arc<crate::store::Store>,
     body: &ReactionToggle,
 ) -> Result<bool, String> {
-    let mut reactions_store = crate::reactions::load(&hub.dir);
     let now = chrono::Utc::now().to_rfc3339();
-    let present = crate::reactions::toggle_reaction(
-        &mut reactions_store,
-        &body.channel,
-        &body.message_key,
-        &body.emoji,
-        &body.user,
-        &now,
-    );
-    crate::reactions::save(&hub.dir, &reactions_store)
-        .map_err(|e| format!("save reactions: {e}"))?;
     store
         .dispatch(crate::store::AppAction::Reactions(
             crate::store::ReactionsAction::ReactionToggled {
@@ -72,6 +60,8 @@ pub async fn apply_reaction_toggle(
             },
         ))
         .await;
+    let present =
+        store.reactions_is_present(&body.channel, &body.message_key, &body.emoji, &body.user);
     const EXCERPT_SCAN_WINDOW: usize = 2000;
     let msgs = hub.read_recent(EXCERPT_SCAN_WINDOW, 0, &|_| true).ok();
     let excerpt = msgs

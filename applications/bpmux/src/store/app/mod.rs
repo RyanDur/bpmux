@@ -16,11 +16,13 @@ mod board_placement;
 mod history;
 mod listeners;
 mod owner_park;
+mod reactions;
 mod reduce;
 pub use board_placement::{BoardPlacementPersister, BoardPlacementReconciler};
 pub use history::{LocalHistoryPersister, SharedHistoryPersister};
 pub use listeners::*;
 pub use owner_park::OwnerParkListener;
+pub use reactions::ReactionsPersister;
 pub use reduce::app_reduce;
 pub(super) use reduce::validate_and_log;
 
@@ -30,6 +32,8 @@ mod board_placement_tests;
 mod history_tests;
 #[cfg(test)]
 mod owner_park_tests;
+#[cfg(test)]
+mod reactions_tests;
 
 #[derive(Default, Clone)]
 pub struct AppState {
@@ -52,6 +56,11 @@ impl AppState {
             board: Arc::new(board),
             ..Default::default()
         }
+    }
+
+    pub fn with_reactions(mut self, reactions: ReactionsState) -> Self {
+        self.reactions = Arc::new(reactions);
+        self
     }
 
     pub fn with_shared_history(mut self, shared_history: SharedHistory) -> Self {

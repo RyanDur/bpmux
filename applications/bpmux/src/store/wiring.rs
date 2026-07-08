@@ -39,6 +39,9 @@ impl Store {
         let ci_listeners: app::CiListeners = Arc::new(Mutex::new(Vec::new()));
         let app_store = kernel::Store::new(
             app::AppState::with_board(crate::board::persistence::load(&hub.dir))
+                .with_reactions(crate::store::reactions::from_store(
+                    &crate::reactions::load(&hub.dir),
+                ))
                 .with_shared_history(crate::product_management::history_persistence::load(
                     &hub.dir,
                 ))
@@ -113,6 +116,8 @@ impl Store {
             .add_listener(Arc::new(app::BoardPlacementPersister::new(
                 self.hub.clone(),
             )));
+        self.app_store
+            .add_listener(Arc::new(app::ReactionsPersister::new(self.hub.clone())));
         self.app_store
             .add_listener(Arc::new(app::SharedHistoryPersister::new(self.hub.clone())));
         self.app_store
