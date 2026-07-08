@@ -4,9 +4,19 @@ import {
   type ElectronApplication,
   type Page
 } from '@playwright/test'
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, symlinkSync, rmSync } from 'fs'
+import {
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  symlinkSync,
+  rmSync,
+  renameSync,
+  readdirSync,
+  statSync
+} from 'fs'
 import { tmpdir } from 'os'
-import { join } from 'path'
+import { join, basename } from 'path'
 import * as net from 'net'
 import { startMockGhServer, type MockGhServer } from './mock_gh'
 
@@ -103,19 +113,40 @@ export const pickSafeInheritedEnv = (env: NodeJS.ProcessEnv = process.env): Node
  * `app.close` so the cleanup fires automatically in every test's
  * `finally { await app.close() }` path.
  */
+const TRASH_ROOT = join(tmpdir(), 'bpmux-e2e-trash')
+const TRASH_STALE_MS = 30 * 60 * 1000
+
 const cleanupTempPaths = (paths: string[]): void => {
   for (const p of paths) {
     try {
-      rmSync(p, { recursive: true, force: true })
+      mkdirSync(TRASH_ROOT, { recursive: true })
+      renameSync(p, join(TRASH_ROOT, `${basename(p)}-${Date.now()}-${process.pid}`))
     } catch {
-      // Best-effort cleanup; lingering tempdirs are recoverable via
-      // periodic find -mmin +60 on the runner, but typical case is the
-      // path exists and rmSync succeeds.
+      try {
+        rmSync(p, { recursive: true, force: true })
+      } catch {
+        void 0
+      }
     }
   }
 }
 
+const purgeStaleTrash = (): void => {
+  try {
+    const now = Date.now()
+    for (const entry of readdirSync(TRASH_ROOT)) {
+      const entryPath = join(TRASH_ROOT, entry)
+      if (now - statSync(entryPath).mtimeMs > TRASH_STALE_MS) {
+        rmSync(entryPath, { recursive: true, force: true })
+      }
+    }
+  } catch {
+    void 0
+  }
+}
+
 export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<LaunchResult> => {
+  purgeStaleTrash()
   const ownedTempPaths: string[] = []
   const sessionBase =
     opts.sessionBase ??
