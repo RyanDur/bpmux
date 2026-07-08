@@ -42,6 +42,9 @@ impl Store {
                 .with_reactions(crate::store::reactions::from_store(
                     &crate::reactions::load(&hub.dir),
                 ))
+                .with_evidence(crate::product_management::evidence::from_store(
+                    &crate::product_management::evidence::load(&hub.dir),
+                ))
                 .with_shared_history(crate::product_management::history_persistence::load(
                     &hub.dir,
                 ))
@@ -118,6 +121,8 @@ impl Store {
             )));
         self.app_store
             .add_listener(Arc::new(app::ReactionsPersister::new(self.hub.clone())));
+        self.app_store
+            .add_listener(Arc::new(app::EvidencePersister::new(self.hub.clone())));
         self.app_store
             .add_listener(Arc::new(app::SharedHistoryPersister::new(self.hub.clone())));
         self.app_store

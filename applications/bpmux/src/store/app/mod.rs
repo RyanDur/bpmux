@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::product_management::epic::{EpicAction, EpicState};
+use crate::product_management::evidence::{EvidenceAction, EvidenceState};
 use crate::product_management::history::{SharedHistory, SharedHistoryAction};
 use crate::product_management::iteration::{IterationAction, IterationState};
 use crate::product_management::outcome::{OutcomeAction, OutcomeState};
@@ -13,12 +14,14 @@ use crate::store::roster::{RosterAction, RosterState};
 use crate::store::sync::{SyncAction, SyncState};
 
 mod board_placement;
+mod evidence;
 mod history;
 mod listeners;
 mod owner_park;
 mod reactions;
 mod reduce;
 pub use board_placement::{BoardPlacementPersister, BoardPlacementReconciler};
+pub use evidence::EvidencePersister;
 pub use history::{LocalHistoryPersister, SharedHistoryPersister};
 pub use listeners::*;
 pub use owner_park::OwnerParkListener;
@@ -28,6 +31,8 @@ pub(super) use reduce::validate_and_log;
 
 #[cfg(test)]
 mod board_placement_tests;
+#[cfg(test)]
+mod evidence_tests;
 #[cfg(test)]
 mod history_tests;
 #[cfg(test)]
@@ -39,6 +44,7 @@ mod reactions_tests;
 pub struct AppState {
     pub roster: Arc<RosterState>,
     pub reactions: Arc<ReactionsState>,
+    pub evidence: Arc<EvidenceState>,
     pub ci: Arc<CiState>,
     pub outcomes: Arc<OutcomeState>,
     pub iterations: Arc<IterationState>,
@@ -60,6 +66,11 @@ impl AppState {
 
     pub fn with_reactions(mut self, reactions: ReactionsState) -> Self {
         self.reactions = Arc::new(reactions);
+        self
+    }
+
+    pub fn with_evidence(mut self, evidence: EvidenceState) -> Self {
+        self.evidence = Arc::new(evidence);
         self
     }
 
@@ -85,6 +96,7 @@ impl AppState {
 pub enum AppAction {
     Roster(RosterAction),
     Reactions(ReactionsAction),
+    Evidence(EvidenceAction),
     Ci(CiAction),
     Sync(SyncAction),
     Outcome(OutcomeAction),
@@ -104,6 +116,12 @@ impl From<RosterAction> for AppAction {
 impl From<ReactionsAction> for AppAction {
     fn from(action: ReactionsAction) -> Self {
         Self::Reactions(action)
+    }
+}
+
+impl From<EvidenceAction> for AppAction {
+    fn from(action: EvidenceAction) -> Self {
+        Self::Evidence(action)
     }
 }
 

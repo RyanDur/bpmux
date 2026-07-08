@@ -46,22 +46,18 @@ pub(crate) fn verdict_to_id(verdict: &crate::product_management::story::Verdict)
 }
 
 pub(crate) fn recent_evidence_for_story(
-    hub: &std::sync::Arc<crate::hub::Hub>,
+    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     story_id: u64,
-) -> Result<Vec<EvidenceMessage>, String> {
-    let store = crate::product_management::evidence::load(&hub.dir);
-    let verdicts = crate::product_management::evidence::evidence_for_story(
-        &store,
-        crate::product_management::story::StoryId::new(story_id),
-    );
-    Ok(verdicts
+) -> Vec<EvidenceMessage> {
+    refresh
+        .evidence_for_story(story_id)
         .into_iter()
         .map(|v| EvidenceMessage {
             from_role: v.from_role,
             ts: v.ts,
             grounded_head: v.grounded_head,
         })
-        .collect())
+        .collect()
 }
 
 pub(crate) fn verify_bug_question_or_bypass(

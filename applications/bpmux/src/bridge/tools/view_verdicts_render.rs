@@ -3,6 +3,9 @@
 use super::view_verdicts::*;
 use crate::bridge::tools::handle_submit_verdict;
 use crate::hub::Hub;
+use crate::integrations::in_memory::InMemorySourceAdapter;
+use crate::store::SeededStore;
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -11,6 +14,14 @@ use tokio::sync::broadcast;
 fn make_hub(dir: PathBuf) -> Arc<Hub> {
     let (tx, _) = broadcast::channel(16);
     Arc::new(Hub::new(dir, "owner".to_string(), tx))
+}
+
+fn orch_and_store() -> (Arc<dyn RefreshDriver>, SeededStore) {
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let store = SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
+    (orch, store)
 }
 
 fn submit_args(
@@ -38,14 +49,17 @@ fn view_args(id: u64) -> serde_json::Map<String, serde_json::Value> {
 async fn returns_record_after_write() {
     let dir = TempDir::new().unwrap();
     let hub = make_hub(dir.path().to_path_buf());
+    let (orch, store) = orch_and_store();
     handle_submit_verdict(
         &submit_args(42, "verified", "src/foo.rs cite"),
         "designer:claude-code",
         &hub,
+        &store.dispatcher(),
+        &store.select(),
     )
     .await
     .unwrap();
-    let response = handle_view_verdicts(&view_args(42), &hub, None)
+    let response = handle_view_verdicts(&view_args(42), Some(&orch))
         .await
         .unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();

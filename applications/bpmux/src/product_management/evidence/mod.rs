@@ -5,6 +5,12 @@ use std::path::{Path, PathBuf};
 
 use crate::product_management::story::StoryId;
 
+mod persistence;
+mod slice;
+
+pub use persistence::{from_store, to_store};
+pub use slice::{EvidenceAction, EvidenceState, evidence_for_story, reduce};
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Evidence {
     pub story_id: StoryId,
@@ -19,12 +25,6 @@ pub struct Evidence {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct EvidenceStore {
     pub stories: BTreeMap<StoryId, Vec<Evidence>>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AddEvidenceOutcome {
-    Inserted,
-    Replaced,
 }
 
 pub fn evidence_path(data_dir: &Path) -> PathBuf {
@@ -45,22 +45,4 @@ pub fn save(data_dir: &Path, store: &EvidenceStore) -> Result<(), std::io::Error
     let json = serde_json::to_string_pretty(store)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     std::fs::write(&path, json)
-}
-
-pub fn add_or_replace_evidence(
-    store: &mut EvidenceStore,
-    evidence: Evidence,
-) -> AddEvidenceOutcome {
-    let list = store.stories.entry(evidence.story_id).or_default();
-    if let Some(existing) = list.iter_mut().find(|v| v.from_role == evidence.from_role) {
-        *existing = evidence;
-        AddEvidenceOutcome::Replaced
-    } else {
-        list.push(evidence);
-        AddEvidenceOutcome::Inserted
-    }
-}
-
-pub fn evidence_for_story(store: &EvidenceStore, story_id: StoryId) -> Vec<Evidence> {
-    store.stories.get(&story_id).cloned().unwrap_or_default()
 }

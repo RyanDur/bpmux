@@ -93,6 +93,23 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             .unwrap_or(true)
     }
 
+    pub(super) fn read_evidence_for_story(
+        &self,
+        story_id: StoryId,
+    ) -> Vec<crate::product_management::evidence::Evidence> {
+        self.select
+            .get()
+            .map(|s| {
+                s.select(|state| {
+                    crate::product_management::evidence::evidence_for_story(
+                        &state.evidence,
+                        story_id,
+                    )
+                })
+            })
+            .unwrap_or_default()
+    }
+
     pub(super) fn read_outcomes(&self) -> Vec<Outcome> {
         self.select
             .get()

@@ -11,15 +11,15 @@ mod verdict_substrate_integration_1407 {
     use crate::bridge::tools_stories::handle_accept_story;
     use crate::hub::Hub;
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::evidence::{evidence_for_story, load};
+    use crate::product_management::evidence::{EvidenceAction, evidence_for_story};
     use crate::product_management::story::{Story, StoryId, Work};
+    use crate::store::{AppAction, SeededStore};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use std::path::PathBuf;
     use std::sync::Arc;
     use tempfile::TempDir;
-    use tokio::sync::Mutex;
     use tokio::sync::broadcast;
 
     fn make_hub(dir: PathBuf) -> Arc<Hub> {
@@ -27,13 +27,35 @@ mod verdict_substrate_integration_1407 {
         Arc::new(Hub::new(dir, "owner".to_string(), tx))
     }
 
-    async fn build_orchestrator_with_seed(seeded: Story) -> Arc<dyn RefreshDriver> {
+    fn fresh_store() -> SeededStore {
+        SeededStore::new(vec![], vec![], vec![])
+    }
+
+    fn orch_and_store() -> (Arc<dyn RefreshDriver>, SeededStore) {
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+        let store = SeededStore::new(vec![], vec![], vec![]);
+        store.bind_refresh(&orch);
+        (orch, store)
+    }
+
+    async fn orch_with_story_and_store(seeded: Story) -> (Arc<dyn RefreshDriver>, SeededStore) {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.seed_stories(vec![seeded]);
         let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
-        crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+        let store = SeededStore::new(vec![], vec![], vec![]);
+        store.bind_refresh(&orch);
         orch.refresh_all().await.unwrap();
-        orch
+        (orch, store)
+    }
+
+    async fn submit(
+        store: &SeededStore,
+        hub: &Arc<Hub>,
+        args: &serde_json::Map<String, serde_json::Value>,
+        role: &str,
+    ) -> Result<String, String> {
+        handle_submit_verdict(args, role, hub, &store.dispatcher(), &store.select()).await
     }
 
     fn delivered_story(id: u64) -> Story {
@@ -48,38 +70,26 @@ mod verdict_substrate_integration_1407 {
         story
     }
 
-    fn seed_expired_verdict(hub: &Arc<Hub>, id: u64, role: &str) {
-        use crate::product_management::evidence::{Evidence, add_or_replace_evidence, save};
-        let mut store = load(&hub.dir);
-        add_or_replace_evidence(
-            &mut store,
-            Evidence {
-                story_id: StoryId::new(id),
-                from_role: role.to_string(),
-                verdict: "verified".to_string(),
-                substrate_grounding: "src/foo.rs cite".to_string(),
-                ts: Utc.with_ymd_and_hms(2026, 5, 18, 0, 0, 0).unwrap(),
-                grounded_head: None,
-            },
-        );
-        save(&hub.dir, &store).unwrap();
+    fn seed_expired_verdict(store: &SeededStore, id: u64, role: &str) {
+        store.dispatch(AppAction::Evidence(EvidenceAction::VerdictSubmitted {
+            story_id: StoryId::new(id),
+            from_role: role.to_string(),
+            verdict: "verified".to_string(),
+            substrate_grounding: "src/foo.rs cite".to_string(),
+            ts: Utc.with_ymd_and_hms(2026, 5, 18, 0, 0, 0).unwrap(),
+            grounded_head: None,
+        }));
     }
 
-    fn seed_verdict_grounded_on(hub: &Arc<Hub>, id: u64, role: &str, head: &str) {
-        use crate::product_management::evidence::{Evidence, add_or_replace_evidence, save};
-        let mut store = load(&hub.dir);
-        add_or_replace_evidence(
-            &mut store,
-            Evidence {
-                story_id: StoryId::new(id),
-                from_role: role.to_string(),
-                verdict: "verified".to_string(),
-                substrate_grounding: "src/foo.rs cite".to_string(),
-                ts: Utc::now(),
-                grounded_head: Some(head.to_string()),
-            },
-        );
-        save(&hub.dir, &store).unwrap();
+    fn seed_verdict_grounded_on(store: &SeededStore, id: u64, role: &str, head: &str) {
+        store.dispatch(AppAction::Evidence(EvidenceAction::VerdictSubmitted {
+            story_id: StoryId::new(id),
+            from_role: role.to_string(),
+            verdict: "verified".to_string(),
+            substrate_grounding: "src/foo.rs cite".to_string(),
+            ts: Utc::now(),
+            grounded_head: Some(head.to_string()),
+        }));
     }
 
     fn verdict_args(id: u64) -> serde_json::Map<String, serde_json::Value> {
@@ -101,19 +111,21 @@ mod verdict_substrate_integration_1407 {
     }
 
     #[tokio::test]
-    async fn submit_verdict_persists_to_verdicts_store_at_hub_dir() {
+    async fn submit_verdict_records_both_roles_in_the_store() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
-        handle_submit_verdict(&verdict_args(42), "designer:claude-code", &hub)
+        let store = fresh_store();
+        submit(&store, &hub, &verdict_args(42), "designer:claude-code")
             .await
             .expect("designer submit_verdict");
-        handle_submit_verdict(&verdict_args(42), "dev:claude-code", &hub)
+        submit(&store, &hub, &verdict_args(42), "dev:claude-code")
             .await
             .expect("dev submit_verdict");
-        let store = load(&hub.dir);
-        let stored = evidence_for_story(&store, StoryId::new(42));
-        assert_eq!(stored.len(), 2);
-        let roles: Vec<&str> = stored.iter().map(|v| v.from_role.as_str()).collect();
+        let recorded = store
+            .select()
+            .select(|state| evidence_for_story(&state.evidence, StoryId::new(42)));
+        assert_eq!(recorded.len(), 2);
+        let roles: Vec<&str> = recorded.iter().map(|v| v.from_role.as_str()).collect();
         assert!(roles.contains(&"designer"));
         assert!(roles.contains(&"dev"));
     }
@@ -122,14 +134,14 @@ mod verdict_substrate_integration_1407 {
     async fn accept_story_succeeds_when_both_verdicts_present_for_target_story() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
-        handle_submit_verdict(&verdict_args(42), "designer", &hub)
+        let (orch, store) = orch_with_story_and_store(delivered_story(42)).await;
+        submit(&store, &hub, &verdict_args(42), "designer")
             .await
             .unwrap();
-        handle_submit_verdict(&verdict_args(42), "dev", &hub)
+        submit(&store, &hub, &verdict_args(42), "dev")
             .await
             .unwrap();
 
-        let orch = build_orchestrator_with_seed(delivered_story(42)).await;
         let result = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&hub)).await;
         assert!(
             result.is_ok(),
@@ -141,10 +153,10 @@ mod verdict_substrate_integration_1407 {
     async fn accept_reprompts_each_role_whose_verdict_has_expired() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
-        seed_expired_verdict(&hub, 42, "designer");
-        seed_expired_verdict(&hub, 42, "dev");
+        let (orch, store) = orch_with_story_and_store(delivered_story(42)).await;
+        seed_expired_verdict(&store, 42, "designer");
+        seed_expired_verdict(&store, 42, "dev");
 
-        let orch = build_orchestrator_with_seed(delivered_story(42)).await;
         let mut rx = hub.subscribe();
         let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&hub))
             .await
@@ -183,19 +195,18 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn view_verdicts_marks_verdict_expired_when_grounded_head_moved() {
         let dir = TempDir::new().unwrap();
-        let hub = make_hub(dir.path().to_path_buf());
+        let _hub = make_hub(dir.path().to_path_buf());
+        let (orch, store) = orch_with_story_and_store(delivered_story(42)).await;
         seed_verdict_grounded_on(
-            &hub,
+            &store,
             42,
             "designer",
             "a-frozen-sha-that-is-not-current-head",
         );
 
-        let orch = build_orchestrator_with_seed(delivered_story(42)).await;
-        let response =
-            crate::bridge::tools::handle_view_verdicts(&view_args(42), &hub, Some(&orch))
-                .await
-                .expect("view_verdicts succeeds");
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), Some(&orch))
+            .await
+            .expect("view_verdicts succeeds");
         let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");
         let records = parsed.as_array().expect("response is array");
         assert_eq!(records.len(), 1);
@@ -215,10 +226,10 @@ mod verdict_substrate_integration_1407 {
     async fn accept_blocks_and_reprompts_when_a_grounded_head_has_moved() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
-        seed_verdict_grounded_on(&hub, 42, "designer", "stale-sha-x");
-        seed_verdict_grounded_on(&hub, 42, "dev", "stale-sha-x");
+        let (orch, store) = orch_with_story_and_store(delivered_story(42)).await;
+        seed_verdict_grounded_on(&store, 42, "designer", "stale-sha-x");
+        seed_verdict_grounded_on(&store, 42, "dev", "stale-sha-x");
 
-        let orch = build_orchestrator_with_seed(delivered_story(42)).await;
         let mut rx = hub.subscribe();
         let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&hub))
             .await
@@ -247,14 +258,14 @@ mod verdict_substrate_integration_1407 {
     async fn accept_story_refuses_when_verdicts_exist_only_on_a_different_story() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
-        handle_submit_verdict(&verdict_args(99), "designer", &hub)
+        let (orch, store) = orch_with_story_and_store(delivered_story(42)).await;
+        submit(&store, &hub, &verdict_args(99), "designer")
             .await
             .unwrap();
-        handle_submit_verdict(&verdict_args(99), "dev", &hub)
+        submit(&store, &hub, &verdict_args(99), "dev")
             .await
             .unwrap();
 
-        let orch = build_orchestrator_with_seed(delivered_story(42)).await;
         let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&hub))
             .await
             .expect_err("verdicts on #99 must not satisfy accept_story #42");
@@ -272,11 +283,11 @@ mod verdict_substrate_integration_1407 {
     async fn accept_story_refuses_when_only_designer_verdict_present() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
-        handle_submit_verdict(&verdict_args(42), "designer", &hub)
+        let (orch, store) = orch_with_story_and_store(delivered_story(42)).await;
+        submit(&store, &hub, &verdict_args(42), "designer")
             .await
             .unwrap();
 
-        let orch = build_orchestrator_with_seed(delivered_story(42)).await;
         let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&hub))
             .await
             .expect_err("missing dev-verdict must refuse");
@@ -294,8 +305,9 @@ mod verdict_substrate_integration_1407 {
     async fn submit_verdict_broadcasts_pm_addressed_system_on_success() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
+        let store = fresh_store();
         let mut rx = hub.subscribe();
-        handle_submit_verdict(&verdict_args(42), "designer:claude-code", &hub)
+        submit(&store, &hub, &verdict_args(42), "designer:claude-code")
             .await
             .expect("designer submit_verdict");
         let msg = tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv())
@@ -330,8 +342,9 @@ mod verdict_substrate_integration_1407 {
     async fn submit_verdict_broadcasts_exactly_once_per_fire() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
+        let store = fresh_store();
         let mut rx = hub.subscribe();
-        handle_submit_verdict(&verdict_args(42), "designer:claude-code", &hub)
+        submit(&store, &hub, &verdict_args(42), "designer:claude-code")
             .await
             .expect("designer submit_verdict");
         let _first = tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv())
@@ -349,8 +362,9 @@ mod verdict_substrate_integration_1407 {
     async fn submit_verdict_broadcasts_replacement_on_replay() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
+        let store = fresh_store();
         let mut rx = hub.subscribe();
-        handle_submit_verdict(&verdict_args(42), "designer:claude-code", &hub)
+        submit(&store, &hub, &verdict_args(42), "designer:claude-code")
             .await
             .expect("first submit_verdict");
         let first = tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv())
@@ -366,7 +380,7 @@ mod verdict_substrate_integration_1407 {
             "substrate_grounding".into(),
             serde_json::json!("updated cite after second pass"),
         );
-        handle_submit_verdict(&second_args, "designer:claude-code", &hub)
+        submit(&store, &hub, &second_args, "designer:claude-code")
             .await
             .expect("replay submit_verdict");
         let replacement = tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv())
@@ -384,11 +398,12 @@ mod verdict_substrate_integration_1407 {
     async fn submit_verdict_does_not_broadcast_when_substrate_grounding_missing() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
+        let store = fresh_store();
         let mut rx = hub.subscribe();
         let mut bad_args = serde_json::Map::new();
         bad_args.insert("story_id".into(), serde_json::json!(42));
         bad_args.insert("verdict".into(), serde_json::json!("verified"));
-        let err = handle_submit_verdict(&bad_args, "designer:claude-code", &hub)
+        let err = submit(&store, &hub, &bad_args, "designer:claude-code")
             .await
             .expect_err("missing substrate_grounding must refuse");
         assert!(err.contains("substrate_grounding"));
@@ -403,8 +418,9 @@ mod verdict_substrate_integration_1407 {
     async fn submit_verdict_does_not_broadcast_when_role_refused() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
+        let store = fresh_store();
         let mut rx = hub.subscribe();
-        let err = handle_submit_verdict(&verdict_args(42), "pm:claude-code", &hub)
+        let err = submit(&store, &hub, &verdict_args(42), "pm:claude-code")
             .await
             .expect_err("pm role must refuse");
         assert!(err.contains("restricted to"));
@@ -425,14 +441,11 @@ mod verdict_substrate_integration_1407 {
     async fn view_verdicts_returns_record_after_submit() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
-        crate::bridge::tools::handle_submit_verdict(
-            &verdict_args(42),
-            "designer:claude-code",
-            &hub,
-        )
-        .await
-        .expect("designer submit_verdict");
-        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), &hub, None)
+        let (orch, store) = orch_and_store();
+        submit(&store, &hub, &verdict_args(42), "designer:claude-code")
+            .await
+            .expect("designer submit_verdict");
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), Some(&orch))
             .await
             .expect("view_verdicts succeeds after write");
         let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");
@@ -447,9 +460,8 @@ mod verdict_substrate_integration_1407 {
 
     #[tokio::test]
     async fn view_verdicts_returns_empty_for_unknown_story() {
-        let dir = TempDir::new().unwrap();
-        let hub = make_hub(dir.path().to_path_buf());
-        let response = crate::bridge::tools::handle_view_verdicts(&view_args(99999), &hub, None)
+        let (orch, _store) = orch_and_store();
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(99999), Some(&orch))
             .await
             .expect("view_verdicts succeeds for empty store");
         let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");
@@ -464,25 +476,18 @@ mod verdict_substrate_integration_1407 {
     async fn view_verdicts_scopes_by_story_id() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
-        crate::bridge::tools::handle_submit_verdict(
-            &verdict_args(10),
-            "designer:claude-code",
-            &hub,
-        )
-        .await
-        .unwrap();
-        crate::bridge::tools::handle_submit_verdict(&verdict_args(20), "dev:claude-code", &hub)
+        let (orch, store) = orch_and_store();
+        submit(&store, &hub, &verdict_args(10), "designer:claude-code")
             .await
             .unwrap();
-        crate::bridge::tools::handle_submit_verdict(
-            &verdict_args(30),
-            "designer:claude-code",
-            &hub,
-        )
-        .await
-        .unwrap();
+        submit(&store, &hub, &verdict_args(20), "dev:claude-code")
+            .await
+            .unwrap();
+        submit(&store, &hub, &verdict_args(30), "designer:claude-code")
+            .await
+            .unwrap();
 
-        let response = crate::bridge::tools::handle_view_verdicts(&view_args(20), &hub, None)
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(20), Some(&orch))
             .await
             .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
@@ -496,17 +501,14 @@ mod verdict_substrate_integration_1407 {
     async fn view_verdicts_returns_both_roles_for_one_story() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
-        crate::bridge::tools::handle_submit_verdict(
-            &verdict_args(42),
-            "designer:claude-code",
-            &hub,
-        )
-        .await
-        .unwrap();
-        crate::bridge::tools::handle_submit_verdict(&verdict_args(42), "dev:claude-code", &hub)
+        let (orch, store) = orch_and_store();
+        submit(&store, &hub, &verdict_args(42), "designer:claude-code")
             .await
             .unwrap();
-        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), &hub, None)
+        submit(&store, &hub, &verdict_args(42), "dev:claude-code")
+            .await
+            .unwrap();
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), Some(&orch))
             .await
             .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
@@ -524,28 +526,29 @@ mod verdict_substrate_integration_1407 {
     async fn view_verdicts_is_pure_read() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
-        crate::bridge::tools::handle_submit_verdict(
-            &verdict_args(42),
-            "designer:claude-code",
-            &hub,
-        )
-        .await
-        .unwrap();
-        let before = load(&hub.dir);
-        let count_before = evidence_for_story(&before, StoryId::new(42)).len();
+        let (orch, store) = orch_and_store();
+        submit(&store, &hub, &verdict_args(42), "designer:claude-code")
+            .await
+            .unwrap();
+        let count_before = store
+            .select()
+            .select(|state| evidence_for_story(&state.evidence, StoryId::new(42)))
+            .len();
 
-        crate::bridge::tools::handle_view_verdicts(&view_args(42), &hub, None)
+        crate::bridge::tools::handle_view_verdicts(&view_args(42), Some(&orch))
             .await
             .unwrap();
-        crate::bridge::tools::handle_view_verdicts(&view_args(42), &hub, None)
+        crate::bridge::tools::handle_view_verdicts(&view_args(42), Some(&orch))
             .await
             .unwrap();
-        crate::bridge::tools::handle_view_verdicts(&view_args(42), &hub, None)
+        crate::bridge::tools::handle_view_verdicts(&view_args(42), Some(&orch))
             .await
             .unwrap();
 
-        let after = load(&hub.dir);
-        let count_after = evidence_for_story(&after, StoryId::new(42)).len();
+        let count_after = store
+            .select()
+            .select(|state| evidence_for_story(&state.evidence, StoryId::new(42)))
+            .len();
         assert_eq!(
             count_before, count_after,
             "view_verdicts must not mutate the store"
@@ -554,10 +557,9 @@ mod verdict_substrate_integration_1407 {
 
     #[tokio::test]
     async fn view_verdicts_refuses_missing_story_id() {
-        let dir = TempDir::new().unwrap();
-        let hub = make_hub(dir.path().to_path_buf());
+        let (orch, _store) = orch_and_store();
         let empty_args = serde_json::Map::new();
-        let err = crate::bridge::tools::handle_view_verdicts(&empty_args, &hub, None)
+        let err = crate::bridge::tools::handle_view_verdicts(&empty_args, Some(&orch))
             .await
             .expect_err("missing story_id must refuse");
         assert!(err.contains("story_id"));
@@ -567,18 +569,13 @@ mod verdict_substrate_integration_1407 {
     async fn view_verdicts_surfaces_freshness_state_at_the_read_axis() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
-        let orch = build_orchestrator_with_seed(delivered_story(42)).await;
-        crate::bridge::tools::handle_submit_verdict(
-            &verdict_args(42),
-            "designer:claude-code",
-            &hub,
-        )
-        .await
-        .expect("designer submit_verdict");
-        let response =
-            crate::bridge::tools::handle_view_verdicts(&view_args(42), &hub, Some(&orch))
-                .await
-                .expect("view_verdicts succeeds with the board store");
+        let (orch, store) = orch_with_story_and_store(delivered_story(42)).await;
+        submit(&store, &hub, &verdict_args(42), "designer:claude-code")
+            .await
+            .expect("designer submit_verdict");
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), Some(&orch))
+            .await
+            .expect("view_verdicts succeeds with the board store");
         let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");
         let records = parsed.as_array().expect("response is array");
         assert_eq!(records.len(), 1);

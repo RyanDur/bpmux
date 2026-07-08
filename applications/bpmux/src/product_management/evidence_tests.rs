@@ -1,11 +1,13 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-use super::evidence::*;
+use super::evidence::{
+    EvidenceAction, EvidenceState, evidence_for_story, from_store, load, reduce, save, to_store,
+};
 use crate::product_management::story::StoryId;
 use chrono::Utc;
 use tempfile::TempDir;
 
-fn sample_verdict(story_id: u64, role: &str) -> Evidence {
-    Evidence {
+fn submit(story_id: u64, role: &str) -> EvidenceAction {
+    EvidenceAction::VerdictSubmitted {
         story_id: StoryId::new(story_id),
         from_role: role.to_string(),
         verdict: "verified".to_string(),
@@ -15,34 +17,38 @@ fn sample_verdict(story_id: u64, role: &str) -> Evidence {
     }
 }
 
-#[test]
-fn add_or_replace_verdict_inserts_when_role_absent_on_story() {
-    let mut store = EvidenceStore::default();
-    let outcome = add_or_replace_evidence(&mut store, sample_verdict(42, "designer"));
-    assert_eq!(outcome, AddEvidenceOutcome::Inserted);
-    assert_eq!(evidence_for_story(&store, StoryId::new(42)).len(), 1);
+fn apply(state: EvidenceState, action: &EvidenceAction) -> EvidenceState {
+    reduce(&state, action).expect("VerdictSubmitted yields a new state")
 }
 
 #[test]
-fn add_or_replace_verdict_replaces_when_same_role_on_same_story() {
-    let mut store = EvidenceStore::default();
-    let first = sample_verdict(42, "designer");
-    let mut second = sample_verdict(42, "designer");
-    second.substrate_grounding = "updated cite".into();
-    add_or_replace_evidence(&mut store, first);
-    let outcome = add_or_replace_evidence(&mut store, second);
-    assert_eq!(outcome, AddEvidenceOutcome::Replaced);
-    let listed = evidence_for_story(&store, StoryId::new(42));
+fn verdict_submitted_inserts_when_role_absent_on_story() {
+    let state = apply(EvidenceState::default(), &submit(42, "designer"));
+    assert_eq!(evidence_for_story(&state, StoryId::new(42)).len(), 1);
+}
+
+#[test]
+fn verdict_submitted_replaces_when_same_role_on_same_story() {
+    let mut state = apply(EvidenceState::default(), &submit(42, "designer"));
+    let second = EvidenceAction::VerdictSubmitted {
+        story_id: StoryId::new(42),
+        from_role: "designer".to_string(),
+        verdict: "verified".to_string(),
+        substrate_grounding: "updated cite".to_string(),
+        ts: Utc::now(),
+        grounded_head: None,
+    };
+    state = apply(state, &second);
+    let listed = evidence_for_story(&state, StoryId::new(42));
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].substrate_grounding, "updated cite");
 }
 
 #[test]
-fn add_or_replace_verdict_keeps_distinct_roles_separate() {
-    let mut store = EvidenceStore::default();
-    add_or_replace_evidence(&mut store, sample_verdict(42, "designer"));
-    add_or_replace_evidence(&mut store, sample_verdict(42, "dev"));
-    let listed = evidence_for_story(&store, StoryId::new(42));
+fn verdict_submitted_keeps_distinct_roles_separate() {
+    let mut state = apply(EvidenceState::default(), &submit(42, "designer"));
+    state = apply(state, &submit(42, "dev"));
+    let listed = evidence_for_story(&state, StoryId::new(42));
     assert_eq!(listed.len(), 2);
     let roles: Vec<&str> = listed.iter().map(|v| v.from_role.as_str()).collect();
     assert!(roles.contains(&"designer"));
@@ -50,27 +56,43 @@ fn add_or_replace_verdict_keeps_distinct_roles_separate() {
 }
 
 #[test]
-fn verdicts_for_unknown_story_returns_empty() {
-    let store = EvidenceStore::default();
-    assert!(evidence_for_story(&store, StoryId::new(999)).is_empty());
+fn evidence_for_unknown_story_returns_empty() {
+    let state = EvidenceState::default();
+    assert!(evidence_for_story(&state, StoryId::new(999)).is_empty());
 }
 
 #[test]
-fn save_load_round_trip_preserves_verdicts() {
+fn save_then_load_is_lossless_including_grounded_head_and_ts() {
     let dir = TempDir::new().unwrap();
-    let mut store = EvidenceStore::default();
-    add_or_replace_evidence(&mut store, sample_verdict(42, "designer"));
-    add_or_replace_evidence(&mut store, sample_verdict(42, "dev"));
-    add_or_replace_evidence(&mut store, sample_verdict(99, "designer"));
-    save(dir.path(), &store).unwrap();
-    let loaded = load(dir.path());
-    assert_eq!(evidence_for_story(&loaded, StoryId::new(42)).len(), 2);
-    assert_eq!(evidence_for_story(&loaded, StoryId::new(99)).len(), 1);
+    let ts = Utc::now();
+    let head = "a-frozen-sha".to_string();
+    let action = EvidenceAction::VerdictSubmitted {
+        story_id: StoryId::new(42),
+        from_role: "designer".to_string(),
+        verdict: "verified".to_string(),
+        substrate_grounding: "src/foo.rs cite".to_string(),
+        ts,
+        grounded_head: Some(head.clone()),
+    };
+    let state = apply(EvidenceState::default(), &action);
+
+    save(dir.path(), &to_store(&state)).unwrap();
+    let rehydrated = from_store(&load(dir.path()));
+
+    let listed = evidence_for_story(&rehydrated, StoryId::new(42));
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].ts, ts);
+    assert_eq!(listed[0].grounded_head.as_deref(), Some("a-frozen-sha"));
+    assert_eq!(
+        listed,
+        evidence_for_story(&state, StoryId::new(42)),
+        "round-trip through the on-disk shape preserves the whole evidence record"
+    );
 }
 
 #[test]
 fn load_returns_default_when_file_missing() {
     let dir = TempDir::new().unwrap();
-    let loaded = load(dir.path());
+    let loaded = from_store(&load(dir.path()));
     assert!(loaded.stories.is_empty());
 }

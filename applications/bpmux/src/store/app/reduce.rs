@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::product_management::epic;
+use crate::product_management::evidence;
 use crate::product_management::iteration;
 use crate::product_management::outcome;
 use crate::product_management::story::slice;
@@ -24,6 +25,13 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
         AppAction::Reactions(action) => match reactions::reduce(&state.reactions, action) {
             Some(reactions) => AppState {
                 reactions: Arc::new(reactions),
+                ..state.clone()
+            },
+            None => state.clone(),
+        },
+        AppAction::Evidence(action) => match evidence::reduce(&state.evidence, action) {
+            Some(evidence) => AppState {
+                evidence: Arc::new(evidence),
                 ..state.clone()
             },
             None => state.clone(),
@@ -116,6 +124,7 @@ pub fn validate_and_log(action: &AppAction) {
         AppAction::Sync(SyncAction::WritePushed { .. }) => "Sync.WritePushed",
         AppAction::Sync(SyncAction::WriteDropped { .. }) => "Sync.WriteDropped",
         AppAction::Reactions(_) => "Reactions",
+        AppAction::Evidence(_) => "Evidence",
         AppAction::Roster(_) => "Roster",
         AppAction::Outcome(_) => "Outcome",
         AppAction::Iteration(_) => "Iteration",

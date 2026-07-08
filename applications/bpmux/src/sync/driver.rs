@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::product_management::epic::{Epic, EpicId};
+use crate::product_management::evidence::Evidence;
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::Outcome;
 use crate::product_management::story::events::StoryEvent;
@@ -59,6 +60,9 @@ pub trait RefreshDriver: Send + Sync {
         crate::board::held_stage(story, &crate::board::BoardPlacements::default())
     }
     fn all_stories(&self) -> Vec<Story>;
+    fn evidence_for_story(&self, _id: u64) -> Vec<Evidence> {
+        Vec::new()
+    }
     fn outcomes(&self) -> Vec<Outcome> {
         Vec::new()
     }

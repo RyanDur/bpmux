@@ -121,6 +121,10 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.read_all_stories()
     }
 
+    fn evidence_for_story(&self, id: u64) -> Vec<crate::product_management::evidence::Evidence> {
+        self.read_evidence_for_story(StoryId::new(id))
+    }
+
     fn backing_story(&self, id: u64) -> Option<Story> {
         self.read_story(StoryId::new(id))
     }

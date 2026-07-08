@@ -1,7 +1,5 @@
 use crate::message::{Message, MessageType};
-use crate::product_management::evidence::{
-    AddEvidenceOutcome, Evidence, add_or_replace_evidence, load, save,
-};
+use crate::product_management::evidence::{EvidenceAction, evidence_for_story};
 use crate::product_management::story::StoryId;
 use std::sync::Arc;
 
@@ -9,6 +7,8 @@ pub(in crate::bridge) async fn handle_submit_verdict(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     hub: &Arc<crate::hub::Hub>,
+    dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     let role = agent_name.split(':').next().unwrap_or(agent_name);
     let workflow = crate::workflow::current_workflow();
@@ -40,19 +40,23 @@ pub(in crate::bridge) async fn handle_submit_verdict(
         .ok_or("missing 'substrate_grounding' argument (non-empty string)")?
         .to_string();
 
-    let ts = chrono::Utc::now();
-    let entry = Evidence {
-        story_id: StoryId::new(story_id),
-        from_role: role.to_string(),
-        verdict: verdict_value.clone(),
-        substrate_grounding,
-        ts,
-        grounded_head: crate::bridge::tools::git_repo::current_head_sha(),
-    };
+    let replaces_prior = select.select(|state| {
+        evidence_for_story(&state.evidence, StoryId::new(story_id))
+            .iter()
+            .any(|v| v.from_role == role)
+    });
 
-    let mut store = load(&hub.dir);
-    let outcome = add_or_replace_evidence(&mut store, entry);
-    save(&hub.dir, &store).map_err(|e| format!("save verdicts: {e}"))?;
+    let ts = chrono::Utc::now();
+    dispatch.dispatch(crate::store::AppAction::Evidence(
+        EvidenceAction::VerdictSubmitted {
+            story_id: StoryId::new(story_id),
+            from_role: role.to_string(),
+            verdict: verdict_value.clone(),
+            substrate_grounding,
+            ts,
+            grounded_head: crate::bridge::tools::git_repo::current_head_sha(),
+        },
+    ));
 
     let pm_id = workflow.role_id_for_purpose("pm").unwrap_or("pm");
     let notification = Message {
@@ -69,9 +73,10 @@ pub(in crate::bridge) async fn handle_submit_verdict(
         ));
     }
 
-    let outcome_label = match outcome {
-        AddEvidenceOutcome::Inserted => "new",
-        AddEvidenceOutcome::Replaced => "replaced prior",
+    let outcome_label = if replaces_prior {
+        "replaced prior"
+    } else {
+        "new"
     };
     Ok(format!(
         "verdict recorded on #{story_id} from {role} ({outcome_label})"

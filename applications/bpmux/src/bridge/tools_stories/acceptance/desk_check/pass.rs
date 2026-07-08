@@ -56,8 +56,10 @@ pub(crate) async fn handle_pass_desk_check(
         workflow.owner_role_id().unwrap_or(""),
     )
     .map_err(|e| e.as_json_string())?;
-    if let Some(s) = hub {
-        let evidence = recent_evidence_for_story(s, id)?;
+    if hub.is_some()
+        && let Some(r) = refresh
+    {
+        let evidence = recent_evidence_for_story(r, id);
         crate::workflow::check_evidence_present(
             transition,
             actor_role,

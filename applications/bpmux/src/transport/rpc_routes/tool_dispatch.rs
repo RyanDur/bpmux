@@ -89,8 +89,10 @@ pub(super) async fn dispatch(
         "view_story_timeline" => bridge::dispatch_view_story_timeline(args, refresh_ref).await,
         "view_comments" => bridge::dispatch_view_comments(args, refresh_ref).await,
         "view_backlog" => bridge::dispatch_view_backlog(refresh_ref).await,
-        "submit_verdict" => bridge::dispatch_submit_verdict(args, agent, hub).await,
-        "view_verdicts" => bridge::dispatch_view_verdicts(args, hub, refresh_ref).await,
+        "submit_verdict" => {
+            bridge::dispatch_submit_verdict(args, agent, hub, dispatcher, select).await
+        }
+        "view_verdicts" => bridge::dispatch_view_verdicts(args, refresh_ref).await,
         "view_velocity" => bridge::dispatch_view_velocity(select),
         "view_story_commits" => bridge::dispatch_view_story_commits(args).await,
         "view_commit_diff" => bridge::dispatch_view_commit_diff(args).await,

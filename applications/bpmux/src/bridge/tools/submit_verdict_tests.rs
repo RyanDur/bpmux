@@ -2,8 +2,9 @@
 
 use super::submit_verdict::*;
 use crate::hub::Hub;
-use crate::product_management::evidence::{evidence_for_story, load};
+use crate::product_management::evidence::evidence_for_story;
 use crate::product_management::story::StoryId;
+use crate::store::SeededStore;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -40,18 +41,31 @@ fn make_hub_with_rx(
     (hub, rx)
 }
 
+fn stored(store: &SeededStore, id: u64) -> Vec<crate::product_management::evidence::Evidence> {
+    store
+        .select()
+        .select(|state| evidence_for_story(&state.evidence, StoryId::new(id)))
+}
+
 #[tokio::test]
 async fn verdict_cast_broadcast_carries_message_type_system_not_chat() {
     let dir = TempDir::new().unwrap();
     let (hub, mut rx) = make_hub_with_rx(dir.path().to_path_buf());
+    let store = SeededStore::new(vec![], vec![], vec![]);
     let args = make_args(
         1494,
         "verified",
         "src/bridge/tools/submit_verdict.rs:54 cite",
     );
-    handle_submit_verdict(&args, "dev:claude-code", &hub)
-        .await
-        .expect("dev fire should succeed");
+    handle_submit_verdict(
+        &args,
+        "dev:claude-code",
+        &hub,
+        &store.dispatcher(),
+        &store.select(),
+    )
+    .await
+    .expect("dev fire should succeed");
     let received = rx.try_recv().expect("broadcast should arrive");
     assert_eq!(received.from, "bpmux");
     assert_eq!(
@@ -71,41 +85,60 @@ async fn verdict_cast_broadcast_carries_message_type_system_not_chat() {
 async fn dev_writes_verdict_to_store_at_hub_dir() {
     let dir = TempDir::new().unwrap();
     let hub = make_hub(dir.path().to_path_buf());
+    let store = SeededStore::new(vec![], vec![], vec![]);
     let args = make_args(42, "verified", "src/foo.rs:10 cite");
-    let result = handle_submit_verdict(&args, "dev:claude-code", &hub)
-        .await
-        .expect("dev fire should succeed");
+    let result = handle_submit_verdict(
+        &args,
+        "dev:claude-code",
+        &hub,
+        &store.dispatcher(),
+        &store.select(),
+    )
+    .await
+    .expect("dev fire should succeed");
     assert!(result.contains("verdict recorded on #42 from dev"));
-    let store = load(&hub.dir);
-    let stored = evidence_for_story(&store, StoryId::new(42));
-    assert_eq!(stored.len(), 1);
-    assert_eq!(stored[0].from_role, "dev");
-    assert_eq!(stored[0].verdict, "verified");
-    assert_eq!(stored[0].substrate_grounding, "src/foo.rs:10 cite");
+    let recorded = stored(&store, 42);
+    assert_eq!(recorded.len(), 1);
+    assert_eq!(recorded[0].from_role, "dev");
+    assert_eq!(recorded[0].verdict, "verified");
+    assert_eq!(recorded[0].substrate_grounding, "src/foo.rs:10 cite");
 }
 
 #[tokio::test]
 async fn designer_writes_verdict_to_store() {
     let dir = TempDir::new().unwrap();
     let hub = make_hub(dir.path().to_path_buf());
+    let store = SeededStore::new(vec![], vec![], vec![]);
     let args = make_args(99, "rejected", "missing acceptance cite");
-    handle_submit_verdict(&args, "designer:claude-code", &hub)
-        .await
-        .expect("designer fire should succeed");
-    let store = load(&hub.dir);
-    let stored = evidence_for_story(&store, StoryId::new(99));
-    assert_eq!(stored.len(), 1);
-    assert_eq!(stored[0].from_role, "designer");
+    handle_submit_verdict(
+        &args,
+        "designer:claude-code",
+        &hub,
+        &store.dispatcher(),
+        &store.select(),
+    )
+    .await
+    .expect("designer fire should succeed");
+    let recorded = stored(&store, 99);
+    assert_eq!(recorded.len(), 1);
+    assert_eq!(recorded[0].from_role, "designer");
 }
 
 #[tokio::test]
 async fn pm_role_is_refused() {
     let dir = TempDir::new().unwrap();
     let hub = make_hub(dir.path().to_path_buf());
+    let store = SeededStore::new(vec![], vec![], vec![]);
     let args = make_args(42, "verified", "cite");
-    let err = handle_submit_verdict(&args, "pm:claude-code", &hub)
-        .await
-        .expect_err("pm fire should refuse");
+    let err = handle_submit_verdict(
+        &args,
+        "pm:claude-code",
+        &hub,
+        &store.dispatcher(),
+        &store.select(),
+    )
+    .await
+    .expect_err("pm fire should refuse");
     assert!(err.contains("restricted to dev or designer"));
     assert!(err.contains("pm"));
 }
@@ -114,10 +147,11 @@ async fn pm_role_is_refused() {
 async fn missing_substrate_grounding_is_refused() {
     let dir = TempDir::new().unwrap();
     let hub = make_hub(dir.path().to_path_buf());
+    let store = SeededStore::new(vec![], vec![], vec![]);
     let mut args = serde_json::Map::new();
     args.insert("story_id".into(), serde_json::json!(42));
     args.insert("verdict".into(), serde_json::json!("verified"));
-    let err = handle_submit_verdict(&args, "dev", &hub)
+    let err = handle_submit_verdict(&args, "dev", &hub, &store.dispatcher(), &store.select())
         .await
         .expect_err("missing substrate_grounding should refuse");
     assert!(err.contains("substrate_grounding"));
@@ -127,8 +161,9 @@ async fn missing_substrate_grounding_is_refused() {
 async fn empty_substrate_grounding_is_refused() {
     let dir = TempDir::new().unwrap();
     let hub = make_hub(dir.path().to_path_buf());
+    let store = SeededStore::new(vec![], vec![], vec![]);
     let args = make_args(42, "verified", "   ");
-    let err = handle_submit_verdict(&args, "dev", &hub)
+    let err = handle_submit_verdict(&args, "dev", &hub, &store.dispatcher(), &store.select())
         .await
         .expect_err("whitespace-only substrate_grounding should refuse");
     assert!(err.contains("substrate_grounding"));
@@ -138,19 +173,21 @@ async fn empty_substrate_grounding_is_refused() {
 async fn replay_from_same_role_replaces_prior() {
     let dir = TempDir::new().unwrap();
     let hub = make_hub(dir.path().to_path_buf());
+    let store = SeededStore::new(vec![], vec![], vec![]);
     let first = make_args(42, "verified", "initial cite");
-    handle_submit_verdict(&first, "dev", &hub).await.unwrap();
+    handle_submit_verdict(&first, "dev", &hub, &store.dispatcher(), &store.select())
+        .await
+        .unwrap();
     let second = make_args(42, "rejected", "updated cite after second pass");
-    let result = handle_submit_verdict(&second, "dev", &hub)
+    let result = handle_submit_verdict(&second, "dev", &hub, &store.dispatcher(), &store.select())
         .await
         .expect("replay should succeed");
     assert!(result.contains("replaced prior"));
-    let store = load(&hub.dir);
-    let stored = evidence_for_story(&store, StoryId::new(42));
-    assert_eq!(stored.len(), 1);
-    assert_eq!(stored[0].verdict, "rejected");
+    let recorded = stored(&store, 42);
+    assert_eq!(recorded.len(), 1);
+    assert_eq!(recorded[0].verdict, "rejected");
     assert_eq!(
-        stored[0].substrate_grounding,
+        recorded[0].substrate_grounding,
         "updated cite after second pass"
     );
 }

@@ -65,6 +65,8 @@ pub(crate) async fn dispatch_submit_verdict(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     hub: &Arc<crate::hub::Hub>,
+    dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
-    tools::handle_submit_verdict(&args, agent_name, hub).await
+    tools::handle_submit_verdict(&args, agent_name, hub, dispatch, select).await
 }
