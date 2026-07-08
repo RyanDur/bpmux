@@ -17,14 +17,6 @@ impl StateDeltaPayload {
                     "url": crate::ci_link::github_actions_url(),
                 }),
             )),
-            StateDeltaPayload::Sync { transition } => Some((
-                "sync_status_changed",
-                serde_json::json!({
-                    "status": transition.status,
-                    "why": transition.why,
-                    "pending_events": transition.pending_events,
-                }),
-            )),
             StateDeltaPayload::StoryTransition { transition } => Some((
                 "story_state_transition",
                 serde_json::json!({

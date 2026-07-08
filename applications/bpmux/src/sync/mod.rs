@@ -33,8 +33,8 @@ pub use outbox::{default_outbox_path, load_outbox_from_disk};
 pub use port::*;
 pub use race_window::*;
 pub use status::{
-    DroppedEvent, SyncStatus, SyncTransition, acknowledge_dropped, is_stale, is_startup_fail,
-    staleness_threshold_secs, sync_transition,
+    DroppedEvent, SyncStatus, acknowledge_dropped, is_stale, is_startup_fail,
+    staleness_threshold_secs,
 };
 use status::{record_dropped, record_error, record_push_success};
 pub use types::*;

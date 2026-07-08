@@ -15,5 +15,5 @@ pub use state_snapshot::{ReactionsChannelSnapshot, StateSnapshotPayload};
 pub use subscription::payload_matches_filter;
 pub use wire::{
     CiSnapshotWire, CiStateWire, IterationCloseBlockerPayload, PresenceWire, ReactionAggregateWire,
-    RosterMemberWire, RosterRoleWire, StoryTransitionWire, SyncTransitionWire,
+    RosterMemberWire, RosterRoleWire, StoryTransitionWire,
 };

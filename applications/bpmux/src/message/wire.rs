@@ -16,13 +16,6 @@ pub struct ReactionAggregateWire {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct SyncTransitionWire {
-    pub status: String,
-    pub why: String,
-    pub pending_events: usize,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StoryTransitionWire {
     pub story_id: u64,
     pub from_state: String,

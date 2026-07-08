@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::wire::{
     CiSnapshotWire, IterationCloseBlockerPayload, ReactionAggregateWire, RosterMemberWire,
-    StoryTransitionWire, SyncTransitionWire,
+    StoryTransitionWire,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -18,8 +18,6 @@ pub enum StateDeltaPayload {
     Ci { snapshot: CiSnapshotWire },
     #[serde(rename = "ci_poll")]
     CiPoll { snapshot: CiSnapshotWire },
-    #[serde(rename = "sync")]
-    Sync { transition: SyncTransitionWire },
     #[serde(rename = "sync_poll")]
     SyncPoll { status: serde_json::Value },
     #[serde(rename = "story_transition")]
