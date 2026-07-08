@@ -87,14 +87,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self.with_pending(|p| p.clone())
     }
 
-    pub fn pending_issue_for_mutation(&self, id: MutationId) -> Option<u64> {
-        self.with_pending(|p| {
-            p.iter()
-                .find(|q| q.id == id)
-                .map(|q| q.event.story_id().value())
-        })
-    }
-
     pub async fn issue_lock(&self, issue: u64) -> Arc<tokio::sync::Mutex<()>> {
         let mut locks = self.issue_locks.lock().await;
         Arc::clone(

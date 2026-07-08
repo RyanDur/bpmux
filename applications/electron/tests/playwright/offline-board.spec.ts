@@ -67,8 +67,7 @@ test.describe('#1158 — offline-first board', () => {
             id: 100,
             new_state: 'in-progress'
           }
-        },
-        pre_state: null
+        }
       },
       {
         id: 1,
@@ -82,8 +81,7 @@ test.describe('#1158 — offline-first board', () => {
             id: 101,
             new_state: 'in-progress'
           }
-        },
-        pre_state: null
+        }
       }
     ]
     writeFileSync(outboxPath, JSON.stringify(seedEvents))
@@ -169,8 +167,7 @@ test.describe('#1158 — offline-first board', () => {
           id: 200,
           new_state: 'acceptance'
         }
-      },
-      pre_state: null
+      }
     }
     writeFileSync(outboxPath, JSON.stringify([event]))
 

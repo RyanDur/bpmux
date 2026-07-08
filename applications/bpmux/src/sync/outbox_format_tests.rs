@@ -12,17 +12,16 @@ use crate::product_management::story::{
 };
 use crate::sync::{QueuedEvent, load_outbox_from_disk};
 
-const FIX_QUEUED_TAG_ADDED: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}},"pre_state":null}"#;
-const FIX_QUEUED_TRANSITIONED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress","placement":"desk-check"}},"pre_state":null}"#;
-const FIX_QUEUED_VERDICT: &str = r#"{"id":0,"event":{"VerdictCast":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"verdict":{"Fail":{"step":"acceptance"}},"payload":"narrow viewport"}},"pre_state":null}"#;
-const FIX_QUEUED_REFRESHED: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[]}}},"pre_state":null}"#;
-const FIX_QUEUED_WITH_PRESTATE: &str = r#"{"id":42,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}},"pre_state":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[]}}"#;
-const FIX_LEGACY_BARE_EVENT: &str = r#"{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}}"#;
+const FIX_QUEUED_TAG_ADDED: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}}}"#;
+const FIX_QUEUED_TRANSITIONED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress","placement":"desk-check"}}}"#;
+const FIX_QUEUED_VERDICT: &str = r#"{"id":0,"event":{"VerdictCast":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"verdict":{"Fail":{"step":"acceptance"}},"payload":"narrow viewport"}}}"#;
+const FIX_QUEUED_REFRESHED: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[]}}}}"#;
+const FIX_STORY_EVENT: &str = r#"{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}}"#;
 
-const FIX_ABSENT_PLACEMENT: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress"}},"pre_state":null}"#;
-const FIX_ABSENT_PLACEMENT_NORMALIZED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress","placement":null}},"pre_state":null}"#;
-const FIX_ABSENT_ETAG: &str = r#"{"id":0,"event":{"BodyFetched":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"body":"hydrated"}},"pre_state":null}"#;
-const FIX_ABSENT_ETAG_NORMALIZED: &str = r#"{"id":0,"event":{"BodyFetched":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"body":"hydrated","etag":null}},"pre_state":null}"#;
+const FIX_ABSENT_PLACEMENT: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress"}}}"#;
+const FIX_ABSENT_PLACEMENT_NORMALIZED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress","placement":null}}}"#;
+const FIX_ABSENT_ETAG: &str = r#"{"id":0,"event":{"BodyFetched":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"body":"hydrated"}}}"#;
+const FIX_ABSENT_ETAG_NORMALIZED: &str = r#"{"id":0,"event":{"BodyFetched":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"body":"hydrated","etag":null}}}"#;
 
 fn fixture_meta() -> EventMeta {
     EventMeta {
@@ -82,28 +81,12 @@ fn queued_story_refreshed_row_round_trips_byte_identically() {
 }
 
 #[test]
-fn queued_row_with_pre_state_round_trips_byte_identically() {
-    assert_byte_round_trip(FIX_QUEUED_WITH_PRESTATE);
-}
-
-#[test]
-fn a_legacy_row_carrying_the_retired_keys_still_deserializes_into_a_story() {
-    let legacy = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[],"ready_order":100,"iteration_slot":{"name":"Pegasus","position":100}}}},"pre_state":null}"#;
-    let parsed: QueuedEvent =
-        serde_json::from_str(legacy).expect("a legacy row carrying the retired keys still loads");
-    match &parsed.event.kind {
-        StoryEventKind::StoryRefreshed { story } => assert_eq!(**story, fixture_story()),
-        other => panic!("fixture is a StoryRefreshed row; got {other:?}"),
-    }
-}
-
-#[test]
-fn legacy_bare_event_round_trips_byte_identically() {
+fn story_event_round_trips_byte_identically() {
     let parsed: StoryEvent =
-        serde_json::from_str(FIX_LEGACY_BARE_EVENT).expect("bare event deserializes");
+        serde_json::from_str(FIX_STORY_EVENT).expect("story event deserializes");
     assert_eq!(parsed, fixture_tag_added());
-    let reserialized = serde_json::to_string(&parsed).expect("bare event reserializes");
-    assert_eq!(reserialized, FIX_LEGACY_BARE_EVENT);
+    let reserialized = serde_json::to_string(&parsed).expect("story event reserializes");
+    assert_eq!(reserialized, FIX_STORY_EVENT);
 }
 
 #[test]

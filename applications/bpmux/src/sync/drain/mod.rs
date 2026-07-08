@@ -13,13 +13,11 @@ mod drain_once;
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub fn mutate(&self, event: StoryEvent) -> Result<(), SyncError> {
         let id = MutationId(self.next_mutation_id.fetch_add(1, Ordering::SeqCst));
-        let story_id = event.story_id();
-        let pre_state = self.read_story(story_id);
         self.apply_story_event(&event);
         let queue_len = self.with_pending_mut(|p| {
-            let absorbed = coalesce_iteration_label_events(&*self.codec, p, &event, id, &pre_state);
+            let absorbed = coalesce_iteration_label_events(&*self.codec, p, &event, id);
             if !absorbed {
-                p.push_back(QueuedEvent::new_with_id(id, event, pre_state));
+                p.push_back(QueuedEvent::new_with_id(id, event));
             }
             p.len()
         });
@@ -37,24 +35,15 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         if events.is_empty() {
             return Ok(());
         }
-        let pre_states: Vec<Option<crate::product_management::story::Story>> = events
-            .iter()
-            .map(|event| self.read_story(event.story_id()))
-            .collect();
         self.apply_story_events(&events);
         let mut ids = Vec::with_capacity(events.len());
         let queue_len = self.with_pending_mut(|p| {
-            for (event, pre_state) in events.iter().zip(pre_states.iter()) {
+            for event in events.iter() {
                 let id = MutationId(self.next_mutation_id.fetch_add(1, Ordering::SeqCst));
                 ids.push(id);
-                let absorbed =
-                    coalesce_iteration_label_events(&*self.codec, p, event, id, pre_state);
+                let absorbed = coalesce_iteration_label_events(&*self.codec, p, event, id);
                 if !absorbed {
-                    p.push_back(QueuedEvent::new_with_id(
-                        id,
-                        event.clone(),
-                        pre_state.clone(),
-                    ));
+                    p.push_back(QueuedEvent::new_with_id(id, event.clone()));
                 }
             }
             p.len()

@@ -18,7 +18,6 @@ pub(super) fn coalesce_iteration_label_events(
     queue: &mut VecDeque<QueuedEvent>,
     new_event: &StoryEvent,
     new_id: MutationId,
-    new_pre_state: &Option<Story>,
 ) -> bool {
     let (id, label, is_add) = match &new_event.kind {
         StoryEventKind::TagAdded { label, .. } => (new_event.id, label.clone(), true),
@@ -58,19 +57,11 @@ pub(super) fn coalesce_iteration_label_events(
     let a_to_keep: Option<QueuedEvent>;
     if is_add {
         r_to_keep = first_r_idx.map(|i| queue[i].clone());
-        a_to_keep = Some(QueuedEvent::new_with_id(
-            new_id,
-            new_event.clone(),
-            new_pre_state.clone(),
-        ));
+        a_to_keep = Some(QueuedEvent::new_with_id(new_id, new_event.clone()));
     } else {
         r_to_keep = match first_r_idx {
             Some(i) => Some(queue[i].clone()),
-            None => Some(QueuedEvent::new_with_id(
-                new_id,
-                new_event.clone(),
-                new_pre_state.clone(),
-            )),
+            None => Some(QueuedEvent::new_with_id(new_id, new_event.clone())),
         };
         a_to_keep = last_a_idx.map(|i| queue[i].clone());
     }

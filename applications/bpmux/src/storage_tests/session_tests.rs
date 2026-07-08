@@ -269,7 +269,7 @@ fn seed_outbox_event(number: u64, label: &str) -> crate::sync::QueuedEvent {
             label: label.to_string(),
         },
     );
-    crate::sync::QueuedEvent::new(event, None)
+    crate::sync::QueuedEvent::new(event)
 }
 
 contract!(load_outbox_empty_when_unset, |storage: &dyn Storage| {

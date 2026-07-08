@@ -53,10 +53,6 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         Box::pin(self.drain_one_by_id(id))
     }
 
-    fn snapshot_pending_for_mutation(&self, id: MutationId) -> Option<u64> {
-        self.pending_issue_for_mutation(id)
-    }
-
     fn issue_lock(&self, issue: u64) -> BoxedFuture<'_, Arc<tokio::sync::Mutex<()>>> {
         Box::pin(self.issue_lock(issue))
     }
