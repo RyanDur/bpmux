@@ -7,6 +7,7 @@ use crate::product_management::outcome;
 use crate::product_management::story::slice;
 use crate::store::board;
 use crate::store::ci::{self, CiAction};
+use crate::store::commitments::CommitmentsAction;
 use crate::store::reactions;
 use crate::store::roster;
 use crate::store::sync::SyncAction;
@@ -55,6 +56,15 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
             match crate::store::sync_health::reduce(&state.sync_health, action) {
                 Some(sync_health) => AppState {
                     sync_health: Arc::new(sync_health),
+                    ..state.clone()
+                },
+                None => state.clone(),
+            }
+        }
+        AppAction::Commitments(action) => {
+            match crate::store::commitments::reduce(&state.commitments, action) {
+                Some(commitments) => AppState {
+                    commitments: Arc::new(commitments),
                     ..state.clone()
                 },
                 None => state.clone(),
@@ -141,6 +151,10 @@ pub fn validate_and_log(action: &AppAction) {
         AppAction::SyncHealth(SyncHealthAction::EventDropped { .. }) => "SyncHealth.EventDropped",
         AppAction::SyncHealth(SyncHealthAction::DroppedAcknowledged) => {
             "SyncHealth.DroppedAcknowledged"
+        }
+        AppAction::Commitments(CommitmentsAction::Committed { .. }) => "Commitments.Committed",
+        AppAction::Commitments(CommitmentsAction::CommitmentsMatched { .. }) => {
+            "Commitments.CommitmentsMatched"
         }
         AppAction::Reactions(_) => "Reactions",
         AppAction::Evidence(_) => "Evidence",

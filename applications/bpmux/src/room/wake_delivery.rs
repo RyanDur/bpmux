@@ -1,8 +1,9 @@
 use super::terminal_inject::frame_team_message;
 use crate::message::Message;
-use crate::room::CommitmentStore;
 use crate::room::LivePtyRegistry;
 use crate::routing::RoutingStore;
+use crate::store::commitments::matching_roles;
+use crate::store::{CommitmentsAction, Dispatch, Select};
 
 use super::agnostic_delivery::{HeldInject, owner_mid_typing};
 
@@ -10,7 +11,8 @@ pub fn wake_committed_terminals(
     msg: &Message,
     registry: &LivePtyRegistry,
     routing: &RoutingStore,
-    commitments: &CommitmentStore,
+    select: &Select,
+    dispatch: &Dispatch,
 ) -> Vec<HeldInject> {
     let mut held = Vec::new();
     if msg.is_chat() {
@@ -25,7 +27,16 @@ pub fn wake_committed_terminals(
         return held;
     };
     let line = wake_line(event_class, &payload);
-    for role in commitments.take_matching(event_class, &payload) {
+    let woken = select.select(|state| matching_roles(&state.commitments, event_class, &payload));
+    dispatch.dispatch(
+        CommitmentsAction::CommitmentsMatched {
+            roles: woken.clone(),
+            event_class: event_class.to_string(),
+            payload: payload.clone(),
+        }
+        .into(),
+    );
+    for role in woken {
         for session_id in routing.resolve(&role) {
             let Some(terminal_id) = routing.terminal_for(&session_id) else {
                 continue;

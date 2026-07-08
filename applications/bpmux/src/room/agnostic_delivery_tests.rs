@@ -4,10 +4,28 @@ use super::agnostic_delivery::*;
 use super::wake_delivery::wake_committed_terminals;
 use crate::message::MessageType;
 use crate::message::{CiSnapshotWire, Message, StateDeltaPayload};
-use crate::room::{CommitmentStore, LivePtyRegistry, spawn_pty_retained};
+use crate::room::{LivePtyRegistry, spawn_pty_retained};
 use crate::routing::RoutingStore;
+use crate::store::{AppAction, CommitmentsAction, SeededStore};
 use std::sync::Arc;
 use tokio::sync::broadcast;
+
+fn wired_store() -> SeededStore {
+    SeededStore::new(Vec::new(), Vec::new(), Vec::new())
+}
+
+fn commit(
+    role: &str,
+    event_class: &str,
+    filter: Option<serde_json::Map<String, serde_json::Value>>,
+) -> AppAction {
+    CommitmentsAction::Committed {
+        role: role.to_string(),
+        event_class: event_class.to_string(),
+        filter,
+    }
+    .into()
+}
 
 fn ci_event(state: crate::ci::CiState, ts: &str) -> Message {
     Message {
@@ -454,7 +472,7 @@ async fn a_committed_dormant_agent_is_woken_when_its_gate_event_fires() {
     let dir = tempfile::TempDir::new().unwrap();
     let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
     let registry = LivePtyRegistry::new();
-    let commitments = CommitmentStore::new();
+    let store = wired_store();
     let live = spawn_pty_retained(
         "/bin/sh",
         &[
@@ -469,13 +487,14 @@ async fn a_committed_dormant_agent_is_woken_when_its_gate_event_fires() {
     registry.insert("term-dev".to_string(), live);
     routing.register_agent("sess-dev", "dev", "term-dev", "2000-01-01T00:00:00Z");
 
-    commitments.commit("dev", "ci_state_changed", None);
+    store.dispatch(commit("dev", "ci_state_changed", None));
 
     wake_committed_terminals(
         &ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"),
         &registry,
         &routing,
-        &commitments,
+        &store.select(),
+        &store.dispatcher(),
     );
 
     let seen = drain_for(&mut rx, "PROCESSED[").await;
@@ -492,7 +511,7 @@ async fn the_live_delivery_loop_wakes_a_committed_dormant_agent_on_a_broadcast_c
         store_dir.path(),
     )));
     let registry = Arc::new(LivePtyRegistry::new());
-    let commitments = Arc::new(CommitmentStore::new());
+    let store = wired_store();
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
     let hub = Arc::new(crate::hub::Hub::new(
@@ -514,13 +533,14 @@ async fn the_live_delivery_loop_wakes_a_committed_dormant_agent_on_a_broadcast_c
     let mut rx = live.subscribe();
     registry.insert("term-dev".to_string(), live);
     routing.register_agent("sess-dev", "dev", "term-dev", "2000-01-01T00:00:00Z");
-    commitments.commit("dev", "ci_state_changed", None);
+    store.dispatch(commit("dev", "ci_state_changed", None));
 
     spawn_terminal_delivery_loop(
         hub.clone(),
         registry.clone(),
         routing.clone(),
-        commitments.clone(),
+        store.select(),
+        store.dispatcher(),
     );
 
     hub.broadcast(&ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"))
@@ -540,7 +560,7 @@ async fn a_committed_wake_is_held_while_the_owner_types_then_delivers_on_pause()
         dir.path(),
     )));
     let registry = Arc::new(LivePtyRegistry::new());
-    let commitments = CommitmentStore::new();
+    let store = wired_store();
     let live = spawn_pty_retained(
         "/bin/sh",
         &[
@@ -554,14 +574,15 @@ async fn a_committed_wake_is_held_while_the_owner_types_then_delivers_on_pause()
     let mut rx = live.subscribe();
     registry.insert("term-dev".to_string(), live);
     routing.register_agent("sess-dev", "dev", "term-dev", "2000-01-01T00:00:00Z");
-    commitments.commit("dev", "ci_state_changed", None);
+    store.dispatch(commit("dev", "ci_state_changed", None));
 
     registry.note_human_keystroke("term-dev");
     let held = wake_committed_terminals(
         &ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"),
         &registry,
         &routing,
-        &commitments,
+        &store.select(),
+        &store.dispatcher(),
     );
     assert_eq!(
         held.len(),
@@ -584,14 +605,15 @@ async fn an_uncommitted_agent_is_not_woken_by_an_ambient_gate_event() {
     let dir = tempfile::TempDir::new().unwrap();
     let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
     let registry = LivePtyRegistry::new();
-    let commitments = CommitmentStore::new();
+    let store = wired_store();
     let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
 
     wake_committed_terminals(
         &ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"),
         &registry,
         &routing,
-        &commitments,
+        &store.select(),
+        &store.dispatcher(),
     );
 
     registry.write_to("term-dev", b"UNCOMMITTED-SENTINEL\r");
@@ -607,18 +629,19 @@ async fn a_filtered_commitment_is_not_woken_by_a_non_matching_event_at_the_deliv
     let dir = tempfile::TempDir::new().unwrap();
     let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
     let registry = LivePtyRegistry::new();
-    let commitments = CommitmentStore::new();
+    let store = wired_store();
     let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
 
     let mut filter = serde_json::Map::new();
     filter.insert("conclusion".to_string(), serde_json::json!("red"));
-    commitments.commit("dev", "ci_state_changed", Some(filter));
+    store.dispatch(commit("dev", "ci_state_changed", Some(filter)));
 
     wake_committed_terminals(
         &ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"),
         &registry,
         &routing,
-        &commitments,
+        &store.select(),
+        &store.dispatcher(),
     );
 
     registry.write_to("term-dev", b"FILTER-SENTINEL\r");

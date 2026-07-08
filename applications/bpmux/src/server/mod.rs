@@ -63,13 +63,6 @@ pub async fn run_server(
         std::sync::Arc::new(tokio::sync::Mutex::new(()));
     let pty_registry = std::sync::Arc::new(crate::room::LivePtyRegistry::new());
     let routing_store = std::sync::Arc::new(crate::routing::RoutingStore::new(hub.storage.clone()));
-    let commitment_store = std::sync::Arc::new(crate::room::CommitmentStore::new());
-    crate::room::spawn_terminal_delivery_loop(
-        hub.clone(),
-        pty_registry.clone(),
-        routing_store.clone(),
-        commitment_store.clone(),
-    );
     let mut store_inner = crate::store::Store::with_initial_outbox(
         hub.clone(),
         tracker
@@ -88,6 +81,13 @@ pub async fn run_server(
         );
     }
     let store = std::sync::Arc::new(store_inner);
+    crate::room::spawn_terminal_delivery_loop(
+        hub.clone(),
+        pty_registry.clone(),
+        routing_store.clone(),
+        store.selector(),
+        store.dispatcher(),
+    );
     if let Some(refresh) = orchestrator.as_ref() {
         refresh.bind_select(store.selector());
         refresh.bind_dispatch(store.dispatcher());
@@ -113,7 +113,6 @@ pub async fn run_server(
         store,
         pty_registry,
         routing_store,
-        commitment_store,
         port,
     });
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;

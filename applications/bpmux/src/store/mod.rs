@@ -9,6 +9,7 @@ pub use crate::board;
 pub use crate::ci::slice as ci;
 pub use crate::reactions::slice as reactions;
 pub use crate::roster;
+pub mod commitments;
 pub mod sync;
 pub mod sync_health;
 
@@ -35,6 +36,7 @@ pub use ci::{
     BoxedFuture, CiAction, CiBroadcastListener, CiHubBroadcaster, CiPollFetch, CiSnapshot,
     CiStateStoreWriter,
 };
+pub use commitments::CommitmentsAction;
 pub use dispatch::Dispatch;
 pub use reactions::{
     AggregatedReaction, ReactionsAction, ReactionsBroadcastListener, ReactionsHubBroadcaster,

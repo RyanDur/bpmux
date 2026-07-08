@@ -9,6 +9,7 @@ use crate::product_management::story::slice::{Stories, StoryAction};
 use crate::store::board::history::PlacementHistory;
 use crate::store::board::{BoardAction, BoardPlacements};
 use crate::store::ci::{CiAction, CiState};
+use crate::store::commitments::{CommitmentsAction, CommitmentsState};
 use crate::store::reactions::{ReactionsAction, ReactionsState};
 use crate::store::roster::{RosterAction, RosterState};
 use crate::store::sync::{SyncAction, SyncState};
@@ -56,6 +57,7 @@ pub struct AppState {
     pub local_history: Arc<PlacementHistory>,
     pub sync: Arc<SyncState>,
     pub sync_health: Arc<SyncHealthState>,
+    pub commitments: Arc<CommitmentsState>,
 }
 
 impl AppState {
@@ -102,6 +104,7 @@ pub enum AppAction {
     Ci(CiAction),
     Sync(SyncAction),
     SyncHealth(SyncHealthAction),
+    Commitments(CommitmentsAction),
     Outcome(OutcomeAction),
     Iteration(IterationAction),
     Epic(EpicAction),
@@ -143,6 +146,12 @@ impl From<SyncAction> for AppAction {
 impl From<SyncHealthAction> for AppAction {
     fn from(action: SyncHealthAction) -> Self {
         Self::SyncHealth(action)
+    }
+}
+
+impl From<CommitmentsAction> for AppAction {
+    fn from(action: CommitmentsAction) -> Self {
+        Self::Commitments(action)
     }
 }
 

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use axum::Json;
 use axum::extract::Extension;
 use axum::http::StatusCode;
@@ -7,7 +5,8 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
-use crate::room::CommitmentStore;
+use crate::store::CommitmentsAction;
+use crate::store::Dispatch;
 
 #[derive(Deserialize)]
 pub struct WakeOnEventRequest {
@@ -18,9 +17,16 @@ pub struct WakeOnEventRequest {
 }
 
 pub async fn wake_on_event(
-    Extension(commitments): Extension<Arc<CommitmentStore>>,
+    Extension(dispatch): Extension<Dispatch>,
     Json(payload): Json<WakeOnEventRequest>,
 ) -> impl IntoResponse {
-    commitments.commit(&payload.role, &payload.event_class, payload.filter);
+    dispatch.dispatch(
+        CommitmentsAction::Committed {
+            role: payload.role,
+            event_class: payload.event_class,
+            filter: payload.filter,
+        }
+        .into(),
+    );
     (StatusCode::CREATED, "committed".to_string())
 }

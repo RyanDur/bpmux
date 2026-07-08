@@ -5,10 +5,10 @@ use tokio::sync::broadcast;
 
 use crate::hub::Hub;
 use crate::message::{BROADCAST_ALL, Message};
-use crate::room::CommitmentStore;
 use crate::room::LivePtyRegistry;
 use crate::routing::RoutingStore;
 use crate::routing::short_name;
+use crate::store::{Dispatch, Select};
 
 use super::terminal_inject::frame_team_message;
 
@@ -26,7 +26,8 @@ pub fn spawn_terminal_delivery_loop(
     hub: Arc<Hub>,
     registry: Arc<LivePtyRegistry>,
     routing: Arc<RoutingStore>,
-    commitments: Arc<CommitmentStore>,
+    select: Select,
+    dispatch: Dispatch,
 ) {
     let mut rx = hub.subscribe();
     tokio::spawn(async move {
@@ -37,10 +38,7 @@ pub fn spawn_terminal_delivery_loop(
                         spawn_deferred_inject(registry.clone(), routing.clone(), inject);
                     }
                     for inject in super::wake_delivery::wake_committed_terminals(
-                        &msg,
-                        &registry,
-                        &routing,
-                        &commitments,
+                        &msg, &registry, &routing, &select, &dispatch,
                     ) {
                         spawn_deferred_inject(registry.clone(), routing.clone(), inject);
                     }

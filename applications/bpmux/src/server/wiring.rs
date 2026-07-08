@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::ci::CiStateStore;
 use crate::hub;
-use crate::room::{CommitmentStore, LivePtyRegistry};
+use crate::room::LivePtyRegistry;
 use crate::routing::RoutingStore;
 use crate::store::Store;
 use crate::transport;
@@ -24,7 +24,6 @@ pub(super) struct RouterDeps {
     pub dispatch: crate::store::Dispatch,
     pub pty_registry: Arc<LivePtyRegistry>,
     pub routing_store: Arc<RoutingStore>,
-    pub commitment_store: Arc<CommitmentStore>,
     pub port: u16,
 }
 
@@ -42,7 +41,6 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         dispatch,
         pty_registry,
         routing_store,
-        commitment_store,
         port,
     } = deps;
     let has_refresh = orchestrator.is_some();
@@ -108,7 +106,6 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         .layer(axum::Extension(dispatch))
         .layer(axum::Extension(pty_registry))
         .layer(axum::Extension(routing_store))
-        .layer(axum::Extension(commitment_store))
         .layer(axum::Extension(port))
         .layer(
             tower_http::cors::CorsLayer::new()
