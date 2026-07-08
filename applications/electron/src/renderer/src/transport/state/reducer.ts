@@ -1,13 +1,13 @@
 import { applyStateDelta, applyStateSnapshot, emptyMirrorState } from '../state-delta'
 import { asMessageType } from '../messageType'
-import { SessionActionType, type SessionAction, type HistoryMessage } from './actions'
+import { StateActionType, type StateAction, type HistoryMessage } from './actions'
 import type { ChatMessage, CommentWire, ConnectionStatus, TimelineEventWire } from '../types'
 import type { BoardColumn, Epic, Story } from '../../board/types'
 import type { RoadmapCard, RoadmapOutcomeData } from '../../board/selectRoadmap'
 import type { BoardIterationData } from '../../board/selectIterations'
 import type { MirrorState } from '../state-delta'
 
-export interface SessionSnapshot {
+export interface StateSnapshot {
   status: ConnectionStatus
   messages: ChatMessage[]
   sessionId: string | null
@@ -27,7 +27,7 @@ export interface SessionSnapshot {
 export const messageKey = (m: { from: string; text: string; ts: string }): string =>
   `${m.ts}|${m.from}|${m.text}`
 
-export const emptySnapshot = (url: string | undefined): SessionSnapshot => ({
+export const emptySnapshot = (url: string | undefined): StateSnapshot => ({
   status: url ? 'connecting' : 'disconnected',
   messages: [],
   sessionId: null,
@@ -44,7 +44,7 @@ export const emptySnapshot = (url: string | undefined): SessionSnapshot => ({
   timelineByStory: new Map()
 })
 
-const mergeHistory = (state: SessionSnapshot, history: HistoryMessage[]): ChatMessage[] => {
+const mergeHistory = (state: StateSnapshot, history: HistoryMessage[]): ChatMessage[] => {
   const seen = new Set<string>()
   const merged: ChatMessage[] = []
   for (const h of history) {
@@ -71,39 +71,39 @@ const mergeHistory = (state: SessionSnapshot, history: HistoryMessage[]): ChatMe
   return merged
 }
 
-export const sessionReducer = (state: SessionSnapshot, action: SessionAction): SessionSnapshot => {
+export const stateReducer = (state: StateSnapshot, action: StateAction): StateSnapshot => {
   switch (action.type) {
-    case SessionActionType.Connecting:
+    case StateActionType.Connecting:
       return state.status === 'connecting' ? state : { ...state, status: 'connecting' }
-    case SessionActionType.Connected:
+    case StateActionType.Connected:
       return { ...state, status: 'connected' }
-    case SessionActionType.Reconnected:
+    case StateActionType.Reconnected:
       return { ...state, status: 'connected', reconnectTick: state.reconnectTick + 1 }
-    case SessionActionType.Disconnected:
+    case StateActionType.Disconnected:
       return { ...state, status: 'disconnected' }
-    case SessionActionType.SessionIdentified:
+    case StateActionType.SessionIdentified:
       return { ...state, sessionId: action.sessionId }
-    case SessionActionType.MessageReceived: {
+    case StateActionType.MessageReceived: {
       const key = messageKey(action.message)
       if (state.messages.some((m) => messageKey(m) === key)) return state
       return { ...state, messages: [...state.messages, action.message] }
     }
-    case SessionActionType.HistoryLoaded:
+    case StateActionType.HistoryLoaded:
       return { ...state, messages: mergeHistory(state, action.history) }
-    case SessionActionType.CommentsHydrated: {
+    case StateActionType.CommentsHydrated: {
       const commentsByStory = new Map(state.commentsByStory)
       commentsByStory.set(action.storyId, action.comments)
       return { ...state, commentsByStory }
     }
-    case SessionActionType.TimelineHydrated: {
+    case StateActionType.TimelineHydrated: {
       const timelineByStory = new Map(state.timelineByStory)
       timelineByStory.set(action.storyId, action.events)
       return { ...state, timelineByStory }
     }
-    case SessionActionType.MirrorSnapshotReceived:
+    case StateActionType.MirrorSnapshotReceived:
       return { ...state, mirror: applyStateSnapshot(state.mirror, action.payload) }
-    case SessionActionType.MirrorDeltaReceived: {
-      const next: SessionSnapshot = {
+    case StateActionType.MirrorDeltaReceived: {
+      const next: StateSnapshot = {
         ...state,
         mirror: applyStateDelta(state.mirror, action.delta)
       }

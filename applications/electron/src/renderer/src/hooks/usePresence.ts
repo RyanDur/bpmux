@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { PresenceWire } from '../transport/types'
-import { useRoster } from '../transport/session'
+import { useRoster } from '../transport/state'
 
 export const PRESENCE = {
   Busy: 'busy',

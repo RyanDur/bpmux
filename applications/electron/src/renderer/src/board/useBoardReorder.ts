@@ -1,13 +1,13 @@
 import { useCallback } from 'react'
 import { eagerReorder } from './iterationMembers'
 import { columnFor, type Story, type ColumnState } from './types'
-import { addStoryToIterationRequested, type SessionAction } from '../transport/session/actions'
+import { addStoryToIterationRequested, type StateAction } from '../transport/state/actions'
 
 export interface UseBoardReorderOptions {
   data: Story[] | null
   setData: React.Dispatch<React.SetStateAction<Story[] | null>>
   setReorderAnnounce: (msg: string) => void
-  dispatch: (action: SessionAction) => void
+  dispatch: (action: StateAction) => void
   currentIterationId: number | null
   currentIterationStories: number[]
   setPendingReadyOrder: (order: number[]) => void

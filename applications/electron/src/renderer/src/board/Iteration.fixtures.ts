@@ -1,6 +1,6 @@
 import type { BoardIterationData } from './selectIterations'
-import { dispatchSession } from '../transport/session/store'
-import { mirrorDeltaReceived } from '../transport/session/actions'
+import { dispatchState } from '../transport/state/store'
+import { mirrorDeltaReceived } from '../transport/state/actions'
 
 export const boardIteration = (overrides: Partial<BoardIterationData>): BoardIterationData => ({
   id: 9000,
@@ -14,4 +14,4 @@ export const boardIteration = (overrides: Partial<BoardIterationData>): BoardIte
 })
 
 export const seedIterations = (iterations: BoardIterationData[]): void =>
-  dispatchSession(mirrorDeltaReceived({ domain: 'iterations', iterations }, '2026-06-28T00:00:00Z'))
+  dispatchState(mirrorDeltaReceived({ domain: 'iterations', iterations }, '2026-06-28T00:00:00Z'))

@@ -7,12 +7,12 @@ import {
 } from '../../../../test/wsTestServer'
 
 import {
-  startSession,
-  getSessionSnapshot,
-  subscribeSession,
+  startConnection,
+  getStateSnapshot,
+  subscribeState,
   subscribeLiveMessages,
-  resetSessionForTest
-} from './session'
+  resetStateForTest
+} from './state'
 
 const serverMessage = (over: Record<string, unknown> = {}): string =>
   JSON.stringify({
@@ -46,31 +46,31 @@ const serveHistory = async (
 let server: TestWsServer
 
 const connect = async (apiBase?: string, authToken?: string): Promise<TestWsConnection> => {
-  startSession({ url: server.url, apiBase, authToken })
+  startConnection({ url: server.url, apiBase, authToken })
   const conn = await server.waitForConnection()
-  await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('connected'))
+  await vi.waitFor(() => expect(getStateSnapshot().status).toBe('connected'))
   return conn
 }
 
 beforeEach(async () => {
   vi.stubGlobal('WebSocket', BrowserWebSocket)
   server = await startTestWsServer()
-  resetSessionForTest()
+  resetStateForTest()
 })
 
 afterEach(async () => {
-  resetSessionForTest()
+  resetStateForTest()
   await server.close()
   vi.unstubAllGlobals()
 })
 
-describe('#1537 session — connection lifecycle as a module singleton', () => {
-  test('startSession opens a socket, surfaces connecting then connected, and identifies on open', async () => {
-    startSession({ url: server.url })
-    expect(getSessionSnapshot().status).toBe('connecting')
+describe('#1537 connection — lifecycle as a module singleton', () => {
+  test('startConnection opens a socket, surfaces connecting then connected, and identifies on open', async () => {
+    startConnection({ url: server.url })
+    expect(getStateSnapshot().status).toBe('connecting')
 
     const conn = await server.waitForConnection()
-    await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('connected'))
+    await vi.waitFor(() => expect(getStateSnapshot().status).toBe('connected'))
     await vi.waitFor(() => expect(conn.received.length).toBeGreaterThan(0))
     expect(JSON.parse(conn.received[0])).toMatchObject({
       type: 'identify',
@@ -79,28 +79,28 @@ describe('#1537 session — connection lifecycle as a module singleton', () => {
     })
   })
 
-  test('startSession is idempotent — a second call with the same url does NOT open a second socket', async () => {
-    startSession({ url: server.url })
-    startSession({ url: server.url })
+  test('startConnection is idempotent — a second call with the same url does NOT open a second socket', async () => {
+    startConnection({ url: server.url })
+    startConnection({ url: server.url })
     await server.waitForConnection()
-    await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('connected'))
+    await vi.waitFor(() => expect(getStateSnapshot().status).toBe('connected'))
     expect(server.connectionCount()).toBe(1)
   })
 
-  test('getSessionSnapshot returns a STABLE reference until state actually changes', async () => {
-    startSession({ url: server.url })
-    const a = getSessionSnapshot()
-    expect(getSessionSnapshot()).toBe(a)
+  test('getStateSnapshot returns a STABLE reference until state actually changes', async () => {
+    startConnection({ url: server.url })
+    const a = getStateSnapshot()
+    expect(getStateSnapshot()).toBe(a)
     await server.waitForConnection()
-    await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('connected'))
-    const c = getSessionSnapshot()
+    await vi.waitFor(() => expect(getStateSnapshot().status).toBe('connected'))
+    const c = getStateSnapshot()
     expect(c).not.toBe(a)
-    expect(getSessionSnapshot()).toBe(c)
+    expect(getStateSnapshot()).toBe(c)
   })
 
   test('subscribers are notified on state change and stop after unsubscribe', async () => {
     let hits = 0
-    const unsub = subscribeSession(() => {
+    const unsub = subscribeState(() => {
       hits += 1
     })
     const conn = await connect()
@@ -109,18 +109,18 @@ describe('#1537 session — connection lifecycle as a module singleton', () => {
 
     unsub()
     conn.send(serverMessage({ ts: '2026-05-24T00:00:01.000Z' }))
-    await vi.waitFor(() => expect(getSessionSnapshot().messages.length).toBe(1))
+    await vi.waitFor(() => expect(getStateSnapshot().messages.length).toBe(1))
     expect(hits).toBe(afterOpen)
   })
 })
 
-describe('#1537 session — message dedup + live-append subscription', () => {
+describe('#1537 connection — message dedup + live-append subscription', () => {
   test('a chat message lands in messages; an identical duplicate (same ts|from|text) is deduped', async () => {
     const conn = await connect()
     conn.send(serverMessage())
     conn.send(serverMessage())
-    await vi.waitFor(() => expect(getSessionSnapshot().messages.length).toBe(1))
-    expect(getSessionSnapshot().messages.length).toBe(1)
+    await vi.waitFor(() => expect(getStateSnapshot().messages.length).toBe(1))
+    expect(getStateSnapshot().messages.length).toBe(1)
   })
 
   test('subscribeLiveMessages fires once per newly-appended live message, not for dedup-dropped ones', async () => {
@@ -134,15 +134,15 @@ describe('#1537 session — message dedup + live-append subscription', () => {
   })
 })
 
-describe('#1537 session — history hydrate-on-identify + merge (no live-notify on history)', () => {
+describe('#1537 connection — history hydrate-on-identify + merge (no live-notify on history)', () => {
   test('history hydrates over WS on identify and merges; a duplicate start does NOT re-hydrate', async () => {
     const conn = await connect('http://api', 'tok')
     await serveHistory(conn, [{ from: 'pm', text: 'old', ts: '2026-05-23T00:00:00.000Z' }])
     await vi.waitFor(() =>
-      expect(getSessionSnapshot().messages.some((m) => m.text === 'old')).toBe(true)
+      expect(getStateSnapshot().messages.some((m) => m.text === 'old')).toBe(true)
     )
     const hydrateFrames = historyHydrateCount(conn)
-    startSession({ url: server.url, apiBase: 'http://api', authToken: 'tok' })
+    startConnection({ url: server.url, apiBase: 'http://api', authToken: 'tok' })
     expect(historyHydrateCount(conn)).toBe(hydrateFrames)
   })
 
@@ -152,17 +152,17 @@ describe('#1537 session — history hydrate-on-identify + merge (no live-notify 
     const conn = await connect('http://api', 'tok')
     await serveHistory(conn, [{ from: 'pm', text: 'old', ts: '2026-05-23T00:00:00.000Z' }])
     await vi.waitFor(() =>
-      expect(getSessionSnapshot().messages.some((m) => m.text === 'old')).toBe(true)
+      expect(getStateSnapshot().messages.some((m) => m.text === 'old')).toBe(true)
     )
     expect(seen).toEqual([])
   })
 })
 
-describe('#1537 session — reconnect with backoff', () => {
+describe('#1537 connection — reconnect with backoff', () => {
   test('on close, status goes disconnected and a reconnect opens a second socket', async () => {
     const conn = await connect()
     conn.drop()
-    await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('disconnected'))
+    await vi.waitFor(() => expect(getStateSnapshot().status).toBe('disconnected'))
     expect(server.connectionCount()).toBe(1)
 
     await server.waitForConnection()
@@ -171,11 +171,11 @@ describe('#1537 session — reconnect with backoff', () => {
 
   test('reconnectTick increments on each disconnect→connect transition', async () => {
     const conn = await connect()
-    expect(getSessionSnapshot().reconnectTick).toBe(0)
+    expect(getStateSnapshot().reconnectTick).toBe(0)
 
     conn.drop()
     await server.waitForConnection()
-    await vi.waitFor(() => expect(getSessionSnapshot().reconnectTick).toBe(1))
+    await vi.waitFor(() => expect(getStateSnapshot().reconnectTick).toBe(1))
   }, 10000)
 
   test('a transient ws close logs at warn, not error — keeps the e2e zero-console-error invariant robust under load', async () => {
@@ -183,7 +183,7 @@ describe('#1537 session — reconnect with backoff', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const conn = await connect()
     conn.drop()
-    await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('disconnected'))
+    await vi.waitFor(() => expect(getStateSnapshot().status).toBe('disconnected'))
     expect(errorSpy).not.toHaveBeenCalled()
     expect(warnSpy).toHaveBeenCalledWith('bpmux ws: closed, reconnecting', 1006, expect.any(String))
     errorSpy.mockRestore()
@@ -191,25 +191,25 @@ describe('#1537 session — reconnect with backoff', () => {
   })
 })
 
-describe('#1319 session — reconnect re-hydrates history to recover the disconnect gap', () => {
+describe('#1319 connection — reconnect re-hydrates history to recover the disconnect gap', () => {
   test('on reconnect, history re-hydrates so a message sent during the gap appears after recovery', async () => {
     const conn = await connect('http://api', 'tok')
     await serveHistory(conn, [{ from: 'pm', text: 'pre-gap', ts: '2026-05-28T00:00:00.000Z' }])
     await vi.waitFor(() =>
-      expect(getSessionSnapshot().messages.some((m) => m.text === 'pre-gap')).toBe(true)
+      expect(getStateSnapshot().messages.some((m) => m.text === 'pre-gap')).toBe(true)
     )
 
     conn.drop()
-    await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('disconnected'))
+    await vi.waitFor(() => expect(getStateSnapshot().status).toBe('disconnected'))
 
     const conn2 = await server.waitForConnection()
-    await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('connected'))
+    await vi.waitFor(() => expect(getStateSnapshot().status).toBe('connected'))
     await serveHistory(conn2, [
       { from: 'pm', text: 'pre-gap', ts: '2026-05-28T00:00:00.000Z' },
       { from: 'designer', text: 'sent-during-gap', ts: '2026-05-28T00:01:00.000Z' }
     ])
     await vi.waitFor(() =>
-      expect(getSessionSnapshot().messages.some((m) => m.text === 'sent-during-gap')).toBe(true)
+      expect(getStateSnapshot().messages.some((m) => m.text === 'sent-during-gap')).toBe(true)
     )
   }, 10000)
 
@@ -217,29 +217,29 @@ describe('#1319 session — reconnect re-hydrates history to recover the disconn
     const conn = await connect('http://api', 'tok')
     await serveHistory(conn, [{ from: 'pm', text: 'pre-gap', ts: '2026-05-28T00:00:00.000Z' }])
     await vi.waitFor(() =>
-      expect(getSessionSnapshot().messages.some((m) => m.text === 'pre-gap')).toBe(true)
+      expect(getStateSnapshot().messages.some((m) => m.text === 'pre-gap')).toBe(true)
     )
 
     conn.drop()
     const conn2 = await server.waitForConnection()
-    await vi.waitFor(() => expect(getSessionSnapshot().status).toBe('connected'))
+    await vi.waitFor(() => expect(getStateSnapshot().status).toBe('connected'))
     await serveHistory(conn2, [
       { from: 'pm', text: 'pre-gap', ts: '2026-05-28T00:00:00.000Z' },
       { from: 'designer', text: 'post-recovery', ts: '2026-05-28T00:02:00.000Z' }
     ])
     await vi.waitFor(() =>
-      expect(getSessionSnapshot().messages.some((m) => m.text === 'post-recovery')).toBe(true)
+      expect(getStateSnapshot().messages.some((m) => m.text === 'post-recovery')).toBe(true)
     )
 
-    const preGapCount = getSessionSnapshot().messages.filter((m) => m.text === 'pre-gap').length
+    const preGapCount = getStateSnapshot().messages.filter((m) => m.text === 'pre-gap').length
     expect(preGapCount).toBe(1)
   }, 10000)
 })
 
-describe('#1618 session — board-refresh via the board_invalidated state-delta', () => {
+describe('#1618 connection — board-refresh via the board_invalidated state-delta', () => {
   test('a board_invalidated state-delta bumps boardInvalidateTick (the structured board-refresh trigger)', async () => {
     const conn = await connect()
-    expect(getSessionSnapshot().boardInvalidateTick).toBe(0)
+    expect(getStateSnapshot().boardInvalidateTick).toBe(0)
     conn.send(
       serverMessage({
         from: 'bpmux',
@@ -248,12 +248,12 @@ describe('#1618 session — board-refresh via the board_invalidated state-delta'
         state_delta: { domain: 'board_invalidated', reason: 'board changed' }
       })
     )
-    await vi.waitFor(() => expect(getSessionSnapshot().boardInvalidateTick).toBe(1))
+    await vi.waitFor(() => expect(getStateSnapshot().boardInvalidateTick).toBe(1))
   })
 
   test('a board_invalidated state-delta leaves the mirror reactions/ci/roster untouched', async () => {
     const conn = await connect()
-    const before = getSessionSnapshot().mirror
+    const before = getStateSnapshot().mirror
     conn.send(
       serverMessage({
         from: 'bpmux',
@@ -262,7 +262,7 @@ describe('#1618 session — board-refresh via the board_invalidated state-delta'
         state_delta: { domain: 'board_invalidated', reason: 'board changed' }
       })
     )
-    await vi.waitFor(() => expect(getSessionSnapshot().boardInvalidateTick).toBe(1))
-    expect(getSessionSnapshot().mirror).toBe(before)
+    await vi.waitFor(() => expect(getStateSnapshot().boardInvalidateTick).toBe(1))
+    expect(getStateSnapshot().mirror).toBe(before)
   })
 })

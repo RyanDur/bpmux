@@ -1,9 +1,9 @@
 import { useEffect, useSyncExternalStore } from 'react'
-import { getSessionSnapshot, subscribeSession } from '../transport/session'
+import { getStateSnapshot, subscribeState } from '../transport/state'
 
 export const useRefetchOnReconnect = (refetch: () => void): void => {
-  const readReconnectTick = (): number => getSessionSnapshot().reconnectTick
-  const reconnectTick = useSyncExternalStore(subscribeSession, readReconnectTick, readReconnectTick)
+  const readReconnectTick = (): number => getStateSnapshot().reconnectTick
+  const reconnectTick = useSyncExternalStore(subscribeState, readReconnectTick, readReconnectTick)
   useEffect(() => {
     if (reconnectTick > 0) refetch()
   }, [reconnectTick, refetch])

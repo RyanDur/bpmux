@@ -1,23 +1,23 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
-import { dispatchSession, resetSessionForTest } from './store'
+import { dispatchState, resetStateForTest } from './store'
 import { connected, mirrorDeltaReceived, sessionIdentified } from './actions'
 import { useConnectionStatus, useRoster, useSessionId, useSyncStatus } from './hooks'
 
-afterEach(() => resetSessionForTest())
+afterEach(() => resetStateForTest())
 
-describe('session selector hooks', () => {
+describe('state selector hooks', () => {
   it('useConnectionStatus reflects connection events', () => {
     const { result } = renderHook(() => useConnectionStatus())
     expect(result.current).toBe('disconnected')
-    act(() => dispatchSession(connected()))
+    act(() => dispatchState(connected()))
     expect(result.current).toBe('connected')
   })
 
   it('useSessionId reflects the identify event', () => {
     const { result } = renderHook(() => useSessionId())
     expect(result.current).toBeNull()
-    act(() => dispatchSession(sessionIdentified('sess-1')))
+    act(() => dispatchState(sessionIdentified('sess-1')))
     expect(result.current).toBe('sess-1')
   })
 
@@ -25,7 +25,7 @@ describe('session selector hooks', () => {
     const { result } = renderHook(() => useRoster())
     expect(result.current).toEqual([])
     act(() =>
-      dispatchSession(
+      dispatchState(
         mirrorDeltaReceived(
           {
             domain: 'roster',
@@ -44,7 +44,7 @@ describe('session selector hooks', () => {
     const { result } = renderHook(() => useSyncStatus())
     expect(result.current).toBeNull()
     act(() =>
-      dispatchSession(
+      dispatchState(
         mirrorDeltaReceived(
           {
             domain: 'sync_poll',

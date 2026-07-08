@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { getSessionSnapshot, subscribeSession } from './store'
+import { getStateSnapshot, subscribeState } from './store'
 import type {
   ChatMessage,
   CiSnapshotWire,
@@ -11,9 +11,9 @@ import type {
   TimelineEventWire
 } from '../types'
 import type { BoardColumn, Story } from '../../board/types'
-const useSelector = <T>(selector: (snapshot: ReturnType<typeof getSessionSnapshot>) => T): T => {
-  const snapshot = (): T => selector(getSessionSnapshot())
-  return useSyncExternalStore(subscribeSession, snapshot, snapshot)
+const useSelector = <T>(selector: (snapshot: ReturnType<typeof getStateSnapshot>) => T): T => {
+  const snapshot = (): T => selector(getStateSnapshot())
+  return useSyncExternalStore(subscribeState, snapshot, snapshot)
 }
 
 export const useConnectionStatus = (): ConnectionStatus => useSelector((s) => s.status)

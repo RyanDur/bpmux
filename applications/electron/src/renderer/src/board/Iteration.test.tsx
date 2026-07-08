@@ -4,13 +4,13 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import Iteration from './Iteration'
 import { iterationLabel } from './labelSchema'
 import { boardIteration, seedIterations } from './Iteration.fixtures'
-import { resetSessionForTest } from '../transport/session/store'
-import { startSentFrameCapture, stopSentFrameCapture } from '../transport/session/testCapture'
+import { resetStateForTest } from '../transport/state/store'
+import { startSentFrameCapture, stopSentFrameCapture } from '../transport/state/testCapture'
 import type { Story } from './types'
 afterEach(() => {
   cleanup()
   stopSentFrameCapture()
-  resetSessionForTest()
+  resetStateForTest()
 })
 
 const makeDataTransfer = (): DataTransfer => {

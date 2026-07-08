@@ -6,7 +6,7 @@ import { boardTabs } from './BoardTabs.page'
 import { buildProps, epicStory, featureStory } from './BoardTabs.fixtures'
 import { boardIteration, seedIterations } from './Iteration.fixtures'
 import { groupOrderFrom, type BoardColumn } from './types'
-import { resetSessionForTest } from '../transport/session/store'
+import { resetStateForTest } from '../transport/state/store'
 
 const threeStageColumns: BoardColumn[] = [
   { id: 'icebox', label: 'Icebox' },
@@ -20,7 +20,7 @@ const threeStageColumns: BoardColumn[] = [
 ]
 afterEach(() => {
   cleanup()
-  resetSessionForTest()
+  resetStateForTest()
 })
 beforeEach(() => {
   window.localStorage.clear()

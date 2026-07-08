@@ -27,14 +27,14 @@ import {
   ptyOutputReceived,
   sessionIdentified,
   timelineHydrated,
-  type SessionAction
+  type StateAction
 } from './actions'
 import { type ChatMessage, type ServerChatMessage } from '../types'
 
 const chatFrameToAction = (
   message: ServerChatMessage,
   nextSeq: () => number
-): SessionAction | null => {
+): StateAction | null => {
   if (message.message_type === MESSAGE_TYPE.StateSnapshot) {
     return message.state_snapshot ? mirrorSnapshotReceived(message.state_snapshot) : null
   }
@@ -55,7 +55,7 @@ const chatFrameToAction = (
 
 export const dispatchServerFrame = (
   raw: string,
-  dispatch: Dispatch<SessionAction>,
+  dispatch: Dispatch<StateAction>,
   nextSeq: () => number
 ): void => {
   const parseResult = tryCatch(

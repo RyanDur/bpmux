@@ -1,16 +1,16 @@
 import { describe, test, expect, beforeEach } from 'vitest'
 
 import {
-  resetSessionForTest,
+  resetStateForTest,
   captureSentFramesForTest,
   sendPtyInput,
   sendChat,
   encodeKeystroke,
   decodePtyData
-} from '../transport/session'
+} from '../transport/state'
 
 describe('#1592 SLICE-2 interact — raw keystrokes reach the PTY stdin plane', () => {
-  beforeEach(() => resetSessionForTest())
+  beforeEach(() => resetStateForTest())
 
   test('a control-key encodes as its raw byte, not a line-buffered string', () => {
     expect(encodeKeystroke('\x03')).toBe('Aw==')

@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import CiGlyph from './CiGlyph'
-import { dispatchSession, resetSessionForTest } from '../transport/session/store'
-import { mirrorDeltaReceived } from '../transport/session/actions'
+import { dispatchState, resetStateForTest } from '../transport/state/store'
+import { mirrorDeltaReceived } from '../transport/state/actions'
 import type { CiSnapshotWire } from '../transport/types'
 
 const snap = (over: Partial<CiSnapshotWire> & Pick<CiSnapshotWire, 'state'>): CiSnapshotWire => ({
@@ -14,11 +14,11 @@ const snap = (over: Partial<CiSnapshotWire> & Pick<CiSnapshotWire, 'state'>): Ci
 })
 
 const pushCi = (ci: CiSnapshotWire): void =>
-  dispatchSession(mirrorDeltaReceived({ domain: 'ci', snapshot: ci }, '2026-01-01T00:00:00Z'))
+  dispatchState(mirrorDeltaReceived({ domain: 'ci', snapshot: ci }, '2026-01-01T00:00:00Z'))
 
 const render = (): string => renderToStaticMarkup(<CiGlyph />)
 
-afterEach(() => resetSessionForTest())
+afterEach(() => resetStateForTest())
 
 describe('CiGlyph — conclusion derivation from mirror.ci.state', () => {
   const CASES: Array<{

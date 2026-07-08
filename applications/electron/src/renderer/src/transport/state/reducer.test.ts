@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { emptySnapshot, sessionReducer, type SessionSnapshot } from './reducer'
+import { emptySnapshot, stateReducer, type StateSnapshot } from './reducer'
 import {
   chatSendRequested,
   connected,
@@ -21,39 +21,39 @@ const chat = (
   ...over
 })
 
-describe('sessionReducer — connection status events', () => {
+describe('stateReducer — connection status events', () => {
   it('connecting is a no-op (same reference) when already connecting', () => {
     const s = emptySnapshot('ws://x')
-    expect(sessionReducer(s, connecting())).toBe(s)
+    expect(stateReducer(s, connecting())).toBe(s)
   })
 
   it('connected sets status; reconnected also bumps reconnectTick', () => {
     const s = emptySnapshot('ws://x')
-    expect(sessionReducer(s, connected()).status).toBe('connected')
-    expect(sessionReducer(s, reconnected())).toMatchObject({
+    expect(stateReducer(s, connected()).status).toBe('connected')
+    expect(stateReducer(s, reconnected())).toMatchObject({
       status: 'connected',
       reconnectTick: 1
     })
-    expect(sessionReducer(s, disconnected()).status).toBe('disconnected')
+    expect(stateReducer(s, disconnected()).status).toBe('disconnected')
   })
 })
 
-describe('sessionReducer — message dedup', () => {
+describe('stateReducer — message dedup', () => {
   it('appends a new message and dedups an identical one (same ref on dup)', () => {
     const s0 = emptySnapshot('ws://x')
     const m = chat({ ts: '2026-01-01T00:00:00Z', from: 'pm', text: 'hi' })
-    const s1 = sessionReducer(s0, messageReceived(m))
+    const s1 = stateReducer(s0, messageReceived(m))
     expect(s1.messages).toHaveLength(1)
-    const s2 = sessionReducer(s1, messageReceived(chat({ ts: m.ts, from: 'pm', text: 'hi' })))
+    const s2 = stateReducer(s1, messageReceived(chat({ ts: m.ts, from: 'pm', text: 'hi' })))
     expect(s2).toBe(s1)
   })
 })
 
-describe('sessionReducer — history merge', () => {
+describe('stateReducer — history merge', () => {
   it('merges history before existing messages, deduping by ts|from|text', () => {
     const live = chat({ ts: '2026-01-01T00:00:02Z', from: 'pm', text: 'live' })
-    const s1 = sessionReducer(emptySnapshot('ws://x'), messageReceived(live))
-    const s2 = sessionReducer(
+    const s1 = stateReducer(emptySnapshot('ws://x'), messageReceived(live))
+    const s2 = stateReducer(
       s1,
       historyLoaded([
         { from: 'designer', text: 'old', ts: '2026-01-01T00:00:01Z' },
@@ -64,9 +64,9 @@ describe('sessionReducer — history merge', () => {
   })
 })
 
-describe('sessionReducer — ticks and command pass-through', () => {
+describe('stateReducer — ticks and command pass-through', () => {
   it('a command action (no state meaning) returns the same state reference', () => {
-    const s: SessionSnapshot = emptySnapshot('ws://x')
-    expect(sessionReducer(s, chatSendRequested('hi'))).toBe(s)
+    const s: StateSnapshot = emptySnapshot('ws://x')
+    expect(stateReducer(s, chatSendRequested('hi'))).toBe(s)
   })
 })

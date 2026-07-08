@@ -7,7 +7,7 @@ import {
   type TestWsConnection,
   type TestWsServer
 } from '../../../../test/wsTestServer'
-import { startSession, getSessionSnapshot, resetSessionForTest } from '../transport/session'
+import { startConnection, getStateSnapshot, resetStateForTest } from '../transport/state'
 import type { ChatMessage } from '../transport/types'
 
 const live = (i: number): ChatMessage => ({
@@ -40,14 +40,14 @@ const props = { liveMessages: [live(0)], apiBase: 'http://test' }
 beforeEach(async () => {
   vi.stubGlobal('WebSocket', BrowserWebSocket)
   server = await startTestWsServer()
-  resetSessionForTest()
-  startSession({ url: server.url })
+  resetStateForTest()
+  startConnection({ url: server.url })
   conn = await server.waitForConnection()
-  await waitFor(() => expect(getSessionSnapshot().status).toBe('connected'))
+  await waitFor(() => expect(getStateSnapshot().status).toBe('connected'))
 })
 
 afterEach(async () => {
-  resetSessionForTest()
+  resetStateForTest()
   await server.close()
   vi.unstubAllGlobals()
 })

@@ -8,7 +8,7 @@ import {
   useComments,
   requestCommentsHydrate,
   RENDERER_IDENTITY
-} from '../transport/session'
+} from '../transport/state'
 import type { CommentWire } from '../transport/types'
 const OPTIMISTIC_ID_BASE = -1_000_000_000
 

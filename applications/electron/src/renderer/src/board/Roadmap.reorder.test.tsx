@@ -3,13 +3,13 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 import Roadmap from './Roadmap'
 import { buildingIteration, card, checks, outcome, seedRoadmap } from './Roadmap.fixtures'
-import { resetSessionForTest } from '../transport/session/store'
-import { startSentFrameCapture, stopSentFrameCapture } from '../transport/session/testCapture'
+import { resetStateForTest } from '../transport/state/store'
+import { startSentFrameCapture, stopSentFrameCapture } from '../transport/state/testCapture'
 
 afterEach(() => {
   cleanup()
   stopSentFrameCapture()
-  resetSessionForTest()
+  resetStateForTest()
 })
 
 const dragTransfer = (): DataTransfer => {

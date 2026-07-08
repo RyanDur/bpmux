@@ -1,4 +1,4 @@
-import { useBoardColumns } from '../transport/session'
+import { useBoardColumns } from '../transport/state'
 import { groupOrderOrFallback, groupStoriesIn, middleColumnIds, type Story } from './types'
 
 interface Props {

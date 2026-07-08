@@ -16,8 +16,8 @@ import {
 import { type DragPayload } from './iterationMembers'
 import { ITERATION_MEMBER_DRAG } from './sortableDragConfigs'
 import { useDispatch } from '../transport/useDispatch'
-import { useBoardColumns } from '../transport/session'
-import { addStoryToIterationRequested } from '../transport/session/actions'
+import { useBoardColumns } from '../transport/state'
+import { addStoryToIterationRequested } from '../transport/state/actions'
 import type { BoardIterationData } from './selectIterations'
 import type { IterationMember } from './useIterationMembers'
 

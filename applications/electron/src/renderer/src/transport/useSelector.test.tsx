@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { useSelector } from './useSelector'
-import { dispatchSession, resetSessionForTest } from './session/store'
-import { mirrorDeltaReceived } from './session/actions'
+import { dispatchState, resetStateForTest } from './state/store'
+import { mirrorDeltaReceived } from './state/actions'
 import { selectRoadmap, type RoadmapCard } from '../board/selectRoadmap'
 const ts = '2026-06-27T00:00:00Z'
 const nowCard: RoadmapCard = {
@@ -16,10 +16,10 @@ const nowCard: RoadmapCard = {
 }
 
 const emitRoadmap = (roadmap: RoadmapCard[]): void =>
-  act(() => dispatchSession(mirrorDeltaReceived({ domain: 'roadmap', roadmap }, ts)))
+  act(() => dispatchState(mirrorDeltaReceived({ domain: 'roadmap', roadmap }, ts)))
 
 afterEach(() => {
-  act(() => resetSessionForTest())
+  act(() => resetStateForTest())
 })
 
 describe('useSelector — selector over the local store', () => {

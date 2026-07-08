@@ -3,7 +3,7 @@ import {
   requestTimelineHydrate,
   useBoardInvalidateTick,
   useTimelineEvents
-} from '../transport/session'
+} from '../transport/state'
 import type { TimelineEventWire } from '../transport/types'
 export type TimelineEvent = TimelineEventWire
 

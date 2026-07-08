@@ -3,11 +3,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import type { Terminal } from '@xterm/xterm'
 import { TerminalView } from './TerminalView'
 import { copyOnCmdC } from './terminalCopy'
-import {
-  deliverServerFrameForTest,
-  resetSessionForTest,
-  encodeKeystroke
-} from '../transport/session'
+import { deliverServerFrameForTest, resetStateForTest, encodeKeystroke } from '../transport/state'
 
 const osc7Sequence = (path: string): string =>
   `${String.fromCharCode(27)}]7;file://${path}${String.fromCharCode(7)}`
@@ -19,10 +15,10 @@ const ptyModeFrame = (terminalId: string, bracketedPaste: boolean): string =>
   JSON.stringify({ type: 'pty_mode', terminal_id: terminalId, bracketed_paste: bracketedPaste })
 
 describe('#1597 TerminalView — the header follows an OSC-7 cwd update from the PTY stream', () => {
-  beforeEach(() => resetSessionForTest())
+  beforeEach(() => resetStateForTest())
   afterEach(() => {
     cleanup()
-    resetSessionForTest()
+    resetStateForTest()
   })
 
   test('an OSC-7 file:// sequence arriving as pty_output updates the header to the new dir', async () => {
@@ -36,10 +32,10 @@ describe('#1597 TerminalView — the header follows an OSC-7 cwd update from the
 })
 
 describe('#1656 TerminalView — the input-mode mirrors the live bracketed-paste state from pty_mode', () => {
-  beforeEach(() => resetSessionForTest())
+  beforeEach(() => resetStateForTest())
   afterEach(() => {
     cleanup()
-    resetSessionForTest()
+    resetStateForTest()
   })
 
   test('defaults to UNKNOWN until the server signals, then flips raw/cooked on pty_mode', async () => {
@@ -68,12 +64,12 @@ describe('#1656 TerminalView — the input-mode mirrors the live bracketed-paste
 
 describe('#1595 TerminalView — a backgrounded (inactive) terminal still receives and buffers its live stream (bpmux keeps streaming the inactive pane)', () => {
   beforeEach(() => {
-    resetSessionForTest()
+    resetStateForTest()
     window.bpmux = { e2e: true, wsUrl: '', authToken: '', apiBase: '' }
   })
   afterEach(() => {
     cleanup()
-    resetSessionForTest()
+    resetStateForTest()
     delete window.__bpmuxTermText
     delete window.bpmux
   })

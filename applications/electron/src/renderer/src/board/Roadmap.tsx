@@ -12,7 +12,7 @@ import { useDispatch } from '../transport/useDispatch'
 import {
   outcomeHorizonChangeRequested,
   outcomeReprioritizeRequested
-} from '../transport/session/actions'
+} from '../transport/state/actions'
 import './Roadmap.css'
 
 const META_FIELDS: ReadonlyArray<{ key: keyof OutcomeWhy; label: string }> = [

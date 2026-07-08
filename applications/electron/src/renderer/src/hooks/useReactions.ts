@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { toggleReaction, useReactionsByChannel } from '../transport/session'
+import { toggleReaction, useReactionsByChannel } from '../transport/state'
 
 export interface AggregatedReaction {
   message_key: string

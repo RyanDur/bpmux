@@ -1,13 +1,10 @@
 import { useSyncExternalStore } from 'react'
-import { getSessionSnapshot, subscribeSession } from './session/store'
-import type { SessionSnapshot } from './session/reducer'
+import { getStateSnapshot, subscribeState } from './state/store'
+import type { StateSnapshot } from './state/reducer'
 
-const selectionCache = new WeakMap<
-  SessionSnapshot,
-  Map<(state: SessionSnapshot) => unknown, unknown>
->()
+const selectionCache = new WeakMap<StateSnapshot, Map<(state: StateSnapshot) => unknown, unknown>>()
 
-const select = <T>(state: SessionSnapshot, selector: (state: SessionSnapshot) => T): T => {
+const select = <T>(state: StateSnapshot, selector: (state: StateSnapshot) => T): T => {
   let bySelector = selectionCache.get(state)
   if (!bySelector) {
     bySelector = new Map()
@@ -19,9 +16,9 @@ const select = <T>(state: SessionSnapshot, selector: (state: SessionSnapshot) =>
   return bySelector.get(selector) as T
 }
 
-export const useSelector = <T>(selector: (state: SessionSnapshot) => T): T =>
+export const useSelector = <T>(selector: (state: StateSnapshot) => T): T =>
   useSyncExternalStore(
-    subscribeSession,
-    () => select(getSessionSnapshot(), selector),
-    () => select(getSessionSnapshot(), selector)
+    subscribeState,
+    () => select(getStateSnapshot(), selector),
+    () => select(getStateSnapshot(), selector)
   )

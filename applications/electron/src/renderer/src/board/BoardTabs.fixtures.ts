@@ -10,7 +10,7 @@ import {
   type ColumnState
 } from './types'
 import { selectIterations } from './selectIterations'
-import { getSessionSnapshot } from '../transport/session/store'
+import { getStateSnapshot } from '../transport/state/store'
 
 export const iterationStory = (overrides: Partial<Story>): Story => ({
   id: 9000,
@@ -67,7 +67,7 @@ export const buildProps = (
   const grouped = groupStoriesIn(middleColumnIds(groupOrder), flat)
   return {
     stories,
-    iterations: selectIterations(getSessionSnapshot()),
+    iterations: selectIterations(getStateSnapshot()),
     groupOrder,
     epics,
     epicTitleById,

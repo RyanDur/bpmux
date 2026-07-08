@@ -3,11 +3,11 @@ import { afterEach, describe, expect, it } from 'vitest'
 import Roadmap from './Roadmap'
 import { roadmap } from './Roadmap.page'
 import { card, seedRoadmap } from './Roadmap.fixtures'
-import { resetSessionForTest } from '../transport/session/store'
+import { resetStateForTest } from '../transport/state/store'
 
 afterEach(() => {
   cleanup()
-  resetSessionForTest()
+  resetStateForTest()
 })
 
 describe('#1704 Roadmap — outcomes by horizon, the overview', () => {

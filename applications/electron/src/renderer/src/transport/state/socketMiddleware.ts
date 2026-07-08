@@ -1,14 +1,14 @@
 import { tryCatch } from '../../lib/result'
 import type { Middleware } from '../../lib/redux'
-import type { SessionSnapshot } from './reducer'
+import type { StateSnapshot } from './reducer'
 import {
-  SessionActionType,
+  StateActionType,
   connected,
   connecting,
   disconnected,
   reconnected,
-  type SessionAction,
-  type SessionConfig
+  type StateAction,
+  type ConnectionConfig
 } from './actions'
 import { dispatchServerFrame } from './decode'
 import { rejectPendingOlderHistory } from './olderHistory'
@@ -17,16 +17,16 @@ import { INITIAL_BACKOFF_MS, MAX_BACKOFF_MS, RENDERER_IDENTITY, RENDERER_TOOL } 
 import { captureSentFrame } from './testCapture'
 import type { ClientMessage } from '../types'
 
-const sameConfig = (a: SessionConfig | null, b: SessionConfig): boolean =>
+const sameConfig = (a: ConnectionConfig | null, b: ConnectionConfig): boolean =>
   a !== null && a.url === b.url && a.apiBase === b.apiBase && a.authToken === b.authToken
 
-export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api) => {
+export const socketMiddleware: Middleware<StateSnapshot, StateAction> = (api) => {
   let socket: WebSocket | null = null
   let backoff = INITIAL_BACKOFF_MS
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
   let awaitingReconnect = false
   let messageSeq = 0
-  let config: SessionConfig | null = null
+  let config: ConnectionConfig | null = null
 
   const send = (msg: ClientMessage): void => {
     captureSentFrame(msg)
@@ -108,7 +108,7 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
 
   return (next) => (action) => {
     switch (action.type) {
-      case SessionActionType.StartRequested: {
+      case StateActionType.StartRequested: {
         if (sameConfig(config, action.config)) return
         if (config !== null) {
           teardown()
@@ -125,7 +125,7 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
         connect(action.config.url)
         return
       }
-      case SessionActionType.ChatSendRequested: {
+      case StateActionType.ChatSendRequested: {
         const trimmed = action.text.trim()
         if (!trimmed) return
         const frame: ClientMessage = { type: 'send', text: trimmed }
@@ -134,7 +134,7 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
         send(frame)
         return
       }
-      case SessionActionType.ReactionToggleRequested:
+      case StateActionType.ReactionToggleRequested:
         send({
           type: 'reaction_toggle',
           channel: action.channel,
@@ -143,20 +143,20 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
           user: action.user
         })
         return
-      case SessionActionType.CommentsHydrateRequested:
+      case StateActionType.CommentsHydrateRequested:
         send({ type: 'comments_hydrate', story_id: action.storyId })
         return
-      case SessionActionType.TimelineHydrateRequested:
+      case StateActionType.TimelineHydrateRequested:
         send({ type: 'timeline_hydrate', story_id: action.storyId })
         return
-      case SessionActionType.HistoryHydrateRequested:
+      case StateActionType.HistoryHydrateRequested:
         send({
           type: 'history_hydrate',
           chat_limit: action.chatLimit,
           activity_limit: action.activityLimit
         })
         return
-      case SessionActionType.OlderHistoryRequested:
+      case StateActionType.OlderHistoryRequested:
         send({
           type: 'history_page',
           request_id: action.requestId,
@@ -164,14 +164,14 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
           limit: action.limit
         })
         return
-      case SessionActionType.OutcomeHorizonChangeRequested:
+      case StateActionType.OutcomeHorizonChangeRequested:
         send({
           type: 'set_outcome_horizon',
           outcome_id: action.outcomeId,
           horizon: action.horizon
         })
         return
-      case SessionActionType.OutcomeIterationReorderRequested:
+      case StateActionType.OutcomeIterationReorderRequested:
         send({
           type: 'reorder_outcome_iteration',
           outcome_id: action.outcomeId,
@@ -179,21 +179,21 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
           position: action.position
         })
         return
-      case SessionActionType.OutcomeReprioritizeRequested:
+      case StateActionType.OutcomeReprioritizeRequested:
         send({
           type: 'reprioritize_outcome',
           outcome_id: action.outcomeId,
           position: action.position
         })
         return
-      case SessionActionType.IterationReorderRequested:
+      case StateActionType.IterationReorderRequested:
         send({
           type: 'reorder_iteration',
           iteration_id: action.iterationId,
           position: action.position
         })
         return
-      case SessionActionType.AddStoryToIterationRequested:
+      case StateActionType.AddStoryToIterationRequested:
         send({
           type: 'add_story_to_iteration',
           iteration_id: action.iterationId,
@@ -201,17 +201,17 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
           position: action.position
         })
         return
-      case SessionActionType.PtySubscribeRequested:
+      case StateActionType.PtySubscribeRequested:
         send({ type: 'pty_subscribe', terminal_id: action.terminalId })
         return
-      case SessionActionType.PtyInputRequested:
+      case StateActionType.PtyInputRequested:
         send({
           type: 'pty_input',
           terminal_id: action.terminalId,
           data: encodeKeystroke(action.keystroke)
         })
         return
-      case SessionActionType.PtyResizeRequested:
+      case StateActionType.PtyResizeRequested:
         send({
           type: 'pty_resize',
           terminal_id: action.terminalId,
@@ -219,10 +219,10 @@ export const socketMiddleware: Middleware<SessionSnapshot, SessionAction> = (api
           rows: action.rows
         })
         return
-      case SessionActionType.FrameReceived:
+      case StateActionType.FrameReceived:
         dispatchServerFrame(action.raw, api.dispatch, () => (messageSeq += 1))
         return
-      case SessionActionType.Reset:
+      case StateActionType.Reset:
         teardown()
         backoff = INITIAL_BACKOFF_MS
         awaitingReconnect = false

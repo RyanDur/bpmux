@@ -4,8 +4,8 @@ import MessageList from './MessageList'
 import { classOf, type MessageClass } from '../hooks/useMessageFilter'
 import { MESSAGE_TYPE } from '../transport/messageType'
 import type { ChatMessage, RosterMemberWire } from '../transport/types'
-import { dispatchSession, resetSessionForTest } from '../transport/session/store'
-import { mirrorDeltaReceived } from '../transport/session/actions'
+import { dispatchState, resetStateForTest } from '../transport/state/store'
+import { mirrorDeltaReceived } from '../transport/state/actions'
 
 const VISIBLE: ReadonlySet<MessageClass> = new Set([classOf(undefined)])
 
@@ -25,7 +25,7 @@ const rosterMember = (name: string, presence: RosterMemberWire['presence']): Ros
 })
 
 const pushRoster = (members: RosterMemberWire[]): void =>
-  dispatchSession(mirrorDeltaReceived({ domain: 'roster', members }, '2026-01-01T00:00:00Z'))
+  dispatchState(mirrorDeltaReceived({ domain: 'roster', members }, '2026-01-01T00:00:00Z'))
 
 const avatarStatus = (root: HTMLElement): HTMLElement | null =>
   root.querySelector('[data-test="avatar-tooltip-status"]')
@@ -92,7 +92,7 @@ describe('#1487 message rise-from-below — gated to genuinely-new arrivals', ()
 describe('#1750 chat presence reads the single /api/presence roster source — not the legacy activity-message keyword-scan', () => {
   afterEach(() => {
     cleanup()
-    resetSessionForTest()
+    resetStateForTest()
   })
 
   test('a chat sender avatar reflects the ROSTER presence, not a seeded offline', () => {

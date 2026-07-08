@@ -3,7 +3,7 @@ import AppShell from './AppShell'
 import { useMessageHistory } from './hooks/useMessageHistory'
 import { useNotifications } from './hooks/useNotifications'
 import { capPerPush } from './transport/messageCap'
-import { sendChat, startSession, useConnectionStatus, useLiveMessages } from './transport/session'
+import { sendChat, startConnection, useConnectionStatus, useLiveMessages } from './transport/state'
 
 const App = (): React.JSX.Element => {
   const bridge = window.bpmux
@@ -17,7 +17,7 @@ const App = (): React.JSX.Element => {
   const [atBottom, setAtBottom] = useState<boolean>(true)
 
   useEffect(() => {
-    startSession({ url: bridge?.wsUrl, apiBase: bridge?.apiBase, authToken: bridge?.authToken })
+    startConnection({ url: bridge?.wsUrl, apiBase: bridge?.apiBase, authToken: bridge?.authToken })
   }, [bridge?.wsUrl, bridge?.apiBase, bridge?.authToken])
 
   const status = useConnectionStatus()

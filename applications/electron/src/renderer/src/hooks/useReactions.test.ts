@@ -1,19 +1,19 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { cleanup, renderHook } from '@testing-library/react'
 import { useReactions } from './useReactions'
-import { dispatchSession, resetSessionForTest } from '../transport/session/store'
-import { mirrorDeltaReceived } from '../transport/session/actions'
-import { captureSentFramesForTest } from '../transport/session'
+import { dispatchState, resetStateForTest } from '../transport/state/store'
+import { mirrorDeltaReceived } from '../transport/state/actions'
+import { captureSentFramesForTest } from '../transport/state'
 import type { ReactionAggregateWire } from '../transport/types'
 
 const pushReactions = (channel: string, aggregated: ReactionAggregateWire[]): void =>
-  dispatchSession(
+  dispatchState(
     mirrorDeltaReceived({ domain: 'reactions', channel, aggregated }, '2026-01-01T00:00:00Z')
   )
 
 afterEach(() => {
   cleanup()
-  resetSessionForTest()
+  resetStateForTest()
 })
 
 describe('useReactions — channel-scoped aggregation from the session store', () => {

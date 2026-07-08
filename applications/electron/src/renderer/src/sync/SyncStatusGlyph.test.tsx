@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import SyncStatusGlyph from './SyncStatusGlyph'
 import { deriveState } from './syncState'
-import { dispatchSession, resetSessionForTest } from '../transport/session/store'
-import { mirrorDeltaReceived } from '../transport/session/actions'
+import { dispatchState, resetStateForTest } from '../transport/state/store'
+import { mirrorDeltaReceived } from '../transport/state/actions'
 import type { SyncStatusWire } from '../transport/types'
 const report: SyncStatusWire = {
   last_ingest_at: null,
@@ -18,12 +18,12 @@ const report: SyncStatusWire = {
 
 const pushSync = (status: SyncStatusWire): void =>
   act(() => {
-    dispatchSession(mirrorDeltaReceived({ domain: 'sync_poll', status }, '2026-01-01T00:00:00Z'))
+    dispatchState(mirrorDeltaReceived({ domain: 'sync_poll', status }, '2026-01-01T00:00:00Z'))
   })
 
 afterEach(() => {
   cleanup()
-  resetSessionForTest()
+  resetStateForTest()
 })
 
 describe('SyncStatusGlyph — derives state from the WS mirror (no /api/sync-status poll)', () => {

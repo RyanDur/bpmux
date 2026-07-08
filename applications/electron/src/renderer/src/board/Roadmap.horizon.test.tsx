@@ -4,13 +4,13 @@ import { afterEach, describe, expect, it } from 'vitest'
 import Roadmap from './Roadmap'
 import { roadmap } from './Roadmap.page'
 import { card, seedRoadmap } from './Roadmap.fixtures'
-import { resetSessionForTest } from '../transport/session/store'
-import { startSentFrameCapture, stopSentFrameCapture } from '../transport/session/testCapture'
+import { resetStateForTest } from '../transport/state/store'
+import { startSentFrameCapture, stopSentFrameCapture } from '../transport/state/testCapture'
 
 afterEach(() => {
   cleanup()
   stopSentFrameCapture()
-  resetSessionForTest()
+  resetStateForTest()
 })
 
 const bandPick = (outcomeTitle: string, band: string): HTMLElement => {

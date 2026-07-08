@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import Chat from './Chat'
 import type { MessageFilter } from '../hooks/useMessageFilter'
-import { dispatchSession, resetSessionForTest } from '../transport/session/store'
-import { connected, connecting } from '../transport/session/actions'
+import { dispatchState, resetStateForTest } from '../transport/state/store'
+import { connected, connecting } from '../transport/state/actions'
 
 const filter: MessageFilter = {
   visible: new Set(['chat']),
@@ -32,7 +32,7 @@ const renderChat = (): void => {
 
 afterEach(() => {
   cleanup()
-  resetSessionForTest()
+  resetStateForTest()
 })
 
 describe('Chat — reconnect warning reflects the session connection status (useConnectionStatus selector)', () => {
@@ -42,13 +42,13 @@ describe('Chat — reconnect warning reflects the session connection status (use
   })
 
   test('a connecting session shows the connecting warning', () => {
-    dispatchSession(connecting())
+    dispatchState(connecting())
     renderChat()
     expect(screen.getByText('connecting…')).toBeTruthy()
   })
 
   test('a connected session shows no reconnect warning', () => {
-    dispatchSession(connected())
+    dispatchState(connected())
     renderChat()
     expect(screen.queryByText(/^(connecting|reconnecting)…$/)).toBeNull()
   })

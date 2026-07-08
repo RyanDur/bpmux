@@ -5,8 +5,8 @@ import userEvent from '@testing-library/user-event'
 import Sidebar from './Sidebar'
 import type { MessageFilter } from '../hooks/useMessageFilter'
 import type { ChatMessage, RosterMemberWire } from '../transport/types'
-import { dispatchSession, resetSessionForTest } from '../transport/session/store'
-import { mirrorDeltaReceived } from '../transport/session/actions'
+import { dispatchState, resetStateForTest } from '../transport/state/store'
+import { mirrorDeltaReceived } from '../transport/state/actions'
 
 const filter: MessageFilter = {
   visible: new Set(['chat']),
@@ -32,7 +32,7 @@ const ROSTER_FIXTURE: RosterMemberWire[] = [
 ]
 
 const pushRoster = (members: RosterMemberWire[]): void =>
-  dispatchSession(mirrorDeltaReceived({ domain: 'roster', members }, '2026-01-01T00:00:00Z'))
+  dispatchState(mirrorDeltaReceived({ domain: 'roster', members }, '2026-01-01T00:00:00Z'))
 
 const OWNER_ONLY_MESSAGES: ChatMessage[] = [
   {
@@ -48,7 +48,7 @@ const OWNER_ONLY_MESSAGES: ChatMessage[] = [
 
 afterEach(() => {
   cleanup()
-  resetSessionForTest()
+  resetStateForTest()
 })
 
 describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-check-402.spec.ts)', () => {

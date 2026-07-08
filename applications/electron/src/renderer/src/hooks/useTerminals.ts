@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { type ApiContext, describeHttpError } from '../api/http'
 import type { ConnectionStatus } from '../transport/types'
-import { RENDERER_IDENTITY, subscribePtyExit } from '../transport/session'
+import { RENDERER_IDENTITY, subscribePtyExit } from '../transport/state'
 import {
   readTerminalLayout,
   restoreTerminalLayout,

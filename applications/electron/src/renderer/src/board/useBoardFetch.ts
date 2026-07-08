@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { useStories } from '../transport/session'
+import { useStories } from '../transport/state'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
 import type { Story } from './types'
 

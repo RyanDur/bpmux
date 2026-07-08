@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useBoardReorder } from './useBoardReorder'
-import { SessionActionType } from '../transport/session/actions'
+import { StateActionType } from '../transport/state/actions'
 import { type Story } from './types'
 
 const ITER = 9000
@@ -49,7 +49,7 @@ describe('useBoardReorder — ready reorder dispatches the parent-held ordered-l
     const { run, dispatch } = reorderWith([story(701), story(702), story(703)], [701, 702, 703])
     run(701, 703)
     expect(dispatch).toHaveBeenCalledWith({
-      type: SessionActionType.AddStoryToIterationRequested,
+      type: StateActionType.AddStoryToIterationRequested,
       iterationId: ITER,
       storyId: 701,
       position: 3
@@ -60,7 +60,7 @@ describe('useBoardReorder — ready reorder dispatches the parent-held ordered-l
     const { run, dispatch } = reorderWith([story(701), story(702), story(703)], [701, 702, 703])
     run(703, 701)
     expect(dispatch).toHaveBeenCalledWith({
-      type: SessionActionType.AddStoryToIterationRequested,
+      type: StateActionType.AddStoryToIterationRequested,
       iterationId: ITER,
       storyId: 703,
       position: 1

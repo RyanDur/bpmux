@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import { useCiSnapshot } from '../transport/session'
+import { useCiSnapshot } from '../transport/state'
 import type { CiSnapshotWire, CiStateWire } from '../transport/types'
 import {
   derivedClassName,

@@ -8,9 +8,9 @@ import {
   type TestWsConnection,
   type TestWsServer
 } from '../../../../test/wsTestServer'
-import { startSession, getSessionSnapshot, resetSessionForTest } from '../transport/session'
-import { dispatchSession } from '../transport/session/store'
-import { mirrorDeltaReceived } from '../transport/session/actions'
+import { startConnection, getStateSnapshot, resetStateForTest } from '../transport/state'
+import { dispatchState } from '../transport/state/store'
+import { mirrorDeltaReceived } from '../transport/state/actions'
 const baseProps = {
   storyId: 999,
   apiBase: undefined,
@@ -20,7 +20,7 @@ const baseProps = {
 
 afterEach(() => {
   cleanup()
-  resetSessionForTest()
+  resetStateForTest()
 })
 
 describe('#1355 Comments independence', () => {
@@ -94,16 +94,16 @@ describe('Comments reads over the live session (real socket + store)', () => {
   beforeEach(async () => {
     vi.stubGlobal('WebSocket', BrowserWebSocket)
     server = await startTestWsServer()
-    resetSessionForTest()
-    startSession({ url: server.url })
+    resetStateForTest()
+    startConnection({ url: server.url })
     conn = await server.waitForConnection()
-    await waitFor(() => expect(getSessionSnapshot().status).toBe('connected'))
+    await waitFor(() => expect(getStateSnapshot().status).toBe('connected'))
     await waitFor(() => expect(conn.received.length).toBeGreaterThanOrEqual(1))
     answered = conn.received.length
   })
 
   afterEach(async () => {
-    resetSessionForTest()
+    resetStateForTest()
     await server.close()
     vi.unstubAllGlobals()
   })
@@ -121,7 +121,7 @@ describe('Comments reads over the live session (real socket + store)', () => {
     expect(await screen.findByText('first proposal')).toBeTruthy()
 
     act(() => {
-      dispatchSession(
+      dispatchState(
         mirrorDeltaReceived(
           { domain: 'board_invalidated', reason: 'board changed' },
           '2026-01-01T00:00:00Z'

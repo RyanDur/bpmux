@@ -9,7 +9,7 @@ import {
   sendPtySubscribe,
   subscribePtyMode,
   subscribePtyOutput
-} from '../transport/session'
+} from '../transport/state'
 import { composeTerminalFontFamily } from '../lib/terminalFont'
 import { TerminalCompose } from './TerminalCompose'
 import { copyOnCmdC } from './terminalCopy'

@@ -3,11 +3,11 @@ import { afterEach, describe, expect, it } from 'vitest'
 import Roadmap from './Roadmap'
 import { roadmap } from './Roadmap.page'
 import { buildingIteration, card, checks, outcome, seedRoadmap } from './Roadmap.fixtures'
-import { resetSessionForTest } from '../transport/session/store'
+import { resetStateForTest } from '../transport/state/store'
 
 afterEach(() => {
   cleanup()
-  resetSessionForTest()
+  resetStateForTest()
 })
 
 const OUTCOME = 'You see what is coming'

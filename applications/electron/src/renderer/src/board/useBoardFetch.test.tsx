@@ -3,14 +3,14 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 
 import { useBoardFetch } from './useBoardFetch'
 import { type Story } from './types'
-import { dispatchSession, resetSessionForTest } from '../transport/session/store'
-import { mirrorDeltaReceived } from '../transport/session/actions'
+import { dispatchState, resetStateForTest } from '../transport/state/store'
+import { mirrorDeltaReceived } from '../transport/state/actions'
 
 const pushStories = (stories: Story[]): void =>
-  dispatchSession(mirrorDeltaReceived({ domain: 'stories', stories }, '2026-06-13T00:00:00Z'))
+  dispatchState(mirrorDeltaReceived({ domain: 'stories', stories }, '2026-06-13T00:00:00Z'))
 
 afterEach(() => {
-  resetSessionForTest()
+  resetStateForTest()
 })
 
 describe('#1720 useBoardFetch — a pushed stories delta becomes the data (render=f(substrate))', () => {

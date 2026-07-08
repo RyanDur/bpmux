@@ -4,11 +4,11 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import Board from './Board'
 import { type Story } from './types'
 import { boardIteration, seedIterations } from './Iteration.fixtures'
-import { dispatchSession, resetSessionForTest } from '../transport/session/store'
-import { mirrorDeltaReceived } from '../transport/session/actions'
+import { dispatchState, resetStateForTest } from '../transport/state/store'
+import { mirrorDeltaReceived } from '../transport/state/actions'
 
 const pushStories = (stories: Story[]): void =>
-  dispatchSession(mirrorDeltaReceived({ domain: 'stories', stories }, '2026-06-16T00:00:00Z'))
+  dispatchState(mirrorDeltaReceived({ domain: 'stories', stories }, '2026-06-16T00:00:00Z'))
 
 const story = (over: Partial<Story>): Story => ({
   id: 1,
@@ -53,7 +53,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
-  resetSessionForTest()
+  resetStateForTest()
   delete window.bpmux
 })
 

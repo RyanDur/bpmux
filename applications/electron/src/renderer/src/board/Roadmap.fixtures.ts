@@ -1,7 +1,7 @@
 import type { RoadmapCard, RoadmapIteration, RoadmapOutcomeData } from './selectRoadmap'
 import type { IterationReadiness } from './types'
-import { dispatchSession } from '../transport/session/store'
-import { mirrorDeltaReceived } from '../transport/session/actions'
+import { dispatchState } from '../transport/state/store'
+import { mirrorDeltaReceived } from '../transport/state/actions'
 
 const ts = '2026-06-27T00:00:00Z'
 
@@ -42,6 +42,6 @@ export const checks = (
 ): IterationReadiness => ({ drafted, stories_ordered, review_closed, dev_ok })
 
 export const seedRoadmap = (cards: RoadmapCard[], outcomes: RoadmapOutcomeData[] = []): void => {
-  dispatchSession(mirrorDeltaReceived({ domain: 'roadmap', roadmap: cards }, ts))
-  dispatchSession(mirrorDeltaReceived({ domain: 'outcomes', outcomes }, ts))
+  dispatchState(mirrorDeltaReceived({ domain: 'roadmap', roadmap: cards }, ts))
+  dispatchState(mirrorDeltaReceived({ domain: 'outcomes', outcomes }, ts))
 }

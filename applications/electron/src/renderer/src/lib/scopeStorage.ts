@@ -1,4 +1,4 @@
-import { RENDERER_IDENTITY } from '../transport/session'
+import { RENDERER_IDENTITY } from '../transport/state'
 
 export type PersistedScope =
   | { kind: 'all' }

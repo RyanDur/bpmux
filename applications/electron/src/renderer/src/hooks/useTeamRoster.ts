@@ -1,5 +1,5 @@
 import type { RosterMemberWire } from '../transport/types'
-import { useRoster } from '../transport/session'
+import { useRoster } from '../transport/state'
 import { presenceFromWire, type Presence } from './usePresence'
 
 export interface RosterEntry {

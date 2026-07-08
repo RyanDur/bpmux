@@ -1,4 +1,4 @@
-import { dispatchSession } from './store'
+import { dispatchState } from './store'
 import {
   chatSendRequested,
   commentsHydrateRequested,
@@ -11,14 +11,14 @@ import {
   startRequested,
   timelineHydrateRequested,
   type SendOptions,
-  type SessionConfig
+  type ConnectionConfig
 } from './actions'
 import { nextOlderHistoryRequest } from './olderHistory'
 import type { HistoryMessageWire } from '../types'
 import { startSentFrameCapture } from './testCapture'
 import type { ClientMessage } from '../types'
 
-export { getSessionSnapshot, subscribeSession, resetSessionForTest } from './store'
+export { getStateSnapshot, subscribeState, resetStateForTest } from './store'
 export {
   useConnectionStatus,
   useSessionId,
@@ -41,45 +41,46 @@ export {
 } from './emitter'
 export { encodeKeystroke, decodePtyData } from './ptyCodec'
 export { RENDERER_IDENTITY } from './constants'
-export type { SessionSnapshot } from './reducer'
-export type { SendOptions, SessionConfig } from './actions'
+export type { StateSnapshot } from './reducer'
+export type { SendOptions, ConnectionConfig } from './actions'
 
-export const startSession = (config: SessionConfig): void => dispatchSession(startRequested(config))
+export const startConnection = (config: ConnectionConfig): void =>
+  dispatchState(startRequested(config))
 
 export const sendChat = (text: string, opts?: SendOptions): void =>
-  dispatchSession(chatSendRequested(text, opts))
+  dispatchState(chatSendRequested(text, opts))
 
 export const toggleReaction = (
   channel: string,
   messageKey: string,
   emoji: string,
   user: string
-): void => dispatchSession(reactionToggleRequested(channel, messageKey, emoji, user))
+): void => dispatchState(reactionToggleRequested(channel, messageKey, emoji, user))
 
 export const requestCommentsHydrate = (storyId: number): void =>
-  dispatchSession(commentsHydrateRequested(storyId))
+  dispatchState(commentsHydrateRequested(storyId))
 
 export const requestTimelineHydrate = (storyId: number): void =>
-  dispatchSession(timelineHydrateRequested(storyId))
+  dispatchState(timelineHydrateRequested(storyId))
 
 export const requestOlderHistory = (
   before: string,
   limit: number
 ): Promise<HistoryMessageWire[]> => {
   const { requestId, promise } = nextOlderHistoryRequest()
-  dispatchSession(olderHistoryRequested(requestId, before, limit))
+  dispatchState(olderHistoryRequested(requestId, before, limit))
   return promise
 }
 
 export const sendPtySubscribe = (terminalId: string): void =>
-  dispatchSession(ptySubscribeRequested(terminalId))
+  dispatchState(ptySubscribeRequested(terminalId))
 
 export const sendPtyInput = (terminalId: string, keystroke: string): void =>
-  dispatchSession(ptyInputRequested(terminalId, keystroke))
+  dispatchState(ptyInputRequested(terminalId, keystroke))
 
 export const sendPtyResize = (terminalId: string, cols: number, rows: number): void =>
-  dispatchSession(ptyResizeRequested(terminalId, cols, rows))
+  dispatchState(ptyResizeRequested(terminalId, cols, rows))
 
-export const deliverServerFrameForTest = (raw: string): void => dispatchSession(frameReceived(raw))
+export const deliverServerFrameForTest = (raw: string): void => dispatchState(frameReceived(raw))
 
 export const captureSentFramesForTest = (): ClientMessage[] => startSentFrameCapture()
