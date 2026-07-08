@@ -200,33 +200,6 @@ mod slice_7_3_drain_one_by_id {
         let outcome = orch.drain_one_by_id(MutationId(99999)).await;
         assert!(matches!(outcome, DrainOneOutcome::NotFound));
     }
-
-    #[tokio::test]
-    async fn apply_server_rollback_overwrites_local_optimistic_state() {
-        let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(adapter));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
-        let handle = SeededStore::new(vec![], vec![], vec![]);
-        handle.bind_refresh(&orch_dyn);
-        handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
-            701,
-            Work::NotStarted,
-        )])));
-        orch.mutate(StoryEvent::new(
-            meta(),
-            StoryId::new(701),
-            StoryEventKind::StateTransitioned {
-                new_state: Work::InProgress,
-                placement: None,
-            },
-        ))
-        .unwrap();
-        assert_eq!(orch.story(701).map(|s| s.state), Some(Work::InProgress));
-
-        let server_view = seed_story(701, Work::Accepted);
-        orch.apply_server_rollback(server_view);
-        assert_eq!(orch.story(701).map(|s| s.state), Some(Work::Accepted));
-    }
 }
 
 mod slice_7_4_drain_one_by_id_falsifiers {

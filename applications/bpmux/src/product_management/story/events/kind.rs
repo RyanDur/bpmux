@@ -5,7 +5,6 @@ use crate::product_management::story::{
 use crate::workflow::StageId;
 
 use super::LabelDerivedFields;
-use crate::product_management::story::conflict::{ConflictKind, ConflictResolveOrigin};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StoryEventKind {
@@ -72,11 +71,5 @@ pub enum StoryEventKind {
     },
     BodyUpdated {
         body: String,
-    },
-    ConflictDetected {
-        kind: ConflictKind,
-    },
-    ConflictResolved {
-        origin: ConflictResolveOrigin,
     },
 }

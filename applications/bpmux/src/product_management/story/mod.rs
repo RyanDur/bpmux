@@ -1,4 +1,3 @@
-pub mod conflict;
 pub mod enums;
 pub mod events;
 mod gate_class;

@@ -341,12 +341,6 @@ mod ingest_poll_loop_tests {
         ) -> BoxedFuture<'_, crate::sync::DrainOneOutcome> {
             Box::pin(async { crate::sync::DrainOneOutcome::NotFound })
         }
-        fn apply_server_rollback(
-            &self,
-            _story: crate::product_management::story::Story,
-        ) -> BoxedFuture<'_, ()> {
-            Box::pin(async {})
-        }
         fn snapshot_pending_for_mutation(&self, _id: crate::sync::MutationId) -> Option<u64> {
             None
         }

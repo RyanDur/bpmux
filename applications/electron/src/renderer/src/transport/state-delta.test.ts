@@ -125,8 +125,7 @@ describe('applyStateDelta', () => {
         last_error: null,
         dropped_events: [],
         stale: false,
-        startup_fail: false,
-        conflicts_pending: 0
+        startup_fail: false
       }
     })
     expect(next.sync?.pending_events).toBe(2)

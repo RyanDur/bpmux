@@ -56,26 +56,34 @@ test.describe('#1158 — offline-first board', () => {
     )
     const seedEvents = [
       {
-        StateTransitioned: {
-          meta: {
-            actor: 'dev',
-            ts: '2026-05-03T20:00:00Z',
-            peer_id: 'local'
-          },
-          id: 100,
-          new_state: 'in-progress'
-        }
+        id: 0,
+        event: {
+          StateTransitioned: {
+            meta: {
+              actor: 'dev',
+              ts: '2026-05-03T20:00:00Z',
+              peer_id: 'local'
+            },
+            id: 100,
+            new_state: 'in-progress'
+          }
+        },
+        pre_state: null
       },
       {
-        StateTransitioned: {
-          meta: {
-            actor: 'dev',
-            ts: '2026-05-03T20:00:01Z',
-            peer_id: 'local'
-          },
-          id: 101,
-          new_state: 'in-progress'
-        }
+        id: 1,
+        event: {
+          StateTransitioned: {
+            meta: {
+              actor: 'dev',
+              ts: '2026-05-03T20:00:01Z',
+              peer_id: 'local'
+            },
+            id: 101,
+            new_state: 'in-progress'
+          }
+        },
+        pre_state: null
       }
     ]
     writeFileSync(outboxPath, JSON.stringify(seedEvents))
@@ -150,15 +158,19 @@ test.describe('#1158 — offline-first board', () => {
       'board-outbox.json'
     )
     const event = {
-      StateTransitioned: {
-        meta: {
-          actor: 'dev',
-          ts: '2026-05-03T20:00:00Z',
-          peer_id: 'local'
-        },
-        id: 200,
-        new_state: 'acceptance'
-      }
+      id: 0,
+      event: {
+        StateTransitioned: {
+          meta: {
+            actor: 'dev',
+            ts: '2026-05-03T20:00:00Z',
+            peer_id: 'local'
+          },
+          id: 200,
+          new_state: 'acceptance'
+        }
+      },
+      pre_state: null
     }
     writeFileSync(outboxPath, JSON.stringify([event]))
 

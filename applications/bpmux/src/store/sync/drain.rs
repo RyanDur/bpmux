@@ -49,10 +49,6 @@ impl GithubDrain {
             };
             let action = match outcome {
                 DrainOneOutcome::Confirmed => SyncAction::MutationConfirmed { mutation_id: id },
-                DrainOneOutcome::RolledBack { server_story } => SyncAction::MutationRolledBack {
-                    mutation_id: id,
-                    server_story,
-                },
                 DrainOneOutcome::TransientError(_) | DrainOneOutcome::NotFound => {
                     SyncAction::StopUpdateGithub { mutation_id: id }
                 }
@@ -78,20 +74,6 @@ impl GithubDrain {
             token.cancel();
         }
     }
-
-    fn rolled_back(
-        &self,
-        id: MutationId,
-        server_story: Option<Box<crate::product_management::story::Story>>,
-    ) -> ListenerFuture {
-        self.forget(id);
-        let refresh = self.refresh.clone();
-        Box::pin(async move {
-            if let Some(story) = server_story {
-                refresh.apply_server_rollback(*story).await;
-            }
-        })
-    }
 }
 
 impl Listener<AppState, AppAction> for GithubDrain {
@@ -106,10 +88,6 @@ impl Listener<AppState, AppAction> for GithubDrain {
             SyncAction::StartUpdateGithub { mutation_id } => self.start(mutation_id, dispatch),
             SyncAction::StopUpdateGithub { mutation_id } => self.cancel(mutation_id),
             SyncAction::MutationConfirmed { mutation_id } => self.forget(mutation_id),
-            SyncAction::MutationRolledBack {
-                mutation_id,
-                server_story,
-            } => return self.rolled_back(mutation_id, server_story),
             _ => {}
         }
         Box::pin(async {})

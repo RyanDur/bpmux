@@ -60,7 +60,6 @@ pub(crate) fn broadcast_sync_status_transition(
                     status: transition.status.to_string(),
                     why: transition.why,
                     pending_events: transition.pending_events,
-                    conflicts_pending: transition.conflicts_pending,
                 },
             }),
             ..crate::message::Message::default()

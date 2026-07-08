@@ -51,7 +51,6 @@ export interface SyncStatusWire {
   dropped_events: DroppedEventWire[]
   stale: boolean
   startup_fail: boolean
-  conflicts_pending: number
 }
 
 export type RosterRoleWire = 'Designer' | 'Dev' | 'Pm' | 'Owner' | 'Other'

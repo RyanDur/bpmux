@@ -23,7 +23,6 @@ impl StateDeltaPayload {
                     "status": transition.status,
                     "why": transition.why,
                     "pending_events": transition.pending_events,
-                    "conflicts_pending": transition.conflicts_pending,
                 }),
             )),
             StateDeltaPayload::StoryTransition { transition } => Some((

@@ -3,7 +3,6 @@
 use chrono::{TimeZone, Utc};
 
 use crate::product_management::epic::EpicId;
-use crate::product_management::story::conflict::{ConflictKind, ConflictResolveOrigin};
 use crate::product_management::story::events::{
     EventMeta, LabelDerivedFields, StoryEvent, StoryEventKind,
 };
@@ -11,20 +10,19 @@ use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{
     Acceptor, CastVerdict, FreeComment, Stage, Story, StoryId, StoryKind, Tag, Verdict, Work,
 };
-use crate::sync::{MutationId, QueuedEvent, load_outbox_from_disk};
+use crate::sync::{QueuedEvent, load_outbox_from_disk};
 
-const FIX_QUEUED_TAG_ADDED: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}},"pre_state":null,"last_classification":null}"#;
-const FIX_QUEUED_TRANSITIONED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress","placement":"desk-check"}},"pre_state":null,"last_classification":null}"#;
-const FIX_QUEUED_VERDICT: &str = r#"{"id":0,"event":{"VerdictCast":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"verdict":{"Fail":{"step":"acceptance"}},"payload":"narrow viewport"}},"pre_state":null,"last_classification":null}"#;
-const FIX_QUEUED_REFRESHED: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[]}}},"pre_state":null,"last_classification":null}"#;
-const FIX_QUEUED_WITH_PRESTATE: &str = r#"{"id":42,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}},"pre_state":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[]},"last_classification":null}"#;
+const FIX_QUEUED_TAG_ADDED: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}},"pre_state":null}"#;
+const FIX_QUEUED_TRANSITIONED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress","placement":"desk-check"}},"pre_state":null}"#;
+const FIX_QUEUED_VERDICT: &str = r#"{"id":0,"event":{"VerdictCast":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"verdict":{"Fail":{"step":"acceptance"}},"payload":"narrow viewport"}},"pre_state":null}"#;
+const FIX_QUEUED_REFRESHED: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[]}}},"pre_state":null}"#;
+const FIX_QUEUED_WITH_PRESTATE: &str = r#"{"id":42,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}},"pre_state":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[]}}"#;
 const FIX_LEGACY_BARE_EVENT: &str = r#"{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}}"#;
 
-const FIX_ABSENT_PLACEMENT: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress"}},"pre_state":null,"last_classification":null}"#;
-const FIX_ABSENT_PLACEMENT_NORMALIZED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress","placement":null}},"pre_state":null,"last_classification":null}"#;
-const FIX_ABSENT_ENVELOPE_DEFAULTS: &str = r#"{"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}}}"#;
-const FIX_ABSENT_ETAG: &str = r#"{"id":0,"event":{"BodyFetched":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"body":"hydrated"}},"pre_state":null,"last_classification":null}"#;
-const FIX_ABSENT_ETAG_NORMALIZED: &str = r#"{"id":0,"event":{"BodyFetched":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"body":"hydrated","etag":null}},"pre_state":null,"last_classification":null}"#;
+const FIX_ABSENT_PLACEMENT: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress"}},"pre_state":null}"#;
+const FIX_ABSENT_PLACEMENT_NORMALIZED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress","placement":null}},"pre_state":null}"#;
+const FIX_ABSENT_ETAG: &str = r#"{"id":0,"event":{"BodyFetched":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"body":"hydrated"}},"pre_state":null}"#;
+const FIX_ABSENT_ETAG_NORMALIZED: &str = r#"{"id":0,"event":{"BodyFetched":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"body":"hydrated","etag":null}},"pre_state":null}"#;
 
 fn fixture_meta() -> EventMeta {
     EventMeta {
@@ -90,32 +88,13 @@ fn queued_row_with_pre_state_round_trips_byte_identically() {
 
 #[test]
 fn a_legacy_row_carrying_the_retired_keys_still_deserializes_into_a_story() {
-    let legacy = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[],"ready_order":100,"iteration_slot":{"name":"Pegasus","position":100}}}},"pre_state":null,"last_classification":null}"#;
+    let legacy = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[],"ready_order":100,"iteration_slot":{"name":"Pegasus","position":100}}}},"pre_state":null}"#;
     let parsed: QueuedEvent =
         serde_json::from_str(legacy).expect("a legacy row carrying the retired keys still loads");
     match &parsed.event.kind {
         StoryEventKind::StoryRefreshed { story } => assert_eq!(**story, fixture_story()),
         other => panic!("fixture is a StoryRefreshed row; got {other:?}"),
     }
-}
-
-#[test]
-fn a_legacy_outbox_file_row_carrying_an_iteration_slot_event_loads_and_drops() {
-    let legacy_slot_row = r#"{"id":0,"event":{"IterationSlotSet":{"meta":{"actor":"pm","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"name":"Pegasus","position":100}},"pre_state":null,"last_classification":null}"#;
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("board-outbox.json");
-    std::fs::write(&path, format!("[{legacy_slot_row},{FIX_QUEUED_TAG_ADDED}]")).unwrap();
-    let loaded =
-        load_outbox_from_disk(&path).expect("a legacy iteration-slot row loads without error");
-    assert_eq!(
-        loaded.len(),
-        1,
-        "the retired IterationSlotSet row is dropped at the wire boundary; only the surviving TagAdded row counts"
-    );
-    assert_eq!(
-        loaded.front().expect("one entry").event,
-        fixture_tag_added()
-    );
 }
 
 #[test]
@@ -158,35 +137,6 @@ fn a_row_missing_the_etag_key_defaults_and_normalizes_on_rewrite() {
 }
 
 #[test]
-fn a_row_missing_every_envelope_field_defaults_and_normalizes_on_rewrite() {
-    let parsed: QueuedEvent = serde_json::from_str(FIX_ABSENT_ENVELOPE_DEFAULTS)
-        .expect("pre-envelope-fields row deserializes");
-    assert_eq!(parsed.id, MutationId::default());
-    assert_eq!(parsed.event, fixture_tag_added());
-    assert!(parsed.pre_state.is_none());
-    assert!(parsed.last_classification.is_none());
-    assert_eq!(
-        serde_json::to_string(&parsed).unwrap(),
-        FIX_QUEUED_TAG_ADDED,
-        "rewriting a pre-envelope-fields row lands the defaulted fields explicitly, converging on the current full shape"
-    );
-}
-
-#[test]
-fn a_legacy_bare_event_outbox_file_loads_through_the_real_loader() {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("board-outbox.json");
-    std::fs::write(&path, format!("[{FIX_LEGACY_BARE_EVENT}]")).unwrap();
-    let loaded = load_outbox_from_disk(&path).expect("legacy file loads");
-    assert_eq!(loaded.len(), 1);
-    let entry = loaded.front().expect("one entry");
-    assert_eq!(entry.id, MutationId::default());
-    assert_eq!(entry.event, fixture_tag_added());
-    assert!(entry.pre_state.is_none());
-    assert!(entry.last_classification.is_none());
-}
-
-#[test]
 fn a_current_shape_outbox_file_loads_and_rewrites_byte_identically() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("board-outbox.json");
@@ -225,8 +175,6 @@ fn variant_name(event: &StoryEvent) -> &'static str {
         StoryEventKind::LabelsRefreshed { .. } => "LabelsRefreshed",
         StoryEventKind::TitleUpdated { .. } => "TitleUpdated",
         StoryEventKind::BodyUpdated { .. } => "BodyUpdated",
-        StoryEventKind::ConflictDetected { .. } => "ConflictDetected",
-        StoryEventKind::ConflictResolved { .. } => "ConflictResolved",
     }
 }
 
@@ -388,20 +336,6 @@ fn every_variant() -> Vec<StoryEvent> {
                 body: "new body".to_string(),
             },
         ),
-        StoryEvent::new(
-            meta(),
-            id,
-            StoryEventKind::ConflictDetected {
-                kind: ConflictKind::DivergentState,
-            },
-        ),
-        StoryEvent::new(
-            meta(),
-            id,
-            StoryEventKind::ConflictResolved {
-                origin: ConflictResolveOrigin::OperatorAction,
-            },
-        ),
     ]
 }
 
@@ -412,7 +346,7 @@ fn every_story_event_variant_round_trips_through_serde() {
         variants.iter().map(variant_name).collect();
     assert_eq!(
         names.len(),
-        24,
+        22,
         "the exhaustive fixture set covers every variant exactly once — a new variant must be added here (variant_name's total match will force it at compile time)"
     );
     for event in variants {

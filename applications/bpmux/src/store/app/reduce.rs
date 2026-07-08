@@ -108,7 +108,6 @@ pub fn validate_and_log(action: &AppAction) {
         AppAction::Sync(SyncAction::StartUpdateGithub { .. }) => "Sync.StartUpdateGithub",
         AppAction::Sync(SyncAction::StopUpdateGithub { .. }) => "Sync.StopUpdateGithub",
         AppAction::Sync(SyncAction::MutationConfirmed { .. }) => "Sync.MutationConfirmed",
-        AppAction::Sync(SyncAction::MutationRolledBack { .. }) => "Sync.MutationRolledBack",
         AppAction::Reactions(_) => "Reactions",
         AppAction::Roster(_) => "Roster",
         AppAction::Outcome(_) => "Outcome",

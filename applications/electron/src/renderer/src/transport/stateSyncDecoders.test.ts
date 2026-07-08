@@ -53,8 +53,7 @@ describe('stateDeltaDecoder', () => {
         last_error: null,
         dropped_events: [],
         stale: true,
-        startup_fail: false,
-        conflicts_pending: 0
+        startup_fail: false
       }
     })
     expect(result.type).toBe('ok')

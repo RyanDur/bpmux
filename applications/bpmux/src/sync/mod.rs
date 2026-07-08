@@ -26,13 +26,9 @@ mod status;
 mod types;
 mod write_through;
 
-pub use crate::product_management::story::conflict::{
-    ConflictKind, ConflictResolveOrigin, classify_conflict,
-};
 pub(crate) use backfill::backfill_shared_history;
 use coalesce::{coalesce_iteration_label_events, stale_state_labels_for};
 pub use driver::*;
-pub(crate) use outbox::QueuedEventOnDisk;
 pub use outbox::{default_outbox_path, load_outbox_from_disk};
 pub use port::*;
 pub use race_window::*;
@@ -41,8 +37,7 @@ pub use status::{
     staleness_threshold_secs, sync_transition,
 };
 use status::{
-    decrement_pending, record_conflicts_pending, record_dropped, record_error, record_push_success,
-    set_pending_events,
+    decrement_pending, record_dropped, record_error, record_push_success, set_pending_events,
 };
 pub use types::*;
 
@@ -183,8 +178,8 @@ mod builder;
 #[cfg(test)]
 mod boundary_tests;
 #[cfg(test)]
-mod conflict_classifier_tests;
-#[cfg(test)]
 mod orchestrator_tests;
+#[cfg(test)]
+mod outbox_capture_tests;
 #[cfg(test)]
 mod outbox_format_tests;

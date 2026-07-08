@@ -55,8 +55,7 @@ describe('state selector hooks', () => {
               last_error: null,
               dropped_events: [],
               stale: false,
-              startup_fail: false,
-              conflicts_pending: 0
+              startup_fail: false
             }
           },
           '2026-01-01T00:00:00Z'

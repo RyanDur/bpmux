@@ -80,12 +80,6 @@ impl From<StoryEvent> for StoryEventWire {
                 StoryEventWire::TitleUpdated { meta, id, title }
             }
             StoryEventKind::BodyUpdated { body } => StoryEventWire::BodyUpdated { meta, id, body },
-            StoryEventKind::ConflictDetected { kind } => {
-                StoryEventWire::ConflictDetected { meta, id, kind }
-            }
-            StoryEventKind::ConflictResolved { origin } => {
-                StoryEventWire::ConflictResolved { meta, id, origin }
-            }
         }
     }
 }

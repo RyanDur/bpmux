@@ -91,8 +91,6 @@ pub(super) async fn apply_push_event(
         | StoryEventKind::FreeCommentsFetched { .. }
         | StoryEventKind::VerdictsFetched { .. }
         | StoryEventKind::StoryRefreshed { .. }
-        | StoryEventKind::LabelsRefreshed { .. }
-        | StoryEventKind::ConflictDetected { .. }
-        | StoryEventKind::ConflictResolved { .. } => Ok(None),
+        | StoryEventKind::LabelsRefreshed { .. } => Ok(None),
     }
 }

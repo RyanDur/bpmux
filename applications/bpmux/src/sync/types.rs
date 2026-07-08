@@ -9,8 +9,6 @@ use crate::product_management::story::events::{EventMeta, StoryEvent};
 use crate::product_management::story::peer::PeerId;
 use crate::sync::SyncError;
 
-use super::ConflictKind;
-
 #[derive(
     Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
 )]
@@ -27,20 +25,15 @@ pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 #[derive(Debug)]
 pub enum DrainOneOutcome {
     Confirmed,
-    RolledBack { server_story: Option<Box<Story>> },
     TransientError(SyncError),
     NotFound,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueuedEvent {
-    #[serde(default)]
     pub id: MutationId,
     pub event: StoryEvent,
-    #[serde(default)]
     pub pre_state: Option<Story>,
-    #[serde(default)]
-    pub last_classification: Option<ConflictKind>,
 }
 
 impl QueuedEvent {
@@ -49,7 +42,6 @@ impl QueuedEvent {
             id: MutationId::default(),
             event,
             pre_state,
-            last_classification: None,
         }
     }
 
@@ -58,16 +50,6 @@ impl QueuedEvent {
             id,
             event,
             pre_state,
-            last_classification: None,
-        }
-    }
-
-    pub fn from_legacy(event: StoryEvent) -> Self {
-        Self {
-            id: MutationId::default(),
-            event,
-            pre_state: None,
-            last_classification: None,
         }
     }
 }

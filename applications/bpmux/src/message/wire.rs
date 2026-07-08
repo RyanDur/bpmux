@@ -20,7 +20,6 @@ pub struct SyncTransitionWire {
     pub status: String,
     pub why: String,
     pub pending_events: usize,
-    pub conflicts_pending: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

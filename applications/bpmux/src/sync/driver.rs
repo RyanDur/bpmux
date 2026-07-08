@@ -28,7 +28,6 @@ pub trait RefreshDriver: Send + Sync {
 
     fn mutate_batch_sync(&self, events: Vec<StoryEvent>) -> Result<(), SyncError>;
     fn drain_one_by_id(&self, id: MutationId) -> BoxedFuture<'_, DrainOneOutcome>;
-    fn apply_server_rollback(&self, story: Story) -> BoxedFuture<'_, ()>;
     fn snapshot_pending_for_mutation(&self, id: MutationId) -> Option<u64>;
     fn issue_lock(&self, issue: u64) -> BoxedFuture<'_, Arc<tokio::sync::Mutex<()>>>;
     fn snapshot_status(&self) -> SyncStatus;

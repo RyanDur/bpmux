@@ -2,10 +2,7 @@ mod drain;
 mod hydration;
 mod ingest;
 
-pub(crate) use drain::{
-    broadcast_sync_status_heartbeat, broadcast_sync_status_transition, drain_interval_from_env,
-    run_drain_loop,
-};
+pub(crate) use drain::{drain_interval_from_env, run_drain_loop};
 pub(crate) use hydration::hydration_interval_from_env;
 pub use hydration::run_hydration_loop_cancellable;
 #[cfg(test)]

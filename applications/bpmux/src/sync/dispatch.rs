@@ -1,4 +1,3 @@
-use crate::product_management::story::Story;
 use crate::product_management::story::events::StoryEvent;
 use crate::sync::SourceAdapter;
 
@@ -51,12 +50,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub(super) fn apply_story_events(&self, events: &[StoryEvent]) {
         self.dispatch_story(
             crate::product_management::story::slice::StoryAction::Events(events.to_vec()),
-        );
-    }
-
-    pub fn apply_server_rollback(&self, story: Story) {
-        self.dispatch_story(
-            crate::product_management::story::slice::StoryAction::Seeded(vec![story]),
         );
     }
 }

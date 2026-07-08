@@ -253,8 +253,6 @@ mod story87_acceptance;
 mod story_journey_e2e;
 #[path = "integration_main_modules/story_state_transition_e2e.rs"]
 mod story_state_transition_e2e;
-#[path = "integration_main_modules/sync_status_changed_e2e.rs"]
-mod sync_status_changed_e2e;
 #[path = "integration_main_modules/terminal_bridge_provision_e2e.rs"]
 mod terminal_bridge_provision_e2e;
 #[path = "integration_main_modules/terminal_receive_affordances_e2e.rs"]

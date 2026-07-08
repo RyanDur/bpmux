@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 use crate::product_management::epic::EpicId;
-use crate::product_management::story::conflict::{ConflictKind, ConflictResolveOrigin};
 use crate::product_management::story::{
     Acceptor, CastVerdict, FreeComment, Story, StoryId, StoryKind, Tag, Verdict, Work,
 };
@@ -46,16 +45,6 @@ pub(super) enum StoryEventWire {
         meta: EventMeta,
         id: StoryId,
         tag: Tag,
-    },
-    IterationSlotSet {
-        meta: EventMeta,
-        id: StoryId,
-        name: String,
-        position: u32,
-    },
-    IterationSlotCleared {
-        meta: EventMeta,
-        id: StoryId,
     },
     VerdictCast {
         meta: EventMeta,
@@ -135,15 +124,5 @@ pub(super) enum StoryEventWire {
         meta: EventMeta,
         id: StoryId,
         body: String,
-    },
-    ConflictDetected {
-        meta: EventMeta,
-        id: StoryId,
-        kind: ConflictKind,
-    },
-    ConflictResolved {
-        meta: EventMeta,
-        id: StoryId,
-        origin: ConflictResolveOrigin,
     },
 }

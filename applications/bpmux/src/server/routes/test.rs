@@ -34,10 +34,6 @@ pub(in crate::server) fn test_seed_routes() -> HubRouter {
             "/api/test/fire_ci_state",
             axum::routing::post(transport::test_routes::post_test_fire_ci_state),
         )
-        .route(
-            "/api/test/fire_sync_status",
-            axum::routing::post(transport::test_routes::post_test_fire_sync_status),
-        )
 }
 
 pub(in crate::server) fn test_routes(enabled: bool) -> HubRouter {

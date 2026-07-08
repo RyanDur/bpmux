@@ -12,8 +12,7 @@ const report: SyncStatusWire = {
   last_error: null,
   dropped_events: [],
   stale: false,
-  startup_fail: false,
-  conflicts_pending: 0
+  startup_fail: false
 }
 
 const pushSync = (status: SyncStatusWire): void =>

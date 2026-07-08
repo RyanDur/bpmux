@@ -10,9 +10,7 @@ use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::bind_seeded_refresh;
 use crate::sync::RefreshDriver;
-use crate::sync::{
-    ConflictKind, QueuedEvent, SyncOrchestrator, classify_conflict, load_outbox_from_disk,
-};
+use crate::sync::{QueuedEvent, SyncOrchestrator, load_outbox_from_disk};
 
 fn meta() -> EventMeta {
     EventMeta {
@@ -101,34 +99,7 @@ async fn mutate_pre_state_none_when_story_not_in_store_at_queue_time() {
 }
 
 #[tokio::test]
-async fn outbox_schema_back_compat_reads_legacy_bare_boardevent_file() {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("legacy-outbox.json");
-    let legacy_event = StoryEvent::new(
-        meta(),
-        StoryId::new(42),
-        StoryEventKind::TagAdded {
-            label: "ready".to_string(),
-        },
-    );
-    let legacy_payload = serde_json::to_vec(&vec![legacy_event]).unwrap();
-    std::fs::write(&path, legacy_payload).unwrap();
-
-    let entries = load_outbox_from_disk(&path).unwrap();
-    assert_eq!(entries.len(), 1);
-    let entry = entries.front().unwrap();
-    assert!(matches!(
-        &entry.event.kind,
-        StoryEventKind::TagAdded { .. } if entry.event.id == StoryId::new(42)
-    ));
-    assert!(
-        entry.pre_state.is_none(),
-        "legacy entries map to QueuedEvent with pre_state: None"
-    );
-}
-
-#[tokio::test]
-async fn outbox_round_trips_new_shape_through_disk() {
+async fn outbox_round_trips_the_only_shape_through_disk() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("new-outbox.json");
     let pre = seed_story(7, Work::Acceptance);
@@ -152,49 +123,4 @@ async fn outbox_round_trips_new_shape_through_disk() {
     let restored_pre = entry.pre_state.as_ref().unwrap();
     assert_eq!(restored_pre.id, pre.id);
     assert_eq!(restored_pre.state, Work::Acceptance);
-}
-
-#[test]
-fn classify_conflict_returns_none_for_slice_a_pending_real_classifier() {
-    let pre = seed_story(1, Work::NotStarted);
-    let cur = seed_story(1, Work::InProgress);
-    let event = StoryEvent::new(
-        meta(),
-        StoryId::new(1),
-        StoryEventKind::StateTransitioned {
-            new_state: Work::InProgress,
-            placement: None,
-        },
-    );
-    assert_eq!(classify_conflict(Some(&pre), &event, Some(&cur)), None);
-}
-
-#[test]
-fn conflict_kind_serde_round_trip() {
-    let kind = ConflictKind::IdempotentSkip;
-    let json = serde_json::to_string(&kind).unwrap();
-    let back: ConflictKind = serde_json::from_str(&json).unwrap();
-    assert_eq!(back, kind);
-}
-
-#[tokio::test]
-async fn drain_resets_conflicts_pending_to_zero_in_slice_a() {
-    let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(800, Work::NotStarted)]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
-    bind_seeded_refresh(&orch, vec![], vec![], vec![]);
-    orch.refresh_all().await.unwrap();
-
-    orch.mutate_sync(StoryEvent::new(
-        meta(),
-        StoryId::new(800),
-        StoryEventKind::StateTransitioned {
-            new_state: Work::InProgress,
-            placement: None,
-        },
-    ))
-    .unwrap();
-
-    let _ = orch.drain_pending().await.unwrap();
-    assert_eq!(orch.snapshot_status().conflicts_pending, 0);
 }

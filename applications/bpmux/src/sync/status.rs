@@ -15,8 +15,6 @@ pub struct SyncStatus {
     pub stale: bool,
     #[serde(default)]
     pub startup_fail: bool,
-    #[serde(default)]
-    pub conflicts_pending: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,13 +28,10 @@ pub struct SyncTransition {
     pub status: &'static str,
     pub why: String,
     pub pending_events: usize,
-    pub conflicts_pending: usize,
 }
 
 pub fn sync_transition(snapshot: &SyncStatus) -> Option<SyncTransition> {
-    let status = if snapshot.conflicts_pending > 0 {
-        "conflict"
-    } else if snapshot.stale {
+    let status = if snapshot.stale {
         "stale"
     } else if snapshot.pending_events > 0 {
         "drain"
@@ -44,10 +39,6 @@ pub fn sync_transition(snapshot: &SyncStatus) -> Option<SyncTransition> {
         return None;
     };
     let why = match status {
-        "conflict" => format!(
-            "{} unresolved label conflict(s) pending operator review",
-            snapshot.conflicts_pending
-        ),
         "stale" => snapshot.last_error.clone().unwrap_or_else(|| {
             format!(
                 "no successful ingest within the {}s staleness threshold",
@@ -63,7 +54,6 @@ pub fn sync_transition(snapshot: &SyncStatus) -> Option<SyncTransition> {
         status,
         why,
         pending_events: snapshot.pending_events,
-        conflicts_pending: snapshot.conflicts_pending,
     })
 }
 
@@ -141,12 +131,6 @@ pub(super) fn record_dropped(status: &Arc<Mutex<SyncStatus>>, story_id: u64, err
             error,
             ts: Utc::now(),
         });
-    });
-}
-
-pub(super) fn record_conflicts_pending(status: &Arc<Mutex<SyncStatus>>, count: usize) {
-    with_status_mut(status, |s| {
-        s.conflicts_pending = count;
     });
 }
 

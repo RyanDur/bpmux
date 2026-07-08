@@ -116,7 +116,7 @@ fn no_order_or_position_field_lives_in_production() {
 
     assert!(
         violations.is_empty(),
-        "containers own order, the story never does (Ryan, 2026-07-07): no production type carries a ready_order or iteration_slot field (declaration, access, or serde key). Ordering lives on the container (the ready queue, iteration membership); the retired IterationSlot events are dropped at the wire tolerance boundary and named only in that drop message, and the legacy strings survive only in the tolerance test pins. A field-shaped occurrence in production is order state creeping back onto an entity — put it on the container. Order/position fields in production:\n{}",
+        "containers own order, the story never does (Ryan, 2026-07-07): no production type carries a ready_order or iteration_slot field (declaration, access, or serde key). Ordering lives on the container (the ready queue, iteration membership). A field-shaped occurrence in production is order state creeping back onto an entity — put it on the container. Order/position fields in production:\n{}",
         violations.join("\n")
     );
 }

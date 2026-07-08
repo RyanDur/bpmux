@@ -14,10 +14,9 @@ mod wire_encode;
 pub use kind::StoryEventKind;
 pub use label_fields::LabelDerivedFields;
 pub use meta::{EventMeta, event_wins, resolve_order_key};
-pub(crate) use wire_decode::TolerantStoryEvent;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(try_from = "wire::StoryEventWire", into = "wire::StoryEventWire")]
+#[serde(from = "wire::StoryEventWire", into = "wire::StoryEventWire")]
 pub struct StoryEvent {
     pub meta: EventMeta,
     pub id: StoryId,

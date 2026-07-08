@@ -5,7 +5,6 @@ use rusqlite::Connection;
 use super::sqlite_engine as engine;
 use crate::sync::PersistError;
 use crate::sync::QueuedEvent;
-use crate::sync::QueuedEventOnDisk;
 
 pub fn load(conn: &Connection) -> Result<VecDeque<QueuedEvent>, PersistError> {
     Ok(engine::query(
@@ -16,10 +15,9 @@ pub fn load(conn: &Connection) -> Result<VecDeque<QueuedEvent>, PersistError> {
     )
     .map_err(engine::persist_err)?
     .iter()
-    .map(|raw| serde_json::from_str::<QueuedEventOnDisk>(raw).map_err(PersistError::from))
+    .map(|raw| serde_json::from_str::<QueuedEvent>(raw).map_err(PersistError::from))
     .collect::<Result<Vec<_>, _>>()?
     .into_iter()
-    .filter_map(QueuedEventOnDisk::into_queued)
     .collect())
 }
 

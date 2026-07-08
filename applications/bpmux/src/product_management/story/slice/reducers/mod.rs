@@ -93,6 +93,5 @@ fn apply_event(w: &mut Stories, event: &StoryEvent) {
         StoryEventKind::TitleUpdated { title } => apply_title_updated(w, id, title),
         StoryEventKind::BodyUpdated { body } => apply_body_updated(w, id, body),
         StoryEventKind::LabelsRefreshed { fields } => apply_labels_refreshed(w, id, fields),
-        StoryEventKind::ConflictDetected { .. } | StoryEventKind::ConflictResolved { .. } => {}
     }
 }
