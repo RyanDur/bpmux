@@ -10,7 +10,7 @@ use super::excerpt::{
 };
 use super::{ReactionToggle, ReactionsChannelQuery};
 use crate::hub;
-use crate::transport::rest::shared::{err_body, json_headers};
+use crate::transport::rest::shared::json_headers;
 
 pub async fn get_reactions(
     axum::Extension(store): axum::Extension<Arc<crate::store::Store>>,
@@ -29,25 +29,19 @@ pub async fn post_reaction(
     axum::Extension(store): axum::Extension<Arc<crate::store::Store>>,
     axum::Json(body): axum::Json<ReactionToggle>,
 ) -> impl IntoResponse {
-    match apply_reaction_toggle(&hub, &store, &body).await {
-        Ok(present) => (
-            StatusCode::OK,
-            json_headers(),
-            serde_json::json!({ "present": present }).to_string(),
-        ),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            json_headers(),
-            err_body(&e),
-        ),
-    }
+    let present = apply_reaction_toggle(&hub, &store, &body).await;
+    (
+        StatusCode::OK,
+        json_headers(),
+        serde_json::json!({ "present": present }).to_string(),
+    )
 }
 
 pub async fn apply_reaction_toggle(
     hub: &hub::Hub,
     store: &Arc<crate::store::Store>,
     body: &ReactionToggle,
-) -> Result<bool, String> {
+) -> bool {
     let now = chrono::Utc::now().to_rfc3339();
     store
         .dispatch(crate::store::AppAction::Reactions(
@@ -71,7 +65,7 @@ pub async fn apply_reaction_toggle(
         .as_deref()
         .and_then(|m| message_scope_from_key(m, &body.message_key));
     broadcast_reaction_event(hub, body, present, excerpt.as_deref(), scope);
-    Ok(present)
+    present
 }
 
 fn broadcast_reaction_event(

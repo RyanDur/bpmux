@@ -5,9 +5,7 @@ use base64::Engine;
 use futures::stream::SplitSink;
 
 use super::client::ClientCtx;
-use super::send_json;
 use crate::message::MessageType;
-use crate::transport::protocol::ServerMessage;
 
 pub(super) fn handle_send(
     ctx: &ClientCtx<'_>,
@@ -80,7 +78,7 @@ pub(super) fn handle_pty_input(ctx: &ClientCtx<'_>, terminal_id: String, data: S
 
 pub(super) async fn handle_reaction_toggle(
     ctx: &ClientCtx<'_>,
-    tx: &mut SplitSink<WebSocket, WsMessage>,
+    _tx: &mut SplitSink<WebSocket, WsMessage>,
     channel: String,
     message_key: String,
     emoji: String,
@@ -92,14 +90,6 @@ pub(super) async fn handle_reaction_toggle(
         emoji,
         user,
     };
-    if let Err(e) = crate::transport::rest::apply_reaction_toggle(ctx.hub, ctx.store, &body).await {
-        send_json(
-            tx,
-            &ServerMessage::Error {
-                reason: format!("reaction toggle failed: {e}"),
-            },
-        )
-        .await?;
-    }
+    crate::transport::rest::apply_reaction_toggle(ctx.hub, ctx.store, &body).await;
     Ok(())
 }
