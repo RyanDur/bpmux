@@ -5,7 +5,8 @@ use super::super::{
 };
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
-    pub async fn drain_once(&self) -> Result<usize, SyncError> {
+    pub async fn drain_pass(&self) -> Result<usize, SyncError> {
+        let _flight = self.drain_guard.lock().await;
         let mut drained = 0usize;
         let mut failures = 0usize;
         loop {

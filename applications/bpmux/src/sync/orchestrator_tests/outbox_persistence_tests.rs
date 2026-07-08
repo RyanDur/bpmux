@@ -59,7 +59,7 @@ mod outbox_persistence {
     }
 
     #[tokio::test]
-    async fn drain_once_removes_pushed_event_from_disk_outbox() {
+    async fn drain_pass_removes_pushed_event_from_disk_outbox() {
         let dir = tempfile::tempdir().unwrap();
         let path = outbox_path(&dir);
         let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -80,7 +80,7 @@ mod outbox_persistence {
             },
         ))
         .unwrap();
-        let drained = orch.drain_once().await.unwrap();
+        let drained = orch.drain_pass().await.unwrap();
         assert_eq!(drained, 1);
         let events = crate::sync::load_outbox_from_disk(&path).unwrap();
         assert!(events.is_empty(), "outbox empty after successful drain");
@@ -115,7 +115,7 @@ mod outbox_persistence {
             "mutate persists the pending write to the storage outbox"
         );
 
-        let drained = orch.drain_once().await.unwrap();
+        let drained = orch.drain_pass().await.unwrap();
         assert_eq!(drained, 1);
         assert!(
             storage.load_outbox().unwrap().is_empty(),
@@ -124,7 +124,7 @@ mod outbox_persistence {
     }
 
     #[tokio::test]
-    async fn drain_once_keeps_event_on_disk_when_push_fails() {
+    async fn drain_pass_keeps_event_on_disk_when_push_fails() {
         let dir = tempfile::tempdir().unwrap();
         let path = outbox_path(&dir);
         let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -148,7 +148,7 @@ mod outbox_persistence {
         ))
         .unwrap();
         adapter.set_push_failures(true);
-        let _ = orch.drain_once().await;
+        let _ = orch.drain_pass().await;
         let events = crate::sync::load_outbox_from_disk(&path).unwrap();
         assert_eq!(events.len(), 1, "failed event stays in outbox");
     }
@@ -182,7 +182,7 @@ mod outbox_persistence {
         let orch_b =
             SyncOrchestrator::with_outbox_path(Arc::clone(&adapter_b), path.clone()).unwrap();
         assert_eq!(orch_b.snapshot_status().pending_events, 1);
-        let drained = orch_b.drain_once().await.unwrap();
+        let drained = orch_b.drain_pass().await.unwrap();
         assert_eq!(drained, 1, "rehydrated event drains on fresh orchestrator");
         assert_eq!(adapter_b.pushed_events().len(), 1);
     }
@@ -212,7 +212,7 @@ mod outbox_persistence {
         ))
         .unwrap();
         adapter.set_permanent_push_failures(true);
-        let _ = orch.drain_once().await;
+        let _ = orch.drain_pass().await;
         let bytes = std::fs::read(&path).unwrap();
         let events: Vec<StoryEvent> = serde_json::from_slice(&bytes).unwrap();
         assert!(
@@ -247,7 +247,7 @@ mod outbox_persistence {
         ))
         .unwrap();
         adapter.set_permanent_push_failures(true);
-        let _ = orch.drain_once().await;
+        let _ = orch.drain_pass().await;
         let status = orch.snapshot_status();
         assert_eq!(status.dropped_events.len(), 1);
         assert_eq!(status.dropped_events[0].story_id, 65);
@@ -279,7 +279,7 @@ mod outbox_persistence {
         ))
         .unwrap();
         adapter.set_permanent_push_failures(true);
-        let _ = orch.drain_once().await;
+        let _ = orch.drain_pass().await;
         assert_eq!(orch.snapshot_status().dropped_events.len(), 1);
         let cleared = acknowledge_dropped(&orch.status_handle());
         assert_eq!(cleared, 1);
@@ -313,7 +313,7 @@ mod outbox_persistence {
             .unwrap();
         }
         adapter.set_permanent_push_failures(true);
-        let _ = orch.drain_once().await;
+        let _ = orch.drain_pass().await;
         let bytes = std::fs::read(&path).unwrap();
         let events: Vec<StoryEvent> = serde_json::from_slice(&bytes).unwrap();
         assert!(
@@ -347,11 +347,11 @@ mod outbox_persistence {
         ))
         .unwrap();
         adapter.set_push_failures(true);
-        let _ = orch.drain_once().await;
+        let _ = orch.drain_pass().await;
         let events = crate::sync::load_outbox_from_disk(&path).unwrap();
         assert_eq!(events.len(), 1, "transient failure keeps event for retry");
         adapter.set_push_failures(false);
-        orch.drain_once().await.unwrap();
+        orch.drain_pass().await.unwrap();
         let events = crate::sync::load_outbox_from_disk(&path).unwrap();
         assert!(events.is_empty(), "event drains on retry post-recovery");
     }
@@ -386,7 +386,7 @@ mod outbox_persistence {
         drop(orch_a);
         let adapter_b = Arc::new(InMemorySourceAdapter::new());
         let orch_b = SyncOrchestrator::with_outbox_path(Arc::clone(&adapter_b), path).unwrap();
-        orch_b.drain_once().await.unwrap();
+        orch_b.drain_pass().await.unwrap();
         let pushed = adapter_b.pushed_events();
         assert_eq!(pushed[0].story_id(), StoryId::new(50));
         assert_eq!(pushed[1].story_id(), StoryId::new(51));

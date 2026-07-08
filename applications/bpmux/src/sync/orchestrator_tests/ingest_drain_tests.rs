@@ -68,12 +68,12 @@ async fn mutate_applies_event_locally_and_enqueues_for_push() {
     assert_eq!(orchestrator.snapshot_status().pending_events, 1);
     assert!(
         adapter.pushed_events().is_empty(),
-        "push is async; drain_once fires it"
+        "push is async; drain_pass fires it"
     );
 }
 
 #[tokio::test]
-async fn drain_once_pushes_pending_events_to_adapter() {
+async fn drain_pass_pushes_pending_events_to_adapter() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
@@ -93,7 +93,7 @@ async fn drain_once_pushes_pending_events_to_adapter() {
             },
         ))
         .unwrap();
-    let drained = orchestrator.drain_once().await.unwrap();
+    let drained = orchestrator.drain_pass().await.unwrap();
     assert_eq!(drained, 1);
     assert_eq!(adapter.pushed_events().len(), 1);
     assert_eq!(orchestrator.snapshot_status().pending_events, 0);
@@ -101,7 +101,7 @@ async fn drain_once_pushes_pending_events_to_adapter() {
 }
 
 #[tokio::test]
-async fn drain_once_requeues_event_on_adapter_failure() {
+async fn drain_pass_requeues_event_on_adapter_failure() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
@@ -122,7 +122,7 @@ async fn drain_once_requeues_event_on_adapter_failure() {
         ))
         .unwrap();
     adapter.set_push_failures(true);
-    let result = orchestrator.drain_once().await;
+    let result = orchestrator.drain_pass().await;
     assert!(result.is_err(), "drain should surface failure count");
     assert!(
         adapter.pushed_events().is_empty(),
@@ -134,12 +134,12 @@ async fn drain_once_requeues_event_on_adapter_failure() {
         "error recorded on drain failure"
     );
     adapter.set_push_failures(false);
-    let drained = orchestrator.drain_once().await.unwrap();
+    let drained = orchestrator.drain_pass().await.unwrap();
     assert_eq!(drained, 1, "requeued event drains on retry");
 }
 
 #[tokio::test]
-async fn drain_once_handles_multiple_events_in_order() {
+async fn drain_pass_handles_multiple_events_in_order() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
@@ -170,7 +170,7 @@ async fn drain_once_handles_multiple_events_in_order() {
         ))
         .unwrap();
     assert_eq!(orchestrator.snapshot_status().pending_events, 2);
-    let drained = orchestrator.drain_once().await.unwrap();
+    let drained = orchestrator.drain_pass().await.unwrap();
     assert_eq!(drained, 2);
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 2);
@@ -262,7 +262,7 @@ async fn drain_echo_defers_while_a_later_write_for_the_same_story_is_still_queue
         },
     ));
 
-    orchestrator.drain_once().await.unwrap();
+    orchestrator.drain_pass().await.unwrap();
 
     assert_eq!(
         orchestrator.story(42).unwrap().state,
@@ -304,7 +304,7 @@ async fn drain_echo_applies_full_remote_authority_once_the_queue_for_the_story_i
         },
     ));
 
-    orchestrator.drain_once().await.unwrap();
+    orchestrator.drain_pass().await.unwrap();
 
     let refreshed = orchestrator.story(43).unwrap();
     assert_eq!(
@@ -458,7 +458,7 @@ async fn ingest_reconciles_fully_once_the_queue_for_the_story_has_drained() {
             },
         ))
         .unwrap();
-    orchestrator.drain_once().await.unwrap();
+    orchestrator.drain_pass().await.unwrap();
 
     let mut reconciled = seed_story(44, Work::InProgress);
     reconciled.title = "remote-renamed".to_string();

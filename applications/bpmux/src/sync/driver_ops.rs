@@ -4,10 +4,7 @@ use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{CastVerdict, FreeComment, Story, StoryId};
 use crate::sync::{ConditionalBody, SourceAdapter, SyncError};
 
-use super::{
-    BoxedFuture, DrainOneOutcome, MutationId, RefreshDriver, SyncOrchestrator, SyncStatus,
-    acknowledge_dropped,
-};
+use super::{BoxedFuture, RefreshDriver, SyncOrchestrator, SyncStatus, acknowledge_dropped};
 
 impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
     fn refresh_story(&self, number: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>> {
@@ -49,10 +46,6 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.read_epics()
     }
 
-    fn drain_one_by_id(&self, id: MutationId) -> BoxedFuture<'_, DrainOneOutcome> {
-        Box::pin(self.drain_one_by_id(id))
-    }
-
     fn issue_lock(&self, issue: u64) -> BoxedFuture<'_, Arc<tokio::sync::Mutex<()>>> {
         Box::pin(self.issue_lock(issue))
     }
@@ -70,7 +63,7 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
     }
 
     fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
-        Box::pin(self.drain_once())
+        Box::pin(self.drain_pass())
     }
 
     fn reconcile_dual_state_labels(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {

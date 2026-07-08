@@ -8,7 +8,7 @@ use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{CastVerdict, FreeComment, Stage, Story};
 use crate::sync::{ConditionalBody, SyncError};
 
-use super::{BoxedFuture, DrainOneOutcome, MutationId, SyncStatus};
+use super::{BoxedFuture, SyncStatus};
 
 pub type OrchestratorHandle = Option<Arc<dyn RefreshDriver>>;
 
@@ -27,7 +27,6 @@ pub trait RefreshDriver: Send + Sync {
     fn mutate_sync(&self, event: StoryEvent) -> Result<(), SyncError>;
 
     fn mutate_batch_sync(&self, events: Vec<StoryEvent>) -> Result<(), SyncError>;
-    fn drain_one_by_id(&self, id: MutationId) -> BoxedFuture<'_, DrainOneOutcome>;
     fn issue_lock(&self, issue: u64) -> BoxedFuture<'_, Arc<tokio::sync::Mutex<()>>>;
     fn snapshot_status(&self) -> SyncStatus;
     fn status_handle(&self) -> Arc<std::sync::Mutex<SyncStatus>>;

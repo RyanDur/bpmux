@@ -63,6 +63,7 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     pub(super) select: std::sync::OnceLock<crate::store::Select>,
     pub(super) issue_locks:
         tokio::sync::Mutex<std::collections::HashMap<u64, Arc<tokio::sync::Mutex<()>>>>,
+    pub(super) drain_guard: tokio::sync::Mutex<()>,
     pub(super) ci_state_store: Option<crate::ci::CiStateStore>,
     pub(super) race_window_barrier: Option<Arc<RaceWindowBarrier>>,
 }
@@ -157,7 +158,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             }
         }
         if repairs > 0 {
-            self.drain_once().await?;
+            self.drain_pass().await?;
         }
         Ok(repairs)
     }

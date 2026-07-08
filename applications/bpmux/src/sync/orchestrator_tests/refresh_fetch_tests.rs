@@ -90,7 +90,7 @@ async fn end_to_end_seeded_adapter_through_mutate_and_drain() {
         ))
         .unwrap();
     assert_eq!(orchestrator.story(42).unwrap().state, Work::InProgress);
-    orchestrator.drain_once().await.unwrap();
+    orchestrator.drain_pass().await.unwrap();
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
     match &pushed[0].kind {

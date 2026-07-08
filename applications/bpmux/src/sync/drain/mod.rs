@@ -7,8 +7,7 @@ use super::{
     MutationId, QueuedEvent, SyncOrchestrator, coalesce_iteration_label_events, set_pending_events,
 };
 
-mod drain_by_id;
-mod drain_once;
+mod drain_pass;
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub fn mutate(&self, event: StoryEvent) -> Result<(), SyncError> {
@@ -58,14 +57,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             }
         }
         Ok(())
-    }
-
-    pub(super) fn remove_pending_by_id(&self, id: MutationId) {
-        self.with_pending_mut(|p| {
-            if let Some(idx) = p.iter().position(|q| q.id == id) {
-                p.remove(idx);
-            }
-        });
     }
 
     pub(super) fn push_context_for(&self, event: &StoryEvent) -> crate::sync::PushContext {

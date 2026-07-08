@@ -124,13 +124,11 @@ mod slice_7_2_mutation_id_dispatch {
     }
 }
 
-mod slice_7_3_drain_one_by_id {
+mod slice_7_3_drain_pass {
     use super::*;
-    use crate::sync::DrainOneOutcome;
-    use crate::sync::MutationId;
 
     #[tokio::test]
-    async fn drain_one_by_id_pushes_clean_event_returns_confirmed() {
+    async fn drain_pass_pushes_clean_event() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
@@ -150,19 +148,14 @@ mod slice_7_3_drain_one_by_id {
         ))
         .unwrap();
 
-        let id = orch
-            .snapshot_pending_for_test()
-            .front()
-            .map(|q| q.id)
-            .expect("queued event has id");
-        let outcome = orch.drain_one_by_id(id).await;
-        assert!(matches!(outcome, DrainOneOutcome::Confirmed));
+        let drained = orch.drain_pass().await.unwrap();
+        assert_eq!(drained, 1);
         assert_eq!(adapter.pushed_events().len(), 1);
         assert!(orch.snapshot_pending_for_test().is_empty());
     }
 
     #[tokio::test]
-    async fn drain_one_by_id_transient_error_leaves_entry_in_outbox() {
+    async fn drain_pass_transient_error_leaves_entry_in_outbox() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
@@ -183,31 +176,25 @@ mod slice_7_3_drain_one_by_id {
         .unwrap();
         adapter.set_push_failures(true);
 
-        let id = orch
-            .snapshot_pending_for_test()
-            .front()
-            .map(|q| q.id)
-            .expect("queued event has id");
-        let outcome = orch.drain_one_by_id(id).await;
-        assert!(matches!(outcome, DrainOneOutcome::TransientError(_)));
+        let result = orch.drain_pass().await;
+        assert!(result.is_err());
         assert_eq!(orch.snapshot_pending_for_test().len(), 1);
     }
 
     #[tokio::test]
-    async fn drain_one_by_id_returns_not_found_for_unknown_id() {
+    async fn drain_pass_over_empty_queue_is_a_noop() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let orch = SyncOrchestrator::new(adapter);
-        let outcome = orch.drain_one_by_id(MutationId(99999)).await;
-        assert!(matches!(outcome, DrainOneOutcome::NotFound));
+        let drained = orch.drain_pass().await.unwrap();
+        assert_eq!(drained, 0);
     }
 }
 
-mod slice_7_4_drain_one_by_id_falsifiers {
+mod slice_7_4_drain_pass_falsifiers {
     use super::*;
-    use crate::sync::DrainOneOutcome;
 
     #[tokio::test]
-    async fn permanent_push_failure_drops_entry_returns_confirmed() {
+    async fn permanent_push_failure_drops_entry() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
@@ -228,19 +215,14 @@ mod slice_7_4_drain_one_by_id_falsifiers {
         .unwrap();
         adapter.set_permanent_push_failures(true);
 
-        let id = orch
-            .snapshot_pending_for_test()
-            .front()
-            .map(|q| q.id)
-            .expect("queued event has id");
-        let outcome = orch.drain_one_by_id(id).await;
-        assert!(matches!(outcome, DrainOneOutcome::Confirmed));
+        let result = orch.drain_pass().await;
+        assert!(result.is_err());
         assert!(orch.snapshot_pending_for_test().is_empty());
         assert_eq!(orch.snapshot_status().dropped_events.len(), 1);
     }
 
     #[tokio::test]
-    async fn concurrent_calls_for_different_ids_complete_independently() {
+    async fn single_flight_drain_pass_pushes_every_queued_write_once() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
@@ -269,23 +251,19 @@ mod slice_7_4_drain_one_by_id_falsifiers {
         ))
         .unwrap();
 
-        let pending = orch.snapshot_pending_for_test();
-        let id_a = pending[0].id;
-        let id_b = pending[1].id;
         let orch_a = Arc::clone(&orch);
         let orch_b = Arc::clone(&orch);
-        let (out_a, out_b) = tokio::join!(
-            async move { orch_a.drain_one_by_id(id_a).await },
-            async move { orch_b.drain_one_by_id(id_b).await },
-        );
-        assert!(matches!(out_a, DrainOneOutcome::Confirmed));
-        assert!(matches!(out_b, DrainOneOutcome::Confirmed));
+        let (out_a, out_b) = tokio::join!(async move { orch_a.drain_pass().await }, async move {
+            orch_b.drain_pass().await
+        },);
+        assert!(out_a.is_ok());
+        assert!(out_b.is_ok());
         assert!(orch.snapshot_pending_for_test().is_empty());
         assert_eq!(adapter.pushed_events().len(), 2);
     }
 
     #[tokio::test]
-    async fn serial_calls_drain_in_request_order_for_same_issue() {
+    async fn drain_pass_drains_in_request_order_for_same_issue() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
@@ -313,14 +291,7 @@ mod slice_7_4_drain_one_by_id_falsifiers {
         ))
         .unwrap();
 
-        let pending = orch.snapshot_pending_for_test();
-        let id_first = pending[0].id;
-        let id_second = pending[1].id;
-
-        let outcome_first = orch.drain_one_by_id(id_first).await;
-        let outcome_second = orch.drain_one_by_id(id_second).await;
-        assert!(matches!(outcome_first, DrainOneOutcome::Confirmed));
-        assert!(matches!(outcome_second, DrainOneOutcome::Confirmed));
+        orch.drain_pass().await.unwrap();
 
         let pushed = adapter.pushed_events();
         assert_eq!(pushed.len(), 2);

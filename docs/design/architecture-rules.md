@@ -143,8 +143,11 @@ Two grains of story position follow (terms: a shared **section**; local
 - **Writes return optimistically; pending-ness is selectable state (Ryan,
   2026-07-04).** The outbox IS the pending-set: `pending_operations_for(story)`
   is a selector every surface formats its own way (renderer not-saved badge;
-  tool responses carry pending status). `MutationConfirmed` clears it;
-  `MutationRolledBack` is the save-failed signal. Consequences: inline
+  tool responses carry pending status). A row's removal at push-time clears
+  it; a permanent push failure lands in `dropped_events` as the save-failed
+  record (`MutationConfirmed`/`MutationRolledBack` retired 2026-07-07/08 —
+  LWW reconciliation made per-mutation confirm/rollback signals redundant).
+  Consequences: inline
   `drain_pending` calls go; body/title write-through folds into the outbox;
   no write verb blocks on GitHub (create excepted — identity).
 - **The middle is fully silent externally.** Middle states are not broadcast;

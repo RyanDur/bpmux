@@ -22,6 +22,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             action_tx: None,
             select: std::sync::OnceLock::new(),
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
+            drain_guard: tokio::sync::Mutex::new(()),
             ci_state_store: None,
             race_window_barrier: None,
         }
@@ -64,6 +65,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             action_tx: None,
             select: std::sync::OnceLock::new(),
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
+            drain_guard: tokio::sync::Mutex::new(()),
             ci_state_store: None,
             race_window_barrier: None,
         })
@@ -91,6 +93,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             action_tx: None,
             select: std::sync::OnceLock::new(),
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
+            drain_guard: tokio::sync::Mutex::new(()),
             ci_state_store: None,
             race_window_barrier: None,
         })

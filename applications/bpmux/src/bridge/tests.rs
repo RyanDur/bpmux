@@ -335,12 +335,6 @@ mod ingest_poll_loop_tests {
         fn mutate_batch_sync(&self, _events: Vec<StoryEvent>) -> Result<(), SyncError> {
             Ok(())
         }
-        fn drain_one_by_id(
-            &self,
-            _id: crate::sync::MutationId,
-        ) -> BoxedFuture<'_, crate::sync::DrainOneOutcome> {
-            Box::pin(async { crate::sync::DrainOneOutcome::NotFound })
-        }
         fn issue_lock(
             &self,
             _issue: u64,

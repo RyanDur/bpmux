@@ -7,6 +7,4 @@ pub enum SyncAction {
     StartHydrationPolling,
     StopHydrationPolling,
     StartUpdateGithub { mutation_id: MutationId },
-    StopUpdateGithub { mutation_id: MutationId },
-    MutationConfirmed { mutation_id: MutationId },
 }

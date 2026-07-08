@@ -32,7 +32,7 @@ fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
 }
 
 #[tokio::test]
-async fn drain_pending_via_refresh_driver_is_equivalent_to_drain_once() {
+async fn drain_pending_via_refresh_driver_drains_the_pending_queue() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(1, Work::NotStarted)]);
     let orchestrator: Arc<dyn RefreshDriver> =
