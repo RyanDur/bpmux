@@ -50,6 +50,14 @@ impl InMemorySourceAdapter {
         s.verdicts.insert(number, verdicts);
     }
 
+    pub fn queue_push_follow_up(&self, event: StoryEvent) {
+        self.state
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .push_follow_ups
+            .push_back(event);
+    }
+
     pub fn pushed_events(&self) -> Vec<StoryEvent> {
         self.state
             .lock()

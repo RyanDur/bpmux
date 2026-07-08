@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::sync::Mutex;
 
 use crate::product_management::story::events::StoryEvent;
@@ -27,6 +28,7 @@ struct InnerState {
     verdicts: HashMap<u64, Vec<CastVerdict>>,
     closed: std::collections::HashSet<u64>,
     pushed_events: Vec<StoryEvent>,
+    push_follow_ups: VecDeque<StoryEvent>,
     failures_on_push: bool,
     permanent_push_failures: bool,
     failures_on_ingest: bool,
@@ -127,7 +129,7 @@ impl SourceAdapter for InMemorySourceAdapter {
         }
         s.pushed_events.push(event.clone());
         mutation::apply_push_event(&mut s, event, context);
-        Ok(None)
+        Ok(s.push_follow_ups.pop_front())
     }
 
     async fn create_story(

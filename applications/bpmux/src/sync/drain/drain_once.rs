@@ -116,7 +116,20 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     drained += 1;
                     record_push_success(&self.status);
                     if let Some(refresh_event) = follow_up {
-                        self.apply_story_event(&refresh_event);
+                        let story_id = event.story_id();
+                        let queued_for_story = self.with_pending(|p| {
+                            p.iter()
+                                .filter(|q| q.event.story_id().value() == story_id.value())
+                                .count()
+                        });
+                        if queued_for_story == 0 {
+                            self.apply_story_event(&refresh_event);
+                        } else {
+                            crate::diag::log_diag(&format!(
+                                "orchestrator: refresh echo for #{} deferred to {queued_for_story} queued local write(s)",
+                                story_id.value()
+                            ));
+                        }
                     }
                 }
                 Err(e) => {

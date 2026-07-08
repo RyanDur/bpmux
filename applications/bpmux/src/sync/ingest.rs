@@ -1,7 +1,6 @@
 use super::SyncOrchestrator;
 use super::status::{record_error, record_ingest_success};
 use crate::product_management::story::StoryId;
-use crate::product_management::story::events::StoryEventKind;
 use crate::sync::{SourceAdapter, SyncError};
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
@@ -37,22 +36,16 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     epics,
                     placements,
                 } = ingested;
-                let in_flight_label_stories = self.with_pending(|p| {
+                let stories_with_queued_local_writes = self.with_pending(|p| {
                     p.iter()
-                        .filter(|q| {
-                            matches!(
-                                q.event.kind,
-                                StoryEventKind::TagAdded { .. }
-                                    | StoryEventKind::TagRemoved { .. }
-                                    | StoryEventKind::TagSet { .. }
-                                    | StoryEventKind::TagUnset { .. }
-                            )
-                        })
                         .map(|q| q.event.story_id())
                         .collect::<Vec<StoryId>>()
                 });
-                let not_in_flight =
-                    |value: u64| !in_flight_label_stories.iter().any(|id| id.value() == value);
+                let not_in_flight = |value: u64| {
+                    !stories_with_queued_local_writes
+                        .iter()
+                        .any(|id| id.value() == value)
+                };
                 let items = items
                     .into_iter()
                     .filter(|item| {
@@ -112,11 +105,23 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     ) -> Result<Option<crate::product_management::story::Story>, SyncError> {
         match self.adapter.fetch_story_metadata(number).await {
             Ok(Some((story, placement))) => {
-                let placements = placement
-                    .map(|stage| (story.id, stage))
-                    .into_iter()
-                    .collect::<Vec<_>>();
-                self.seed_and_place(vec![story.clone()], placements);
+                let present_with_queued_local_write = self.read_story(story.id).is_some()
+                    && self.with_pending(|p| {
+                        p.iter()
+                            .any(|q| q.event.story_id().value() == story.id.value())
+                    });
+                if present_with_queued_local_write {
+                    crate::diag::log_diag(&format!(
+                        "orchestrator: refresh seed for #{} deferred to a queued local write on the present story",
+                        story.id.value()
+                    ));
+                } else {
+                    let placements = placement
+                        .map(|stage| (story.id, stage))
+                        .into_iter()
+                        .collect::<Vec<_>>();
+                    self.seed_and_place(vec![story.clone()], placements);
+                }
                 record_ingest_success(&self.status);
                 Ok(Some(story))
             }

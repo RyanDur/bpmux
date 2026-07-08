@@ -220,3 +220,255 @@ async fn ingest_preserves_an_in_flight_label_mutation_against_a_pre_drain_refres
         "a refresh that reads the source before the mutation's write has drained must NOT clobber the un-acknowledged optimistic tag"
     );
 }
+
+#[tokio::test]
+async fn drain_echo_defers_while_a_later_write_for_the_same_story_is_still_queued() {
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
+    handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+        42,
+        Work::NotStarted,
+    )])));
+
+    orchestrator
+        .mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(42),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::Acceptance,
+                placement: None,
+            },
+        ))
+        .unwrap();
+    orchestrator
+        .mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(42),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
+        .unwrap();
+
+    adapter.queue_push_follow_up(StoryEvent::new(
+        meta(),
+        StoryId::new(42),
+        StoryEventKind::StoryRefreshed {
+            story: Box::new(seed_story(42, Work::Acceptance)),
+        },
+    ));
+
+    orchestrator.drain_once().await.unwrap();
+
+    assert_eq!(
+        orchestrator.story(42).unwrap().state,
+        Work::InProgress,
+        "the deliver echo carrying earlier remote truth must not clobber the still-queued reopen's optimistic state"
+    );
+}
+
+#[tokio::test]
+async fn drain_echo_applies_full_remote_authority_once_the_queue_for_the_story_is_empty() {
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
+    handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
+        43,
+        Work::NotStarted,
+    )])));
+
+    orchestrator
+        .mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(43),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::Acceptance,
+                placement: None,
+            },
+        ))
+        .unwrap();
+
+    let mut echo_story = seed_story(43, Work::Accepted);
+    echo_story.title = "authoritative-remote-title".to_string();
+    adapter.queue_push_follow_up(StoryEvent::new(
+        meta(),
+        StoryId::new(43),
+        StoryEventKind::StoryRefreshed {
+            story: Box::new(echo_story),
+        },
+    ));
+
+    orchestrator.drain_once().await.unwrap();
+
+    let refreshed = orchestrator.story(43).unwrap();
+    assert_eq!(
+        refreshed.state,
+        Work::Accepted,
+        "with no later write queued the echo defers to nothing and remote authority applies"
+    );
+    assert_eq!(
+        refreshed.title, "authoritative-remote-title",
+        "the guard defers the echo, it never discards its authority"
+    );
+}
+
+#[tokio::test]
+async fn ingest_defers_a_stale_state_snapshot_while_a_local_write_is_queued() {
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_story(44, Work::NotStarted)]);
+    let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
+
+    orchestrator.ingest_once().await.unwrap();
+    orchestrator
+        .mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(44),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
+        .unwrap();
+
+    orchestrator.ingest_once().await.unwrap();
+
+    assert_eq!(
+        orchestrator.story(44).unwrap().state,
+        Work::InProgress,
+        "a stale remote snapshot read before the queued state write drained must NOT clobber the optimistic state"
+    );
+}
+
+#[tokio::test]
+async fn refresh_story_defers_seed_while_a_local_write_is_queued_for_a_present_story() {
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_story(416, Work::NotStarted)]);
+    let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
+
+    orchestrator.ingest_once().await.unwrap();
+    orchestrator
+        .mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(416),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
+        .unwrap();
+
+    orchestrator.refresh_story(416).await.unwrap();
+
+    assert_eq!(
+        orchestrator.story(416).unwrap().state,
+        Work::InProgress,
+        "a single-story refresh that reads the source before the queued write drained must NOT clobber the optimistic state of a present story"
+    );
+}
+
+#[tokio::test]
+async fn refresh_story_seeds_an_absent_story_even_while_tag_writes_are_queued_for_it() {
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_story(88, Work::NotStarted)]);
+    let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
+
+    orchestrator
+        .mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(88),
+            StoryEventKind::TagAdded {
+                label: "current-iteration".to_string(),
+            },
+        ))
+        .unwrap();
+    orchestrator
+        .mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(88),
+            StoryEventKind::TagAdded {
+                label: "needs-attention".to_string(),
+            },
+        ))
+        .unwrap();
+    assert!(
+        orchestrator.story(88).is_none(),
+        "the create_iteration mirror leaves the backing story absent while its tag writes queue"
+    );
+
+    orchestrator.refresh_story(88).await.unwrap();
+
+    assert_eq!(
+        orchestrator.story(88).unwrap().state,
+        Work::NotStarted,
+        "an absent story carries no optimistic state to protect, so refresh hydrates it even with queued tag writes"
+    );
+}
+
+#[tokio::test]
+async fn refresh_story_seeds_when_no_local_write_is_queued() {
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_story(77, Work::Acceptance)]);
+    let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
+
+    assert!(orchestrator.story(77).is_none(), "store starts empty");
+    orchestrator.refresh_story(77).await.unwrap();
+
+    assert_eq!(
+        orchestrator.story(77).unwrap().state,
+        Work::Acceptance,
+        "with an empty outbox refresh hydrates the story exactly as before WR-1"
+    );
+}
+
+#[tokio::test]
+async fn ingest_reconciles_fully_once_the_queue_for_the_story_has_drained() {
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_story(44, Work::NotStarted)]);
+    let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
+
+    orchestrator.ingest_once().await.unwrap();
+    orchestrator
+        .mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(44),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::InProgress,
+                placement: None,
+            },
+        ))
+        .unwrap();
+    orchestrator.drain_once().await.unwrap();
+
+    let mut reconciled = seed_story(44, Work::InProgress);
+    reconciled.title = "remote-renamed".to_string();
+    adapter.seed_stories(vec![reconciled]);
+
+    orchestrator.ingest_once().await.unwrap();
+
+    assert_eq!(
+        orchestrator.story(44).unwrap().title,
+        "remote-renamed",
+        "the first ingest after the queue empties reconciles with full remote truth"
+    );
+}
