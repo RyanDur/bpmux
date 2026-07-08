@@ -9,7 +9,7 @@ use crate::product_management::story::{Story, StoryId};
 use crate::transport::protocol::ClientMessage;
 
 fn td() -> crate::store::Dispatch {
-    crate::store::Dispatch::new(tokio::sync::mpsc::unbounded_channel().0)
+    crate::store::Dispatch::recording().0
 }
 
 fn seed_adapter(adapter: &InMemorySourceAdapter, seeded: &[(Story, Vec<String>)]) {
@@ -591,8 +591,7 @@ async fn create_story_for_epic_title_dispatches_epic_upsert_and_stays_out_of_sto
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<crate::store::AppAction>();
-    let dispatch = crate::store::Dispatch::new(tx);
+    let (dispatch, mut rx) = crate::store::Dispatch::recording();
     let mut args = serde_json::Map::new();
     args.insert("title".into(), serde_json::json!("[Epic] umbrella"));
     args.insert("user_job".into(), serde_json::json!("user job here"));

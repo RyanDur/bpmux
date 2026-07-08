@@ -29,7 +29,6 @@ const BINDING_SEAM_FILES: &[&str] = &[
     "slice_readers.rs",
     "ingest.rs",
     "backfill.rs",
-    "builder.rs",
     "mod.rs",
     "drain/mod.rs",
 ];
@@ -86,7 +85,7 @@ fn sync_names_the_store_only_through_its_binding_seam() {
 
     assert!(
         violations.is_empty(),
-        "the synchronization engine reaches the redux store ONLY through its store-binding seam: driver.rs / driver_ops.rs receive the bound Select and board dispatch (bind_select / bind_board_dispatch), slice_readers.rs reads domain selectors through the bound Select, and dispatch.rs / ingest.rs / backfill.rs / builder.rs / drain/mod.rs / mod.rs carry and emit crate::store::AppAction into that store. Any OTHER sync file naming crate::store:: is deepening the coupling — route reads through a slice_reader and writes through dispatch_board on the Orchestrator's bound handles, never by naming the store composition directly. Files reaching crate::store:: outside the binding seam:\n{}",
+        "the synchronization engine reaches the redux store ONLY through its store-binding seam: driver.rs / driver_ops.rs receive the bound Select and the single Dispatch (bind_select / bind_dispatch), slice_readers.rs reads domain selectors through the bound Select, and dispatch.rs / ingest.rs / backfill.rs / drain/mod.rs / mod.rs carry and emit crate::store::AppAction into that store. Any OTHER sync file naming crate::store:: is deepening the coupling — route reads through a slice_reader and writes through dispatch_board on the Orchestrator's bound handle, never by naming the store composition directly. Files reaching crate::store:: outside the binding seam:\n{}",
         violations.join("\n")
     );
 }

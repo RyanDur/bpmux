@@ -4,7 +4,6 @@ use crate::product_management::epic::{Epic, EpicId};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::Outcome;
 use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{CastVerdict, FreeComment, Stage, Story};
 use crate::sync::{ConditionalBody, SyncError};
 
@@ -14,8 +13,7 @@ pub type OrchestratorHandle = Option<Arc<dyn RefreshDriver>>;
 
 pub trait RefreshDriver: Send + Sync {
     fn bind_select(&self, _select: crate::store::Select) {}
-    fn bind_story_dispatch(&self, _dispatch: Box<dyn Fn(StoryAction) + Send + Sync>) {}
-    fn bind_board_dispatch(&self, _dispatch: Box<dyn Fn(crate::store::AppAction) + Send + Sync>) {}
+    fn bind_dispatch(&self, _dispatch: crate::store::Dispatch) {}
     fn refresh_story(&self, id: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>>;
     fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>>;
     fn refresh_all_since(

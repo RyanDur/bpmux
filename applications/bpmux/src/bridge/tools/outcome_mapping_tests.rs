@@ -29,13 +29,11 @@ fn iterations_from(seeds: &[(Story, Vec<String>)]) -> Vec<Iteration> {
 }
 
 fn dispatch() -> Dispatch {
-    let (tx, _rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
-    Dispatch::new(tx)
+    Dispatch::recording().0
 }
 
 fn dispatch_channel() -> (Dispatch, tokio::sync::mpsc::UnboundedReceiver<AppAction>) {
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
-    (Dispatch::new(tx), rx)
+    Dispatch::recording()
 }
 
 fn iteration_upserted(rx: &mut tokio::sync::mpsc::UnboundedReceiver<AppAction>) -> Vec<Iteration> {

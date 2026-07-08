@@ -4,45 +4,28 @@ use crate::sync::SourceAdapter;
 use super::SyncOrchestrator;
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
-    pub fn bind_story_dispatch(
-        &self,
-        dispatch: impl Fn(crate::product_management::story::slice::StoryAction) + Send + Sync + 'static,
-    ) {
-        let _ = self.story_dispatch.set(Box::new(dispatch));
+    pub fn bind_dispatch(&self, dispatch: crate::store::Dispatch) {
+        let _ = self.dispatch.set(dispatch);
+    }
+
+    fn emit(&self, action: crate::store::AppAction) {
+        match self.dispatch.get() {
+            Some(dispatch) => dispatch.dispatch(action),
+            None => crate::diag::log_diag(
+                "orchestrator: dispatch unbound; write dropped (bind_dispatch missing)",
+            ),
+        }
     }
 
     pub(super) fn dispatch_story(
         &self,
         action: crate::product_management::story::slice::StoryAction,
     ) {
-        match self.story_dispatch.get() {
-            Some(dispatch) => dispatch(action),
-            None => crate::diag::log_diag(
-                "orchestrator: story dispatch unbound; write dropped (bind_story_dispatch missing)",
-            ),
-        }
-    }
-
-    pub fn bind_board_dispatch(
-        &self,
-        dispatch: impl Fn(crate::store::AppAction) + Send + Sync + 'static,
-    ) {
-        let _ = self.board_dispatch.set(Box::new(dispatch));
+        self.emit(crate::store::AppAction::Story(action));
     }
 
     pub(super) fn dispatch_board(&self, action: crate::store::AppAction) {
-        match self.board_dispatch.get() {
-            Some(dispatch) => dispatch(action),
-            None => {
-                if let Some(tx) = &self.action_tx {
-                    let _ = tx.send(action);
-                } else {
-                    crate::diag::log_diag(
-                        "orchestrator: board dispatch unbound; write dropped (bind_board_dispatch missing)",
-                    )
-                }
-            }
-        }
+        self.emit(action);
     }
 
     pub(super) fn dispatch_write_pushed(&self, id: crate::sync::MutationId) {

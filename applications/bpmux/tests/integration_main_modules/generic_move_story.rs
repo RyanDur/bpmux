@@ -60,8 +60,7 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
         CancellationToken::new(),
     ));
     orch.bind_select(app_store.selector());
-    orch.bind_story_dispatch(app_store.story_dispatcher());
-    orch.bind_board_dispatch(app_store.board_dispatcher());
+    orch.bind_dispatch(app_store.dispatcher());
     orch.refresh_all().await.unwrap();
 
     let meta = EventMeta {

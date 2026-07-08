@@ -78,8 +78,7 @@ async fn move_to_ready_position(
         "rationale".to_string(),
         serde_json::json!("burst-regression #1579: distinct positions under rapid reorder"),
     );
-    let (dispatch, mut rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
-    let dispatch = Dispatch::new(dispatch);
+    let (dispatch, mut rx) = Dispatch::recording();
     dispatch_move_story(args, "pm", Some(orch), &dispatch)
         .await
         .unwrap_or_else(|e| panic!("move_story(#{id}, pos {position}) must succeed: {e}"));

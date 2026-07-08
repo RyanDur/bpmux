@@ -12,9 +12,9 @@ use crate::ci::CiStateStore;
 use crate::hub::Hub;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::message::Message;
-use crate::product_management::story::StoryId;
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
+use crate::product_management::story::{Story, StoryId, Work};
 use crate::storage::StorageBackend;
 use crate::store::Store;
 use crate::store::test_support::eventually;
@@ -62,8 +62,7 @@ async fn write_queued_burst_single_flights_one_drain_that_pushes_each_write_once
         ),
     );
     refresh.bind_select(store.selector());
-    refresh.bind_story_dispatch(store.story_dispatcher());
-    refresh.bind_board_dispatch(store.board_dispatcher());
+    refresh.bind_dispatch(store.dispatcher());
 
     orch.mutate(tag_added(5001, "one")).unwrap();
     orch.mutate(tag_added(5002, "two")).unwrap();
@@ -106,9 +105,8 @@ async fn a_mutated_write_is_selectable_the_moment_mutate_returns() {
     ));
     std::mem::forget(dir);
 
-    let (action_tx, action_rx) = tokio::sync::mpsc::unbounded_channel::<crate::store::AppAction>();
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)).with_action_tx(action_tx));
+    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let refresh: Arc<dyn RefreshDriver> = orch.clone();
 
     let store: Arc<Store> = Arc::new(
@@ -119,9 +117,7 @@ async fn a_mutated_write_is_selectable_the_moment_mutate_returns() {
         ),
     );
     refresh.bind_select(store.selector());
-    refresh.bind_story_dispatch(store.story_dispatcher());
-    refresh.bind_board_dispatch(store.board_dispatcher());
-    store.spawn_action_drainer(action_rx);
+    refresh.bind_dispatch(store.dispatcher());
 
     orch.mutate(tag_added(7001, "awaiting team")).unwrap();
 
@@ -131,5 +127,50 @@ async fn a_mutated_write_is_selectable_the_moment_mutate_returns() {
     assert_eq!(
         pending, 1,
         "a mutated write is queued and selectable the instant mutate returns, before any runtime yield"
+    );
+}
+
+#[tokio::test]
+async fn an_ingested_upsert_is_selectable_the_moment_refresh_returns() {
+    let dir = TempDir::new().expect("tempdir");
+    let (tx, _rx) = broadcast::channel::<Message>(64);
+    let hub = Arc::new(Hub::with_backend(
+        dir.path().to_path_buf(),
+        "local".to_string(),
+        tx,
+        StorageBackend::Sqlite,
+    ));
+    std::mem::forget(dir);
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![Story::new_minimal(
+        StoryId::new(8001),
+        "an outcome".to_string(),
+        Work::NotStarted,
+        Utc::now(),
+        "pm".to_string(),
+    )]);
+    adapter.seed_labels(8001, vec!["outcome".to_string()]);
+    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let refresh: Arc<dyn RefreshDriver> = orch.clone();
+
+    let store: Arc<Store> = Arc::new(
+        Store::new(hub, None, CiStateStore::new(), CancellationToken::new()).with_refresh(
+            refresh.clone(),
+            Duration::from_secs(60),
+            Duration::from_secs(15),
+        ),
+    );
+    refresh.bind_select(store.selector());
+    refresh.bind_dispatch(store.dispatcher());
+
+    refresh.refresh_all().await.unwrap();
+
+    let outcomes = store
+        .selector()
+        .select(|state| crate::product_management::outcome::all(&state.outcomes).len());
+    assert_eq!(
+        outcomes, 1,
+        "an ingested upsert is reduced into the store and selectable the instant refresh returns, before any runtime yield"
     );
 }

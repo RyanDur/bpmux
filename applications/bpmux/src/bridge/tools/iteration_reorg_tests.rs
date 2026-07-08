@@ -21,8 +21,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 fn dispatch_channel() -> (Dispatch, UnboundedReceiver<AppAction>) {
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
-    (Dispatch::new(tx), rx)
+    Dispatch::recording()
 }
 
 fn upserted_iterations(rx: &mut UnboundedReceiver<AppAction>) -> Vec<Iteration> {

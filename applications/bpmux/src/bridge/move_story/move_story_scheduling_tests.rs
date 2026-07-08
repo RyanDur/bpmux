@@ -87,8 +87,7 @@ async fn move_story(
         "rationale".to_string(),
         serde_json::json!("R-3.1: scheduling is current-iteration membership"),
     );
-    let (dispatch, mut rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
-    let dispatch = Dispatch::new(dispatch);
+    let (dispatch, mut rx) = Dispatch::recording();
     let result = dispatch_move_story(args, "pm", Some(orch), &dispatch).await;
     merge_dispatched(seed, &mut rx);
     result

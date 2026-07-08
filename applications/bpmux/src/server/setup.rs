@@ -62,7 +62,6 @@ pub(super) fn seed_ci_green_for_tests(store: &crate::ci::CiStateStore) {
 
 pub(super) async fn build_test_orchestrator(
     hub: Arc<hub::Hub>,
-    action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::store::AppAction>>,
     ci_state_store: crate::ci::CiStateStore,
     race_window_barrier: Option<Arc<crate::sync::RaceWindowBarrier>>,
 ) -> (Arc<dyn RefreshDriver>, Vec<QueuedWrite>) {
@@ -70,10 +69,6 @@ pub(super) async fn build_test_orchestrator(
     let hydrated = hydrate_outbox(&hub.storage);
     let orch_concrete =
         SyncOrchestrator::new(adapter).with_next_mutation_id(next_mutation_id_for(&hydrated));
-    let orch_concrete = match action_tx {
-        Some(tx) => orch_concrete.with_action_tx(tx),
-        None => orch_concrete,
-    };
     seed_ci_green_for_tests(&ci_state_store);
     let mut orch_concrete = orch_concrete.with_ci_state_store(ci_state_store);
     if let Some(barrier) = race_window_barrier {
@@ -85,7 +80,6 @@ pub(super) async fn build_test_orchestrator(
 pub(super) fn build_prod_orchestrator(
     hub: Arc<hub::Hub>,
     adapter: Arc<crate::integrations::github::GitHubSourceAdapter>,
-    action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::store::AppAction>>,
     ci_state_store: crate::ci::CiStateStore,
     race_window_barrier: Option<Arc<crate::sync::RaceWindowBarrier>>,
 ) -> (Arc<dyn RefreshDriver>, Vec<QueuedWrite>) {
@@ -96,10 +90,6 @@ pub(super) fn build_prod_orchestrator(
     ));
     let orch_concrete =
         SyncOrchestrator::new(adapter).with_next_mutation_id(next_mutation_id_for(&hydrated));
-    let orch_concrete = match action_tx {
-        Some(tx) => orch_concrete.with_action_tx(tx),
-        None => orch_concrete,
-    };
     seed_ci_green_for_tests(&ci_state_store);
     let mut orch_concrete = orch_concrete.with_ci_state_store(ci_state_store);
     if let Some(barrier) = race_window_barrier {

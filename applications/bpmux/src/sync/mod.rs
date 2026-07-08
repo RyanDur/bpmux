@@ -45,16 +45,11 @@ pub trait OutboxRepo: Send + Sync {
 }
 
 pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
-    pub(super) story_dispatch: std::sync::OnceLock<
-        Box<dyn Fn(crate::product_management::story::slice::StoryAction) + Send + Sync>,
-    >,
+    pub(super) dispatch: std::sync::OnceLock<crate::store::Dispatch>,
     pub(super) adapter: Arc<A>,
     pub(super) status: Arc<Mutex<SyncStatus>>,
     pub(super) codec: Arc<dyn crate::product_management::label_codec::LabelCodec + Send + Sync>,
     pub(super) next_mutation_id: AtomicU64,
-    pub(super) action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::store::AppAction>>,
-    pub(super) board_dispatch:
-        std::sync::OnceLock<Box<dyn Fn(crate::store::AppAction) + Send + Sync>>,
     pub(super) select: std::sync::OnceLock<crate::store::Select>,
     pub(super) issue_locks:
         tokio::sync::Mutex<std::collections::HashMap<u64, Arc<tokio::sync::Mutex<()>>>>,

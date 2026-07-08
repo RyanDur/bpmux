@@ -5,7 +5,7 @@ use super::test_ci_state_store_green;
 use crate::transport::protocol::ClientMessage;
 
 fn td() -> crate::store::Dispatch {
-    crate::store::Dispatch::new(tokio::sync::mpsc::unbounded_channel().0)
+    crate::store::Dispatch::recording().0
 }
 
 #[tokio::test]

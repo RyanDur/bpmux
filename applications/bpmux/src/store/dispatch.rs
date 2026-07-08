@@ -5,20 +5,41 @@ use crate::store::{PollKind, Store};
 
 #[derive(Clone)]
 pub struct Dispatch {
-    tx: tokio::sync::mpsc::UnboundedSender<AppAction>,
+    dispatch: crate::kernel::Dispatch<AppAction>,
 }
 
 impl Dispatch {
-    pub fn new(tx: tokio::sync::mpsc::UnboundedSender<AppAction>) -> Self {
-        Self { tx }
+    pub fn new(dispatch: crate::kernel::Dispatch<AppAction>) -> Self {
+        Self { dispatch }
     }
 
     pub fn dispatch(&self, action: AppAction) {
-        let _ = self.tx.send(action);
+        (self.dispatch)(action);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn recording() -> (Self, tokio::sync::mpsc::UnboundedReceiver<AppAction>) {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
+        (
+            Self::new(Arc::new(move |action| {
+                let _ = tx.send(action);
+            })),
+            rx,
+        )
     }
 }
 
 impl Store {
+    pub fn dispatcher(&self) -> Dispatch {
+        let weak = Arc::downgrade(&self.app_store);
+        Dispatch::new(Arc::new(move |action: AppAction| {
+            if let Some(store) = weak.upgrade() {
+                validate_and_log(&action);
+                store.dispatch(action);
+            }
+        }))
+    }
+
     pub async fn dispatch(self: &Arc<Self>, action: AppAction) {
         validate_and_log(&action);
         self.app_store.dispatch(action);

@@ -49,11 +49,10 @@ async fn reordering_a_member_through_the_label_endpoint_never_orphans_it_1524() 
         add: vec!["parent-iteration-#1655.106".to_string()],
         remove: vec!["parent-iteration-#1655.125".to_string()],
     };
-    let (dispatch_tx, _dispatch_rx) = tokio::sync::mpsc::unbounded_channel();
     let response = post_story_labels(
         State(hub),
         axum::Extension(Some(Arc::clone(&refresh))),
-        axum::Extension(crate::store::Dispatch::new(dispatch_tx)),
+        axum::Extension(crate::store::Dispatch::recording().0),
         Path(1687),
         Json(payload),
     )

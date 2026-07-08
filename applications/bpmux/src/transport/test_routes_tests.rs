@@ -43,9 +43,7 @@ async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>) {
         .with_state(fresh_test_hub())
         .layer(axum::Extension(orchestrator))
         .layer(axum::Extension(none_tracker))
-        .layer(axum::Extension(crate::store::Dispatch::new(
-            tokio::sync::mpsc::unbounded_channel().0,
-        )));
+        .layer(axum::Extension(crate::store::Dispatch::recording().0));
     (router, orch)
 }
 
@@ -58,9 +56,7 @@ fn fixture_test_mode_off() -> axum::Router {
         )
         .with_state(fresh_test_hub())
         .layer(axum::Extension(none_refresh))
-        .layer(axum::Extension(crate::store::Dispatch::new(
-            tokio::sync::mpsc::unbounded_channel().0,
-        )))
+        .layer(axum::Extension(crate::store::Dispatch::recording().0))
 }
 
 async fn post_create_story(router: axum::Router, body: &str) -> axum::http::Response<Body> {

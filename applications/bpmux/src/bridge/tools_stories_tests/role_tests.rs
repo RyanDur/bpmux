@@ -5,7 +5,7 @@ use super::test_ci_state_store_green;
 use crate::store::Dispatch;
 
 fn no_dispatch() -> Dispatch {
-    Dispatch::new(tokio::sync::mpsc::unbounded_channel().0)
+    Dispatch::recording().0
 }
 
 #[test]

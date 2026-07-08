@@ -222,52 +222,6 @@ async fn stop_ci_polling_without_start_no_op() {
 }
 
 #[tokio::test]
-async fn spawn_action_drainer_routes_channel_actions_into_dispatch() {
-    use crate::store::ReactionsAction;
-    let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(Store::new(
-        hub,
-        None,
-        CiStateStore::new(),
-        CancellationToken::new(),
-    ));
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
-    orch.spawn_action_drainer(rx);
-
-    tx.send(AppAction::Reactions(ReactionsAction::ReactionToggled {
-        channel: "broadcast".to_string(),
-        message_key: "drainer-test".to_string(),
-        emoji: "🟢".to_string(),
-        user: "owner".to_string(),
-        ts_iso: "2026-05-08T19:30:00Z".to_string(),
-    }))
-    .expect("send into drainer channel");
-
-    for _ in 0..50 {
-        tokio::time::sleep(Duration::from_millis(20)).await;
-        let aggregated = orch.reactions_aggregated_for_channel("broadcast");
-        if !aggregated.is_empty() {
-            return;
-        }
-    }
-    panic!("drainer did not route Reactions action through dispatch within 1s");
-}
-
-#[tokio::test]
-async fn spawn_action_drainer_exits_on_parent_cancel() {
-    let parent = CancellationToken::new();
-    let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(Store::new(hub, None, CiStateStore::new(), parent.clone()));
-    let (_tx, rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
-    let handle = orch.spawn_action_drainer(rx);
-    parent.cancel();
-    tokio::time::timeout(Duration::from_secs(1), handle)
-        .await
-        .expect("drainer terminates within 1s of parent cancel")
-        .expect("drainer task joins cleanly");
-}
-
-#[tokio::test]
 async fn parent_cancel_propagates_when_running_no_tracker() {
     let parent = CancellationToken::new();
     let (hub, _dir) = fresh_hub();

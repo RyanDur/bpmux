@@ -5,7 +5,7 @@
 use crate::bridge::tools_stories::handle_edit_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::{Story, StoryId, Work};
-use crate::store::{AppAction, Dispatch};
+use crate::store::Dispatch;
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
@@ -13,8 +13,7 @@ use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
 fn dispatch() -> Dispatch {
-    let (tx, _rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
-    Dispatch::new(tx)
+    Dispatch::recording().0
 }
 
 fn seed_story(id: u64, title: &str, body: &str) -> Story {

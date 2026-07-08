@@ -6,7 +6,7 @@ use crate::product_management::story::{StoryId, StoryKind};
 use crate::transport::protocol::ClientMessage;
 
 fn td() -> crate::store::Dispatch {
-    crate::store::Dispatch::new(tokio::sync::mpsc::unbounded_channel().0)
+    crate::store::Dispatch::recording().0
 }
 
 #[tokio::test]

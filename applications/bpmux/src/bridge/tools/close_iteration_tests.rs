@@ -17,8 +17,7 @@ mod canonical_via_gh_1300 {
     use tokio::sync::mpsc::UnboundedReceiver;
 
     fn dispatch_channel() -> (Dispatch, UnboundedReceiver<AppAction>) {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
-        (Dispatch::new(tx), rx)
+        Dispatch::recording()
     }
 
     fn closed_iteration(rx: &mut UnboundedReceiver<AppAction>, id: u64) -> Iteration {

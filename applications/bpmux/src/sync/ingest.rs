@@ -62,26 +62,22 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     .into_iter()
                     .filter(|epic| not_in_flight(epic.id.value()))
                     .collect::<Vec<_>>();
-                if let Some(tx) = &self.action_tx {
-                    if !fresh_outcomes.is_empty() {
-                        let _ = tx.send(crate::store::AppAction::Outcome(
-                            crate::product_management::outcome::OutcomeAction::Upserted(
-                                fresh_outcomes,
-                            ),
-                        ));
-                    }
-                    if !fresh_iterations.is_empty() {
-                        let _ = tx.send(crate::store::AppAction::Iteration(
-                            crate::product_management::iteration::IterationAction::Upserted(
-                                fresh_iterations,
-                            ),
-                        ));
-                    }
-                    if !fresh_epics.is_empty() {
-                        let _ = tx.send(crate::store::AppAction::Epic(
-                            crate::product_management::epic::EpicAction::Upserted(fresh_epics),
-                        ));
-                    }
+                if !fresh_outcomes.is_empty() {
+                    self.dispatch_board(crate::store::AppAction::Outcome(
+                        crate::product_management::outcome::OutcomeAction::Upserted(fresh_outcomes),
+                    ));
+                }
+                if !fresh_iterations.is_empty() {
+                    self.dispatch_board(crate::store::AppAction::Iteration(
+                        crate::product_management::iteration::IterationAction::Upserted(
+                            fresh_iterations,
+                        ),
+                    ));
+                }
+                if !fresh_epics.is_empty() {
+                    self.dispatch_board(crate::store::AppAction::Epic(
+                        crate::product_management::epic::EpicAction::Upserted(fresh_epics),
+                    ));
                 }
                 self.seed_and_place(items, placements);
                 record_ingest_success(&self.status);

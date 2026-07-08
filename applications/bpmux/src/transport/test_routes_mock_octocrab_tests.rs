@@ -43,9 +43,7 @@ async fn fixture_mock_octocrab(server: &MockServer) -> (axum::Router, Arc<dyn Re
         .with_state(fresh_test_hub())
         .layer(axum::Extension(orchestrator))
         .layer(axum::Extension(none_tracker))
-        .layer(axum::Extension(crate::store::Dispatch::new(
-            tokio::sync::mpsc::unbounded_channel().0,
-        )));
+        .layer(axum::Extension(crate::store::Dispatch::recording().0));
     (router, orch)
 }
 

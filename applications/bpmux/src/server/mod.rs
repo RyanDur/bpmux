@@ -24,8 +24,6 @@ pub async fn run_server(
     let tracker: transport::rest::TrackerHandle =
         crate::integrations::github::GitHubSourceAdapter::from_env().map(std::sync::Arc::new);
 
-    let (action_tx, action_rx) = tokio::sync::mpsc::unbounded_channel::<crate::store::AppAction>();
-
     let ci_state_store = crate::ci::CiStateStore::new();
     let race_window_barrier = race_window_barrier_from_env();
 
@@ -36,7 +34,6 @@ pub async fn run_server(
             );
             let (orch, writes) = build_test_orchestrator(
                 hub.clone(),
-                Some(action_tx.clone()),
                 ci_state_store.clone(),
                 race_window_barrier.clone(),
             )
@@ -46,7 +43,6 @@ pub async fn run_server(
             let (orch, writes) = build_prod_orchestrator(
                 hub.clone(),
                 tracker_arc,
-                Some(action_tx.clone()),
                 ci_state_store.clone(),
                 race_window_barrier.clone(),
             );
@@ -94,14 +90,9 @@ pub async fn run_server(
     let store = std::sync::Arc::new(store_inner);
     if let Some(refresh) = orchestrator.as_ref() {
         refresh.bind_select(store.selector());
-        refresh.bind_story_dispatch(store.story_dispatcher());
-        refresh.bind_board_dispatch(store.board_dispatcher());
-        startup_tasks::spawn_background_ingest(
-            refresh.clone(),
-            crate::store::Dispatch::new(action_tx.clone()),
-        );
+        refresh.bind_dispatch(store.dispatcher());
+        startup_tasks::spawn_background_ingest(refresh.clone(), store.dispatcher());
     }
-    store.spawn_action_drainer(action_rx);
     wire_store_listeners(&store, &hub, &ci_state_store);
     wire_startup_roster(&store, &hub, &pty_registry, &routing_store).await;
     start_polling(&store, orchestrator.is_some()).await;
@@ -118,8 +109,8 @@ pub async fn run_server(
         ci_log_store,
         electron_capture_lock,
         orchestrator,
+        dispatch: store.dispatcher(),
         store,
-        dispatch: crate::store::Dispatch::new(action_tx),
         pty_registry,
         routing_store,
         commitment_store,

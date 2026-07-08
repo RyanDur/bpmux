@@ -101,12 +101,11 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
         CancellationToken::new(),
     ));
     refresh.bind_select(app_store.selector());
-    refresh.bind_story_dispatch(app_store.story_dispatcher());
+    refresh.bind_dispatch(app_store.dispatcher());
     orch.ingest_once().await.expect("seed ingest");
     let auth_state = AuthState::new(token.clone());
 
-    let (action_tx, _action_rx) = tokio::sync::mpsc::unbounded_channel::<bpmux::store::AppAction>();
-    let dispatch = bpmux::store::Dispatch::new(action_tx);
+    let dispatch = app_store.dispatcher();
 
     let gated = axum::Router::new()
         .route("/api/rpc/{tool}", axum::routing::post(post_rpc_tool))

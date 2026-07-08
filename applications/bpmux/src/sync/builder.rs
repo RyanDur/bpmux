@@ -8,13 +8,11 @@ use crate::sync::SourceAdapter;
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub fn new(adapter: Arc<A>) -> Self {
         Self {
-            story_dispatch: std::sync::OnceLock::new(),
-            board_dispatch: std::sync::OnceLock::new(),
+            dispatch: std::sync::OnceLock::new(),
             adapter,
             status: Arc::new(Mutex::new(SyncStatus::default())),
             codec: Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
             next_mutation_id: AtomicU64::new(1),
-            action_tx: None,
             select: std::sync::OnceLock::new(),
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
             drain_guard: tokio::sync::Mutex::new(()),
@@ -43,14 +41,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         codec: Arc<dyn crate::product_management::label_codec::LabelCodec + Send + Sync>,
     ) -> Self {
         self.codec = codec;
-        self
-    }
-
-    pub fn with_action_tx(
-        mut self,
-        tx: tokio::sync::mpsc::UnboundedSender<crate::store::AppAction>,
-    ) -> Self {
-        self.action_tx = Some(tx);
         self
     }
 }

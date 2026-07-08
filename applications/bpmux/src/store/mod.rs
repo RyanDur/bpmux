@@ -67,23 +67,4 @@ impl Store {
     pub fn hub(&self) -> Arc<hub::Hub> {
         Arc::clone(&self.hub)
     }
-
-    pub fn spawn_action_drainer(
-        self: &Arc<Self>,
-        mut rx: tokio::sync::mpsc::UnboundedReceiver<AppAction>,
-    ) -> tokio::task::JoinHandle<()> {
-        let this = Arc::clone(self);
-        let parent_ct = self.parent_ct.clone();
-        tokio::spawn(async move {
-            loop {
-                tokio::select! {
-                    _ = parent_ct.cancelled() => return,
-                    maybe = rx.recv() => match maybe {
-                        Some(action) => this.dispatch(action).await,
-                        None => return,
-                    }
-                }
-            }
-        })
-    }
 }
