@@ -145,6 +145,8 @@ pub fn run_bridge(
 #[cfg(test)]
 mod body_diff_gate;
 #[cfg(test)]
+mod boundary_tests;
+#[cfg(test)]
 mod chat_relevance_gate;
 #[cfg(test)]
 mod connection_tests;

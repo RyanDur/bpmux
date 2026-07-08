@@ -27,6 +27,8 @@ mod gate_class_tests;
 #[cfg(test)]
 mod key_tests;
 #[cfg(test)]
+mod order_state_pin_tests;
+#[cfg(test)]
 mod peer_tests;
 #[cfg(test)]
 mod rework_tests;

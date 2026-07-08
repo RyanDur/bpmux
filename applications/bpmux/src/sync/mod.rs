@@ -181,6 +181,8 @@ use outbox::persist_outbox_to_disk;
 mod builder;
 
 #[cfg(test)]
+mod boundary_tests;
+#[cfg(test)]
 mod conflict_classifier_tests;
 #[cfg(test)]
 mod orchestrator_tests;
