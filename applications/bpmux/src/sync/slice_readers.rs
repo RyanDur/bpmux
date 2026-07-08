@@ -1,13 +1,58 @@
+use std::collections::HashSet;
+
 use super::SyncOrchestrator;
 use crate::product_management::epic::{self, Epic};
 use crate::product_management::iteration::{self, Iteration};
 use crate::product_management::outcome::{self, Outcome};
 use crate::product_management::story::{self, Stage, Story, StoryId};
-use crate::sync::SourceAdapter;
+use crate::sync::{MutationId, QueuedWrite, SourceAdapter};
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub(super) fn set_select(&self, select: crate::store::Select) {
         let _ = self.select.set(select);
+    }
+
+    pub(super) fn read_pending_count(&self) -> usize {
+        match self.select.get() {
+            Some(s) => s.select(|state| crate::store::sync::pending_count(&state.sync)),
+            None => 0,
+        }
+    }
+
+    pub(super) fn read_next_unpushed(&self, skip: &HashSet<MutationId>) -> Option<QueuedWrite> {
+        match self.select.get() {
+            Some(s) => s.select(|state| crate::store::sync::next_unpushed(&state.sync, skip)),
+            None => None,
+        }
+    }
+
+    pub(super) fn read_queued_for_story(&self, story_id: StoryId) -> usize {
+        match self.select.get() {
+            Some(s) => {
+                s.select(|state| crate::store::sync::queued_for_story(&state.sync, story_id))
+            }
+            None => 0,
+        }
+    }
+
+    pub(super) fn read_queued_for_story_excluding(
+        &self,
+        story_id: StoryId,
+        skip: &HashSet<MutationId>,
+    ) -> usize {
+        match self.select.get() {
+            Some(s) => s.select(|state| {
+                crate::store::sync::queued_for_story_excluding(&state.sync, story_id, skip)
+            }),
+            None => 0,
+        }
+    }
+
+    pub(super) fn read_queued_story_ids(&self) -> Vec<StoryId> {
+        match self.select.get() {
+            Some(s) => s.select(|state| crate::store::sync::queued_story_ids(&state.sync)),
+            None => Vec::new(),
+        }
     }
 
     pub(super) fn read_story(&self, id: StoryId) -> Option<Story> {

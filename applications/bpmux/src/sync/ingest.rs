@@ -1,6 +1,5 @@
 use super::SyncOrchestrator;
 use super::status::{record_error, record_ingest_success};
-use crate::product_management::story::StoryId;
 use crate::sync::{SourceAdapter, SyncError};
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
@@ -36,11 +35,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     epics,
                     placements,
                 } = ingested;
-                let stories_with_queued_local_writes = self.with_pending(|p| {
-                    p.iter()
-                        .map(|q| q.event.story_id())
-                        .collect::<Vec<StoryId>>()
-                });
+                let stories_with_queued_local_writes = self.read_queued_story_ids();
                 let not_in_flight = |value: u64| {
                     !stories_with_queued_local_writes
                         .iter()
@@ -105,11 +100,8 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     ) -> Result<Option<crate::product_management::story::Story>, SyncError> {
         match self.adapter.fetch_story_metadata(number).await {
             Ok(Some((story, placement))) => {
-                let present_with_queued_local_write = self.read_story(story.id).is_some()
-                    && self.with_pending(|p| {
-                        p.iter()
-                            .any(|q| q.event.story_id().value() == story.id.value())
-                    });
+                let present_with_queued_local_write =
+                    self.read_story(story.id).is_some() && self.read_queued_for_story(story.id) > 0;
                 if present_with_queued_local_write {
                     crate::diag::log_diag(&format!(
                         "orchestrator: refresh seed for #{} deferred to a queued local write on the present story",

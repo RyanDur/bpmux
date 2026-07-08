@@ -1,4 +1,4 @@
-use crate::sync::MutationId;
+use crate::sync::{MutationId, QueuedWrite};
 
 #[derive(Clone, Debug)]
 pub enum SyncAction {
@@ -6,5 +6,8 @@ pub enum SyncAction {
     StopIngestPolling,
     StartHydrationPolling,
     StopHydrationPolling,
-    StartUpdateGithub { mutation_id: MutationId },
+    WriteQueued { write: QueuedWrite },
+    WritesQueued(Vec<QueuedWrite>),
+    WritePushed { id: MutationId },
+    WriteDropped { id: MutationId },
 }

@@ -27,7 +27,7 @@ pub fn load_outbox_from_disk(path: &Path) -> Result<VecDeque<QueuedEvent>, Persi
     Ok(entries.into_iter().collect())
 }
 
-pub(super) fn persist_outbox_to_disk(
+pub(crate) fn persist_outbox_to_disk(
     path: &Path,
     events: &[QueuedEvent],
 ) -> Result<(), PersistError> {

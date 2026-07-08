@@ -35,7 +35,13 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
             },
             None => state.clone(),
         },
-        AppAction::Sync(_) => state.clone(),
+        AppAction::Sync(action) => match crate::store::sync::reduce(&state.sync, action) {
+            Some(sync) => AppState {
+                sync: Arc::new(sync),
+                ..state.clone()
+            },
+            None => state.clone(),
+        },
         AppAction::Outcome(action) => match outcome::reduce(&state.outcomes, action) {
             Some(outcomes) => AppState {
                 outcomes: Arc::new(outcomes),
@@ -105,7 +111,10 @@ pub fn validate_and_log(action: &AppAction) {
         AppAction::Sync(SyncAction::StopIngestPolling) => "Sync.StopIngestPolling",
         AppAction::Sync(SyncAction::StartHydrationPolling) => "Sync.StartHydrationPolling",
         AppAction::Sync(SyncAction::StopHydrationPolling) => "Sync.StopHydrationPolling",
-        AppAction::Sync(SyncAction::StartUpdateGithub { .. }) => "Sync.StartUpdateGithub",
+        AppAction::Sync(SyncAction::WriteQueued { .. }) => "Sync.WriteQueued",
+        AppAction::Sync(SyncAction::WritesQueued(_)) => "Sync.WritesQueued",
+        AppAction::Sync(SyncAction::WritePushed { .. }) => "Sync.WritePushed",
+        AppAction::Sync(SyncAction::WriteDropped { .. }) => "Sync.WriteDropped",
         AppAction::Reactions(_) => "Reactions",
         AppAction::Roster(_) => "Roster",
         AppAction::Outcome(_) => "Outcome",

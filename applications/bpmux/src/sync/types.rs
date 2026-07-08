@@ -4,7 +4,7 @@ use std::pin::Pin;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use crate::product_management::story::events::{EventMeta, StoryEvent};
+use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::peer::PeerId;
 
 #[derive(
@@ -36,6 +36,33 @@ impl QueuedEvent {
 
     pub fn new_with_id(id: MutationId, event: StoryEvent) -> Self {
         Self { id, event }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct QueuedWrite {
+    pub id: MutationId,
+    pub event: StoryEvent,
+    pub iteration_class: Option<String>,
+}
+
+impl QueuedWrite {
+    pub fn from_event(
+        codec: &dyn crate::product_management::label_codec::LabelCodec,
+        id: MutationId,
+        event: StoryEvent,
+    ) -> Self {
+        let iteration_class = match &event.kind {
+            StoryEventKind::TagAdded { label } | StoryEventKind::TagRemoved { label } => {
+                codec.iteration_label_class(label)
+            }
+            _ => None,
+        };
+        Self {
+            id,
+            event,
+            iteration_class,
+        }
     }
 }
 

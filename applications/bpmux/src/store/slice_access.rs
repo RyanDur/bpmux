@@ -24,6 +24,15 @@ impl Store {
         })
     }
 
+    pub fn board_dispatcher(&self) -> Box<dyn Fn(super::AppAction) + Send + Sync> {
+        let app = Arc::downgrade(&self.app_store);
+        Box::new(move |action| {
+            if let Some(store) = app.upgrade() {
+                store.dispatch(action);
+            }
+        })
+    }
+
     pub fn outcomes(&self) -> Vec<Outcome> {
         self.app_store.select(|state| outcome::all(&state.outcomes))
     }

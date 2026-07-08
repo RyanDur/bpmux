@@ -1,24 +1,19 @@
-use crate::sync::{SourceAdapter, SyncError, is_permanent_push_failure};
+use std::collections::HashSet;
 
-use super::super::{
-    SyncOrchestrator, decrement_pending, record_dropped, record_error, record_push_success,
-};
+use crate::sync::{MutationId, SourceAdapter, SyncError, is_permanent_push_failure};
+
+use super::super::{SyncOrchestrator, record_dropped, record_error, record_push_success};
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub async fn drain_pass(&self) -> Result<usize, SyncError> {
         let _flight = self.drain_guard.lock().await;
         let mut drained = 0usize;
         let mut failures = 0usize;
-        loop {
-            let queued_opt = self.with_pending(|p| p.front().cloned());
-            let Some(queued) = queued_opt else {
-                break;
-            };
-            let event = queued.event.clone();
-            let lock = self.issue_lock(event.story_id().value()).await;
+        let mut skip: HashSet<MutationId> = HashSet::new();
+        while let Some(head) = self.read_next_unpushed(&skip) {
+            let lock = self.issue_lock(head.event.story_id().value()).await;
             let _guard = lock.lock().await;
-            let queued_opt = self.with_pending(|p| p.front().cloned());
-            let Some(queued) = queued_opt else {
+            let Some(queued) = self.read_next_unpushed(&skip) else {
                 break;
             };
             let event = queued.event.clone();
@@ -28,19 +23,14 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 .await
             {
                 Ok(follow_up) => {
-                    self.with_pending_mut(|p| {
-                        p.pop_front();
-                    });
-                    self.persist_outbox();
+                    self.dispatch_write_pushed(queued.id);
+                    skip.insert(queued.id);
                     drained += 1;
                     record_push_success(&self.status);
                     if let Some(refresh_event) = follow_up {
                         let story_id = event.story_id();
-                        let queued_for_story = self.with_pending(|p| {
-                            p.iter()
-                                .filter(|q| q.event.story_id().value() == story_id.value())
-                                .count()
-                        });
+                        let queued_for_story =
+                            self.read_queued_for_story_excluding(story_id, &skip);
                         if queued_for_story == 0 {
                             self.apply_story_event(&refresh_event);
                         } else {
@@ -55,11 +45,8 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     failures += 1;
                     record_error(&self.status, &format!("push: {e}"));
                     if is_permanent_push_failure(&e) {
-                        self.with_pending_mut(|p| {
-                            p.pop_front();
-                        });
-                        self.persist_outbox();
-                        decrement_pending(&self.status);
+                        self.dispatch_write_dropped(queued.id);
+                        skip.insert(queued.id);
                         record_dropped(&self.status, event.story_id().value(), format!("{e}"));
                         crate::diag::log_diag(&format!(
                             "orchestrator: dropped event after permanent push failure ({e}); event #{}",

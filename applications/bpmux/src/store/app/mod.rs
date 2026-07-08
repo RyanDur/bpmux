@@ -10,7 +10,7 @@ use crate::store::board::{BoardAction, BoardPlacements};
 use crate::store::ci::{CiAction, CiState};
 use crate::store::reactions::{ReactionsAction, ReactionsState};
 use crate::store::roster::{RosterAction, RosterState};
-use crate::store::sync::SyncAction;
+use crate::store::sync::{SyncAction, SyncState};
 
 mod board_placement;
 mod history;
@@ -43,6 +43,7 @@ pub struct AppState {
     pub board: Arc<BoardPlacements>,
     pub shared_history: Arc<SharedHistory>,
     pub local_history: Arc<PlacementHistory>,
+    pub sync: Arc<SyncState>,
 }
 
 impl AppState {
@@ -60,6 +61,13 @@ impl AppState {
 
     pub fn with_local_history(mut self, local_history: PlacementHistory) -> Self {
         self.local_history = Arc::new(local_history);
+        self
+    }
+
+    pub fn with_outbox(mut self, writes: Vec<crate::sync::QueuedWrite>) -> Self {
+        self.sync = Arc::new(SyncState {
+            queue: writes.into_iter().collect(),
+        });
         self
     }
 }

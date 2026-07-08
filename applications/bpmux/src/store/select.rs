@@ -55,6 +55,23 @@ impl SeededStore {
         handle
     }
 
+    pub(crate) fn new_wired_outbox(
+        sink: super::sync::OutboxSink,
+        initial: Vec<crate::sync::QueuedWrite>,
+    ) -> Self {
+        let store = kernel::Store::new(
+            AppState::default().with_outbox(initial),
+            Box::new(super::app::app_reduce),
+        );
+        store.add_listener(std::sync::Arc::new(super::sync::OutboxPersister::new(sink)));
+        Self { store }
+    }
+
+    pub(crate) fn pending_writes(&self) -> Vec<crate::sync::QueuedWrite> {
+        self.store
+            .select(|state| state.sync.queue.iter().cloned().collect())
+    }
+
     pub(crate) fn select(&self) -> Select {
         Select::new(std::sync::Arc::downgrade(&self.store))
     }

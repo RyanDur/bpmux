@@ -29,30 +29,31 @@ pub async fn run_server(
     let ci_state_store = crate::ci::CiStateStore::new();
     let race_window_barrier = race_window_barrier_from_env();
 
-    let orchestrator: OrchestratorHandle = if test_mode_enabled() {
-        eprintln!(
-            "[bpmux server] BPMUX_TEST_MODE=1 — instantiating in-memory orchestrator for acceptance tests"
-        );
-        Some(
-            build_test_orchestrator(
+    let (orchestrator, hydrated_outbox): (OrchestratorHandle, Vec<crate::sync::QueuedWrite>) =
+        if test_mode_enabled() {
+            eprintln!(
+                "[bpmux server] BPMUX_TEST_MODE=1 — instantiating in-memory orchestrator for acceptance tests"
+            );
+            let (orch, writes) = build_test_orchestrator(
                 hub.clone(),
                 Some(action_tx.clone()),
                 ci_state_store.clone(),
                 race_window_barrier.clone(),
             )
-            .await,
-        )
-    } else if let Some(tracker_arc) = tracker.as_ref().cloned() {
-        Some(build_prod_orchestrator(
-            hub.clone(),
-            tracker_arc,
-            Some(action_tx.clone()),
-            ci_state_store.clone(),
-            race_window_barrier.clone(),
-        ))
-    } else {
-        None
-    };
+            .await;
+            (Some(orch), writes)
+        } else if let Some(tracker_arc) = tracker.as_ref().cloned() {
+            let (orch, writes) = build_prod_orchestrator(
+                hub.clone(),
+                tracker_arc,
+                Some(action_tx.clone()),
+                ci_state_store.clone(),
+                race_window_barrier.clone(),
+            );
+            (Some(orch), writes)
+        } else {
+            (None, Vec::new())
+        };
 
     if let Some(refresh) = orchestrator.as_ref().cloned() {
         tokio::spawn(crate::bridge::run_drain_loop(
@@ -73,7 +74,7 @@ pub async fn run_server(
         routing_store.clone(),
         commitment_store.clone(),
     );
-    let mut store_inner = crate::store::Store::new(
+    let mut store_inner = crate::store::Store::with_initial_outbox(
         hub.clone(),
         tracker
             .as_ref()
@@ -81,6 +82,7 @@ pub async fn run_server(
             .map(|t| t as std::sync::Arc<dyn crate::store::CiPollFetch>),
         ci_state_store.clone(),
         ct.clone(),
+        hydrated_outbox,
     );
     if let Some(refresh) = orchestrator.as_ref().cloned() {
         store_inner = store_inner.with_refresh(
@@ -93,6 +95,7 @@ pub async fn run_server(
     if let Some(refresh) = orchestrator.as_ref() {
         refresh.bind_select(store.selector());
         refresh.bind_story_dispatch(store.story_dispatcher());
+        refresh.bind_board_dispatch(store.board_dispatcher());
         startup_tasks::spawn_background_ingest(
             refresh.clone(),
             crate::store::Dispatch::new(action_tx.clone()),

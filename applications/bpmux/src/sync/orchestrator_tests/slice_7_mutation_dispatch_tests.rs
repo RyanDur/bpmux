@@ -16,14 +16,12 @@ use crate::sync::SyncOrchestrator;
 
 mod slice_7_2_mutation_id_dispatch {
     use super::*;
-    use crate::store::{AppAction, SyncAction};
     use crate::sync::MutationId;
 
     #[tokio::test]
-    async fn mutate_dispatches_start_update_github_with_unique_id() {
+    async fn mutate_enqueues_writes_with_unique_ids() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
-        let orch = Arc::new(SyncOrchestrator::new(adapter).with_action_tx(tx));
+        let orch = Arc::new(SyncOrchestrator::new(adapter));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
@@ -51,22 +49,16 @@ mod slice_7_2_mutation_id_dispatch {
         ))
         .unwrap();
 
-        let action_a = rx.try_recv().expect("first dispatch");
-        let action_b = rx.try_recv().expect("second dispatch");
-        let id_a = match action_a {
-            AppAction::Sync(SyncAction::StartUpdateGithub { mutation_id }) => mutation_id,
-            _ => panic!("expected AppAction::Sync(StartUpdateGithub)"),
-        };
-        let id_b = match action_b {
-            AppAction::Sync(SyncAction::StartUpdateGithub { mutation_id }) => mutation_id,
-            _ => panic!("expected AppAction::Sync(StartUpdateGithub)"),
-        };
+        let writes = handle.pending_writes();
+        assert_eq!(writes.len(), 2, "each mutate enqueues one write");
+        let id_a = writes[0].id;
+        let id_b = writes[1].id;
         assert_ne!(id_a, id_b, "consecutive mutates allocate distinct ids");
         assert!(id_a.0 >= 1 && id_b.0 >= 1, "ids start at 1, not 0");
     }
 
     #[tokio::test]
-    async fn mutate_without_action_tx_does_not_panic() {
+    async fn mutate_without_board_dispatch_bound_does_not_panic() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.seed_stories(vec![seed_story(201, Work::NotStarted)]);
         let orch = Arc::new(SyncOrchestrator::new(adapter));
@@ -85,10 +77,9 @@ mod slice_7_2_mutation_id_dispatch {
     }
 
     #[tokio::test]
-    async fn queued_event_carries_allocated_id() {
+    async fn queued_write_carries_allocated_id() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
-        let orch = Arc::new(SyncOrchestrator::new(adapter).with_action_tx(tx));
+        let orch = Arc::new(SyncOrchestrator::new(adapter));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
@@ -106,19 +97,10 @@ mod slice_7_2_mutation_id_dispatch {
         ))
         .unwrap();
 
-        let action = rx.try_recv().expect("dispatch fires");
-        let dispatched_id = match action {
-            AppAction::Sync(SyncAction::StartUpdateGithub { mutation_id }) => mutation_id,
-            _ => panic!("expected AppAction::Sync(StartUpdateGithub)"),
-        };
-        let pending = orch.snapshot_pending_for_test();
-        let queued_id = pending.front().map(|q| q.id).expect("one queued event");
-        assert_eq!(
-            dispatched_id, queued_id,
-            "dispatched id matches QueuedEvent.id"
-        );
+        let writes = handle.pending_writes();
+        let queued_id = writes.first().map(|q| q.id).expect("one queued write");
         assert!(
-            dispatched_id != MutationId::default(),
+            queued_id != MutationId::default(),
             "allocated id is non-default"
         );
     }
@@ -151,7 +133,7 @@ mod slice_7_3_drain_pass {
         let drained = orch.drain_pass().await.unwrap();
         assert_eq!(drained, 1);
         assert_eq!(adapter.pushed_events().len(), 1);
-        assert!(orch.snapshot_pending_for_test().is_empty());
+        assert!(handle.pending_writes().is_empty());
     }
 
     #[tokio::test]
@@ -178,7 +160,7 @@ mod slice_7_3_drain_pass {
 
         let result = orch.drain_pass().await;
         assert!(result.is_err());
-        assert_eq!(orch.snapshot_pending_for_test().len(), 1);
+        assert_eq!(handle.pending_writes().len(), 1);
     }
 
     #[tokio::test]
@@ -217,7 +199,7 @@ mod slice_7_4_drain_pass_falsifiers {
 
         let result = orch.drain_pass().await;
         assert!(result.is_err());
-        assert!(orch.snapshot_pending_for_test().is_empty());
+        assert!(handle.pending_writes().is_empty());
         assert_eq!(orch.snapshot_status().dropped_events.len(), 1);
     }
 
@@ -258,7 +240,7 @@ mod slice_7_4_drain_pass_falsifiers {
         },);
         assert!(out_a.is_ok());
         assert!(out_b.is_ok());
-        assert!(orch.snapshot_pending_for_test().is_empty());
+        assert!(handle.pending_writes().is_empty());
         assert_eq!(adapter.pushed_events().len(), 2);
     }
 

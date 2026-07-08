@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-pub(super) async fn eventually(label: &str, mut condition: impl FnMut() -> bool) {
+pub(crate) async fn eventually(label: &str, mut condition: impl FnMut() -> bool) {
     for _ in 0..400 {
         if condition() {
             return;

@@ -25,8 +25,9 @@ mod outbox_coalesce_1339_step_2e {
         }
     }
 
-    fn queue_labels(orch: &SyncOrchestrator<InMemorySourceAdapter>) -> Vec<(String, String)> {
-        orch.snapshot_pending_for_test()
+    fn queue_labels(handle: &SeededStore) -> Vec<(String, String)> {
+        handle
+            .pending_writes()
             .iter()
             .filter_map(|q| extract_label(&q.event).map(|(k, l)| (k.to_string(), l.to_string())))
             .collect()
@@ -91,7 +92,7 @@ mod outbox_coalesce_1339_step_2e {
         ))
         .unwrap();
 
-        let labels = queue_labels(&orch);
+        let labels = queue_labels(&handle);
         assert_eq!(
             labels,
             vec![
@@ -139,7 +140,7 @@ mod outbox_coalesce_1339_step_2e {
         ))
         .unwrap();
 
-        let labels = queue_labels(&orch);
+        let labels = queue_labels(&handle);
         assert_eq!(
             labels,
             vec![
@@ -187,7 +188,7 @@ mod outbox_coalesce_1339_step_2e {
         ))
         .unwrap();
 
-        let pending = orch.snapshot_pending_for_test();
+        let pending = handle.pending_writes();
         let by_story: Vec<(u64, String)> = pending
             .iter()
             .filter_map(|q| match &q.event.kind {
@@ -242,7 +243,7 @@ mod outbox_coalesce_1339_step_2e {
         ))
         .unwrap();
 
-        let labels = queue_labels(&orch);
+        let labels = queue_labels(&handle);
         assert_eq!(
             labels.len(),
             3,
@@ -287,7 +288,7 @@ mod outbox_coalesce_1339_step_2e {
         ))
         .unwrap();
 
-        let labels = queue_labels(&orch);
+        let labels = queue_labels(&handle);
         assert_eq!(
             labels,
             vec![("A".to_string(), "iteration-Pegasus.100".to_string())],

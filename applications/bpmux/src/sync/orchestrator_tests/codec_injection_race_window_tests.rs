@@ -85,8 +85,9 @@ mod codec_injection_substrate {
         )
     }
 
-    fn queue_labels(orch: &SyncOrchestrator<InMemorySourceAdapter>) -> Vec<(String, String)> {
-        orch.snapshot_pending_for_test()
+    fn queue_labels(handle: &SeededStore) -> Vec<(String, String)> {
+        handle
+            .pending_writes()
             .iter()
             .map(|q| {
                 let (k, l) = match &q.event.kind {
@@ -127,7 +128,7 @@ mod codec_injection_substrate {
         ))
         .unwrap();
 
-        let labels = queue_labels(&orch);
+        let labels = queue_labels(&handle);
         assert_eq!(
             labels,
             vec![("A".to_string(), "STUB|Andromeda:200".to_string())],
@@ -163,7 +164,7 @@ mod codec_injection_substrate {
         ))
         .unwrap();
 
-        let labels = queue_labels(&orch);
+        let labels = queue_labels(&handle);
         assert_eq!(
             labels.len(),
             2,

@@ -6,8 +6,6 @@ use crate::kernel::{Listener, ListenerFuture, Reaction};
 use crate::store::app::{AppAction, AppState};
 use crate::sync::RefreshDriver;
 
-use super::SyncAction;
-
 pub struct GithubDrain {
     refresh: Arc<dyn RefreshDriver>,
     parent_ct: CancellationToken,
@@ -21,9 +19,12 @@ impl GithubDrain {
 
 impl Listener<AppState, AppAction> for GithubDrain {
     fn on_action(&self, reaction: Reaction<AppState, AppAction>) -> ListenerFuture {
-        let AppAction::Sync(SyncAction::StartUpdateGithub { .. }) = reaction.action else {
+        if Arc::ptr_eq(&reaction.previous.sync, &reaction.current.sync) {
             return Box::pin(async {});
-        };
+        }
+        if reaction.current.sync.queue.is_empty() {
+            return Box::pin(async {});
+        }
         let refresh = self.refresh.clone();
         let token = self.parent_ct.clone();
         tokio::spawn(async move {

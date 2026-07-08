@@ -32,7 +32,7 @@ mod listeners_tests;
 #[cfg(test)]
 mod stores_tests;
 #[cfg(test)]
-mod test_support;
+pub(crate) mod test_support;
 
 pub use action::PollKind;
 pub use app::{AppAction, AppState, app_reduce};
@@ -72,6 +72,16 @@ impl Store {
         ci_state_store: CiStateStore,
         parent_ct: CancellationToken,
     ) -> Self {
+        Self::with_initial_outbox(hub, tracker, ci_state_store, parent_ct, Vec::new())
+    }
+
+    pub fn with_initial_outbox(
+        hub: Arc<hub::Hub>,
+        tracker: Option<Arc<dyn CiPollFetch>>,
+        ci_state_store: CiStateStore,
+        parent_ct: CancellationToken,
+        initial_outbox: Vec<crate::sync::QueuedWrite>,
+    ) -> Self {
         let rate_limit_observer = tracker
             .as_ref()
             .map(|t| t.rate_limit_observer())
@@ -84,7 +94,8 @@ impl Store {
                 .with_shared_history(crate::product_management::history_persistence::load(
                     &hub.dir,
                 ))
-                .with_local_history(crate::board::history_persistence::load(&hub.dir)),
+                .with_local_history(crate::board::history_persistence::load(&hub.dir))
+                .with_outbox(initial_outbox),
             Box::new(app::app_reduce),
         );
         app_store.add_listener(Arc::new(app::RosterBroadcast::new(
@@ -158,6 +169,10 @@ impl Store {
             .add_listener(Arc::new(app::SharedHistoryPersister::new(self.hub.clone())));
         self.app_store
             .add_listener(Arc::new(app::LocalHistoryPersister::new(self.hub.clone())));
+        self.app_store
+            .add_listener(Arc::new(sync::OutboxPersister::new(
+                sync::OutboxSink::Storage(self.hub.storage.clone()),
+            )));
         let github_drain = Arc::new(sync::GithubDrain::new(refresh, self.parent_ct.clone()));
         self.app_store.add_listener(github_drain.clone());
         self.sync_poll = Some(sync_poll);

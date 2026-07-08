@@ -98,29 +98,12 @@ pub(super) fn record_ingest_success(status: &Arc<Mutex<SyncStatus>>) {
 pub(super) fn record_push_success(status: &Arc<Mutex<SyncStatus>>) {
     with_status_mut(status, |s| {
         s.last_push_at = Some(Utc::now());
-        if s.pending_events > 0 {
-            s.pending_events -= 1;
-        }
     });
 }
 
 pub(super) fn record_error(status: &Arc<Mutex<SyncStatus>>, msg: &str) {
     with_status_mut(status, |s| {
         s.last_error = Some(msg.to_string());
-    });
-}
-
-pub(super) fn set_pending_events(status: &Arc<Mutex<SyncStatus>>, value: usize) {
-    with_status_mut(status, |s| {
-        s.pending_events = value;
-    });
-}
-
-pub(super) fn decrement_pending(status: &Arc<Mutex<SyncStatus>>) {
-    with_status_mut(status, |s| {
-        if s.pending_events > 0 {
-            s.pending_events -= 1;
-        }
     });
 }
 

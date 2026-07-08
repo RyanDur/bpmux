@@ -36,9 +36,25 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             None => {
                 if let Some(tx) = &self.action_tx {
                     let _ = tx.send(action);
+                } else {
+                    crate::diag::log_diag(
+                        "orchestrator: board dispatch unbound; write dropped (bind_board_dispatch missing)",
+                    )
                 }
             }
         }
+    }
+
+    pub(super) fn dispatch_write_pushed(&self, id: crate::sync::MutationId) {
+        self.dispatch_board(crate::store::AppAction::Sync(
+            crate::store::SyncAction::WritePushed { id },
+        ));
+    }
+
+    pub(super) fn dispatch_write_dropped(&self, id: crate::sync::MutationId) {
+        self.dispatch_board(crate::store::AppAction::Sync(
+            crate::store::SyncAction::WriteDropped { id },
+        ));
     }
 
     pub(super) fn apply_story_event(&self, event: &StoryEvent) {
