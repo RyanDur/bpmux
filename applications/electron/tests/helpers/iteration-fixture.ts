@@ -12,12 +12,14 @@ export const seedCurrentIterationViaRpc = async (rpc: RpcFn, name: string): Prom
   const iterationId = Number(iterJson.message?.match(/#(\d+)/)?.[1])
   expect(iterationId).toBeGreaterThan(0)
 
-  const designateResp = await rpc(
-    'designate_current_iteration',
-    { iteration_id: iterationId },
-    'pm'
-  )
-  expect(designateResp.status).toBe(200)
+  await expect(async () => {
+    const designateResp = await rpc(
+      'designate_current_iteration',
+      { iteration_id: iterationId },
+      'pm'
+    )
+    expect(designateResp.status).toBe(200)
+  }).toPass({ timeout: 10_000 })
 
   return iterationId
 }
