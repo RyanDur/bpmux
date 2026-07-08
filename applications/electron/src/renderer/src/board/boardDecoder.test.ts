@@ -5,7 +5,6 @@ const validStory = {
   id: 2,
   title: 'fully-populated story',
   state: 'in-progress',
-  gh_state: 'open',
   labels: ['iteration'],
   assignees: [],
   created_at: '2026-06-17T00:00:00Z',

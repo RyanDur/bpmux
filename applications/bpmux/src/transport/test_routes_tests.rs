@@ -291,7 +291,6 @@ async fn roundtrip_coherence_api_board_reflects_new_story_in_test_mode() {
         Some("[Feature] http-roundtrip-marker")
     );
     assert_eq!(stories[0]["state"].as_str(), Some("icebox"));
-    assert_eq!(stories[0]["gh_state"].as_str(), Some("open"));
     assert!(json["fetched_at"].is_string());
 }
 
@@ -552,5 +551,4 @@ async fn close_story_roundtrip_api_board_reflects_closed_state() {
         Some("accepted"),
         "close_story disposition=accept concludes the story IN the workflow (StateTransitioned → Accepted rides with StoryClosed); the #505 ingest-translation boundary now covers only EXTERNAL GH-side closes"
     );
-    assert_eq!(stories[0]["gh_state"].as_str(), Some("closed"));
 }

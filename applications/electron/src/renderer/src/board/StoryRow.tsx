@@ -4,7 +4,7 @@ import StoryBadge from './StoryBadge'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { type GripDragProps, type RowDragProps } from './useDragReorder'
 import { storyNavigateLabel } from './storyNavigateLabel'
-import { storyTypeFromLabels, type Story } from './types'
+import { isConcluded, storyTypeFromLabels, type Story } from './types'
 
 export interface StoryRowProps {
   story: Story
@@ -55,7 +55,7 @@ const StoryRow = ({
       aria-current={selected ? 'true' : undefined}
       data-test={`board-story-${story.id}`}
       data-story-type={type}
-      data-closed={story.gh_state === 'closed' ? 'true' : undefined}
+      data-closed={isConcluded(story.state) ? 'true' : undefined}
       data-dragging={dragging ? 'true' : undefined}
       {...rowDragProps}
     >

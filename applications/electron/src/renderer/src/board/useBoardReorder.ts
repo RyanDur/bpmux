@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { eagerReorder } from './iterationMembers'
-import { columnFor, storyTypeFromLabels, type Story, type ColumnState } from './types'
+import { columnFor, type Story, type ColumnState } from './types'
 import { addStoryToIterationRequested, type SessionAction } from '../transport/session/actions'
 
 export interface UseBoardReorderOptions {
@@ -27,11 +27,7 @@ export const useBoardReorder = ({
   return useCallback(
     (state, moved, targetId) => {
       const prevData = data
-      const inGroupOf = (resp: Story[]): Story[] =>
-        resp.filter(
-          (s) =>
-            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) === state
-        )
+      const inGroupOf = (resp: Story[]): Story[] => resp.filter((s) => columnFor(s.state) === state)
 
       if (state === 'ready' && prevData) {
         if (currentIterationId === null) return
@@ -65,10 +61,7 @@ export const useBoardReorder = ({
         const inGroup = inGroupOf(prev)
         const reordered = eagerReorder(inGroup, (s) => s.id, moved, targetId)
         if (reordered === inGroup) return prev
-        const others = prev.filter(
-          (s) =>
-            columnFor(s.state, s.gh_state === 'closed', storyTypeFromLabels(s.labels)) !== state
-        )
+        const others = prev.filter((s) => columnFor(s.state) !== state)
         return [...others, ...reordered]
       })
 

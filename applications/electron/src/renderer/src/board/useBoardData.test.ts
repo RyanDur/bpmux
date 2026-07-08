@@ -8,7 +8,6 @@ const iterationStory = (): Story => ({
   id: ITER,
   title: 'Iteration Current',
   state: 'icebox',
-  gh_state: 'open',
   labels: ['iteration'],
   is_current: true,
   assignees: [],

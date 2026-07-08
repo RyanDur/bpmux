@@ -22,7 +22,6 @@ const member = (state: StoryState, over: Partial<Story> = {}): Story => ({
   assignees: [],
   created_at: '2026-06-16T00:00:00Z',
   body: '',
-  gh_state: 'open',
   ...over
 })
 
@@ -185,7 +184,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
       member('accepted'),
       member('accepted'),
       member('in-progress'),
-      member('icebox', { gh_state: 'closed' })
+      member('retired')
     ]
     const current = iteration({
       id: 100,

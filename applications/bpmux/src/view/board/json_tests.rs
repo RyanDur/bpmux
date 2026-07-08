@@ -37,7 +37,6 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
         "id",
         "title",
         "state",
-        "gh_state",
         "labels",
         "parent_epic",
         "acceptor",
@@ -51,7 +50,11 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
             "wire-format must include `{required}` (drift catches #451-class regression); keys present: {keys:?}"
         );
     }
-    assert_eq!(obj.len(), 11, "no spurious keys; keys present: {keys:?}");
+    assert_eq!(obj.len(), 10, "no spurious keys; keys present: {keys:?}");
+    assert!(
+        !keys.iter().any(|k| k.as_str() == "gh_state"),
+        "gh_state sheds from the story wire — closedness derives from state at every reader; keys present: {keys:?}"
+    );
     assert!(
         !keys.iter().any(|k| k.as_str() == "iteration_membership"),
         "iteration_membership is gone from the wire — membership is the iteration container's concern (iteration.stories); keys present: {keys:?}"
@@ -207,40 +210,12 @@ fn story_to_board_json_emits_canonical_6_state_vocabulary() {
 }
 
 #[test]
-fn story_to_board_json_gh_state_derives_from_workflow_conclusion_not_the_stored_mirror() {
+fn story_to_board_json_state_stays_canonical_regardless_of_conclusion() {
     let s = sample_story(Work::NotStarted, StoryKind::Feature);
     assert_eq!(
         json_str(&story_to_board_json(&GhLabelCodec, &s, "icebox"), "state"),
         "icebox",
-        "Story.state stays canonical regardless of gh-side is_closed; the GH-adapter is_closed→Accepted translation happens at INGEST not at serialization"
-    );
-    assert_eq!(
-        json_str(
-            &story_to_board_json(&GhLabelCodec, &s, "icebox"),
-            "gh_state"
-        ),
-        "open",
-        "one truth: an active workflow state serializes gh_state=open even if a stored GH mirror says closed — a genuinely-closed issue reconciles at ingest before it can reach this projection"
-    );
-}
-
-#[test]
-fn story_to_board_json_gh_state_lowercase_open_or_closed() {
-    let open = sample_story(Work::NotStarted, StoryKind::Feature);
-    assert_eq!(
-        json_str(
-            &story_to_board_json(&GhLabelCodec, &open, open.state.as_str()),
-            "gh_state"
-        ),
-        "open"
-    );
-    let closed = sample_story(Work::Accepted, StoryKind::Feature);
-    assert_eq!(
-        json_str(
-            &story_to_board_json(&GhLabelCodec, &closed, closed.state.as_str()),
-            "gh_state"
-        ),
-        "closed"
+        "Story.state stays canonical; the GH-adapter is_closed→Accepted translation happens at INGEST not at serialization"
     );
 }
 

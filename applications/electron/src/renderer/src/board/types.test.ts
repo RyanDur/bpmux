@@ -4,76 +4,46 @@ import {
   columnForIn,
   groupOrderFrom,
   groupOrderOrFallback,
+  isConcluded,
   GROUP_ORDER,
   type BoardColumn,
   type StoryState
 } from './types'
 
-describe('#514 columnFor — closed-state-aware bucketing', () => {
-  describe('open issues route to active-pipeline columns (no regression vs pre-#514)', () => {
-    test.each<[StoryState, ReturnType<typeof columnFor>]>([
-      ['icebox', 'icebox'],
-      ['ready', 'ready'],
-      ['in-progress', 'in-progress'],
-      ['desk-check', 'desk-check'],
-      ['acceptance', 'acceptance'],
-      ['ready-for-accept', 'acceptance'],
-      ['needs-fixes', 'in-progress'],
-      ['rejected', 'ready'],
-      ['accepted', 'accepted']
-    ])('open + state=%s → column %s', (state, column) => {
-      expect(columnFor(state, false)).toBe(column)
-    })
+describe('columnFor — state-derived bucketing', () => {
+  test.each<[StoryState, ReturnType<typeof columnFor>]>([
+    ['icebox', 'icebox'],
+    ['ready', 'ready'],
+    ['in-progress', 'in-progress'],
+    ['desk-check', 'desk-check'],
+    ['acceptance', 'acceptance'],
+    ['ready-for-accept', 'acceptance'],
+    ['needs-fixes', 'in-progress'],
+    ['rejected', 'ready'],
+    ['accepted', 'accepted'],
+    ['retired', 'retired']
+  ])('state=%s → column %s', (state, column) => {
+    expect(columnFor(state)).toBe(column)
   })
 
-  describe('#1146 slice 2b — closed-non-Accepted projects to RETIRED column', () => {
-    test.each<[StoryState, ReturnType<typeof columnFor>]>([
-      ['icebox', 'retired'],
-      ['ready', 'retired'],
-      ['in-progress', 'retired'],
-      ['desk-check', 'retired'],
-      ['acceptance', 'retired'],
-      ['ready-for-accept', 'retired'],
-      ['needs-fixes', 'retired'],
-      ['rejected', 'retired']
-    ])('closed + state=%s (non-Accepted) → RETIRED (decision-not-to-pursue)', (state, column) => {
-      expect(columnFor(state, true)).toBe(column)
-    })
-
-    test('closed + state=accepted stays in ACCEPTED (success-narrative preserved)', () => {
-      expect(columnFor('accepted', true)).toBe('accepted')
-    })
+  test('a concluded state self-buckets to its own pole (accepted→accepted, retired→retired)', () => {
+    expect(columnFor('accepted')).toBe('accepted')
+    expect(columnFor('retired')).toBe('retired')
   })
 
-  describe('isClosed defaults to false (back-compat for callers that pre-date #514)', () => {
-    test('omitting isClosed argument behaves as open', () => {
-      expect(columnFor('in-progress')).toBe('in-progress')
-      expect(columnFor('rejected')).toBe('ready')
-    })
+  test('a truly unknown state buckets to the first middle column', () => {
+    expect(columnFor('mystery-stage')).toBe('in-progress')
   })
+})
 
-  describe('#514 slice 2 — needs-fixes splits from rejected for OPEN issues', () => {
-    test('OPEN + needs-fixes is dev-iterating-on-feedback → IN PROGRESS, not READY', () => {
-      expect(columnFor('needs-fixes', false)).toBe('in-progress')
-    })
-    test('OPEN + rejected stays in READY (owner-reject = re-pickup-able)', () => {
-      expect(columnFor('rejected', false)).toBe('ready')
-    })
-  })
-
-  describe('#1300 Slice C — closed iteration markers stay in icebox as historical artifact', () => {
-    test('closed iteration in state=icebox stays in ICEBOX column (closed-state visual record)', () => {
-      expect(columnFor('icebox', true, 'iteration')).toBe('icebox')
-    })
-    test('closed iteration in any non-accepted state stays in ICEBOX (closed-marker invariant)', () => {
-      expect(columnFor('ready', true, 'iteration')).toBe('icebox')
-      expect(columnFor('in-progress', true, 'iteration')).toBe('icebox')
-    })
-    test('closed non-iteration stays routing to RETIRED (no regression)', () => {
-      expect(columnFor('icebox', true, 'feature')).toBe('retired')
-      expect(columnFor('icebox', true, 'epic')).toBe('retired')
-      expect(columnFor('icebox', true)).toBe('retired')
-    })
+describe('isConcluded — closedness derives from the workflow state', () => {
+  test('accepted and retired are concluded; every active state is not', () => {
+    expect(isConcluded('accepted')).toBe(true)
+    expect(isConcluded('retired')).toBe(true)
+    expect(isConcluded('icebox')).toBe(false)
+    expect(isConcluded('ready')).toBe(false)
+    expect(isConcluded('in-progress')).toBe(false)
+    expect(isConcluded('acceptance')).toBe(false)
   })
 })
 
@@ -105,15 +75,8 @@ describe('CM-2 columnForIn — bucketing against the live middle stage list', ()
     expect(bucket('ready')).toBe('ready')
     expect(bucket('acceptance')).toBe('acceptance')
     expect(bucket('accepted')).toBe('accepted')
+    expect(bucket('retired')).toBe('retired')
     expect(bucket('icebox')).toBe('icebox')
-  })
-
-  test('closed iteration marker stays in icebox regardless of its middle stage', () => {
-    expect(bucket('review', true, 'iteration')).toBe('icebox')
-  })
-
-  test('closed non-accepted middle-stage story projects to retired', () => {
-    expect(bucket('review', true, 'feature')).toBe('retired')
   })
 
   test('compat columnFor mirrors the two-stage default middle', () => {

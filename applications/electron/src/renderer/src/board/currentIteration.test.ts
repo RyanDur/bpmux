@@ -18,7 +18,6 @@ const story = (overrides: Partial<Story>): Story => ({
   id: 9100,
   title: 'member',
   state: 'icebox',
-  gh_state: 'open',
   labels: ['feature'],
   assignees: [],
   created_at: '2026-05-18T00:00:00Z',

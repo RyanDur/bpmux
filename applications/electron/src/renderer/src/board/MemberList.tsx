@@ -23,11 +23,7 @@ import type { IterationMember } from './useIterationMembers'
 
 const activeStateLabel = (story: Story, groupOrder: GroupSpec[]): string | null => {
   if (story.state === ICEBOX_COLUMN) return null
-  const column = columnForIn(middleColumnIds(groupOrder))(
-    story.state,
-    story.gh_state === 'closed',
-    storyTypeFromLabels(story.labels)
-  )
+  const column = columnForIn(middleColumnIds(groupOrder))(story.state)
   if (column === ICEBOX_COLUMN) return null
   return groupOrder.find((group) => group.state === column)?.label ?? null
 }

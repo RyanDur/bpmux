@@ -22,17 +22,6 @@ fn project_mirrors_core_identity_fields() {
     assert_eq!(view.id, 42);
     assert_eq!(view.title, "[Feature] do the thing");
     assert_eq!(view.state, "ready");
-    assert_eq!(view.gh_state, "open");
-}
-
-#[test]
-fn project_derives_gh_state_closed_from_workflow_conclusion() {
-    let s = story(7, "done", Work::Accepted);
-    let view = StoryView::project(&GhLabelCodec, &s, s.state.as_str());
-    assert_eq!(
-        view.gh_state, "closed",
-        "gh_state derives from the workflow conclusion (Accepted|Retired), not from a stored GH mirror"
-    );
 }
 
 #[test]
@@ -65,7 +54,10 @@ fn story_view_serializes_to_the_renderer_wire_shape() {
     let json = serde_json::to_value(&view).expect("StoryView serializes");
     assert_eq!(json["id"], 5);
     assert_eq!(json["state"], "ready");
-    assert_eq!(json["gh_state"], "open");
+    assert!(
+        json.get("gh_state").is_none(),
+        "gh_state sheds from the story wire; closedness derives from state"
+    );
     assert!(json.get("labels").is_some(), "labels key present");
     assert!(
         json.get("iteration_membership").is_none(),

@@ -9,7 +9,6 @@ pub struct StoryView {
     pub id: u64,
     pub title: String,
     pub state: String,
-    pub gh_state: &'static str,
     pub labels: Vec<String>,
     pub parent_epic: Option<EpicId>,
     pub acceptor: Option<&'static str>,
@@ -25,11 +24,6 @@ impl StoryView {
             id: story.id.value(),
             title: story.title().to_string(),
             state: state.to_string(),
-            gh_state: if story.is_concluded() {
-                "closed"
-            } else {
-                "open"
-            },
             labels: wire_labels(codec, story),
             parent_epic: story.parent_epic(),
             acceptor: story.acceptor().map(|a| a.as_str()),

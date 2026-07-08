@@ -2,6 +2,7 @@ import type BoardTabs from './BoardTabs'
 import {
   GROUP_ORDER,
   groupStoriesIn,
+  isConcluded,
   middleColumnIds,
   type Epic,
   type GroupSpec,
@@ -15,7 +16,6 @@ export const iterationStory = (overrides: Partial<Story>): Story => ({
   id: 9000,
   title: 'Iteration Sextans',
   state: 'icebox',
-  gh_state: 'open',
   labels: ['iteration', 'iteration-order.100'],
   assignees: [],
   created_at: '2026-05-18T00:00:00Z',
@@ -27,7 +27,6 @@ export const epicStory = (overrides: Partial<Story>): Story => ({
   id: 8000,
   title: 'Epic Foo',
   state: 'in-progress',
-  gh_state: 'open',
   labels: ['epic'],
   assignees: [],
   created_at: '2026-05-18T00:00:00Z',
@@ -39,7 +38,6 @@ export const featureStory = (overrides: Partial<Story>): Story => ({
   id: 9100,
   title: 'a feature',
   state: 'ready',
-  gh_state: 'open',
   labels: ['feature'],
   assignees: [],
   created_at: '2026-05-18T00:00:00Z',
@@ -57,7 +55,7 @@ export const buildProps = (
       id: s.id,
       title: s.title,
       state: s.state,
-      closed: s.gh_state === 'closed',
+      closed: isConcluded(s.state),
       created_at: s.created_at,
       body: s.body
     }))

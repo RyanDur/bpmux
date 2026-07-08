@@ -14,7 +14,6 @@ const NO_ITERATION_BOARD = {
       id: 820,
       title: 'an iceboxed feature',
       state: 'icebox',
-      gh_state: 'open',
       labels: ['Feature'],
       assignees: [],
       created_at: '2026-06-16T00:00:00Z',

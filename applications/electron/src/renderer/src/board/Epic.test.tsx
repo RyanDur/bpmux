@@ -664,15 +664,14 @@ describe('#1244 Epic dropdown mini-board — replaces breakdown text', () => {
     expect(readyColMatch?.[0]).toContain('#1103')
   })
 
-  test('closed-non-accepted child appears in retired column (uses isClosed via gh_state)', () => {
+  test('retired-state child appears in retired column (closedness derives from state)', () => {
     const epic = anEpic({ id: 1100, state: 'in-progress' })
     const children: Story[] = [
       story({
         id: 1101,
-        state: 'icebox',
+        state: 'retired',
         labels: featureLabels,
-        parent_epic: 1100,
-        gh_state: 'closed'
+        parent_epic: 1100
       })
     ]
     const html = renderToStaticMarkup(<Epic epics={[epic]} stories={children} onOpen={() => {}} />)

@@ -44,13 +44,7 @@ export const storyTypeFromLabels = (labels: string[]): StoryType => {
 
 export const columnForIn =
   (middleIds: readonly string[]) =>
-  (state: StoryState, isClosed: boolean = false, storyType: StoryType = 'unknown'): ColumnState => {
-    if (isClosed && storyType === 'iteration') {
-      return ICEBOX_COLUMN
-    }
-    if (isClosed && state !== ACCEPTED_COLUMN) {
-      return RETIRED_COLUMN
-    }
+  (state: StoryState): ColumnState => {
     const firstMiddle = middleIds[0] ?? DEFAULT_MIDDLE_IDS[0]
     switch (state) {
       case 'ready-for-accept':
@@ -67,6 +61,9 @@ export const columnForIn =
   }
 
 export const columnFor = columnForIn(DEFAULT_MIDDLE_IDS)
+
+export const isConcluded = (state: StoryState): boolean =>
+  state === ACCEPTED_COLUMN || state === RETIRED_COLUMN
 
 export interface IterationMembership {
   iteration_id: number
@@ -95,7 +92,6 @@ export interface Story {
   id: number
   title: string
   state: StoryState
-  gh_state?: 'open' | 'closed'
   labels: string[]
   assignees: string[]
   created_at: string
@@ -170,7 +166,7 @@ export const isActiveEpic = (epic: Epic): boolean =>
 
 export const isClosedIterationMarker = (story: Story): boolean => {
   if (storyTypeFromLabels(story.labels) !== 'iteration') return false
-  return story.gh_state === 'closed'
+  return isConcluded(story.state)
 }
 
 export const deriveEpicState = (_epicExplicitState: StoryState, children: Story[]): StoryState => {
@@ -208,9 +204,7 @@ export const groupStoriesIn = (
   ]
   for (const id of seedIds) out.set(id, [])
   for (const story of stories) {
-    const list = out.get(
-      bucketOf(story.state, story.gh_state === 'closed', storyTypeFromLabels(story.labels))
-    )
+    const list = out.get(bucketOf(story.state))
     if (list) list.push(story)
   }
   return out

@@ -32,7 +32,7 @@ const nextIterationAfter = (
   return successors[0]?.it ?? null
 }
 
-const columnOf = (story: Story): ColumnState => columnFor(story.state, story.gh_state === 'closed')
+const columnOf = (story: Story): ColumnState => columnFor(story.state)
 
 const isDraining = (
   current: BoardIterationData,

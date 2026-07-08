@@ -133,7 +133,6 @@ async fn roundtrip_coherence_create_story_through_real_github_decode_path() {
         Some("[Feature] mock-octocrab-roundtrip")
     );
     assert_eq!(stories[0]["state"].as_str(), Some("icebox"));
-    assert_eq!(stories[0]["gh_state"].as_str(), Some("open"));
 }
 
 #[tokio::test]

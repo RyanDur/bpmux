@@ -49,7 +49,6 @@ export const story = D.object({
     body: D.string
   },
   optional: {
-    gh_state: D.literalUnion('open', 'closed'),
     parent_epic: D.nullable(D.number),
     iteration_order: D.nullable(D.number),
     is_current: D.boolean,
