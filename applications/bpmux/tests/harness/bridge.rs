@@ -58,6 +58,10 @@ impl TestBridge {
                 bpmux.sessions_base_path().to_string_lossy().into_owned(),
             ),
             (
+                "BPMUX_USAGE_PATH".to_string(),
+                bpmux.usage_path().to_string_lossy().into_owned(),
+            ),
+            (
                 "BPMUX_LOG".to_string(),
                 std::env::temp_dir()
                     .join("bpmux-test-diag.log")
@@ -113,6 +117,12 @@ impl TestBridge {
             env_owned.push((
                 "BPMUX_SESSIONS_BASE".to_string(),
                 bpmux.sessions_base_path().to_string_lossy().into_owned(),
+            ));
+        }
+        if !env_owned.iter().any(|(k, _)| k == "BPMUX_USAGE_PATH") {
+            env_owned.push((
+                "BPMUX_USAGE_PATH".to_string(),
+                bpmux.usage_path().to_string_lossy().into_owned(),
             ));
         }
         if !env_owned.iter().any(|(k, _)| k == "BPMUX_LOG") {

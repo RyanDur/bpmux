@@ -95,3 +95,59 @@ fn save_then_reload_preserves_counts_across_restarts() {
     let loaded = load_from(&path);
     assert_eq!(loaded.get("slash:/view").unwrap().count, 7);
 }
+
+#[test]
+fn concurrent_save_to_never_publishes_torn_json() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{Arc, Mutex};
+
+    let (_dir, path) = tmp_path();
+    let stop = Arc::new(AtomicBool::new(false));
+    let torn: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+
+    let reader = {
+        let path = path.clone();
+        let stop = Arc::clone(&stop);
+        let torn = Arc::clone(&torn);
+        std::thread::spawn(move || {
+            while !stop.load(Ordering::Relaxed) {
+                if let Ok(contents) = std::fs::read_to_string(&path) {
+                    if contents.is_empty() {
+                        continue;
+                    }
+                    if serde_json::from_str::<HashMap<String, Record>>(&contents).is_err() {
+                        *torn.lock().unwrap() = Some(contents);
+                        return;
+                    }
+                }
+            }
+        })
+    };
+
+    let writers: Vec<_> = (0..8u64)
+        .map(|t| {
+            let path = path.clone();
+            std::thread::spawn(move || {
+                for _ in 0..50 {
+                    let mut map = HashMap::new();
+                    for k in 0..((t + 1) * 4) {
+                        map.insert(format!("mcp:tool_{t}_{k}"), Record::now(k as usize));
+                    }
+                    save_to(&path, &map).expect("save");
+                }
+            })
+        })
+        .collect();
+
+    for w in writers {
+        w.join().unwrap();
+    }
+    stop.store(true, Ordering::Relaxed);
+    reader.join().unwrap();
+
+    let observed = torn.lock().unwrap();
+    assert!(
+        observed.is_none(),
+        "reader observed torn JSON published by a concurrent writer: {observed:?}"
+    );
+}

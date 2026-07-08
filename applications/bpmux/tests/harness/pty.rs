@@ -227,6 +227,14 @@ impl TestBpmux {
             .join("auth_token")
     }
 
+    pub fn usage_path(&self) -> std::path::PathBuf {
+        self.session_dir
+            .as_ref()
+            .expect("session dir taken before reading usage_path")
+            .path()
+            .join("usage.json")
+    }
+
     pub fn sessions_base_path(&self) -> std::path::PathBuf {
         self.session_dir
             .as_ref()

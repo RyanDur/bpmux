@@ -92,10 +92,24 @@ pub fn save_to(
     }
     let json = serde_json::to_string_pretty(map)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
-    let tmp = path.with_extension("json.tmp");
+    let tmp = unique_tmp_path(path);
     std::fs::write(&tmp, json)?;
     std::fs::rename(&tmp, path)?;
     Ok(())
+}
+
+fn unique_tmp_path(path: &std::path::Path) -> PathBuf {
+    static TMP_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let seq = TMP_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let base = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("usage.json");
+    let tmp_name = format!("{base}.{}.{seq}.tmp", std::process::id());
+    match path.parent() {
+        Some(parent) => parent.join(tmp_name),
+        None => PathBuf::from(tmp_name),
+    }
 }
 
 pub fn record(source: Source, feature: &str) {
