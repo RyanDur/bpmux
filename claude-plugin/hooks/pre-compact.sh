@@ -40,9 +40,9 @@ BPMUX_API="http://127.0.0.1:${BPMUX_PORT}/api/messages"
 #      signaling "compaction happened; reconstruct from chat + lessons".
 # In both cases the existing chat broadcast still fires (additive
 # wiring per falsifier-(f)).
-SESSIONS_BASE="${BPMUX_SESSIONS_BASE:-$HOME/.bpmux/sessions}"
-# Resolve the current session directory. session::resume_or_create_
-# session writes a symlink `current` → the active session dir. If the
+SESSIONS_BASE="${BPMUX_DATA_BASE:-$HOME/.bpmux/sessions}"
+# Resolve the current session directory. location::resume_or_create_
+# data_dir writes a symlink `current` → the active data dir. If the
 # symlink resolves, use it; otherwise fall back to the bare sessions-
 # base (newer-startup may not yet have the symlink). Either way, the
 # bookmark lands at a path load_bookmark recognizes for this role.

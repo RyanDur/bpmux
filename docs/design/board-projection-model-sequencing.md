@@ -623,7 +623,7 @@ roadmap tree is the single order source.
   ignores it), `story_type` (derivable from title), `iteration_slot`
   (mirrors membership; coordinates with C1/D).
 
-## SR — session renames [last; mechanical]
+## SR — session renames [last; mechanical — Hub done; session_dir/env-var done; renderer slice pending]
 
 "Session" is a dissolved concept; rename each referent for what it IS:
 renderer synced slice `session` → `state`; backend `Session` struct → derive

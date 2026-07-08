@@ -54,7 +54,7 @@ impl TestBridge {
                 bpmux.auth_token_path().to_string_lossy().into_owned(),
             ),
             (
-                "BPMUX_SESSIONS_BASE".to_string(),
+                "BPMUX_DATA_BASE".to_string(),
                 bpmux.sessions_base_path().to_string_lossy().into_owned(),
             ),
             (
@@ -113,9 +113,9 @@ impl TestBridge {
                 bpmux.auth_token_path().to_string_lossy().into_owned(),
             ));
         }
-        if !env_owned.iter().any(|(k, _)| k == "BPMUX_SESSIONS_BASE") {
+        if !env_owned.iter().any(|(k, _)| k == "BPMUX_DATA_BASE") {
             env_owned.push((
-                "BPMUX_SESSIONS_BASE".to_string(),
+                "BPMUX_DATA_BASE".to_string(),
                 bpmux.sessions_base_path().to_string_lossy().into_owned(),
             ));
         }

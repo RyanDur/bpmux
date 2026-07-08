@@ -246,8 +246,8 @@ what it IS; the word leaves the codebase:
   it is the instance's delivery **hub** (append to storage + fan out to
   connected users), NOT "the instance."
 - `session_dir` → **`data_dir`** — where the instance's local durability
-  projection lives; `BPMUX_SESSIONS_BASE` → an instances/data-dirs base
-  (rename travels with its test-harness consumers).
+  projection lives; `BPMUX_SESSIONS_BASE` → **`BPMUX_DATA_BASE`**, an
+  instances/data-dirs base (rename travels with its test-harness consumers).
 - Mechanical, behavior-preserving slices; any wire-visible key that says
   "session" needs the wire check before renaming (internal renames first).
 

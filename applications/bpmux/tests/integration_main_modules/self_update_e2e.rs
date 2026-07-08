@@ -102,7 +102,7 @@ fn binary_change_triggers_graceful_restart_with_exit_code_200() {
         .arg("--name")
         .arg("dev")
         .env("BPMUX_SESSION_BASE", session_base.path())
-        .env("BPMUX_SESSIONS_BASE", session_base.path())
+        .env("BPMUX_DATA_BASE", session_base.path())
         .env("BPMUX_AUTH_TOKEN_PATH", auth_token.path())
         .env("BPMUX_BINARY_WATCH_INTERVAL_SECS", "1")
         .env("BPMUX_GH_BASE_URL", "http://127.0.0.1:1/")

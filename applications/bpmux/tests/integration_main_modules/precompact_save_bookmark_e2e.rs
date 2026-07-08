@@ -1,21 +1,11 @@
-//! E2E for #279 PreCompact hook → save_bookmark wiring. Per
-//! `feedback_falsifier_load_bearing_test_at_e2e_layer`: the falsifier
-//! names the cascade "hook fires → bookmark on disk → load_bookmark
-//! consumes it" — these tests drive that exact scenario at the
-//! shell-script + filesystem boundary, not a unit-level proxy.
-//!
-//! Mechanism: invoke the actual claude-plugin/hooks/pre-compact.sh
-//! shell script via Command, point BPMUX_SESSIONS_BASE at a tempdir,
-//! pipe in the JSON Claude Code would send, then call the production
-//! `bpmux::session::bookmark::load_bookmark` to verify it consumes
-//! what the hook produced (round-trip per AC + falsifier-c).
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use bpmux::bookmark::{Bookmark, bookmark_path, load_bookmark, save_bookmark};
+
+const PORT_WITH_NO_LISTENER: &str = "1";
 
 fn repo_root() -> PathBuf {
     let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -35,11 +25,8 @@ fn fire_hook(role: &str, sessions_base: &Path) -> std::process::Output {
     let mut cmd = Command::new("bash");
     cmd.arg(pre_compact_hook());
     cmd.env("BPMUX_ROLE", role);
-    cmd.env("BPMUX_SESSIONS_BASE", sessions_base);
-    // Point at a port that won't have a listener so the curl POST
-    // fails fast (max-time 3 in the script). The bookmark side-effect
-    // must still land regardless of the broadcast result.
-    cmd.env("BPMUX_PORT", "1");
+    cmd.env("BPMUX_DATA_BASE", sessions_base);
+    cmd.env("BPMUX_PORT", PORT_WITH_NO_LISTENER);
     cmd.env("PATH", std::env::var("PATH").unwrap_or_default());
     cmd.output().expect("run pre-compact hook")
 }

@@ -6,8 +6,8 @@ pub const MAX_SURFACED_LESSONS: usize = 10;
 
 const MAX_LESSON_PREVIEW_CHARS: usize = 180;
 
-pub fn surface_for_role(session_dir: &Path, role: &str) -> Vec<AgentLesson> {
-    let index = lessons::load_index(session_dir);
+pub fn surface_for_role(data_dir: &Path, role: &str) -> Vec<AgentLesson> {
+    let index = lessons::load_index(data_dir);
     let mut matching: Vec<AgentLesson> = index
         .lessons
         .into_iter()

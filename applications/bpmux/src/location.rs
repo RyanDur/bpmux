@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 
 use crate::log::LogError;
 
-pub fn default_sessions_base() -> Result<PathBuf, LogError> {
-    if let Ok(override_path) = std::env::var("BPMUX_SESSIONS_BASE")
+pub fn default_data_base() -> Result<PathBuf, LogError> {
+    if let Ok(override_path) = std::env::var("BPMUX_DATA_BASE")
         && !override_path.is_empty()
     {
         return Ok(PathBuf::from(override_path));
@@ -21,7 +21,7 @@ pub fn default_sessions_base() -> Result<PathBuf, LogError> {
     Ok(base)
 }
 
-pub fn resume_or_create_session(base: &Path) -> Result<PathBuf, LogError> {
+pub fn resume_or_create_data_dir(base: &Path) -> Result<PathBuf, LogError> {
     let current = base.join("current");
     if current.is_symlink() {
         let target = std::fs::read_link(&current)?;
@@ -29,20 +29,20 @@ pub fn resume_or_create_session(base: &Path) -> Result<PathBuf, LogError> {
             return Ok(target);
         }
     }
-    create_session(base)
+    create_data_dir(base)
 }
 
-pub fn create_session(base: &Path) -> Result<PathBuf, LogError> {
+pub fn create_data_dir(base: &Path) -> Result<PathBuf, LogError> {
     let session_id = uuid::Uuid::new_v4().to_string();
-    let session_dir = base.join(&session_id);
-    std::fs::create_dir_all(&session_dir)?;
+    let data_dir = base.join(&session_id);
+    std::fs::create_dir_all(&data_dir)?;
     let current = base.join("current");
     if current.exists() || current.is_symlink() {
         std::fs::remove_file(&current)?;
     }
     #[cfg(unix)]
-    std::os::unix::fs::symlink(&session_dir, &current)?;
-    Ok(session_dir)
+    std::os::unix::fs::symlink(&data_dir, &current)?;
+    Ok(data_dir)
 }
 
 pub const DIR_SESSION_ID_MARKER: &str = ".bpmux-session-id";

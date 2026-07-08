@@ -51,11 +51,11 @@ fn run_recall(cli: &Cli, role_arg: &Option<String>) -> anyhow::Result<()> {
         return Ok(());
     }
     let base = resolve_session_base(&cli.session_base)?;
-    let session_dir = match location::resume_or_create_session(&base) {
+    let data_dir = match location::resume_or_create_data_dir(&base) {
         Ok(dir) => dir,
         Err(_) => return Ok(()),
     };
-    let lessons = crate::memory::recall::surface_for_role(&session_dir, &role);
+    let lessons = crate::memory::recall::surface_for_role(&data_dir, &role);
     print!(
         "{}",
         crate::memory::recall::format_for_surface(&role, &lessons)
@@ -70,10 +70,10 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
     crate::workflow::install_workflow(workflow);
     let base = resolve_session_base(&cli.session_base)?;
     std::fs::create_dir_all(&base)?;
-    let session_dir = location::resume_or_create_session(&base)?;
+    let data_dir = location::resume_or_create_data_dir(&base)?;
     let (wake_tx, _wake_rx) =
         broadcast::channel::<crate::message::Message>(hub::BROADCAST_CHANNEL_CAPACITY);
-    let hub = Arc::new(hub::Hub::new(session_dir, cli.name.clone(), wake_tx));
+    let hub = Arc::new(hub::Hub::new(data_dir, cli.name.clone(), wake_tx));
     let port = cli.mcp_port;
     let ct = CancellationToken::new();
     let restart_signal = transport::self_update::RestartSignal::new();

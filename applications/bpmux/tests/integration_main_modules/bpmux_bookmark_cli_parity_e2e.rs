@@ -9,7 +9,7 @@ async fn run_verb(
     tokio::process::Command::new(bin)
         .args(args)
         .env("BPMUX_ROLE", role)
-        .env("BPMUX_SESSIONS_BASE", sessions_base)
+        .env("BPMUX_DATA_BASE", sessions_base)
         .output()
         .await
         .expect("run bpmux bookmark verb subprocess")

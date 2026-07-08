@@ -9,7 +9,7 @@ use tempfile::TempDir;
 #[test]
 fn creates_session_directory() {
     let base = TempDir::new().expect("temp base");
-    let dir = create_session(base.path()).expect("create session");
+    let dir = create_data_dir(base.path()).expect("create data dir");
     assert!(dir.exists());
     assert!(dir.is_dir());
     let current = base.path().join("current");
@@ -19,7 +19,7 @@ fn creates_session_directory() {
 #[test]
 fn resumes_existing_session() {
     let base = TempDir::new().expect("temp base");
-    let dir1 = create_session(base.path()).expect("create session");
+    let dir1 = create_data_dir(base.path()).expect("create data dir");
     assert!(dir1.exists());
     let msg = Message {
         from: "owner:human".to_string(),
@@ -28,7 +28,7 @@ fn resumes_existing_session() {
         ..Message::default()
     };
     append_message(&dir1, &msg).expect("append");
-    let dir2 = resume_or_create_session(base.path()).expect("resume");
+    let dir2 = resume_or_create_data_dir(base.path()).expect("resume");
     assert_eq!(dir1, dir2);
     let messages = read_messages(&dir2).expect("read");
     assert_eq!(messages.len(), 1);
@@ -59,7 +59,7 @@ fn dir_session_id_is_held_in_the_dir_minted_once_then_reclaimed_via_a_lightweigh
     );
     assert!(
         !dir.join("current").exists(),
-        "no `current` symlink / session-dir scaffolding is written into the workspace (the pollution resume_or_create_session(cwd) would have caused)"
+        "no `current` symlink / session-dir scaffolding is written into the workspace (the pollution resume_or_create_data_dir(cwd) would have caused)"
     );
 }
 

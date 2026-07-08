@@ -1,4 +1,4 @@
-use super::helpers::get_session_dir;
+use super::helpers::get_data_dir;
 
 pub(in crate::bridge) async fn handle_save_bookmark(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -6,7 +6,7 @@ pub(in crate::bridge) async fn handle_save_bookmark(
     name: &str,
 ) -> Result<String, String> {
     use crate::bookmark::{Bookmark, save_bookmark};
-    let session_dir = get_session_dir().await?;
+    let data_dir = get_data_dir().await?;
     let bookmark = Bookmark {
         current_task: args
             .get("current_task")
@@ -44,6 +44,6 @@ pub(in crate::bridge) async fn handle_save_bookmark(
         last_updated: chrono::Utc::now().to_rfc3339(),
     };
     let role = name.split(':').next().unwrap_or(name);
-    save_bookmark(&session_dir, role, &bookmark).map_err(|e| format!("save failed: {e}"))?;
+    save_bookmark(&data_dir, role, &bookmark).map_err(|e| format!("save failed: {e}"))?;
     Ok("bookmark saved".to_string())
 }

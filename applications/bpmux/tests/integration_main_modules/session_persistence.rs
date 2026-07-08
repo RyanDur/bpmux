@@ -6,7 +6,7 @@
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 #[test]
 fn messages_persist_across_session_resumes() {
-    use bpmux::location::resume_or_create_session;
+    use bpmux::location::resume_or_create_data_dir;
     use bpmux::log::{append_message, read_messages};
     use bpmux::message::Message;
     use chrono::Utc;
@@ -15,7 +15,7 @@ fn messages_persist_across_session_resumes() {
     let base = TempDir::new().expect("temp base");
 
     // First "run": create session, write messages
-    let session1 = resume_or_create_session(base.path()).expect("create session");
+    let session1 = resume_or_create_data_dir(base.path()).expect("create session");
     let msg1 = Message {
         from: "owner:human".to_string(),
         text: "first session message".to_string(),
@@ -32,7 +32,7 @@ fn messages_persist_across_session_resumes() {
     append_message(&session1, &msg2).expect("append 2");
 
     // Second "run": resume session, verify messages are there
-    let session2 = resume_or_create_session(base.path()).expect("resume session");
+    let session2 = resume_or_create_data_dir(base.path()).expect("resume session");
 
     // Should be the same directory
     assert_eq!(

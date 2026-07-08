@@ -83,16 +83,16 @@ pub fn migrate_file_log_to_sqlite(dir: &Path) -> Result<MigrationReport, Migrati
 }
 
 pub fn migrate_routing_identity_to_agents(
-    session_dir: &Path,
+    data_dir: &Path,
 ) -> Result<RoutingMigrationReport, MigrationError> {
-    let target = SqliteStorage::new(session_dir.to_path_buf())?;
+    let target = SqliteStorage::new(data_dir.to_path_buf())?;
     if target.load_state(ROUTING_FLAG_KEY).as_deref() == Some(MIGRATION_DONE) {
         return Ok(RoutingMigrationReport {
             migrated: 0,
             already_complete: true,
         });
     }
-    let base = session_dir.parent().unwrap_or(session_dir);
+    let base = data_dir.parent().unwrap_or(data_dir);
     let legacy: LegacyRoutingIdentity = std::fs::read_to_string(base.join(ROUTING_JSON_FILE))
         .ok()
         .and_then(|json| serde_json::from_str(&json).ok())

@@ -135,7 +135,7 @@ impl TestBpmux {
             "BPMUX_PRIORITY_PATH",
             session_dir.path().join("priority.json"),
         );
-        cmd.env("BPMUX_SESSIONS_BASE", session_dir.path());
+        cmd.env("BPMUX_DATA_BASE", session_dir.path());
         cmd.env("BPMUX_BRIEFINGS_DIR", session_dir.path().join("briefings"));
         cmd.env(
             "BPMUX_LOG",

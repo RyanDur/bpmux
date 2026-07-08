@@ -7,7 +7,7 @@ pub(super) fn resolve_session_base(
         Some(path) => Ok(std::path::PathBuf::from(path)),
         None => match std::env::var("BPMUX_SESSION_BASE") {
             Ok(path) => Ok(std::path::PathBuf::from(path)),
-            Err(_) => Ok(location::default_sessions_base()?),
+            Err(_) => Ok(location::default_data_base()?),
         },
     }
 }

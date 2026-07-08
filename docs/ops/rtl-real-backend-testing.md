@@ -47,7 +47,7 @@ migrated spec retains its capability-statement.
    - Spawns one `target/debug/bpmux server` subprocess for the test-run
    - Env: `BPMUX_TEST_MODE=1` (InMemorySourceAdapter, no real GitHub),
      `BPMUX_STORAGE_BACKEND=memory` (#1289), plus the established per-
-     test isolation env-vars (BPMUX_AUTH_TOKEN_PATH, BPMUX_SESSIONS_BASE,
+     test isolation env-vars (BPMUX_AUTH_TOKEN_PATH, BPMUX_DATA_BASE,
      BPMUX_PRIORITY_PATH, BPMUX_USAGE_PATH, BPMUX_BOARD_STORE_PATH,
      BPMUX_BOARD_OUTBOX_PATH) pointed at a tempdir
    - Waits for `GET /api/board` to respond before yielding

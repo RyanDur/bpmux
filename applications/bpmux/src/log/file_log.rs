@@ -12,12 +12,12 @@ pub enum LogError {
     Json(#[from] serde_json::Error),
 }
 
-pub fn log_path(session_dir: &Path) -> PathBuf {
-    session_dir.join("messages-current.jsonl")
+pub fn log_path(data_dir: &Path) -> PathBuf {
+    data_dir.join("messages-current.jsonl")
 }
 
-pub fn append_message(session_dir: &Path, message: &Message) -> Result<(), LogError> {
-    let path = log_path(session_dir);
+pub fn append_message(data_dir: &Path, message: &Message) -> Result<(), LogError> {
+    let path = log_path(data_dir);
     let mut line = serde_json::to_string(message)?;
     line.push('\n');
     use std::io::Write;
@@ -30,8 +30,8 @@ pub fn append_message(session_dir: &Path, message: &Message) -> Result<(), LogEr
     Ok(())
 }
 
-pub fn read_messages(session_dir: &Path) -> Result<Vec<Message>, LogError> {
-    let path = log_path(session_dir);
+pub fn read_messages(data_dir: &Path) -> Result<Vec<Message>, LogError> {
+    let path = log_path(data_dir);
     if !path.exists() {
         return Ok(vec![]);
     }
@@ -45,13 +45,13 @@ pub fn read_messages(session_dir: &Path) -> Result<Vec<Message>, LogError> {
 }
 
 pub fn read_recent(
-    session_dir: &Path,
+    data_dir: &Path,
     limit: usize,
     offset: usize,
     matches: &dyn Fn(&Message) -> bool,
 ) -> Result<Vec<Message>, LogError> {
     let want = limit.saturating_add(offset);
-    let path = log_path(session_dir);
+    let path = log_path(data_dir);
     if want == 0 || !path.exists() {
         return Ok(vec![]);
     }
