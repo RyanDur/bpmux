@@ -1,8 +1,8 @@
 use std::time::Duration;
 use tokio::time::Instant;
 
+use crate::hub::Hub;
 use crate::message::{Message, MessageType};
-use crate::session::Session;
 
 use super::agents::AgentTracker;
 
@@ -71,12 +71,12 @@ impl HandoffTracker {
         self.pending.as_ref().map(|h| h.when + HANDOFF_TIMEOUT)
     }
 
-    pub fn timeout_nudge(&mut self, session: &Session) {
+    pub fn timeout_nudge(&mut self, hub: &Hub) {
         let Some(h) = self.pending.take() else {
             return;
         };
         const RESPONSE_SCAN_WINDOW: usize = 200;
-        if let Ok(messages) = session.read_recent(RESPONSE_SCAN_WINDOW, 0, &|_| true) {
+        if let Ok(messages) = hub.read_recent(RESPONSE_SCAN_WINDOW, 0, &|_| true) {
             let recipient_responded = messages.iter().any(|m| {
                 if !m.is_chat() {
                     return false;
@@ -100,7 +100,7 @@ impl HandoffTracker {
             to: Some(vec![h.to]),
             ..Message::default()
         };
-        let _ = session.broadcast(&nudge);
+        let _ = hub.broadcast(&nudge);
     }
 }
 

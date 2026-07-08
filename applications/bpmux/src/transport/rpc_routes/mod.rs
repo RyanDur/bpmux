@@ -6,7 +6,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use serde_json::Value;
 
-use crate::session;
+use crate::hub;
 use crate::sync::OrchestratorHandle;
 
 mod state_delta;
@@ -25,7 +25,7 @@ pub use validation::{AGENT_HEADER, agent_from_headers};
 use validation::{args_from_value, is_read_only_tool};
 
 pub async fn post_rpc_tool(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     axum::Extension(select): axum::Extension<crate::store::Select>,
@@ -83,29 +83,19 @@ pub async fn post_rpc_tool(
     let prior_state = transition_id
         .filter(|_| !is_read_only_tool(&tool))
         .and_then(|id| story_state_label(&refresh, id));
-    match dispatch(
-        &refresh,
-        &tool,
-        &agent,
-        args,
-        &session,
-        &dispatcher,
-        &select,
-    )
-    .await
-    {
+    match dispatch(&refresh, &tool, &agent, args, &hub, &dispatcher, &select).await {
         Ok(message) => {
             if tool == "view_backlog" {
-                fire_view_backlog_marker(&session);
+                fire_view_backlog_marker(&hub);
             } else if !is_read_only_tool(&tool) {
-                fire_board_invalidate(&session);
-                fire_stories(&session, &refresh);
+                fire_board_invalidate(&hub);
+                fire_stories(&hub, &refresh);
                 if let (Some(id), Some(from_state)) = (transition_id, prior_state)
                     && let Some(target_state) =
                         declared_target_state.or_else(|| story_state_label(&refresh, id))
                     && target_state != from_state
                 {
-                    fire_story_transition(&session, id, from_state, target_state, &agent);
+                    fire_story_transition(&hub, id, from_state, target_state, &agent);
                 }
             }
             (

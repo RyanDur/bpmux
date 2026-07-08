@@ -98,8 +98,8 @@ pub(crate) async fn dispatch_view_backlog(
 
 pub(crate) async fn dispatch_view_verdicts(
     args: serde_json::Map<String, serde_json::Value>,
-    session: &Arc<crate::session::Session>,
+    hub: &Arc<crate::hub::Hub>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
-    tools::handle_view_verdicts(&args, session, refresh).await
+    tools::handle_view_verdicts(&args, hub, refresh).await
 }

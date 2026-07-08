@@ -7,7 +7,7 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 
 use super::shared::{broadcast_board_invalidate, broadcast_stories, err_body, json_headers};
-use crate::session;
+use crate::hub;
 
 #[derive(Deserialize)]
 pub struct AcceptPayload {
@@ -19,7 +19,7 @@ pub struct AcceptPayload {
 }
 
 pub async fn post_accept_story(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
     axum::extract::Path(number): axum::extract::Path<u64>,
     Json(payload): Json<AcceptPayload>,
@@ -61,8 +61,8 @@ pub async fn post_accept_story(
     .await
     {
         Ok(()) => {
-            broadcast_board_invalidate(&session);
-            broadcast_stories(&session, &refresh);
+            broadcast_board_invalidate(&hub);
+            broadcast_stories(&hub, &refresh);
             (
                 StatusCode::OK,
                 json_headers(),
@@ -83,7 +83,7 @@ pub struct RejectPayload {
 }
 
 pub async fn post_reject_story(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
     axum::extract::Path(number): axum::extract::Path<u64>,
     Json(payload): Json<RejectPayload>,
@@ -112,8 +112,8 @@ pub async fn post_reject_story(
     .await
     {
         Ok(()) => {
-            broadcast_board_invalidate(&session);
-            broadcast_stories(&session, &refresh);
+            broadcast_board_invalidate(&hub);
+            broadcast_stories(&hub, &refresh);
             (
                 StatusCode::OK,
                 json_headers(),

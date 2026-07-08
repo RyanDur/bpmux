@@ -121,20 +121,16 @@ fn classify_log_does_not_affect_classification_behavior() {
 use super::awareness::handoff::HandoffTracker;
 use crate::comprehension::bayes::BayesModel;
 use crate::comprehension::classifier::MessageClass;
-use crate::session::Session;
+use crate::hub::Hub;
 use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::sync::broadcast;
 
-fn make_session() -> (Arc<Session>, broadcast::Receiver<Message>, TempDir) {
+fn make_hub() -> (Arc<Hub>, broadcast::Receiver<Message>, TempDir) {
     let dir = TempDir::new().unwrap();
     let (tx, rx) = broadcast::channel(64);
-    let session = Arc::new(Session::new(
-        dir.path().to_path_buf(),
-        "owner".to_string(),
-        tx,
-    ));
-    (session, rx, dir)
+    let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "owner".to_string(), tx));
+    (hub, rx, dir)
 }
 
 fn drain_broadcasts(rx: &mut broadcast::Receiver<Message>) -> Vec<Message> {
@@ -147,7 +143,7 @@ fn drain_broadcasts(rx: &mut broadcast::Receiver<Message>) -> Vec<Message> {
 
 #[test]
 fn flush_excludes_recipient_own_messages() {
-    let (session, mut rx, _dir) = make_session();
+    let (hub, mut rx, _dir) = make_hub();
 
     let mut agents = AgentTracker::new("owner");
     agents.on_message(&system_join("dev:claude-code"));
@@ -175,7 +171,7 @@ fn flush_excludes_recipient_own_messages() {
         "precondition: detector should have pending experiences after feeding corrections"
     );
 
-    detector.flush(&session, &agents);
+    detector.flush(&hub, &agents);
 
     let nudges = drain_broadcasts(&mut rx);
     assert!(!nudges.is_empty(), "expected at least one nudge");
@@ -218,7 +214,7 @@ fn flush_excludes_recipient_own_messages() {
 
 #[test]
 fn flush_skips_recipients_with_only_own_experiences() {
-    let (session, mut rx, _dir) = make_session();
+    let (hub, mut rx, _dir) = make_hub();
     let mut agents = AgentTracker::new("owner");
     agents.on_message(&system_join("pm:claude-code"));
     agents.on_message(&system_join("dev:claude-code"));
@@ -231,7 +227,7 @@ fn flush_skips_recipients_with_only_own_experiences() {
         ),
         "pm",
     );
-    detector.flush(&session, &agents);
+    detector.flush(&hub, &agents);
 
     let nudges = drain_broadcasts(&mut rx);
     let pm_nudge = nudges
@@ -306,7 +302,7 @@ fn bayes_classify_returns_routine_for_non_chat_type() {
 
 #[test]
 fn handoff_nudge_suppressed_when_recipient_already_responded() {
-    let (session, mut rx, _dir) = make_session();
+    let (hub, mut rx, _dir) = make_hub();
 
     let mut agents = AgentTracker::new("owner");
     agents.on_message(&system_join("designer:claude-code"));
@@ -316,7 +312,7 @@ fn handoff_nudge_suppressed_when_recipient_already_responded() {
         "dev:claude-code",
         "designer, please review the new spec when you get a chance",
     );
-    let _ = session.broadcast(&handoff_msg);
+    let _ = hub.broadcast(&handoff_msg);
 
     let mut tracker = HandoffTracker::new();
     tracker.on_message(&handoff_msg, "dev", &agents, "owner");
@@ -331,11 +327,11 @@ fn handoff_nudge_suppressed_when_recipient_already_responded() {
         ts: handoff_msg.ts + chrono::Duration::seconds(5),
         ..Message::default()
     };
-    let _ = session.broadcast(&ack_msg);
+    let _ = hub.broadcast(&ack_msg);
 
     let _ = drain_broadcasts(&mut rx);
 
-    tracker.timeout_nudge(&session);
+    tracker.timeout_nudge(&hub);
 
     let broadcasts_after = drain_broadcasts(&mut rx);
     let suppressed = !broadcasts_after
@@ -349,7 +345,7 @@ fn handoff_nudge_suppressed_when_recipient_already_responded() {
 
 #[test]
 fn handoff_nudge_fires_when_recipient_silent() {
-    let (session, mut rx, _dir) = make_session();
+    let (hub, mut rx, _dir) = make_hub();
     let mut agents = AgentTracker::new("owner");
     agents.on_message(&system_join("designer:claude-code"));
     agents.on_message(&system_join("dev:claude-code"));
@@ -358,14 +354,14 @@ fn handoff_nudge_fires_when_recipient_silent() {
         "dev:claude-code",
         "designer, please desk check this change when you have time",
     );
-    let _ = session.broadcast(&handoff_msg);
+    let _ = hub.broadcast(&handoff_msg);
 
     let mut tracker = HandoffTracker::new();
     tracker.on_message(&handoff_msg, "dev", &agents, "owner");
     assert!(tracker.is_pending());
 
     let _ = drain_broadcasts(&mut rx);
-    tracker.timeout_nudge(&session);
+    tracker.timeout_nudge(&hub);
 
     let broadcasts_after = drain_broadcasts(&mut rx);
     let fired = broadcasts_after

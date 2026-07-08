@@ -16,7 +16,7 @@ pub(crate) async fn dispatch_close_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
-    session: &Arc<crate::session::Session>,
+    hub: &Arc<crate::hub::Hub>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     tools_stories::helpers::require_purpose(agent_name, &["pm"], "close iteration")?;
@@ -25,7 +25,7 @@ pub(crate) async fn dispatch_close_iteration(
         .get("iteration_id")
         .and_then(|v| v.as_u64())
         .ok_or("close_iteration requires iteration_id (canonical Iteration issue#).")?;
-    crate::transport::rest::iteration_close::close_iteration(session, r, dispatch, iteration_id)
+    crate::transport::rest::iteration_close::close_iteration(hub, r, dispatch, iteration_id)
         .await
         .map_err(|e| match e {
             CloseIterationError::NotAnIteration(id) => {

@@ -28,7 +28,7 @@ pub(super) fn handle_send(
         explicit_privacy,
         ..crate::message::Message::default()
     };
-    ctx.session.broadcast(&msg)?;
+    ctx.hub.broadcast(&msg)?;
     Ok(())
 }
 
@@ -92,9 +92,7 @@ pub(super) async fn handle_reaction_toggle(
         emoji,
         user,
     };
-    if let Err(e) =
-        crate::transport::rest::apply_reaction_toggle(ctx.session, ctx.store, &body).await
-    {
+    if let Err(e) = crate::transport::rest::apply_reaction_toggle(ctx.hub, ctx.store, &body).await {
         send_json(
             tx,
             &ServerMessage::Error {

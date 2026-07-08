@@ -2,7 +2,7 @@ use serde::Serialize;
 
 mod listeners;
 
-pub use listeners::RosterSessionBroadcaster;
+pub use listeners::RosterHubBroadcaster;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, serde::Deserialize)]
 pub enum RosterRole {

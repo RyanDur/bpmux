@@ -2,8 +2,8 @@ use std::time::Duration;
 use tokio::time::Instant;
 
 use crate::comprehension::classifier;
+use crate::hub::Hub;
 use crate::message::Message;
-use crate::session::Session;
 
 use super::agents::AgentTracker;
 
@@ -25,13 +25,7 @@ impl PileonDetector {
         }
     }
 
-    pub fn on_message(
-        &mut self,
-        session: &Session,
-        msg: &Message,
-        sender: &str,
-        _agents: &AgentTracker,
-    ) {
+    pub fn on_message(&mut self, hub: &Hub, msg: &Message, sender: &str, _agents: &AgentTracker) {
         if !msg.is_chat() {
             return;
         }
@@ -63,7 +57,7 @@ impl PileonDetector {
                     to: Some(self.responders.clone()),
                     ..Message::default()
                 };
-                let _ = session.broadcast(&nudge);
+                let _ = hub.broadcast(&nudge);
                 self.window_start = None;
                 self.responders.clear();
             }

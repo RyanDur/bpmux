@@ -6,7 +6,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use crate::session;
+use crate::hub;
 
 #[derive(Deserialize)]
 pub struct ClassifierMisfire {
@@ -17,7 +17,7 @@ pub struct ClassifierMisfire {
 }
 
 pub async fn post_classifier_misfire(
-    State(_session): State<Arc<session::Session>>,
+    State(_hub): State<Arc<hub::Hub>>,
     Json(payload): Json<ClassifierMisfire>,
 ) -> impl IntoResponse {
     let reason_field = payload

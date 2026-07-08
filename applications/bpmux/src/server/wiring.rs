@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use crate::ci::CiStateStore;
+use crate::hub;
 use crate::room::{CommitmentStore, LivePtyRegistry};
 use crate::routing::RoutingStore;
-use crate::session;
 use crate::store::Store;
 use crate::transport;
 use crate::transport::auth::AuthState;
@@ -14,7 +14,7 @@ use crate::sync::OrchestratorHandle;
 pub(super) struct RouterDeps {
     pub auth_state: AuthState,
     pub unfurl_cache: transport::unfurl::UnfurlCacheHandle,
-    pub session: Arc<session::Session>,
+    pub hub: Arc<hub::Hub>,
     pub tracker: transport::rest::TrackerHandle,
     pub ci_state_store: CiStateStore,
     pub ci_log_store: CiLogStore,
@@ -32,7 +32,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
     let RouterDeps {
         auth_state,
         unfurl_cache,
-        session,
+        hub,
         tracker,
         ci_state_store,
         ci_log_store,
@@ -97,7 +97,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         .merge(gated_routes)
         .merge(test_routes)
         .merge(test_seed_routes)
-        .with_state(session)
+        .with_state(hub)
         .layer(axum::Extension(tracker))
         .layer(axum::Extension(ci_state_store))
         .layer(axum::Extension(ci_log_store))

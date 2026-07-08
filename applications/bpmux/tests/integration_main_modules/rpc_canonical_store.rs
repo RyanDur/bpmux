@@ -29,9 +29,9 @@ use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
 use bpmux::auth as auth_token;
+use bpmux::hub::Hub;
 use bpmux::integrations::in_memory::InMemorySourceAdapter;
 use bpmux::product_management::story::{Story, StoryId, Work};
-use bpmux::session::Session;
 use bpmux::sync::{RefreshDriver, SyncOrchestrator};
 use bpmux::transport::auth::{AuthState, gate};
 use bpmux::transport::rpc_routes::post_rpc_tool;
@@ -87,15 +87,15 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
     let refresh: Arc<dyn RefreshDriver> = orch.clone();
     let test_refresh: Option<Arc<dyn RefreshDriver>> = Some(Arc::clone(&refresh));
 
-    let session_dir = tempfile::tempdir().expect("session dir");
+    let hub_dir = tempfile::tempdir().expect("hub dir");
     let (wake_tx, _) = broadcast::channel(64);
-    let session = Arc::new(Session::new(
-        session_dir.path().to_path_buf(),
+    let hub = Arc::new(Hub::new(
+        hub_dir.path().to_path_buf(),
         "test".to_string(),
         wake_tx,
     ));
     let app_store = Arc::new(bpmux::store::Store::new(
-        session.clone(),
+        hub.clone(),
         None,
         bpmux::ci::CiStateStore::new(),
         CancellationToken::new(),
@@ -114,7 +114,7 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
 
     let app = axum::Router::new()
         .merge(gated)
-        .with_state(Arc::clone(&session))
+        .with_state(Arc::clone(&hub))
         .layer(Extension(test_refresh))
         .layer(Extension(dispatch))
         .layer(Extension(app_store.selector()));

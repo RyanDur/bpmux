@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use crate::ci::CiStateStore;
 use crate::ci::RunEntry;
+use crate::hub;
 use crate::message::{CiSnapshotWire, StateDeltaPayload};
-use crate::session;
 use crate::transport::state_delta::broadcast_state_delta;
 
 use super::{CiBroadcastListener, CiSnapshot};
@@ -34,21 +34,21 @@ impl CiBroadcastListener for CiStateStoreWriter {
     }
 }
 
-pub struct CiSessionBroadcaster {
-    session: Arc<session::Session>,
+pub struct CiHubBroadcaster {
+    hub: Arc<hub::Hub>,
 }
 
-impl CiSessionBroadcaster {
-    pub fn new(session: Arc<session::Session>) -> Self {
-        Self { session }
+impl CiHubBroadcaster {
+    pub fn new(hub: Arc<hub::Hub>) -> Self {
+        Self { hub }
     }
 }
 
-impl CiBroadcastListener for CiSessionBroadcaster {
+impl CiBroadcastListener for CiHubBroadcaster {
     fn on_changed(&self, snap: &CiSnapshot) {
         let event = snap.to_ci_event();
         broadcast_state_delta(
-            &self.session,
+            &self.hub,
             StateDeltaPayload::Ci {
                 snapshot: ci_to_wire(snap),
             },
@@ -66,11 +66,11 @@ impl CiBroadcastListener for CiSessionBroadcaster {
             multi_depth: Some(multi_depth),
             ..crate::message::Message::default()
         };
-        if let Err(e) = self.session.broadcast(&activity_msg) {
+        if let Err(e) = self.hub.broadcast(&activity_msg) {
             crate::diag::log_diag(&format!("ci_listener: activity broadcast failed: {e}"));
         }
         let dev_signal = crate::ci::build_dev_ci_signal(&text);
-        if let Err(e) = self.session.broadcast(&dev_signal) {
+        if let Err(e) = self.hub.broadcast(&dev_signal) {
             crate::diag::log_diag(&format!("ci_listener: dev signal failed: {e}"));
         }
     }

@@ -8,12 +8,12 @@ use chrono::Utc;
 use serde::Deserialize;
 
 use crate::bridge;
+use crate::hub;
 use crate::message::{Message, MessageType};
-use crate::session;
 use crate::sync::OrchestratorHandle;
 use crate::sync::RefreshDriver;
 
-fn fire_board_invalidate(session: &Arc<session::Session>) {
+fn fire_board_invalidate(hub: &Arc<hub::Hub>) {
     let delta = Message {
         from: "bpmux".to_string(),
         text: String::new(),
@@ -24,7 +24,7 @@ fn fire_board_invalidate(session: &Arc<session::Session>) {
         }),
         ..Default::default()
     };
-    if let Err(e) = session.broadcast(&delta) {
+    if let Err(e) = hub.broadcast(&delta) {
         crate::diag::log_diag(&format!(
             "test-route: board_invalidated state-delta broadcast failed: {e}"
         ));
@@ -49,21 +49,21 @@ fn put_num(args: &mut serde_json::Map<String, serde_json::Value>, key: &str, val
 }
 
 async fn run_test_route<F, Fut>(
-    session: Arc<session::Session>,
+    hub: Arc<hub::Hub>,
     refresh: OrchestratorHandle,
     dispatch: F,
 ) -> (StatusCode, Json<serde_json::Value>)
 where
-    F: FnOnce(Arc<dyn RefreshDriver>, Arc<session::Session>) -> Fut,
+    F: FnOnce(Arc<dyn RefreshDriver>, Arc<hub::Hub>) -> Fut,
     Fut: std::future::Future<Output = Result<String, String>>,
 {
     let Some(refresh) = refresh else {
         return test_route_unavailable();
     };
-    match dispatch(refresh.clone(), session.clone()).await {
+    match dispatch(refresh.clone(), hub.clone()).await {
         Ok(message) => {
-            fire_board_invalidate(&session);
-            crate::transport::rest::shared::broadcast_stories(&session, &refresh);
+            fire_board_invalidate(&hub);
+            crate::transport::rest::shared::broadcast_stories(&hub, &refresh);
             (
                 StatusCode::OK,
                 Json(serde_json::json!({ "message": message })),
@@ -88,12 +88,12 @@ pub struct CreateStoryReq {
 }
 
 pub async fn post_test_create_story(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     Json(req): Json<CreateStoryReq>,
 ) -> impl IntoResponse {
-    run_test_route(session, refresh, |refresh, _session| async move {
+    run_test_route(hub, refresh, |refresh, _hub| async move {
         let mut args = serde_json::Map::new();
         put_str(&mut args, "title", req.title);
         put_str(&mut args, "user_job", req.user_job);
@@ -125,12 +125,12 @@ pub struct CreateIterationReq {
 }
 
 pub async fn post_test_create_iteration(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     Json(req): Json<CreateIterationReq>,
 ) -> impl IntoResponse {
-    run_test_route(session, refresh, |refresh, _session| async move {
+    run_test_route(hub, refresh, |refresh, _hub| async move {
         let mut args = serde_json::Map::new();
         put_str(&mut args, "name", req.name);
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
@@ -146,7 +146,7 @@ pub struct DesignateCurrentIterationReq {
 }
 
 pub async fn post_test_designate_current_iteration(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     Json(req): Json<DesignateCurrentIterationReq>,
@@ -173,8 +173,8 @@ pub async fn post_test_designate_current_iteration(
                     })),
                 );
             }
-            fire_board_invalidate(&session);
-            crate::transport::rest::shared::broadcast_stories(&session, &refresh);
+            fire_board_invalidate(&hub);
+            crate::transport::rest::shared::broadcast_stories(&hub, &refresh);
             (
                 StatusCode::OK,
                 Json(serde_json::json!({ "message": message })),
@@ -197,12 +197,12 @@ pub struct MoveStoryReq {
 }
 
 pub async fn post_test_move_story(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     Json(req): Json<MoveStoryReq>,
 ) -> impl IntoResponse {
-    run_test_route(session, refresh, |refresh, _session| async move {
+    run_test_route(hub, refresh, |refresh, _hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "id", req.id);
         put_str(&mut args, "target_state", req.target_state);
@@ -225,12 +225,12 @@ pub struct EditStoryReq {
 }
 
 pub async fn post_test_edit_story(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     Json(req): Json<EditStoryReq>,
 ) -> impl IntoResponse {
-    run_test_route(session, refresh, |refresh, _session| async move {
+    run_test_route(hub, refresh, |refresh, _hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "id", req.id);
         if let Some(t) = req.title {
@@ -253,11 +253,11 @@ pub struct CommentOnStoryReq {
 }
 
 pub async fn post_test_comment_on_story(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<CommentOnStoryReq>,
 ) -> impl IntoResponse {
-    run_test_route(session, refresh, |refresh, _session| async move {
+    run_test_route(hub, refresh, |refresh, _hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "id", req.id);
         put_str(&mut args, "body", req.body);
@@ -276,17 +276,17 @@ pub struct StartStoryReq {
 }
 
 pub async fn post_test_start_story(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<StartStoryReq>,
 ) -> impl IntoResponse {
-    run_test_route(session, refresh, |refresh, session| async move {
+    run_test_route(hub, refresh, |refresh, hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "id", req.id);
         put_str(&mut args, "pickup_paraphrase", req.pickup_paraphrase);
         put_str(&mut args, "falsifier_reframing", req.falsifier_reframing);
         let agent = req.agent.unwrap_or_else(|| "dev:test".to_string());
-        bridge::dispatch_start_story(args, &agent, Some(&refresh), &session).await
+        bridge::dispatch_start_story(args, &agent, Some(&refresh), &hub).await
     })
     .await
 }
@@ -299,16 +299,16 @@ pub struct FailDeskCheckReq {
 }
 
 pub async fn post_test_fail_desk_check(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<FailDeskCheckReq>,
 ) -> impl IntoResponse {
-    run_test_route(session, refresh, |refresh, session| async move {
+    run_test_route(hub, refresh, |refresh, hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "id", req.id);
         put_str(&mut args, "reason", req.reason);
         let agent = req.agent.unwrap_or_else(|| "designer:test".to_string());
-        bridge::dispatch_fail_desk_check(args, &agent, Some(&refresh), &session).await
+        bridge::dispatch_fail_desk_check(args, &agent, Some(&refresh), &hub).await
     })
     .await
 }
@@ -320,15 +320,15 @@ pub struct AcceptStoryReq {
 }
 
 pub async fn post_test_accept_story(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<AcceptStoryReq>,
 ) -> impl IntoResponse {
-    run_test_route(session, refresh, |refresh, session| async move {
+    run_test_route(hub, refresh, |refresh, hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "id", req.id);
         let agent = req.agent.unwrap_or_else(|| "owner:test".to_string());
-        bridge::dispatch_accept_story(args, &agent, Some(&refresh), &session).await
+        bridge::dispatch_accept_story(args, &agent, Some(&refresh), &hub).await
     })
     .await
 }
@@ -341,16 +341,16 @@ pub struct DeliverStoryReq {
 }
 
 pub async fn post_test_deliver_story(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<DeliverStoryReq>,
 ) -> impl IntoResponse {
-    run_test_route(session, refresh, |refresh, session| async move {
+    run_test_route(hub, refresh, |refresh, hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "id", req.id);
         put_str(&mut args, "verified_observation", req.verified_observation);
         let agent = req.agent.unwrap_or_else(|| "dev:test".to_string());
-        bridge::dispatch_deliver_story(args, &agent, Some(&refresh), &session).await
+        bridge::dispatch_deliver_story(args, &agent, Some(&refresh), &hub).await
     })
     .await
 }
@@ -364,11 +364,11 @@ pub struct CloseStoryReq {
 }
 
 pub async fn post_test_close_story(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<CloseStoryReq>,
 ) -> impl IntoResponse {
-    run_test_route(session, refresh, |refresh, _session| async move {
+    run_test_route(hub, refresh, |refresh, _hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "id", req.id);
         put_str(&mut args, "reason", req.reason);
@@ -388,16 +388,16 @@ pub struct CloseIterationReq {
 }
 
 pub async fn post_test_close_iteration(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     Json(req): Json<CloseIterationReq>,
 ) -> impl IntoResponse {
-    run_test_route(session, refresh, |refresh, session| async move {
+    run_test_route(hub, refresh, |refresh, hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "iteration_id", req.iteration_id);
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-        bridge::dispatch_close_iteration(args, &agent, Some(&refresh), &session, &dispatcher).await
+        bridge::dispatch_close_iteration(args, &agent, Some(&refresh), &hub, &dispatcher).await
     })
     .await
 }
@@ -454,7 +454,7 @@ pub struct FireSyncStatusReq {
 }
 
 pub async fn post_test_fire_sync_status(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     Json(req): Json<FireSyncStatusReq>,
 ) -> impl IntoResponse {
@@ -484,8 +484,8 @@ pub async fn post_test_fire_sync_status(
         let status = handle.lock().unwrap_or_else(|e| e.into_inner());
         status.clone()
     };
-    crate::bridge::polling::broadcast_sync_status_heartbeat(&session, &snapshot);
-    crate::bridge::polling::broadcast_sync_status_transition(&session, &snapshot);
+    crate::bridge::polling::broadcast_sync_status_heartbeat(&hub, &snapshot);
+    crate::bridge::polling::broadcast_sync_status_transition(&hub, &snapshot);
     (
         StatusCode::OK,
         Json(serde_json::json!({ "dispatched": true })),

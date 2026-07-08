@@ -10,18 +10,18 @@ use tokio::sync::broadcast;
 use tower::ServiceExt;
 
 use super::{init_session, seed_messages, seed_mixed_messages, test_app};
+use crate::hub;
 use crate::message::MessageType;
-use crate::session;
 use crate::transport::rest::*;
 
 #[tokio::test]
 async fn chat_only_excludes_activity_by_default() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let session = seed_mixed_messages(&dir);
+    let hub = seed_mixed_messages(&dir);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
-        .with_state(session);
+        .with_state(hub);
     let request = Request::builder()
         .method("GET")
         .uri("/api/messages?limit=50")
@@ -40,10 +40,10 @@ async fn chat_only_excludes_activity_by_default() {
 async fn chat_only_false_returns_all() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let session = seed_mixed_messages(&dir);
+    let hub = seed_mixed_messages(&dir);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
-        .with_state(session);
+        .with_state(hub);
     let request = Request::builder()
         .method("GET")
         .uri("/api/messages?limit=50&chat_only=false")
@@ -61,10 +61,10 @@ async fn chat_only_false_returns_all() {
 async fn message_type_filter_returns_only_matching_type() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let session = seed_mixed_messages(&dir);
+    let hub = seed_mixed_messages(&dir);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
-        .with_state(session);
+        .with_state(hub);
     let request = Request::builder()
         .method("GET")
         .uri("/api/messages?limit=50&message_type=activity")
@@ -86,10 +86,10 @@ async fn message_type_filter_returns_only_matching_type() {
 async fn defaults_to_twenty_messages() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let session = seed_messages(&dir, 25);
+    let hub = seed_messages(&dir, 25);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
-        .with_state(session);
+        .with_state(hub);
     let request = Request::builder()
         .method("GET")
         .uri("/api/messages")
@@ -109,7 +109,7 @@ async fn classifier_misfire_accepts_post_with_reason() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(session::Session::new(
+    let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),
         "test".to_string(),
         tx,
@@ -119,7 +119,7 @@ async fn classifier_misfire_accepts_post_with_reason() {
             "/api/classifier-misfire",
             axum::routing::post(post_classifier_misfire),
         )
-        .with_state(session);
+        .with_state(hub);
     let request = Request::builder()
         .method("POST")
         .uri("/api/classifier-misfire")
@@ -137,7 +137,7 @@ async fn classifier_misfire_accepts_post_without_reason() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(session::Session::new(
+    let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),
         "test".to_string(),
         tx,
@@ -147,7 +147,7 @@ async fn classifier_misfire_accepts_post_without_reason() {
             "/api/classifier-misfire",
             axum::routing::post(post_classifier_misfire),
         )
-        .with_state(session);
+        .with_state(hub);
     let request = Request::builder()
         .method("POST")
         .uri("/api/classifier-misfire")
@@ -200,9 +200,9 @@ async fn post_message_accepts_chat_message_type() {
     assert_eq!(msg.text, "hello");
 }
 
-fn seed_to_arity_messages(dir: &TempDir) -> Arc<session::Session> {
+fn seed_to_arity_messages(dir: &TempDir) -> Arc<hub::Hub> {
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(session::Session::new(
+    let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),
         "test".to_string(),
         tx,
@@ -229,20 +229,20 @@ fn seed_to_arity_messages(dir: &TempDir) -> Arc<session::Session> {
         explicit_privacy: true,
         ..crate::message::Message::default()
     };
-    session.broadcast(&broadcast_msg).expect("broadcast 1");
-    session.broadcast(&multi_recipient).expect("broadcast 2");
-    session.broadcast(&single_dm).expect("broadcast 3");
-    session
+    hub.broadcast(&broadcast_msg).expect("broadcast 1");
+    hub.broadcast(&multi_recipient).expect("broadcast 2");
+    hub.broadcast(&single_dm).expect("broadcast 3");
+    hub
 }
 
 #[tokio::test]
 async fn issue_1319_scenario_1_recipient_sees_multi_recipient_to_scoped_history() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let session = seed_to_arity_messages(&dir);
+    let hub = seed_to_arity_messages(&dir);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
-        .with_state(session);
+        .with_state(hub);
     let request = Request::builder()
         .method("GET")
         .uri("/api/messages?as=dev&limit=50")
@@ -272,10 +272,10 @@ async fn issue_1319_scenario_1_recipient_sees_multi_recipient_to_scoped_history(
 async fn issue_1319_scenario_2_non_recipient_does_not_see_to_scoped_history() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let session = seed_to_arity_messages(&dir);
+    let hub = seed_to_arity_messages(&dir);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
-        .with_state(session);
+        .with_state(hub);
     let request = Request::builder()
         .method("GET")
         .uri("/api/messages?as=qa&limit=50")
@@ -305,10 +305,10 @@ async fn issue_1319_scenario_2_non_recipient_does_not_see_to_scoped_history() {
 async fn issue_1319_scenario_3_owner_view_sees_all_messages_including_to_scoped() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let session = seed_to_arity_messages(&dir);
+    let hub = seed_to_arity_messages(&dir);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
-        .with_state(session);
+        .with_state(hub);
     let request = Request::builder()
         .method("GET")
         .uri("/api/messages?limit=50")
@@ -339,7 +339,7 @@ async fn issue_1568_full_identity_to_recipient_delivers_on_reload() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(session::Session::new(
+    let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),
         "test".to_string(),
         tx,
@@ -352,10 +352,10 @@ async fn issue_1568_full_identity_to_recipient_delivers_on_reload() {
         explicit_privacy: true,
         ..crate::message::Message::default()
     };
-    session.broadcast(&full_identity_dm).expect("broadcast");
+    hub.broadcast(&full_identity_dm).expect("broadcast");
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
-        .with_state(session);
+        .with_state(hub);
     let request = Request::builder()
         .method("GET")
         .uri("/api/messages?as=pm&limit=50")

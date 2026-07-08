@@ -7,8 +7,8 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 use tokio::sync::broadcast::error::RecvError;
 
+use crate::hub;
 use crate::routing::{RoutingStore, short_name};
-use crate::session;
 use crate::transport::ws::should_deliver;
 
 pub const DEFAULT_WAIT_TIMEOUT_MS: u64 = 30_000;
@@ -22,16 +22,16 @@ pub struct WaitParams {
 }
 
 pub async fn wait_for_event(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     Extension(routing): Extension<Arc<RoutingStore>>,
     Query(params): Query<WaitParams>,
 ) -> impl IntoResponse {
     let role = params.as_peer.clone().unwrap_or_default();
-    drain_or_block(&session, &routing, &params, &role).await
+    drain_or_block(&hub, &routing, &params, &role).await
 }
 
 async fn drain_or_block(
-    session: &session::Session,
+    hub: &hub::Hub,
     routing: &RoutingStore,
     params: &WaitParams,
     role: &str,
@@ -41,9 +41,9 @@ async fn drain_or_block(
         .as_deref()
         .and_then(|raw| raw.parse::<chrono::DateTime<chrono::Utc>>().ok());
 
-    let mut receiver = session.subscribe();
+    let mut receiver = hub.subscribe();
 
-    if let Some(event) = first_pending_after(session, after_cursor, role) {
+    if let Some(event) = first_pending_after(hub, after_cursor, role) {
         return (StatusCode::OK, event.to_string());
     }
 
@@ -58,7 +58,7 @@ async fn drain_or_block(
                     }
                 }
                 Err(RecvError::Lagged(_)) => {
-                    if let Some(event) = first_pending_after(session, after_cursor, role) {
+                    if let Some(event) = first_pending_after(hub, after_cursor, role) {
                         return (StatusCode::OK, event.to_string());
                     }
                 }
@@ -88,14 +88,12 @@ fn timed_out() -> (StatusCode, String) {
 }
 
 fn first_pending_after(
-    session: &session::Session,
+    hub: &hub::Hub,
     after_cursor: Option<chrono::DateTime<chrono::Utc>>,
     role: &str,
 ) -> Option<serde_json::Value> {
     const PENDING_SCAN_WINDOW: usize = 500;
-    let mut messages = session
-        .read_recent(PENDING_SCAN_WINDOW, 0, &|_| true)
-        .ok()?;
+    let mut messages = hub.read_recent(PENDING_SCAN_WINDOW, 0, &|_| true).ok()?;
     messages.reverse();
     messages
         .into_iter()

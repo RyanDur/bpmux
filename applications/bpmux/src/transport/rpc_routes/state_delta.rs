@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use chrono::Utc;
 
+use crate::hub;
 use crate::message::{Message, MessageType};
 use crate::message::{StateDeltaPayload, StoryTransitionWire};
-use crate::session;
 use crate::sync::RefreshDriver;
 
-pub(crate) fn fire_view_backlog_marker(session: &Arc<session::Session>) {
+pub(crate) fn fire_view_backlog_marker(hub: &Arc<hub::Hub>) {
     let msg = Message {
         from: "bpmux:rpc".to_string(),
         text: crate::bridge::VIEW_BACKLOG_MARKER.to_string(),
@@ -15,12 +15,12 @@ pub(crate) fn fire_view_backlog_marker(session: &Arc<session::Session>) {
         message_type: MessageType::System,
         ..Default::default()
     };
-    if let Err(e) = session.broadcast(&msg) {
+    if let Err(e) = hub.broadcast(&msg) {
         crate::diag::log_diag(&format!("rpc: VIEW_BACKLOG_MARKER broadcast failed: {e}"));
     }
 }
 
-pub(crate) fn fire_board_invalidate(session: &Arc<session::Session>) {
+pub(crate) fn fire_board_invalidate(hub: &Arc<hub::Hub>) {
     let delta = Message {
         from: "bpmux".to_string(),
         text: String::new(),
@@ -31,15 +31,15 @@ pub(crate) fn fire_board_invalidate(session: &Arc<session::Session>) {
         }),
         ..Default::default()
     };
-    if let Err(e) = session.broadcast(&delta) {
+    if let Err(e) = hub.broadcast(&delta) {
         crate::diag::log_diag(&format!(
             "rpc: board_invalidated state-delta broadcast failed: {e}"
         ));
     }
 }
 
-pub(crate) fn fire_stories(session: &Arc<session::Session>, refresh: &Arc<dyn RefreshDriver>) {
-    crate::transport::rest::shared::broadcast_stories(session, refresh);
+pub(crate) fn fire_stories(hub: &Arc<hub::Hub>, refresh: &Arc<dyn RefreshDriver>) {
+    crate::transport::rest::shared::broadcast_stories(hub, refresh);
 }
 
 pub(crate) fn story_state_label(
@@ -53,7 +53,7 @@ pub(crate) fn story_state_label(
 }
 
 pub(crate) fn fire_story_transition(
-    session: &Arc<session::Session>,
+    hub: &Arc<hub::Hub>,
     number: u64,
     from_state: &str,
     target_state: &str,
@@ -74,7 +74,7 @@ pub(crate) fn fire_story_transition(
         }),
         ..Default::default()
     };
-    if let Err(e) = session.broadcast(&delta) {
+    if let Err(e) = hub.broadcast(&delta) {
         crate::diag::log_diag(&format!(
             "rpc: story_state_transition state-delta broadcast failed: {e}"
         ));

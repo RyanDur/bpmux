@@ -10,8 +10,8 @@ use tokio::sync::broadcast;
 use tower::ServiceExt;
 
 use super::{init_session, seed_messages, seed_mixed_messages, test_app};
+use crate::hub;
 use crate::message::MessageType;
-use crate::session;
 use crate::transport::rest::*;
 
 fn bpmux_log_env_lock() -> std::sync::MutexGuard<'static, ()> {
@@ -29,7 +29,7 @@ async fn classifier_misfire_escapes_adversarial_agent_input() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(session::Session::new(
+    let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),
         "test".to_string(),
         tx,
@@ -39,7 +39,7 @@ async fn classifier_misfire_escapes_adversarial_agent_input() {
             "/api/classifier-misfire",
             axum::routing::post(post_classifier_misfire),
         )
-        .with_state(session);
+        .with_state(hub);
 
     let log_dir = TempDir::new().expect("log tmpdir");
     let log_path = log_dir.path().join("bpmux.log");
@@ -93,7 +93,7 @@ async fn classifier_misfire_requires_agent_and_hash() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(session::Session::new(
+    let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),
         "test".to_string(),
         tx,
@@ -103,7 +103,7 @@ async fn classifier_misfire_requires_agent_and_hash() {
             "/api/classifier-misfire",
             axum::routing::post(post_classifier_misfire),
         )
-        .with_state(session);
+        .with_state(hub);
     let request = Request::builder()
         .method("POST")
         .uri("/api/classifier-misfire")

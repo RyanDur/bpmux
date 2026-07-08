@@ -24,14 +24,14 @@ fn is_reserved_display_blocks_the_owner_identity_but_allows_agent_roles() {
 fn fresh_orchestrator() -> Arc<crate::store::Store> {
     let dir = tempfile::TempDir::new().expect("tempdir");
     let (tx, _rx) = tokio::sync::broadcast::channel::<crate::message::Message>(64);
-    let session = Arc::new(crate::session::Session::new(
+    let hub = Arc::new(crate::hub::Hub::new(
         dir.path().to_path_buf(),
         "local".to_string(),
         tx,
     ));
     std::mem::forget(dir);
     Arc::new(crate::store::Store::new(
-        session,
+        hub,
         None,
         crate::ci::CiStateStore::new(),
         tokio_util::sync::CancellationToken::new(),

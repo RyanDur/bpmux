@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use super::validation::known_tools;
 use crate::bridge;
-use crate::session;
+use crate::hub;
 use crate::sync::RefreshDriver;
 
 pub(super) async fn dispatch(
@@ -12,24 +12,20 @@ pub(super) async fn dispatch(
     tool: &str,
     agent: &str,
     args: serde_json::Map<String, Value>,
-    session: &Arc<session::Session>,
+    hub: &Arc<hub::Hub>,
     dispatcher: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
     let refresh_ref: Option<&Arc<dyn RefreshDriver>> = Some(refresh);
     match tool {
-        "start_story" => bridge::dispatch_start_story(args, agent, refresh_ref, session).await,
-        "deliver_story" => bridge::dispatch_deliver_story(args, agent, refresh_ref, session).await,
-        "pass_desk_check" => {
-            bridge::dispatch_pass_desk_check(args, agent, refresh_ref, session).await
-        }
-        "fail_desk_check" => {
-            bridge::dispatch_fail_desk_check(args, agent, refresh_ref, session).await
-        }
-        "pass_stage" => bridge::dispatch_pass_stage(args, agent, refresh_ref, session).await,
-        "fail_stage" => bridge::dispatch_fail_stage(args, agent, refresh_ref, session).await,
-        "accept_story" => bridge::dispatch_accept_story(args, agent, refresh_ref, session).await,
-        "reject_story" => bridge::dispatch_reject_story(args, agent, refresh_ref, session).await,
+        "start_story" => bridge::dispatch_start_story(args, agent, refresh_ref, hub).await,
+        "deliver_story" => bridge::dispatch_deliver_story(args, agent, refresh_ref, hub).await,
+        "pass_desk_check" => bridge::dispatch_pass_desk_check(args, agent, refresh_ref, hub).await,
+        "fail_desk_check" => bridge::dispatch_fail_desk_check(args, agent, refresh_ref, hub).await,
+        "pass_stage" => bridge::dispatch_pass_stage(args, agent, refresh_ref, hub).await,
+        "fail_stage" => bridge::dispatch_fail_stage(args, agent, refresh_ref, hub).await,
+        "accept_story" => bridge::dispatch_accept_story(args, agent, refresh_ref, hub).await,
+        "reject_story" => bridge::dispatch_reject_story(args, agent, refresh_ref, hub).await,
         "close_story" => bridge::dispatch_close_story(args, agent, refresh_ref).await,
         "create_story" => bridge::dispatch_create_story(args, agent, refresh_ref, dispatcher).await,
         "create_iteration" => {
@@ -39,7 +35,7 @@ pub(super) async fn dispatch(
             bridge::dispatch_create_outcome(args, agent, refresh_ref, dispatcher).await
         }
         "close_iteration" => {
-            bridge::dispatch_close_iteration(args, agent, refresh_ref, session, dispatcher).await
+            bridge::dispatch_close_iteration(args, agent, refresh_ref, hub, dispatcher).await
         }
         "comment_on_story" => bridge::dispatch_comment_on_story(args, agent, refresh_ref).await,
         "label_story" => bridge::dispatch_label_story(args, agent, refresh_ref).await,
@@ -93,8 +89,8 @@ pub(super) async fn dispatch(
         "view_story_timeline" => bridge::dispatch_view_story_timeline(args, refresh_ref).await,
         "view_comments" => bridge::dispatch_view_comments(args, refresh_ref).await,
         "view_backlog" => bridge::dispatch_view_backlog(refresh_ref).await,
-        "submit_verdict" => bridge::dispatch_submit_verdict(args, agent, session).await,
-        "view_verdicts" => bridge::dispatch_view_verdicts(args, session, refresh_ref).await,
+        "submit_verdict" => bridge::dispatch_submit_verdict(args, agent, hub).await,
+        "view_verdicts" => bridge::dispatch_view_verdicts(args, hub, refresh_ref).await,
         "view_velocity" => bridge::dispatch_view_velocity(select),
         "view_story_commits" => bridge::dispatch_view_story_commits(args).await,
         "view_commit_diff" => bridge::dispatch_view_commit_diff(args).await,

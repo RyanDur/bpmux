@@ -538,18 +538,14 @@ mod ingest_poll_loop_tests {
         use tempfile::TempDir;
         let dir = TempDir::new().expect("tmp");
         let (tx, _rx) = tokio::sync::broadcast::channel(16);
-        let session = Arc::new(crate::session::Session::new(
+        let hub = Arc::new(crate::hub::Hub::new(
             dir.path().to_path_buf(),
             "test".to_string(),
             tx,
         ));
         let driver = Arc::new(CountingDriver::new());
         let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
-        let handle = tokio::spawn(run_drain_loop(
-            driver_dyn,
-            session,
-            Duration::from_millis(50),
-        ));
+        let handle = tokio::spawn(run_drain_loop(driver_dyn, hub, Duration::from_millis(50)));
         tokio::time::sleep(Duration::from_millis(25)).await;
         assert_eq!(driver.drain_pending.load(Ordering::SeqCst), 0);
         tokio::time::sleep(Duration::from_millis(250)).await;
@@ -567,18 +563,14 @@ mod ingest_poll_loop_tests {
         use tempfile::TempDir;
         let dir = TempDir::new().expect("tmp");
         let (tx, mut rx) = tokio::sync::broadcast::channel(16);
-        let session = Arc::new(crate::session::Session::new(
+        let hub = Arc::new(crate::hub::Hub::new(
             dir.path().to_path_buf(),
             "test".to_string(),
             tx,
         ));
         let driver = Arc::new(CountingDriver::draining_n_per_tick(1));
         let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
-        let handle = tokio::spawn(run_drain_loop(
-            driver_dyn,
-            session,
-            Duration::from_millis(50),
-        ));
+        let handle = tokio::spawn(run_drain_loop(driver_dyn, hub, Duration::from_millis(50)));
         let received = tokio::time::timeout(Duration::from_millis(500), rx.recv())
             .await
             .expect("a sync-status heartbeat must broadcast within 500ms of the first tick")
@@ -600,18 +592,14 @@ mod ingest_poll_loop_tests {
         use tempfile::TempDir;
         let dir = TempDir::new().expect("tmp");
         let (tx, mut rx) = tokio::sync::broadcast::channel(16);
-        let session = Arc::new(crate::session::Session::new(
+        let hub = Arc::new(crate::hub::Hub::new(
             dir.path().to_path_buf(),
             "test".to_string(),
             tx,
         ));
         let driver = Arc::new(CountingDriver::new());
         let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
-        let handle = tokio::spawn(run_drain_loop(
-            driver_dyn,
-            session,
-            Duration::from_millis(50),
-        ));
+        let handle = tokio::spawn(run_drain_loop(driver_dyn, hub, Duration::from_millis(50)));
         let received = tokio::time::timeout(Duration::from_millis(500), rx.recv())
             .await
             .expect("heartbeat must fire on a zero-drain tick — the frontend stale-watch depends on it with no frontend poll")

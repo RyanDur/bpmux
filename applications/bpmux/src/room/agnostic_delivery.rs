@@ -3,12 +3,12 @@ use std::time::Duration;
 
 use tokio::sync::broadcast;
 
+use crate::hub::Hub;
 use crate::message::{BROADCAST_ALL, Message};
 use crate::room::CommitmentStore;
 use crate::room::LivePtyRegistry;
 use crate::routing::RoutingStore;
 use crate::routing::short_name;
-use crate::session::Session;
 
 use super::terminal_inject::frame_team_message;
 
@@ -23,12 +23,12 @@ pub struct HeldInject {
 }
 
 pub fn spawn_terminal_delivery_loop(
-    session: Arc<Session>,
+    hub: Arc<Hub>,
     registry: Arc<LivePtyRegistry>,
     routing: Arc<RoutingStore>,
     commitments: Arc<CommitmentStore>,
 ) {
-    let mut rx = session.subscribe();
+    let mut rx = hub.subscribe();
     tokio::spawn(async move {
         loop {
             match rx.recv().await {
@@ -110,7 +110,7 @@ pub fn deliver_to_terminals(
 }
 
 pub fn drain_missed(
-    session: &Session,
+    hub: &Hub,
     registry: &LivePtyRegistry,
     routing: &RoutingStore,
     session_id: &str,
@@ -122,7 +122,7 @@ pub fn drain_missed(
         .ok()
         .map(|dt| dt.with_timezone(&chrono::Utc));
     const BACKFILL_SCAN_WINDOW: usize = 1000;
-    let mut messages = match session.read_recent(BACKFILL_SCAN_WINDOW, 0, &|_| true) {
+    let mut messages = match hub.read_recent(BACKFILL_SCAN_WINDOW, 0, &|_| true) {
         Ok(messages) => messages,
         Err(_) => return,
     };

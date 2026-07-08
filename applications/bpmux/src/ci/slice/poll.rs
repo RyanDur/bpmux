@@ -4,8 +4,8 @@ use tokio_util::sync::CancellationToken;
 
 use crate::ci::CiStateStore;
 use crate::github::RateLimitObserver;
+use crate::hub::Hub;
 use crate::kernel::{Dispatch, Listener, ListenerFuture, Reaction};
-use crate::session::Session;
 use crate::store::{AppAction, AppState};
 use crate::transport::ci_watcher;
 
@@ -14,7 +14,7 @@ use super::{CiAction, CiPollFetch};
 pub struct CiPoll {
     tracker: Option<Arc<dyn CiPollFetch>>,
     ci_state_store: CiStateStore,
-    session: Arc<Session>,
+    hub: Arc<Hub>,
     parent_ct: CancellationToken,
     observer: RateLimitObserver,
     token: Mutex<Option<CancellationToken>>,
@@ -24,14 +24,14 @@ impl CiPoll {
     pub fn new(
         tracker: Option<Arc<dyn CiPollFetch>>,
         ci_state_store: CiStateStore,
-        session: Arc<Session>,
+        hub: Arc<Hub>,
         parent_ct: CancellationToken,
         observer: RateLimitObserver,
     ) -> Self {
         Self {
             tracker,
             ci_state_store,
-            session,
+            hub,
             parent_ct,
             observer,
             token: Mutex::new(None),
@@ -61,7 +61,7 @@ impl CiPoll {
             dispatch,
             tracker,
             self.ci_state_store.clone(),
-            self.session.clone(),
+            self.hub.clone(),
             self.observer.clone(),
             token.clone(),
         );

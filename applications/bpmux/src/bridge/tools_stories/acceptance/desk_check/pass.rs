@@ -32,7 +32,7 @@ pub(crate) async fn handle_pass_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
-    session: Option<&std::sync::Arc<crate::session::Session>>,
+    hub: Option<&std::sync::Arc<crate::hub::Hub>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
     let workflow = crate::workflow::current_workflow();
@@ -56,7 +56,7 @@ pub(crate) async fn handle_pass_desk_check(
         workflow.owner_role_id().unwrap_or(""),
     )
     .map_err(|e| e.as_json_string())?;
-    if let Some(s) = session {
+    if let Some(s) = hub {
         let evidence = recent_evidence_for_story(s, id)?;
         crate::workflow::check_evidence_present(
             transition,

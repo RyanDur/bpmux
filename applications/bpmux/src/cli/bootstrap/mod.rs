@@ -4,7 +4,7 @@ use clap::Parser;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
-use crate::{bridge, cli, location, server, session, transport};
+use crate::{bridge, cli, hub, location, server, transport};
 
 mod resolve;
 mod room;
@@ -72,12 +72,8 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
     std::fs::create_dir_all(&base)?;
     let session_dir = location::resume_or_create_session(&base)?;
     let (wake_tx, _wake_rx) =
-        broadcast::channel::<crate::message::Message>(session::BROADCAST_CHANNEL_CAPACITY);
-    let session = Arc::new(session::Session::new(
-        session_dir,
-        cli.name.clone(),
-        wake_tx,
-    ));
+        broadcast::channel::<crate::message::Message>(hub::BROADCAST_CHANNEL_CAPACITY);
+    let hub = Arc::new(hub::Hub::new(session_dir, cli.name.clone(), wake_tx));
     let port = cli.mcp_port;
     let ct = CancellationToken::new();
     let restart_signal = transport::self_update::RestartSignal::new();
@@ -86,10 +82,10 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
         let ct = ct.clone();
         let restart_signal = restart_signal.clone();
         async move {
-            crate::awareness::spawn(Arc::clone(&session), session.owner_name.clone());
+            crate::awareness::spawn(Arc::clone(&hub), hub.owner_name.clone());
             transport::self_update::spawn_binary_watcher(ct.clone(), restart_signal);
             spawn_shutdown_signal_listener(ct.clone());
-            server::run_server(session, port, ct)
+            server::run_server(hub, port, ct)
                 .await
                 .map_err(|e| anyhow::anyhow!("{e}"))
         }

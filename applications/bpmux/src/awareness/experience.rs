@@ -4,8 +4,8 @@ use tokio::time::Instant;
 use crate::comprehension::bayes::BayesModel;
 use crate::comprehension::classifier;
 use crate::diag::log_diag;
+use crate::hub::Hub;
 use crate::message::{Message, MessageType};
-use crate::session::Session;
 
 use super::agents::AgentTracker;
 
@@ -108,7 +108,7 @@ impl ExperienceDetector {
         }
     }
 
-    pub fn flush(&mut self, session: &Session, agents: &AgentTracker) {
+    pub fn flush(&mut self, hub: &Hub, agents: &AgentTracker) {
         for recipient in &agents.connected {
             let filtered: Vec<&PendingExperience> = self
                 .pending
@@ -127,7 +127,7 @@ impl ExperienceDetector {
                 to: Some(vec![recipient.clone()]),
                 ..Message::default()
             };
-            let _ = session.broadcast(&nudge);
+            let _ = hub.broadcast(&nudge);
         }
         self.pending.clear();
     }

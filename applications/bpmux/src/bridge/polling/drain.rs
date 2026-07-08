@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 pub(crate) async fn run_drain_loop(
     refresh: Arc<dyn crate::sync::RefreshDriver>,
-    session: Arc<crate::session::Session>,
+    hub: Arc<crate::hub::Hub>,
     interval: std::time::Duration,
 ) {
     let start = tokio::time::Instant::now() + interval;
@@ -22,15 +22,15 @@ pub(crate) async fn run_drain_loop(
             }
         };
         let snapshot = refresh.snapshot_status();
-        broadcast_sync_status_heartbeat(&session, &snapshot);
+        broadcast_sync_status_heartbeat(&hub, &snapshot);
         if state_changed {
-            broadcast_sync_status_transition(&session, &snapshot);
+            broadcast_sync_status_transition(&hub, &snapshot);
         }
     }
 }
 
 pub(crate) fn broadcast_sync_status_heartbeat(
-    session: &crate::session::Session,
+    hub: &crate::hub::Hub,
     snapshot: &crate::sync::SyncStatus,
 ) {
     let status = serde_json::to_value(snapshot).unwrap_or(serde_json::Value::Null);
@@ -42,11 +42,11 @@ pub(crate) fn broadcast_sync_status_heartbeat(
         state_delta: Some(crate::message::StateDeltaPayload::SyncPoll { status }),
         ..crate::message::Message::default()
     };
-    session.broadcast_ephemeral(&msg);
+    hub.broadcast_ephemeral(&msg);
 }
 
 pub(crate) fn broadcast_sync_status_transition(
-    session: &crate::session::Session,
+    hub: &crate::hub::Hub,
     snapshot: &crate::sync::SyncStatus,
 ) {
     if let Some(transition) = crate::sync::sync_transition(snapshot) {
@@ -65,7 +65,7 @@ pub(crate) fn broadcast_sync_status_transition(
             }),
             ..crate::message::Message::default()
         };
-        if let Err(e) = session.broadcast(&delta) {
+        if let Err(e) = hub.broadcast(&delta) {
             crate::diag::log_diag(&format!(
                 "run_drain_loop: sync-status state-delta broadcast failed: {e}"
             ));

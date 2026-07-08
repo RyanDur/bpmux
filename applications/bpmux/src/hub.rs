@@ -11,7 +11,7 @@ use crate::storage::{Storage, StorageBackend};
 
 pub const BROADCAST_CHANNEL_CAPACITY: usize = 10_000;
 
-pub struct Session {
+pub struct Hub {
     pub dir: PathBuf,
     pub id: String,
     pub owner_name: String,
@@ -21,7 +21,7 @@ pub struct Session {
     pub roster: Mutex<HashSet<String>>,
 }
 
-impl Clone for Session {
+impl Clone for Hub {
     fn clone(&self) -> Self {
         Self {
             dir: self.dir.clone(),
@@ -35,9 +35,9 @@ impl Clone for Session {
     }
 }
 
-impl std::fmt::Debug for Session {
+impl std::fmt::Debug for Hub {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Session")
+        f.debug_struct("Hub")
             .field("dir", &self.dir)
             .field("id", &self.id)
             .field("owner_name", &self.owner_name)
@@ -45,7 +45,7 @@ impl std::fmt::Debug for Session {
     }
 }
 
-impl Session {
+impl Hub {
     pub fn new(dir: PathBuf, owner_name: String, wake_tx: broadcast::Sender<Message>) -> Self {
         Self::with_backend(dir, owner_name, wake_tx, StorageBackend::resolve())
     }

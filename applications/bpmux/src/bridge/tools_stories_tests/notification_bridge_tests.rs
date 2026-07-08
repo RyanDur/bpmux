@@ -7,17 +7,17 @@ use crate::transport::protocol::ClientMessage;
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod notification_bridge_push_filter_integration_1432 {
     use crate::bridge::message_type_reaches_llm_stream;
+    use crate::hub::Hub;
     use crate::message::Message;
     use crate::message::MessageType;
-    use crate::session::Session;
     use std::path::PathBuf;
     use std::sync::Arc;
     use tempfile::TempDir;
     use tokio::sync::broadcast;
 
-    fn make_session(dir: PathBuf) -> Arc<Session> {
+    fn make_hub(dir: PathBuf) -> Arc<Hub> {
         let (tx, _) = broadcast::channel(16);
-        Arc::new(Session::new(dir, "owner".to_string(), tx))
+        Arc::new(Hub::new(dir, "owner".to_string(), tx))
     }
 
     fn make_message(message_type: MessageType, text: &str, addressee: Option<&str>) -> Message {
@@ -32,12 +32,12 @@ mod notification_bridge_push_filter_integration_1432 {
     }
 
     async fn fire_notification_and_assert_reaches_llm_stream(
-        session: &Arc<Session>,
+        hub: &Arc<Hub>,
         message: Message,
         expected_reaches: bool,
     ) {
-        let mut rx = session.subscribe();
-        session.broadcast(&message).expect("broadcast");
+        let mut rx = hub.subscribe();
+        hub.broadcast(&message).expect("broadcast");
         let received = tokio::time::timeout(std::time::Duration::from_millis(200), rx.recv())
             .await
             .ok()
@@ -75,36 +75,36 @@ mod notification_bridge_push_filter_integration_1432 {
     #[tokio::test]
     async fn fire_notification_helper_pins_chat_class_reaches_pm() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
+        let hub = make_hub(dir.path().to_path_buf());
         let msg = make_message(MessageType::Chat, "verdict cast on #42", Some("pm"));
-        fire_notification_and_assert_reaches_llm_stream(&session, msg, true).await;
+        fire_notification_and_assert_reaches_llm_stream(&hub, msg, true).await;
     }
 
     #[tokio::test]
     async fn fire_notification_helper_pins_activity_class_does_not_reach_pm() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
+        let hub = make_hub(dir.path().to_path_buf());
         let msg = make_message(MessageType::Activity, "board-state-tick", Some("pm"));
-        fire_notification_and_assert_reaches_llm_stream(&session, msg, false).await;
+        fire_notification_and_assert_reaches_llm_stream(&hub, msg, false).await;
     }
 
     #[tokio::test]
     async fn fire_notification_helper_pins_system_class_does_not_reach_pm() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
+        let hub = make_hub(dir.path().to_path_buf());
         let msg = make_message(MessageType::System, "system-event", None);
-        fire_notification_and_assert_reaches_llm_stream(&session, msg, false).await;
+        fire_notification_and_assert_reaches_llm_stream(&hub, msg, false).await;
     }
 
     #[tokio::test]
     async fn verdict_cast_1429_chat_class_reaches_pm_retroactive_coverage() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
+        let hub = make_hub(dir.path().to_path_buf());
         let msg = make_message(
             MessageType::Chat,
             "verdict cast on #1429 from designer: verified",
             Some("pm"),
         );
-        fire_notification_and_assert_reaches_llm_stream(&session, msg, true).await;
+        fire_notification_and_assert_reaches_llm_stream(&hub, msg, true).await;
     }
 }

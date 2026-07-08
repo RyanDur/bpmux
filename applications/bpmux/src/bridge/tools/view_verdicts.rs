@@ -33,7 +33,7 @@ fn resolve_accept_window_secs(
 
 pub(in crate::bridge) async fn handle_view_verdicts(
     args: &serde_json::Map<String, serde_json::Value>,
-    session: &Arc<crate::session::Session>,
+    hub: &Arc<crate::hub::Hub>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
     let story_id = StoryId::new(
@@ -42,7 +42,7 @@ pub(in crate::bridge) async fn handle_view_verdicts(
             .ok_or("missing 'story_id' argument")?,
     );
 
-    let store = load(&session.dir);
+    let store = load(&hub.dir);
     let records = evidence_for_story(&store, story_id);
     let window_secs = resolve_accept_window_secs(refresh, story_id);
     let current_head = crate::bridge::tools::git_repo::current_head_sha();

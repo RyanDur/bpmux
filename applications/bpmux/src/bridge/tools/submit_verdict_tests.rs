@@ -1,17 +1,17 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::submit_verdict::*;
+use crate::hub::Hub;
 use crate::product_management::evidence::{evidence_for_story, load};
 use crate::product_management::story::StoryId;
-use crate::session::Session;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::sync::broadcast;
 
-fn make_session(dir: PathBuf) -> Arc<Session> {
+fn make_hub(dir: PathBuf) -> Arc<Hub> {
     let (tx, _) = broadcast::channel(16);
-    Arc::new(Session::new(dir, "owner".to_string(), tx))
+    Arc::new(Hub::new(dir, "owner".to_string(), tx))
 }
 
 fn make_args(
@@ -29,27 +29,27 @@ fn make_args(
     m
 }
 
-fn make_session_with_rx(
+fn make_hub_with_rx(
     dir: PathBuf,
 ) -> (
-    Arc<Session>,
+    Arc<Hub>,
     tokio::sync::broadcast::Receiver<crate::message::Message>,
 ) {
     let (tx, rx) = broadcast::channel(16);
-    let session = Arc::new(Session::new(dir, "owner".to_string(), tx));
-    (session, rx)
+    let hub = Arc::new(Hub::new(dir, "owner".to_string(), tx));
+    (hub, rx)
 }
 
 #[tokio::test]
 async fn verdict_cast_broadcast_carries_message_type_system_not_chat() {
     let dir = TempDir::new().unwrap();
-    let (session, mut rx) = make_session_with_rx(dir.path().to_path_buf());
+    let (hub, mut rx) = make_hub_with_rx(dir.path().to_path_buf());
     let args = make_args(
         1494,
         "verified",
         "src/bridge/tools/submit_verdict.rs:54 cite",
     );
-    handle_submit_verdict(&args, "dev:claude-code", &session)
+    handle_submit_verdict(&args, "dev:claude-code", &hub)
         .await
         .expect("dev fire should succeed");
     let received = rx.try_recv().expect("broadcast should arrive");
@@ -68,15 +68,15 @@ async fn verdict_cast_broadcast_carries_message_type_system_not_chat() {
 }
 
 #[tokio::test]
-async fn dev_writes_verdict_to_store_at_session_dir() {
+async fn dev_writes_verdict_to_store_at_hub_dir() {
     let dir = TempDir::new().unwrap();
-    let session = make_session(dir.path().to_path_buf());
+    let hub = make_hub(dir.path().to_path_buf());
     let args = make_args(42, "verified", "src/foo.rs:10 cite");
-    let result = handle_submit_verdict(&args, "dev:claude-code", &session)
+    let result = handle_submit_verdict(&args, "dev:claude-code", &hub)
         .await
         .expect("dev fire should succeed");
     assert!(result.contains("verdict recorded on #42 from dev"));
-    let store = load(&session.dir);
+    let store = load(&hub.dir);
     let stored = evidence_for_story(&store, StoryId::new(42));
     assert_eq!(stored.len(), 1);
     assert_eq!(stored[0].from_role, "dev");
@@ -87,12 +87,12 @@ async fn dev_writes_verdict_to_store_at_session_dir() {
 #[tokio::test]
 async fn designer_writes_verdict_to_store() {
     let dir = TempDir::new().unwrap();
-    let session = make_session(dir.path().to_path_buf());
+    let hub = make_hub(dir.path().to_path_buf());
     let args = make_args(99, "rejected", "missing acceptance cite");
-    handle_submit_verdict(&args, "designer:claude-code", &session)
+    handle_submit_verdict(&args, "designer:claude-code", &hub)
         .await
         .expect("designer fire should succeed");
-    let store = load(&session.dir);
+    let store = load(&hub.dir);
     let stored = evidence_for_story(&store, StoryId::new(99));
     assert_eq!(stored.len(), 1);
     assert_eq!(stored[0].from_role, "designer");
@@ -101,9 +101,9 @@ async fn designer_writes_verdict_to_store() {
 #[tokio::test]
 async fn pm_role_is_refused() {
     let dir = TempDir::new().unwrap();
-    let session = make_session(dir.path().to_path_buf());
+    let hub = make_hub(dir.path().to_path_buf());
     let args = make_args(42, "verified", "cite");
-    let err = handle_submit_verdict(&args, "pm:claude-code", &session)
+    let err = handle_submit_verdict(&args, "pm:claude-code", &hub)
         .await
         .expect_err("pm fire should refuse");
     assert!(err.contains("restricted to dev or designer"));
@@ -113,11 +113,11 @@ async fn pm_role_is_refused() {
 #[tokio::test]
 async fn missing_substrate_grounding_is_refused() {
     let dir = TempDir::new().unwrap();
-    let session = make_session(dir.path().to_path_buf());
+    let hub = make_hub(dir.path().to_path_buf());
     let mut args = serde_json::Map::new();
     args.insert("story_id".into(), serde_json::json!(42));
     args.insert("verdict".into(), serde_json::json!("verified"));
-    let err = handle_submit_verdict(&args, "dev", &session)
+    let err = handle_submit_verdict(&args, "dev", &hub)
         .await
         .expect_err("missing substrate_grounding should refuse");
     assert!(err.contains("substrate_grounding"));
@@ -126,9 +126,9 @@ async fn missing_substrate_grounding_is_refused() {
 #[tokio::test]
 async fn empty_substrate_grounding_is_refused() {
     let dir = TempDir::new().unwrap();
-    let session = make_session(dir.path().to_path_buf());
+    let hub = make_hub(dir.path().to_path_buf());
     let args = make_args(42, "verified", "   ");
-    let err = handle_submit_verdict(&args, "dev", &session)
+    let err = handle_submit_verdict(&args, "dev", &hub)
         .await
         .expect_err("whitespace-only substrate_grounding should refuse");
     assert!(err.contains("substrate_grounding"));
@@ -137,17 +137,15 @@ async fn empty_substrate_grounding_is_refused() {
 #[tokio::test]
 async fn replay_from_same_role_replaces_prior() {
     let dir = TempDir::new().unwrap();
-    let session = make_session(dir.path().to_path_buf());
+    let hub = make_hub(dir.path().to_path_buf());
     let first = make_args(42, "verified", "initial cite");
-    handle_submit_verdict(&first, "dev", &session)
-        .await
-        .unwrap();
+    handle_submit_verdict(&first, "dev", &hub).await.unwrap();
     let second = make_args(42, "rejected", "updated cite after second pass");
-    let result = handle_submit_verdict(&second, "dev", &session)
+    let result = handle_submit_verdict(&second, "dev", &hub)
         .await
         .expect("replay should succeed");
     assert!(result.contains("replaced prior"));
-    let store = load(&session.dir);
+    let store = load(&hub.dir);
     let stored = evidence_for_story(&store, StoryId::new(42));
     assert_eq!(stored.len(), 1);
     assert_eq!(stored[0].verdict, "rejected");

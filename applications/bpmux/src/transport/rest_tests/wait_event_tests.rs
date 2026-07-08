@@ -8,22 +8,22 @@ use tokio::sync::broadcast;
 use tower::ServiceExt;
 
 use super::init_session;
-use crate::session;
+use crate::hub;
 use crate::transport::rest::wait_for_event;
 
-fn wait_app(dir: &TempDir) -> (Arc<session::Session>, axum::Router) {
+fn wait_app(dir: &TempDir) -> (Arc<hub::Hub>, axum::Router) {
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(session::Session::new(
+    let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),
         "dev".to_string(),
         tx,
     ));
-    let routing = Arc::new(crate::routing::RoutingStore::new(session.storage.clone()));
+    let routing = Arc::new(crate::routing::RoutingStore::new(hub.storage.clone()));
     let router = axum::Router::new()
         .route("/api/wait-for-event", axum::routing::get(wait_for_event))
         .layer(axum::Extension(routing))
-        .with_state(session.clone());
-    (session, router)
+        .with_state(hub.clone());
+    (hub, router)
 }
 
 async fn body_json(response: axum::http::Response<Body>) -> serde_json::Value {
@@ -59,9 +59,8 @@ fn directed_chat(from: &str, text: &str, to: &[&str]) -> crate::message::Message
 async fn returns_a_pending_broadcast_after_the_agent_subscribes() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let (session, router) = wait_app(&dir);
-    session
-        .broadcast(&broadcast_chat("pm", "hello team"))
+    let (hub, router) = wait_app(&dir);
+    hub.broadcast(&broadcast_chat("pm", "hello team"))
         .expect("broadcast");
     let request = Request::builder()
         .uri("/api/wait-for-event?as=dev&timeout_ms=2000")
@@ -81,7 +80,7 @@ async fn returns_a_pending_broadcast_after_the_agent_subscribes() {
 async fn blocks_then_returns_a_broadcast_dispatched_while_waiting() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let (session, router) = wait_app(&dir);
+    let (hub, router) = wait_app(&dir);
     let waiter = tokio::spawn(async move {
         let request = Request::builder()
             .uri("/api/wait-for-event?as=dev&timeout_ms=3000")
@@ -90,8 +89,7 @@ async fn blocks_then_returns_a_broadcast_dispatched_while_waiting() {
         router.oneshot(request).await.expect("response")
     });
     tokio::time::sleep(Duration::from_millis(100)).await;
-    session
-        .broadcast(&broadcast_chat("pm", "live message"))
+    hub.broadcast(&broadcast_chat("pm", "live message"))
         .expect("broadcast");
     let response = waiter.await.expect("join");
     assert_eq!(response.status(), StatusCode::OK);
@@ -103,7 +101,7 @@ async fn blocks_then_returns_a_broadcast_dispatched_while_waiting() {
 async fn times_out_cleanly_when_no_event_is_pending() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let (_session, router) = wait_app(&dir);
+    let (_hub, router) = wait_app(&dir);
     let request = Request::builder()
         .uri("/api/wait-for-event?as=dev&timeout_ms=200")
         .body(Body::empty())
@@ -118,9 +116,8 @@ async fn times_out_cleanly_when_no_event_is_pending() {
 async fn advancing_the_cursor_does_not_redeliver_the_same_event() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let (session, router) = wait_app(&dir);
-    session
-        .broadcast(&broadcast_chat("pm", "first"))
+    let (hub, router) = wait_app(&dir);
+    hub.broadcast(&broadcast_chat("pm", "first"))
         .expect("broadcast");
     let first_request = Request::builder()
         .uri("/api/wait-for-event?as=dev&timeout_ms=2000")
@@ -149,9 +146,8 @@ async fn advancing_the_cursor_does_not_redeliver_the_same_event() {
 async fn a_message_directed_to_another_role_is_not_delivered() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let (session, router) = wait_app(&dir);
-    session
-        .broadcast(&directed_chat("pm", "for designer only", &["designer"]))
+    let (hub, router) = wait_app(&dir);
+    hub.broadcast(&directed_chat("pm", "for designer only", &["designer"]))
         .expect("broadcast");
     let request = Request::builder()
         .uri("/api/wait-for-event?as=dev&timeout_ms=200")
@@ -165,9 +161,8 @@ async fn a_message_directed_to_another_role_is_not_delivered() {
 async fn an_agents_own_broadcast_is_not_delivered_back_to_it() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let (session, router) = wait_app(&dir);
-    session
-        .broadcast(&broadcast_chat("dev", "my own message"))
+    let (hub, router) = wait_app(&dir);
+    hub.broadcast(&broadcast_chat("dev", "my own message"))
         .expect("broadcast");
     let request = Request::builder()
         .uri("/api/wait-for-event?as=dev&timeout_ms=200")
@@ -192,19 +187,18 @@ fn state_delta_message(delta: crate::message::StateDeltaPayload) -> crate::messa
 async fn delivers_a_story_transition_state_delta_as_a_subscription_event() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let (session, router) = wait_app(&dir);
-    session
-        .broadcast(&state_delta_message(
-            crate::message::StateDeltaPayload::StoryTransition {
-                transition: crate::message::StoryTransitionWire {
-                    story_id: 42,
-                    from_state: "ready".to_string(),
-                    target_state: "in-progress".to_string(),
-                    actor: "dev".to_string(),
-                },
+    let (hub, router) = wait_app(&dir);
+    hub.broadcast(&state_delta_message(
+        crate::message::StateDeltaPayload::StoryTransition {
+            transition: crate::message::StoryTransitionWire {
+                story_id: 42,
+                from_state: "ready".to_string(),
+                target_state: "in-progress".to_string(),
+                actor: "dev".to_string(),
             },
-        ))
-        .expect("broadcast");
+        },
+    ))
+    .expect("broadcast");
     let request = Request::builder()
         .uri("/api/wait-for-event?as=designer&timeout_ms=2000")
         .body(Body::empty())
@@ -219,12 +213,11 @@ async fn delivers_a_story_transition_state_delta_as_a_subscription_event() {
 async fn a_gui_only_delta_is_not_delivered_as_an_agent_event() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let (session, router) = wait_app(&dir);
-    session
-        .broadcast(&state_delta_message(
-            crate::message::StateDeltaPayload::Roster { members: vec![] },
-        ))
-        .expect("broadcast");
+    let (hub, router) = wait_app(&dir);
+    hub.broadcast(&state_delta_message(
+        crate::message::StateDeltaPayload::Roster { members: vec![] },
+    ))
+    .expect("broadcast");
     let request = Request::builder()
         .uri("/api/wait-for-event?as=designer&timeout_ms=200")
         .body(Body::empty())

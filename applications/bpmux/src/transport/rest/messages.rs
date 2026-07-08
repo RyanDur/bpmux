@@ -6,7 +6,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use crate::session;
+use crate::hub;
 
 pub const DEFAULT_MESSAGE_LIMIT: usize = 20;
 
@@ -35,7 +35,7 @@ pub struct GetMessagesParams {
 }
 
 pub async fn get_messages(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     Query(params): Query<GetMessagesParams>,
 ) -> impl IntoResponse {
     let chat_only = params.chat_only.unwrap_or(true);
@@ -70,7 +70,7 @@ pub async fn get_messages(
         }
         true
     };
-    match session.read_recent(limit, offset, &matches) {
+    match hub.read_recent(limit, offset, &matches) {
         Ok(page) => (
             StatusCode::OK,
             serde_json::to_string(&page).unwrap_or_else(|_| "[]".to_string()),
@@ -83,7 +83,7 @@ pub async fn get_messages(
 }
 
 pub async fn post_message(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(routing): axum::Extension<Arc<crate::routing::RoutingStore>>,
     Json(payload): Json<PostMessage>,
 ) -> impl IntoResponse {
@@ -127,7 +127,7 @@ pub async fn post_message(
         state_delta: None,
         state_snapshot: None,
     };
-    if let Err(e) = session.broadcast(&msg) {
+    if let Err(e) = hub.broadcast(&msg) {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("failed to broadcast: {e}"),

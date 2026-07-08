@@ -512,12 +512,12 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
 
     let dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx0) = tokio::sync::broadcast::channel(16);
-    let session = Arc::new(crate::session::Session::new(
+    let hub = Arc::new(crate::hub::Hub::new(
         dir.path().to_path_buf(),
         "owner".to_string(),
         tx,
     ));
-    let mut rx = session.subscribe();
+    let mut rx = hub.subscribe();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(207));
@@ -525,13 +525,9 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
         "verified_observation".into(),
         serde_json::json!("ran end-to-end"),
     );
-    let result = crate::bridge::dispatch_deliver_story(
-        args,
-        "dev:claude-code",
-        Some(&orchestrator),
-        &session,
-    )
-    .await;
+    let result =
+        crate::bridge::dispatch_deliver_story(args, "dev:claude-code", Some(&orchestrator), &hub)
+            .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let mut combined = String::new();
@@ -541,7 +537,7 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
     }
     assert!(
         combined.contains("store-titled-207"),
-        "migrated deliver path must use the store-side title in the delivery signal broadcast via session; got: {combined}"
+        "migrated deliver path must use the store-side title in the delivery signal broadcast via hub; got: {combined}"
     );
 }
 

@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
+use crate::hub::Hub;
 use crate::memory::lessons;
 use crate::message::Message;
-use crate::session::Session;
 
 const MAX_RECALL_NUDGES: usize = 3;
 
@@ -13,10 +13,10 @@ pub struct RecallSystem {
 }
 
 impl RecallSystem {
-    pub fn new(session: &Session) -> Self {
-        let surfaced_topics = session.storage.load_surfaced_topics();
+    pub fn new(hub: &Hub) -> Self {
+        let surfaced_topics = hub.storage.load_surfaced_topics();
         let recall_count = surfaced_topics.len();
-        let cached_index = lessons::load_index(&session.dir);
+        let cached_index = lessons::load_index(&hub.dir);
         Self {
             surfaced_topics,
             recall_count,
@@ -24,9 +24,9 @@ impl RecallSystem {
         }
     }
 
-    pub fn on_message(&mut self, session: &Session, msg: &Message, sender: &str, owner_name: &str) {
+    pub fn on_message(&mut self, hub: &Hub, msg: &Message, sender: &str, owner_name: &str) {
         if sender == "bpmux" && msg.text.contains("lesson saved") {
-            self.cached_index = session.storage.load_lessons();
+            self.cached_index = hub.storage.load_lessons();
         }
 
         if !msg.is_chat()
@@ -73,10 +73,10 @@ impl RecallSystem {
                 to: Some(vec![sender.to_string()]),
                 ..Message::default()
             };
-            let _ = session.broadcast(&nudge);
+            let _ = hub.broadcast(&nudge);
             self.surfaced_topics.insert(lesson.topic.clone());
             self.recall_count += 1;
-            let _ = session.storage.save_surfaced_topics(&self.surfaced_topics);
+            let _ = hub.storage.save_surfaced_topics(&self.surfaced_topics);
         }
     }
 }

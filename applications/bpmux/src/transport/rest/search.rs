@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 use super::shared::TrackerHandle;
 use crate::comprehension;
-use crate::session;
+use crate::hub;
 
 #[derive(Deserialize)]
 pub struct SearchParams {
@@ -20,11 +20,11 @@ pub struct SearchParams {
 }
 
 pub async fn search_messages(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
     Query(params): Query<SearchParams>,
 ) -> impl IntoResponse {
-    let messages_part = match session.read_messages() {
+    let messages_part = match hub.read_messages() {
         Ok(all_messages) => {
             let message_class = params.message_type.as_deref().and_then(|t| match t {
                 "correction" | "experience" => Some(comprehension::MessageClass::Experience(
@@ -42,7 +42,7 @@ pub async fn search_messages(
                 channel: params.channel.clone(),
                 message_class,
                 insight_only: params.message_type.as_deref() == Some("insight"),
-                owner_name: session.owner_name.clone(),
+                owner_name: hub.owner_name.clone(),
             };
             comprehension::search(&all_messages, &filters)
         }

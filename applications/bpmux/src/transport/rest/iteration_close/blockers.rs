@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::session;
+use crate::hub;
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub(crate) struct IterationCloseBlocker {
@@ -39,7 +39,7 @@ pub(super) fn build_close_iteration_ready_queue_blocked_body(
 }
 
 pub(super) fn broadcast_iteration_close_blocked(
-    session: &Arc<session::Session>,
+    hub: &Arc<hub::Hub>,
     blockers: &[IterationCloseBlocker],
 ) {
     let payload = crate::message::StateDeltaPayload::IterationCloseBlocked {
@@ -60,7 +60,7 @@ pub(super) fn broadcast_iteration_close_blocked(
         state_delta: Some(payload),
         ..crate::message::Message::default()
     };
-    if let Err(e) = session.broadcast(&msg) {
+    if let Err(e) = hub.broadcast(&msg) {
         crate::diag::log_diag(&format!(
             "post_close_iteration: iteration-close-blocked broadcast failed: {e}"
         ));

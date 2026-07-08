@@ -278,25 +278,22 @@ async fn a_register_in_a_dir_with_populated_history_starts_clean_no_backlog_dump
     let registry = LivePtyRegistry::new();
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
-    let session =
-        crate::session::Session::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
+    let hub = crate::hub::Hub::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
 
-    session
-        .broadcast(&chat_at(
-            "pm",
-            "HISTORY-BROADCAST",
-            None,
-            "2020-01-01T00:00:00Z",
-        ))
-        .unwrap();
-    session
-        .broadcast(&chat_at(
-            "designer",
-            "HISTORY-ADDRESSED",
-            Some(vec!["dev".to_string()]),
-            "2020-01-02T00:00:00Z",
-        ))
-        .unwrap();
+    hub.broadcast(&chat_at(
+        "pm",
+        "HISTORY-BROADCAST",
+        None,
+        "2020-01-01T00:00:00Z",
+    ))
+    .unwrap();
+    hub.broadcast(&chat_at(
+        "designer",
+        "HISTORY-ADDRESSED",
+        Some(vec!["dev".to_string()]),
+        "2020-01-02T00:00:00Z",
+    ))
+    .unwrap();
 
     let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
     let mut rx = live.subscribe();
@@ -305,7 +302,7 @@ async fn a_register_in_a_dir_with_populated_history_starts_clean_no_backlog_dump
     routing.link_terminal("sess-dev", "term-dev");
 
     drain_missed(
-        &session,
+        &hub,
         &registry,
         &routing,
         "sess-dev",
@@ -329,25 +326,22 @@ async fn a_message_in_the_join_gate_window_is_drained_addressed_or_the_welcome_b
     let registry = LivePtyRegistry::new();
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
-    let session =
-        crate::session::Session::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
+    let hub = crate::hub::Hub::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
 
-    session
-        .broadcast(&chat_at(
-            "pm",
-            "GATE-ADDRESSED",
-            Some(vec!["dev".to_string()]),
-            "2026-06-12T18:00:01Z",
-        ))
-        .unwrap();
-    session
-        .broadcast(&chat_at(
-            "pm",
-            "GATE-BROADCAST",
-            None,
-            "2026-06-12T18:00:02Z",
-        ))
-        .unwrap();
+    hub.broadcast(&chat_at(
+        "pm",
+        "GATE-ADDRESSED",
+        Some(vec!["dev".to_string()]),
+        "2026-06-12T18:00:01Z",
+    ))
+    .unwrap();
+    hub.broadcast(&chat_at(
+        "pm",
+        "GATE-BROADCAST",
+        None,
+        "2026-06-12T18:00:02Z",
+    ))
+    .unwrap();
 
     let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
     let mut rx = live.subscribe();
@@ -356,7 +350,7 @@ async fn a_message_in_the_join_gate_window_is_drained_addressed_or_the_welcome_b
     routing.link_terminal("sess-dev", "term-dev");
 
     drain_missed(
-        &session,
+        &hub,
         &registry,
         &routing,
         "sess-dev",
@@ -384,8 +378,7 @@ async fn offline_broadcasts_are_not_re_drained_on_reconnect_broadcasts_are_live_
     let registry = LivePtyRegistry::new();
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
-    let session =
-        crate::session::Session::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
+    let hub = crate::hub::Hub::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
 
     let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
     let mut rx1 = live.subscribe();
@@ -393,7 +386,7 @@ async fn offline_broadcasts_are_not_re_drained_on_reconnect_broadcasts_are_live_
     routing.register_agent("sess-dev", "dev", "term1", "2000-01-01T00:00:00Z");
 
     let m1 = chat_at("pm", "M1-delivered-live", None, "2026-06-13T10:00:00Z");
-    session.broadcast(&m1).unwrap();
+    hub.broadcast(&m1).unwrap();
     deliver_to_terminals(&m1, &registry, &routing);
     assert!(
         drain_for(&mut rx1, "M1-delivered-live")
@@ -405,7 +398,7 @@ async fn offline_broadcasts_are_not_re_drained_on_reconnect_broadcasts_are_live_
     registry.remove("term1");
 
     let m2 = chat_at("designer", "M2-while-offline", None, "2026-06-13T10:05:00Z");
-    session.broadcast(&m2).unwrap();
+    hub.broadcast(&m2).unwrap();
     deliver_to_terminals(&m2, &registry, &routing);
 
     let live2 = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
@@ -413,7 +406,7 @@ async fn offline_broadcasts_are_not_re_drained_on_reconnect_broadcasts_are_live_
     registry.insert("term2".to_string(), live2);
     routing.register_agent("sess-dev", "dev", "term2", "2026-06-13T11:00:00Z");
     drain_missed(
-        &session,
+        &hub,
         &registry,
         &routing,
         "sess-dev",
@@ -502,7 +495,7 @@ async fn the_live_delivery_loop_wakes_a_committed_dormant_agent_on_a_broadcast_c
     let commitments = Arc::new(CommitmentStore::new());
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(crate::session::Session::new(
+    let hub = Arc::new(crate::hub::Hub::new(
         sess_dir.path().to_path_buf(),
         "owner".to_string(),
         tx,
@@ -524,14 +517,13 @@ async fn the_live_delivery_loop_wakes_a_committed_dormant_agent_on_a_broadcast_c
     commitments.commit("dev", "ci_state_changed", None);
 
     spawn_terminal_delivery_loop(
-        session.clone(),
+        hub.clone(),
         registry.clone(),
         routing.clone(),
         commitments.clone(),
     );
 
-    session
-        .broadcast(&ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"))
+    hub.broadcast(&ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"))
         .unwrap();
 
     let seen = drain_for(&mut rx, "PROCESSED[").await;

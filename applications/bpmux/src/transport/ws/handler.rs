@@ -5,14 +5,14 @@ use axum::extract::ws::{WebSocket, WebSocketUpgrade};
 use axum::response::Response;
 use futures::StreamExt;
 
-use crate::session;
+use crate::hub;
 
 use super::{WsDeps, run_ws_session};
 
 #[allow(clippy::too_many_arguments)]
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(store): axum::Extension<Arc<crate::store::Store>>,
     axum::Extension(dispatch): axum::Extension<crate::store::Dispatch>,
     axum::Extension(pty_registry): axum::Extension<Arc<crate::room::LivePtyRegistry>>,
@@ -21,7 +21,7 @@ pub async fn ws_handler(
     axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
 ) -> Response {
     let deps = WsDeps {
-        session,
+        hub,
         store,
         dispatch,
         pty_registry,

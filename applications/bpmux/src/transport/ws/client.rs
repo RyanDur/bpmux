@@ -14,11 +14,11 @@ use super::roadmap_write_handlers::{
     handle_reprioritize_outcome, handle_set_outcome_horizon,
 };
 use super::{MAX_MESSAGE_SIZE, message_size_ok, send_json};
-use crate::session;
+use crate::hub;
 use crate::transport::protocol::{ClientMessage, ServerMessage};
 
 pub(crate) struct ClientCtx<'a> {
-    pub session: &'a session::Session,
+    pub hub: &'a hub::Hub,
     pub store: &'a Arc<crate::store::Store>,
     pub dispatch: &'a crate::store::Dispatch,
     pub pty_registry: &'a crate::room::LivePtyRegistry,

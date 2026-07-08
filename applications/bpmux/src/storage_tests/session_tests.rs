@@ -400,16 +400,15 @@ fn storage_backend_resolves_from_env_value_purely() {
 fn file_backend_writes_the_jsonl_log_to_disk() {
     let dir = tempfile::tempdir().unwrap();
     let (tx, _rx) =
-        tokio::sync::broadcast::channel::<Message>(crate::session::BROADCAST_CHANNEL_CAPACITY);
-    let session = crate::session::Session::with_backend(
+        tokio::sync::broadcast::channel::<Message>(crate::hub::BROADCAST_CHANNEL_CAPACITY);
+    let hub = crate::hub::Hub::with_backend(
         dir.path().to_path_buf(),
         "test-dev".to_string(),
         tx,
         StorageBackend::File,
     );
 
-    session
-        .storage
+    hub.storage
         .append_message(&fresh_message("file-mode-test"))
         .unwrap();
 
@@ -424,16 +423,15 @@ fn file_backend_writes_the_jsonl_log_to_disk() {
 fn sqlite_backend_writes_the_db_not_the_flat_log() {
     let dir = tempfile::tempdir().unwrap();
     let (tx, _rx) =
-        tokio::sync::broadcast::channel::<Message>(crate::session::BROADCAST_CHANNEL_CAPACITY);
-    let session = crate::session::Session::with_backend(
+        tokio::sync::broadcast::channel::<Message>(crate::hub::BROADCAST_CHANNEL_CAPACITY);
+    let hub = crate::hub::Hub::with_backend(
         dir.path().to_path_buf(),
         "test-dev".to_string(),
         tx,
         StorageBackend::Sqlite,
     );
 
-    session
-        .storage
+    hub.storage
         .append_message(&fresh_message("sqlite-mode-test"))
         .unwrap();
 
@@ -448,7 +446,7 @@ fn sqlite_backend_writes_the_db_not_the_flat_log() {
         "the sqlite backend must NOT also write the flat jsonl log at {jsonl_path:?}"
     );
 
-    let messages = session.storage.read_messages().unwrap();
+    let messages = hub.storage.read_messages().unwrap();
     assert_eq!(messages.len(), 1);
     assert_eq!(messages[0].text, "sqlite-mode-test");
 }

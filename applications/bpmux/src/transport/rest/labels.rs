@@ -7,8 +7,8 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 
 use super::shared::{broadcast_board_invalidate, broadcast_stories, err_body, json_headers};
+use crate::hub;
 use crate::product_management::label_codec::LabelCodec;
-use crate::session;
 
 #[derive(Deserialize)]
 pub struct LabelMutationPayload {
@@ -34,7 +34,7 @@ fn reorder_label_ops(payload: &LabelMutationPayload) -> Vec<LabelOp> {
 }
 
 pub async fn post_story_labels(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
     axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     axum::extract::Path(id): axum::extract::Path<u64>,
@@ -142,8 +142,8 @@ pub async fn post_story_labels(
             crate::product_management::iteration::IterationAction::Upserted(vec![iteration]),
         ));
     }
-    broadcast_board_invalidate(&session);
-    broadcast_stories(&session, &refresh);
+    broadcast_board_invalidate(&hub);
+    broadcast_stories(&hub, &refresh);
     (
         StatusCode::OK,
         json_headers(),

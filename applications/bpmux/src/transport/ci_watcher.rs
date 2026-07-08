@@ -5,9 +5,9 @@ use tokio_util::sync::CancellationToken;
 
 use crate::ci::CiStateStore;
 use crate::github::RateLimitObserver;
+use crate::hub::Hub;
 use crate::kernel::Dispatch;
 use crate::message::{CiSnapshotWire, Message, MessageType, StateDeltaPayload};
-use crate::session::Session;
 use crate::store::{CiAction, CiPollFetch, CiSnapshot};
 
 pub const POLL_INTERVAL: Duration = Duration::from_secs(10);
@@ -36,7 +36,7 @@ pub fn spawn<A>(
     dispatch: Dispatch<A>,
     tracker: Arc<dyn CiPollFetch>,
     ci_state_store: CiStateStore,
-    session: Arc<Session>,
+    hub: Arc<Hub>,
     observer: RateLimitObserver,
     ct: CancellationToken,
 ) where
@@ -64,7 +64,7 @@ pub fn spawn<A>(
                 Ok(crate::bridge::tracker::ConditionalRunEntry::NotModified) => {
                     backoff = base_backoff;
                     ci_state_store.mark_poll_succeeded();
-                    broadcast_ci_poll(&session, last_snapshot.as_ref(), poll_time(&ci_state_store));
+                    broadcast_ci_poll(&hub, last_snapshot.as_ref(), poll_time(&ci_state_store));
                     continue;
                 }
                 Ok(crate::bridge::tracker::ConditionalRunEntry::Modified { entries, etag }) => {
@@ -75,11 +75,11 @@ pub fn spawn<A>(
                 Ok(crate::bridge::tracker::ConditionalRunEntry::Empty) => {
                     backoff = base_backoff;
                     ci_state_store.mark_poll_succeeded();
-                    broadcast_ci_poll(&session, last_snapshot.as_ref(), poll_time(&ci_state_store));
+                    broadcast_ci_poll(&hub, last_snapshot.as_ref(), poll_time(&ci_state_store));
                     continue;
                 }
                 Err(e) => {
-                    broadcast_ci_poll(&session, last_snapshot.as_ref(), poll_time(&ci_state_store));
+                    broadcast_ci_poll(&hub, last_snapshot.as_ref(), poll_time(&ci_state_store));
                     if let Some(decision) = crate::github::classify_and_decide(
                         &e,
                         observer.snapshot(),
@@ -133,13 +133,13 @@ pub fn spawn<A>(
             dispatch(CiAction::Updated(snapshot.clone()).into());
             last_snapshot = Some(snapshot);
             ci_state_store.mark_poll_succeeded();
-            broadcast_ci_poll(&session, last_snapshot.as_ref(), poll_time(&ci_state_store));
+            broadcast_ci_poll(&hub, last_snapshot.as_ref(), poll_time(&ci_state_store));
         }
     });
 }
 
 fn broadcast_ci_poll(
-    session: &Session,
+    hub: &Hub,
     snapshot: Option<&CiSnapshot>,
     last_successful_poll_at: Option<String>,
 ) {
@@ -159,5 +159,5 @@ fn broadcast_ci_poll(
         state_delta: Some(StateDeltaPayload::CiPoll { snapshot: wire }),
         ..Message::default()
     };
-    session.broadcast_ephemeral(&msg);
+    hub.broadcast_ephemeral(&msg);
 }

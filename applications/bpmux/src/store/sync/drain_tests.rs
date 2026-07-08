@@ -8,8 +8,8 @@ use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
 use crate::ci::CiStateStore;
+use crate::hub::Hub;
 use crate::message::Message;
-use crate::session::Session;
 use crate::store::test_support::eventually;
 use crate::store::{AppAction, Store, SyncAction};
 
@@ -22,14 +22,10 @@ fn refresh_for_tests() -> Arc<dyn crate::sync::RefreshDriver> {
 async fn start_update_github_tracks_then_clears_when_drain_finds_nothing() {
     let dir = TempDir::new().expect("tempdir");
     let (tx, _rx) = broadcast::channel::<Message>(64);
-    let session = Arc::new(Session::new(
-        dir.path().to_path_buf(),
-        "local".to_string(),
-        tx,
-    ));
+    let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "local".to_string(), tx));
     std::mem::forget(dir);
     let orch: Arc<Store> = Arc::new(
-        Store::new(session, None, CiStateStore::new(), CancellationToken::new()).with_refresh(
+        Store::new(hub, None, CiStateStore::new(), CancellationToken::new()).with_refresh(
             refresh_for_tests(),
             Duration::from_secs(60),
             Duration::from_secs(15),

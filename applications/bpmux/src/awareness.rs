@@ -7,7 +7,7 @@ pub mod recall;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 
-use crate::session::Session;
+use crate::hub::Hub;
 
 use agents::AgentTracker;
 use experience::ExperienceDetector;
@@ -25,20 +25,19 @@ pub trait SurfacedTopicsRepo: Send + Sync {
 
 const TRAIN_WINDOW: usize = 2000;
 
-fn training_messages(session: &Session) -> Vec<crate::message::Message> {
-    session
-        .read_recent(TRAIN_WINDOW, 0, &|_| true)
+fn training_messages(hub: &Hub) -> Vec<crate::message::Message> {
+    hub.read_recent(TRAIN_WINDOW, 0, &|_| true)
         .unwrap_or_default()
 }
 
-pub fn spawn(session: Arc<Session>, owner_name: String) {
-    let mut rx = session.subscribe();
-    let messages = training_messages(&session);
+pub fn spawn(hub: Arc<Hub>, owner_name: String) {
+    let mut rx = hub.subscribe();
+    let messages = training_messages(&hub);
 
     tokio::spawn(async move {
         let mut agents = AgentTracker::new(&owner_name);
         let mut experience = ExperienceDetector::new(&messages, &owner_name);
-        let mut recall = RecallSystem::new(&session);
+        let mut recall = RecallSystem::new(&hub);
         let mut pileon = PileonDetector::new(&owner_name);
         let mut handoff = HandoffTracker::new();
 
@@ -52,8 +51,8 @@ pub fn spawn(session: Arc<Session>, owner_name: String) {
                             let sender = msg.from.split(':').next().unwrap_or(&msg.from);
                             agents.on_message(&msg);
                             experience.on_message(&msg, sender);
-                            recall.on_message(&session, &msg, sender, &owner_name);
-                            pileon.on_message(&session, &msg, sender, &agents);
+                            recall.on_message(&hub, &msg, sender, &owner_name);
+                            pileon.on_message(&hub, &msg, sender, &agents);
                             handoff.on_message(&msg, sender, &agents, &owner_name);
                         }
                         Err(broadcast::error::RecvError::Lagged(_)) => continue,
@@ -61,7 +60,7 @@ pub fn spawn(session: Arc<Session>, owner_name: String) {
                     }
                 }
                 _ = tokio::time::sleep(experience_timeout), if experience.has_pending() => {
-                    experience.flush(&session, &agents);
+                    experience.flush(&hub, &agents);
                 }
                 _ = async {
                     if let Some(deadline) = handoff.deadline() {
@@ -70,7 +69,7 @@ pub fn spawn(session: Arc<Session>, owner_name: String) {
                         std::future::pending::<()>().await;
                     }
                 }, if handoff.is_pending() => {
-                    handoff.timeout_nudge(&session);
+                    handoff.timeout_nudge(&hub);
                 }
             }
         }

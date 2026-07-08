@@ -13,12 +13,12 @@ use crate::transport::rest::post_terminal_spawn;
 fn spawn_app(store_dir: &TempDir) -> (axum::Router, Arc<LivePtyRegistry>, Arc<RoutingStore>) {
     let registry = Arc::new(LivePtyRegistry::new());
     let (tx, _rx) = tokio::sync::broadcast::channel(16);
-    let session = Arc::new(crate::session::Session::new(
+    let hub = Arc::new(crate::hub::Hub::new(
         store_dir.path().to_path_buf(),
         "owner".to_string(),
         tx,
     ));
-    let routing = Arc::new(RoutingStore::new(session.storage.clone()));
+    let routing = Arc::new(RoutingStore::new(hub.storage.clone()));
     let router = axum::Router::new()
         .route(
             "/api/terminals/spawn",
@@ -27,7 +27,7 @@ fn spawn_app(store_dir: &TempDir) -> (axum::Router, Arc<LivePtyRegistry>, Arc<Ro
         .layer(axum::Extension(registry.clone()))
         .layer(axum::Extension(0u16))
         .layer(axum::Extension(routing.clone()))
-        .with_state(session);
+        .with_state(hub);
     (router, registry, routing)
 }
 

@@ -10,7 +10,7 @@ use super::blockers::{
     build_close_iteration_ready_queue_blocked_body, collect_ready_queue_blockers,
 };
 use super::notify::broadcast_iteration_closed;
-use crate::session;
+use crate::hub;
 use crate::transport::rest::shared::{
     broadcast_board_invalidate, broadcast_stories, err_body, json_headers,
 };
@@ -30,7 +30,7 @@ pub(crate) enum CloseIterationError {
 }
 
 pub async fn post_close_iteration(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
     axum::Extension(dispatch): axum::Extension<crate::store::Dispatch>,
     body: Option<axum::Json<CloseIterationRequest>>,
@@ -51,10 +51,10 @@ pub async fn post_close_iteration(
             ),
         );
     };
-    match close_iteration(&session, refresh, &dispatch, iteration_id).await {
+    match close_iteration(&hub, refresh, &dispatch, iteration_id).await {
         Ok(()) => {
-            broadcast_board_invalidate(&session);
-            broadcast_stories(&session, refresh);
+            broadcast_board_invalidate(&hub);
+            broadcast_stories(&hub, refresh);
             let body = serde_json::json!({
                 "promoted": Vec::<u64>::new(),
                 "deleted_marker_id": serde_json::Value::Null,
@@ -81,7 +81,7 @@ pub async fn post_close_iteration(
         ),
         Err(CloseIterationError::ReadyQueueBlocked(blockers)) => {
             let body = build_close_iteration_ready_queue_blocked_body(&blockers);
-            broadcast_iteration_close_blocked(&session, &blockers);
+            broadcast_iteration_close_blocked(&hub, &blockers);
             (StatusCode::CONFLICT, json_headers(), body)
         }
         Err(CloseIterationError::Canonical(close_err)) => (
@@ -93,7 +93,7 @@ pub async fn post_close_iteration(
 }
 
 pub(crate) async fn close_iteration(
-    session: &session::Session,
+    hub: &hub::Hub,
     refresh: &Arc<dyn crate::sync::RefreshDriver>,
     dispatch: &crate::store::Dispatch,
     iteration_id: u64,
@@ -120,7 +120,7 @@ pub(crate) async fn close_iteration(
     close_iteration_canonical(refresh, dispatch, iteration_id)
         .await
         .map_err(CloseIterationError::Canonical)?;
-    broadcast_iteration_closed(session);
+    broadcast_iteration_closed(hub);
     Ok(())
 }
 

@@ -22,15 +22,15 @@ use tokio::sync::broadcast;
 use tower::ServiceExt;
 
 use crate::bridge::tracker::OctocrabStoryTracker;
+use crate::hub;
 use crate::message::MessageType;
-use crate::session;
 use crate::transport::rest::{TrackerHandle, *};
 
 pub(super) fn test_app(
     dir: &TempDir,
 ) -> (axum::Router, broadcast::Sender<crate::message::Message>) {
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(session::Session::new(
+    let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),
         "test".to_string(),
         tx.clone(),
@@ -41,9 +41,9 @@ pub(super) fn test_app(
             axum::routing::get(get_messages).post(post_message),
         )
         .layer(axum::Extension(Arc::new(
-            crate::routing::RoutingStore::new(session.storage.clone()),
+            crate::routing::RoutingStore::new(hub.storage.clone()),
         )))
-        .with_state(session);
+        .with_state(hub);
     (router, tx)
 }
 
@@ -53,9 +53,9 @@ pub(super) fn init_session(dir: &TempDir) -> PathBuf {
     dir.path().to_path_buf()
 }
 
-pub(super) fn seed_messages(dir: &TempDir, count: usize) -> Arc<session::Session> {
+pub(super) fn seed_messages(dir: &TempDir, count: usize) -> Arc<hub::Hub> {
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(session::Session::new(
+    let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),
         "test".to_string(),
         tx,
@@ -67,14 +67,14 @@ pub(super) fn seed_messages(dir: &TempDir, count: usize) -> Arc<session::Session
             ts: chrono::Utc::now(),
             ..crate::message::Message::default()
         };
-        session.broadcast(&msg).expect("broadcast");
+        hub.broadcast(&msg).expect("broadcast");
     }
-    session
+    hub
 }
 
-pub(super) fn seed_mixed_messages(dir: &TempDir) -> Arc<session::Session> {
+pub(super) fn seed_mixed_messages(dir: &TempDir) -> Arc<hub::Hub> {
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(session::Session::new(
+    let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),
         "test".to_string(),
         tx,
@@ -93,24 +93,21 @@ pub(super) fn seed_mixed_messages(dir: &TempDir) -> Arc<session::Session> {
             message_type: msg_type,
             ..crate::message::Message::default()
         };
-        session.broadcast(&msg).expect("broadcast");
+        hub.broadcast(&msg).expect("broadcast");
     }
-    session
+    hub
 }
 
 pub(super) fn board_test_session(
     dir: &TempDir,
-) -> (
-    Arc<session::Session>,
-    broadcast::Sender<crate::message::Message>,
-) {
+) -> (Arc<hub::Hub>, broadcast::Sender<crate::message::Message>) {
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(session::Session::new(
+    let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),
         "owner".to_string(),
         tx.clone(),
     ));
-    (session, tx)
+    (hub, tx)
 }
 
 pub(super) fn board_author() -> Value {
@@ -172,7 +169,7 @@ pub(super) fn tracker_for(server: &MockServer) -> crate::integrations::github::G
     crate::integrations::github::GitHubSourceAdapter::new(inner)
 }
 
-pub(super) fn board_router(session: Arc<session::Session>, tracker: TrackerHandle) -> axum::Router {
+pub(super) fn board_router(hub: Arc<hub::Hub>, tracker: TrackerHandle) -> axum::Router {
     use axum::routing::{get, post};
     let none_refresh: crate::sync::OrchestratorHandle = None;
     axum::Router::new()
@@ -189,7 +186,7 @@ pub(super) fn board_router(session: Arc<session::Session>, tracker: TrackerHandl
             "/api/stories/{number}/reject",
             post(crate::transport::rest::post_reject_story),
         )
-        .with_state(session)
+        .with_state(hub)
         .layer(axum::Extension(tracker))
         .layer(axum::Extension(none_refresh))
 }

@@ -17,8 +17,8 @@ use super::{
 };
 
 use super::{init_session, seed_messages, seed_mixed_messages, test_app};
+use crate::hub;
 use crate::message::MessageType;
-use crate::session;
 use crate::transport::rest::*;
 
 #[test]

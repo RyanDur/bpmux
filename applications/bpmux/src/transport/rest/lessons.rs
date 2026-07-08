@@ -6,7 +6,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use crate::session;
+use crate::hub;
 
 #[derive(Deserialize)]
 pub struct LessonsQuery {
@@ -28,13 +28,13 @@ pub struct PeerLessonsQuery {
 }
 
 pub async fn get_lessons(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     Query(params): Query<LessonsQuery>,
 ) -> impl IntoResponse {
-    match session.read_messages() {
+    match hub.read_messages() {
         Ok(messages) => {
-            let mut index = crate::memory::lessons::build_index(&messages, &session.owner_name);
-            let saved = session.storage.load_lessons();
+            let mut index = crate::memory::lessons::build_index(&messages, &hub.owner_name);
+            let saved = hub.storage.load_lessons();
             index.lessons = saved.lessons;
 
             if let Some(limit) = params.limit {
@@ -94,18 +94,18 @@ pub async fn get_lessons(
 }
 
 pub async fn get_peer_lessons(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     Query(params): Query<PeerLessonsQuery>,
 ) -> impl IntoResponse {
     let Some(peer_name) = params.peer else {
-        let peers = session.storage.list_peers();
+        let peers = hub.storage.list_peers();
         return (
             StatusCode::OK,
             format!("available peers: {}", peers.join(", ")),
         );
     };
 
-    let index = session.storage.load_peer_lessons(&peer_name);
+    let index = hub.storage.load_peer_lessons(&peer_name);
     let groups = crate::memory::lessons::group_by_topic(&index);
     if groups.is_empty() {
         return (
@@ -130,10 +130,10 @@ pub async fn get_peer_lessons(
 }
 
 pub async fn post_lesson(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     Json(payload): Json<SaveLessonPayload>,
 ) -> impl IntoResponse {
-    match session.storage.add_lesson(
+    match hub.storage.add_lesson(
         &payload.topic,
         &payload.lesson,
         &payload.author_role,

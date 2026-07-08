@@ -8,23 +8,23 @@ use tokio::sync::broadcast;
 use super::app::OwnerParkListener;
 use super::app::{self, AppAction, AppState, RosterBroadcast};
 use super::{
-    AggregatedReaction, CiSessionBroadcaster, Presence, ReactionsBroadcastListener,
-    ReactionsSessionBroadcaster, RosterBroadcastListener, RosterMember, RosterRole,
-    RosterSessionBroadcaster,
+    AggregatedReaction, CiHubBroadcaster, Presence, ReactionsBroadcastListener,
+    ReactionsHubBroadcaster, RosterBroadcastListener, RosterHubBroadcaster, RosterMember,
+    RosterRole,
 };
 use crate::ci::CiState;
+use crate::hub::Hub;
 use crate::kernel;
 use crate::message::{Message, MessageType, StateDeltaPayload};
 use crate::product_management::story::slice::StoryAction;
-use crate::session::Session;
 use crate::store::CiBroadcastListener;
 use crate::store::ci::CiSnapshot;
 
-fn owner_park_kernel(session: Arc<Session>) -> Arc<kernel::Store<AppState, AppAction>> {
+fn owner_park_kernel(hub: Arc<Hub>) -> Arc<kernel::Store<AppState, AppAction>> {
     let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));
     let roster_listeners: app::RosterListeners =
         Arc::new(std::sync::Mutex::new(vec![
-            Arc::new(RosterSessionBroadcaster::new(session)) as Arc<dyn RosterBroadcastListener>,
+            Arc::new(RosterHubBroadcaster::new(hub)) as Arc<dyn RosterBroadcastListener>,
         ]));
     store.add_listener(Arc::new(RosterBroadcast::new(roster_listeners)));
     store.add_listener(Arc::new(OwnerParkListener));
@@ -43,15 +43,11 @@ fn seed_dev_online_kernel(store: &Arc<kernel::Store<AppState, AppAction>>) {
     ));
 }
 
-fn fresh_session() -> (Arc<Session>, broadcast::Receiver<Message>, TempDir) {
+fn fresh_hub() -> (Arc<Hub>, broadcast::Receiver<Message>, TempDir) {
     let dir = TempDir::new().expect("tempdir");
     let (tx, rx) = broadcast::channel::<Message>(64);
-    let session = Arc::new(Session::new(
-        dir.path().to_path_buf(),
-        "local".to_string(),
-        tx,
-    ));
-    (session, rx, dir)
+    let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "local".to_string(), tx));
+    (hub, rx, dir)
 }
 
 fn drain_state_delta(rx: &mut broadcast::Receiver<Message>) -> StateDeltaPayload {
@@ -67,8 +63,8 @@ fn drain_state_delta(rx: &mut broadcast::Receiver<Message>) -> StateDeltaPayload
 
 #[tokio::test]
 async fn ci_listener_emits_typed_state_delta() {
-    let (session, mut rx, _dir) = fresh_session();
-    let listener = CiSessionBroadcaster::new(session);
+    let (hub, mut rx, _dir) = fresh_hub();
+    let listener = CiHubBroadcaster::new(hub);
     let snap = CiSnapshot {
         state: CiState::Green,
         run_id: Some(7),
@@ -91,8 +87,8 @@ async fn ci_listener_emits_typed_state_delta() {
 
 #[tokio::test]
 async fn reactions_listener_emits_typed_state_delta() {
-    let (session, mut rx, _dir) = fresh_session();
-    let listener = ReactionsSessionBroadcaster::new(session);
+    let (hub, mut rx, _dir) = fresh_hub();
+    let listener = ReactionsHubBroadcaster::new(hub);
     let agg = vec![AggregatedReaction {
         message_key: "k1".to_string(),
         emoji: "👍".to_string(),
@@ -205,13 +201,9 @@ async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
 
     let dir = TempDir::new().expect("tempdir");
     let (tx, mut rx) = broadcast::channel::<Message>(64);
-    let session = Arc::new(Session::new(
-        dir.path().to_path_buf(),
-        "local".to_string(),
-        tx,
-    ));
+    let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "local".to_string(), tx));
     std::mem::forget(dir);
-    let store = owner_park_kernel(session);
+    let store = owner_park_kernel(hub);
     seed_dev_online_kernel(&store);
     let _seed = drain_roster_presence(&mut rx).await;
 
@@ -242,13 +234,9 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
 
     let dir = TempDir::new().expect("tempdir");
     let (tx, mut rx) = broadcast::channel::<Message>(64);
-    let session = Arc::new(Session::new(
-        dir.path().to_path_buf(),
-        "local".to_string(),
-        tx,
-    ));
+    let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "local".to_string(), tx));
     std::mem::forget(dir);
-    let store = owner_park_kernel(session);
+    let store = owner_park_kernel(hub);
     seed_dev_online_kernel(&store);
     store.dispatch(AppAction::Iteration(
         crate::product_management::iteration::IterationAction::Upserted(vec![current_iteration(
@@ -302,8 +290,8 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
 
 #[tokio::test]
 async fn roster_listener_emits_typed_state_delta() {
-    let (session, mut rx, _dir) = fresh_session();
-    let listener = RosterSessionBroadcaster::new(session);
+    let (hub, mut rx, _dir) = fresh_hub();
+    let listener = RosterHubBroadcaster::new(hub);
     let members = vec![RosterMember {
         routing_id: "sess-owner".to_string(),
         name: "owner".to_string(),

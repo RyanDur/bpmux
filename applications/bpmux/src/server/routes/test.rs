@@ -1,7 +1,7 @@
-use super::SessionRouter;
+use super::HubRouter;
 use crate::transport;
 
-pub(in crate::server) fn test_seed_routes() -> SessionRouter {
+pub(in crate::server) fn test_seed_routes() -> HubRouter {
     if !transport::test_seed::seed_api_enabled() {
         return axum::Router::new();
     }
@@ -40,7 +40,7 @@ pub(in crate::server) fn test_seed_routes() -> SessionRouter {
         )
 }
 
-pub(in crate::server) fn test_routes(enabled: bool) -> SessionRouter {
+pub(in crate::server) fn test_routes(enabled: bool) -> HubRouter {
     if !enabled {
         return axum::Router::new();
     }

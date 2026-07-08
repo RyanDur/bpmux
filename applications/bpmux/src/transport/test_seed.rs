@@ -6,8 +6,8 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
+use crate::hub;
 use crate::product_management::label_codec::LabelCodec;
-use crate::session;
 
 pub fn seed_api_enabled() -> bool {
     std::env::var("BPMUX_TEST_SEED_API")
@@ -21,13 +21,13 @@ pub struct SeedMessagesBody {
 }
 
 pub async fn post_seed_messages(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     Json(body): Json<SeedMessagesBody>,
 ) -> impl IntoResponse {
     for msg in &body.messages {
         let mut msg = msg.clone();
         msg.ensure_id();
-        if let Err(e) = session.storage.append_message(&msg) {
+        if let Err(e) = hub.storage.append_message(&msg) {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("seed_messages append failed: {e}"),
@@ -46,10 +46,10 @@ pub struct SeedReactionsBody {
 }
 
 pub async fn post_seed_reactions(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     Json(body): Json<SeedReactionsBody>,
 ) -> impl IntoResponse {
-    if let Err(e) = crate::reactions::save(&session.dir, &body.store) {
+    if let Err(e) = crate::reactions::save(&hub.dir, &body.store) {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("seed_reactions save failed: {e}"),
@@ -58,10 +58,8 @@ pub async fn post_seed_reactions(
     (StatusCode::CREATED, "seeded reactions".to_string())
 }
 
-pub async fn post_reset_messages(
-    State(session): State<Arc<session::Session>>,
-) -> impl IntoResponse {
-    if let Err(e) = session.storage.clear_messages() {
+pub async fn post_reset_messages(State(hub): State<Arc<hub::Hub>>) -> impl IntoResponse {
+    if let Err(e) = hub.storage.clear_messages() {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("reset_messages failed: {e}"),
@@ -71,7 +69,7 @@ pub async fn post_reset_messages(
 }
 
 pub async fn post_reset_stories(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
 ) -> impl IntoResponse {
     let Some(refresh) = orchestrator.as_ref() else {
@@ -91,12 +89,12 @@ pub async fn post_reset_stories(
         }),
         ..crate::message::Message::default()
     };
-    if let Err(e) = session.broadcast(&invalidate_delta) {
+    if let Err(e) = hub.broadcast(&invalidate_delta) {
         crate::diag::log_diag(&format!(
             "post_reset_stories: board_invalidated state-delta broadcast failed: {e}"
         ));
     }
-    crate::transport::rest::shared::broadcast_stories(&session, refresh);
+    crate::transport::rest::shared::broadcast_stories(&hub, refresh);
     (StatusCode::OK, "reset stories".to_string())
 }
 
@@ -137,7 +135,7 @@ pub struct SeedStoriesBody {
 }
 
 pub async fn post_seed_stories(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
     axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     Json(body): Json<SeedStoriesBody>,
@@ -308,12 +306,12 @@ pub async fn post_seed_stories(
         }),
         ..crate::message::Message::default()
     };
-    if let Err(e) = session.broadcast(&invalidate_delta) {
+    if let Err(e) = hub.broadcast(&invalidate_delta) {
         crate::diag::log_diag(&format!(
             "post_seed_stories: board_invalidated state-delta broadcast failed: {e}"
         ));
     }
-    crate::transport::rest::shared::broadcast_stories(&session, refresh);
+    crate::transport::rest::shared::broadcast_stories(&hub, refresh);
     (
         StatusCode::CREATED,
         format!("seeded {} stories", body.stories.len()),

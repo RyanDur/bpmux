@@ -8,18 +8,14 @@ use tokio::sync::{broadcast, mpsc};
 use tokio::time::timeout;
 
 use super::peer::{PeerMessage, spawn_relay};
+use crate::hub::Hub;
 use crate::message::{Message, MessageType};
-use crate::session::Session;
 
-fn make_session() -> (Arc<Session>, broadcast::Receiver<Message>, TempDir) {
+fn make_hub() -> (Arc<Hub>, broadcast::Receiver<Message>, TempDir) {
     let dir = TempDir::new().expect("tempdir");
     let (tx, rx) = broadcast::channel(64);
-    let session = Arc::new(Session::new(
-        dir.path().to_path_buf(),
-        "local".to_string(),
-        tx,
-    ));
-    (session, rx, dir)
+    let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "local".to_string(), tx));
+    (hub, rx, dir)
 }
 
 async fn next_system_text(rx: &mut broadcast::Receiver<Message>) -> Option<String> {
@@ -37,12 +33,12 @@ async fn next_system_text(rx: &mut broadcast::Receiver<Message>) -> Option<Strin
 
 #[tokio::test]
 async fn hello_produces_joined_system_message() {
-    let (session, mut rx, _dir) = make_session();
+    let (hub, mut rx, _dir) = make_hub();
     let (inbound_tx, inbound_rx) = mpsc::channel::<String>(16);
     let (outbound_tx, _outbound_rx) = mpsc::channel::<String>(16);
 
     let _peer = spawn_relay(
-        session.clone(),
+        hub.clone(),
         "remote".to_string(),
         "local-session".to_string(),
         inbound_rx,
@@ -66,12 +62,12 @@ async fn hello_produces_joined_system_message() {
 
 #[tokio::test]
 async fn inbound_close_produces_left_system_message() {
-    let (session, mut rx, _dir) = make_session();
+    let (hub, mut rx, _dir) = make_hub();
     let (inbound_tx, inbound_rx) = mpsc::channel::<String>(16);
     let (outbound_tx, _outbound_rx) = mpsc::channel::<String>(16);
 
     let _peer = spawn_relay(
-        session.clone(),
+        hub.clone(),
         "remote".to_string(),
         "local-session".to_string(),
         inbound_rx,
@@ -100,12 +96,12 @@ async fn inbound_close_produces_left_system_message() {
 
 #[tokio::test]
 async fn left_uses_placeholder_name_when_no_hello_received() {
-    let (session, mut rx, _dir) = make_session();
+    let (hub, mut rx, _dir) = make_hub();
     let (inbound_tx, inbound_rx) = mpsc::channel::<String>(16);
     let (outbound_tx, _outbound_rx) = mpsc::channel::<String>(16);
 
     let _peer = spawn_relay(
-        session.clone(),
+        hub.clone(),
         "remote".to_string(),
         "local-session".to_string(),
         inbound_rx,

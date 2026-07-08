@@ -18,12 +18,12 @@
 
 use std::sync::Arc;
 
+use bpmux::hub::Hub;
 use bpmux::integrations::in_memory::InMemorySourceAdapter;
 use bpmux::product_management::story::events::EventMeta;
 use bpmux::product_management::story::events::{StoryEvent, StoryEventKind};
 use bpmux::product_management::story::peer::PeerId;
 use bpmux::product_management::story::{Story, StoryId, Work};
-use bpmux::session::Session;
 use bpmux::sync::RefreshDriver;
 use bpmux::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
@@ -46,15 +46,15 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
     adapter.seed_stories(vec![seeded]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
 
-    let session_dir = tempfile::tempdir().expect("session dir");
+    let hub_dir = tempfile::tempdir().expect("hub dir");
     let (wake_tx, _) = broadcast::channel(64);
-    let session = Arc::new(Session::new(
-        session_dir.path().to_path_buf(),
+    let hub = Arc::new(Hub::new(
+        hub_dir.path().to_path_buf(),
         "test".to_string(),
         wake_tx,
     ));
     let app_store = Arc::new(bpmux::store::Store::new(
-        session,
+        hub,
         None,
         bpmux::ci::CiStateStore::new(),
         CancellationToken::new(),

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::extract::ws::{Message as WsMessage, WebSocket};
 use futures::stream::SplitSink;
 
-use crate::session;
+use crate::hub;
 use crate::transport::protocol::ServerMessage;
 
 use super::snapshot::{build_state_snapshot_message, system_announcement};
@@ -13,7 +13,7 @@ const REPLAY_SCAN_WINDOW: usize = 500;
 
 pub(super) async fn send_startup_frames(
     tx: &mut SplitSink<WebSocket, WsMessage>,
-    session: &Arc<session::Session>,
+    hub: &Arc<hub::Hub>,
     store: &Arc<crate::store::Store>,
     orchestrator: &crate::sync::OrchestratorHandle,
     identity: &str,
@@ -22,7 +22,7 @@ pub(super) async fn send_startup_frames(
     send_json(
         tx,
         &ServerMessage::Welcome {
-            session_id: session.id.clone(),
+            session_id: hub.id.clone(),
         },
     )
     .await?;
@@ -62,11 +62,11 @@ pub(super) async fn send_startup_frames(
         .await?;
     }
     let join_msg = system_announcement(&format!("{identity} joined"));
-    session.broadcast(&join_msg)?;
+    hub.broadcast(&join_msg)?;
     if let Some(cursor) = replay_cursor
         && let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(&cursor)
         && let Ok(mut messages) =
-            session.read_recent(REPLAY_SCAN_WINDOW, 0, &|m| m.state_delta.is_some())
+            hub.read_recent(REPLAY_SCAN_WINDOW, 0, &|m| m.state_delta.is_some())
     {
         messages.reverse();
         let cursor_ts = parsed.with_timezone(&chrono::Utc);

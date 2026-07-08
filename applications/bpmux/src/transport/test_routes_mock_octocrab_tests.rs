@@ -10,19 +10,15 @@ use tower::ServiceExt;
 
 use crate::bridge::test_fixtures::issue;
 use crate::bridge::tracker::OctocrabStoryTracker;
+use crate::hub::{self, BROADCAST_CHANNEL_CAPACITY};
 use crate::integrations::github::GitHubSourceAdapter;
-use crate::session::{self, BROADCAST_CHANNEL_CAPACITY};
 use crate::sync::OrchestratorHandle;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 
-fn fresh_test_session() -> Arc<session::Session> {
+fn fresh_test_hub() -> Arc<hub::Hub> {
     let dir = tempfile::tempdir().expect("tempdir");
     let (wake_tx, _wake_rx) = tokio::sync::broadcast::channel(BROADCAST_CHANNEL_CAPACITY);
-    Arc::new(session::Session::new(
-        dir.keep(),
-        "test:owner".to_string(),
-        wake_tx,
-    ))
+    Arc::new(hub::Hub::new(dir.keep(), "test:owner".to_string(), wake_tx))
 }
 
 async fn fixture_mock_octocrab(server: &MockServer) -> (axum::Router, Arc<dyn RefreshDriver>) {
@@ -44,7 +40,7 @@ async fn fixture_mock_octocrab(server: &MockServer) -> (axum::Router, Arc<dyn Re
             axum::routing::post(super::test_routes::post_test_create_story),
         )
         .route("/api/board", axum::routing::get(super::rest::get_board))
-        .with_state(fresh_test_session())
+        .with_state(fresh_test_hub())
         .layer(axum::Extension(orchestrator))
         .layer(axum::Extension(none_tracker))
         .layer(axum::Extension(crate::store::Dispatch::new(

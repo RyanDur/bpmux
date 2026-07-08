@@ -13,20 +13,16 @@ use super::{
     RosterAction, RosterBroadcastListener, RosterMember, RosterRole, Store,
 };
 use crate::ci::CiStateStore;
+use crate::hub::Hub;
 use crate::message::Message;
-use crate::session::Session;
 
 fn fresh_orch() -> Arc<Store> {
     let dir = TempDir::new().expect("tempdir");
     let (tx, _rx) = broadcast::channel::<Message>(64);
-    let session = Arc::new(Session::new(
-        dir.path().to_path_buf(),
-        "local".to_string(),
-        tx,
-    ));
+    let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "local".to_string(), tx));
     std::mem::forget(dir);
     Arc::new(Store::new(
-        session,
+        hub,
         None,
         CiStateStore::new(),
         CancellationToken::new(),
@@ -315,13 +311,9 @@ async fn post_reaction_rest_handler_dispatches_through_orchestrator() {
 
     let dir = TempDir::new().expect("tempdir");
     let (tx, _rx) = broadcast::channel::<Message>(64);
-    let session = Arc::new(Session::new(
-        dir.path().to_path_buf(),
-        "test".to_string(),
-        tx,
-    ));
+    let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "test".to_string(), tx));
     let orch: Arc<Store> = Arc::new(Store::new(
-        session.clone(),
+        hub.clone(),
         None,
         CiStateStore::new(),
         CancellationToken::new(),
@@ -332,7 +324,7 @@ async fn post_reaction_rest_handler_dispatches_through_orchestrator() {
     let router = axum::Router::new()
         .route("/api/reactions", axum::routing::post(post_reaction))
         .layer(axum::Extension(orch.clone()))
-        .with_state(session.clone());
+        .with_state(hub.clone());
 
     let body_text = serde_json::to_string(&serde_json::json!({
         "channel": "broadcast",

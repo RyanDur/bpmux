@@ -4,7 +4,7 @@ use serde::Serialize;
 
 mod listeners;
 
-pub use listeners::ReactionsSessionBroadcaster;
+pub use listeners::ReactionsHubBroadcaster;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct AggregatedReaction {

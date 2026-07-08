@@ -80,7 +80,7 @@ pub fn spawn_agent_run_detector(
     mut output: broadcast::Receiver<Vec<u8>>,
     registry: Arc<LivePtyRegistry>,
     routing: Arc<RoutingStore>,
-    session: Arc<crate::session::Session>,
+    hub: Arc<crate::hub::Hub>,
     store: Option<DetectorStore>,
 ) {
     tokio::spawn(async move {
@@ -115,7 +115,7 @@ pub fn spawn_agent_run_detector(
                             &mint.job_start_ts,
                         );
                         crate::room::drain_missed(
-                            &session,
+                            &hub,
                             &registry,
                             &routing,
                             &dir_session.id,

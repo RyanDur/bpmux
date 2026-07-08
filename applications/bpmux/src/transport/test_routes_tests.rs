@@ -8,19 +8,15 @@ use serde_json::Value;
 use tower::ServiceExt;
 
 use crate::bridge;
+use crate::hub::{self, BROADCAST_CHANNEL_CAPACITY};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::session::{self, BROADCAST_CHANNEL_CAPACITY};
 use crate::sync::OrchestratorHandle;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 
-fn fresh_test_session() -> Arc<session::Session> {
+fn fresh_test_hub() -> Arc<hub::Hub> {
     let dir = tempfile::tempdir().expect("tempdir");
     let (wake_tx, _wake_rx) = tokio::sync::broadcast::channel(BROADCAST_CHANNEL_CAPACITY);
-    Arc::new(session::Session::new(
-        dir.keep(),
-        "test:owner".to_string(),
-        wake_tx,
-    ))
+    Arc::new(hub::Hub::new(dir.keep(), "test:owner".to_string(), wake_tx))
 }
 
 async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>) {
@@ -44,7 +40,7 @@ async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>) {
             axum::routing::post(super::test_routes::post_test_close_story),
         )
         .route("/api/board", axum::routing::get(super::rest::get_board))
-        .with_state(fresh_test_session())
+        .with_state(fresh_test_hub())
         .layer(axum::Extension(orchestrator))
         .layer(axum::Extension(none_tracker))
         .layer(axum::Extension(crate::store::Dispatch::new(
@@ -60,7 +56,7 @@ fn fixture_test_mode_off() -> axum::Router {
             "/api/test/create_story",
             axum::routing::post(super::test_routes::post_test_create_story),
         )
-        .with_state(fresh_test_session())
+        .with_state(fresh_test_hub())
         .layer(axum::Extension(none_refresh))
         .layer(axum::Extension(crate::store::Dispatch::new(
             tokio::sync::mpsc::unbounded_channel().0,
@@ -233,7 +229,7 @@ async fn rest_get_board_auto_reingests_when_orchestrator_store_is_empty() {
     let none_tracker: super::rest::TrackerHandle = None;
     let router = axum::Router::new()
         .route("/api/board", axum::routing::get(super::rest::get_board))
-        .with_state(fresh_test_session())
+        .with_state(fresh_test_hub())
         .layer(axum::Extension(orchestrator))
         .layer(axum::Extension(none_tracker));
 

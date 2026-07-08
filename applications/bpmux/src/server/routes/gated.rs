@@ -1,11 +1,11 @@
-use super::SessionRouter;
+use super::HubRouter;
 use crate::transport;
 use crate::transport::auth::AuthState;
 
 pub(in crate::server) fn gated_routes(
     auth_state: AuthState,
     unfurl_cache: transport::unfurl::UnfurlCacheHandle,
-) -> SessionRouter {
+) -> HubRouter {
     axum::Router::new()
         .route(
             "/api/stories/{number}",

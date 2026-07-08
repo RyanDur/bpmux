@@ -4,10 +4,10 @@ use super::agent_detect::{AgentRunDetector, spawn_agent_run_detector};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-fn empty_message_session() -> Arc<crate::session::Session> {
+fn empty_message_hub() -> Arc<crate::hub::Hub> {
     let dir = std::env::temp_dir().join(format!("bpmux-detect-{}", uuid::Uuid::new_v4()));
     let (tx, _rx) = tokio::sync::broadcast::channel(16);
-    Arc::new(crate::session::Session::new(dir, "owner".to_string(), tx))
+    Arc::new(crate::hub::Hub::new(dir, "owner".to_string(), tx))
 }
 
 fn osc7(path: &str) -> Vec<u8> {
@@ -183,7 +183,7 @@ async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless()
         output,
         registry.clone(),
         routing.clone(),
-        empty_message_session(),
+        empty_message_hub(),
         None,
     );
 
@@ -248,7 +248,7 @@ async fn a_cd_through_a_dir_without_running_an_agent_mints_no_id() {
         output,
         registry.clone(),
         routing.clone(),
-        empty_message_session(),
+        empty_message_hub(),
         None,
     );
 
@@ -302,7 +302,7 @@ async fn an_agent_started_in_place_with_no_cd_registers_via_the_startup_emit() {
         output,
         registry.clone(),
         routing.clone(),
-        empty_message_session(),
+        empty_message_hub(),
         None,
     );
 

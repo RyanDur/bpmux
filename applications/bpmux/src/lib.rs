@@ -24,6 +24,9 @@ pub mod diag;
 #[cfg(test)]
 mod diag_tests;
 pub mod github;
+pub mod hub;
+#[cfg(test)]
+mod hub_tests;
 pub mod integrations;
 pub mod kernel;
 #[cfg(test)]
@@ -48,11 +51,8 @@ pub mod room;
 pub mod roster;
 pub mod routing;
 pub mod server;
-pub mod session;
 #[cfg(test)]
 mod session_id_pin_tests;
-#[cfg(test)]
-mod session_tests;
 pub mod storage;
 #[cfg(test)]
 mod storage_tests;

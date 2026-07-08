@@ -2,11 +2,11 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
 
 use super::{PeerMessage, RemotePeer};
+use crate::hub::Hub;
 use crate::message::Message;
-use crate::session::Session;
 
 pub fn spawn_relay(
-    session: Arc<Session>,
+    hub: Arc<Hub>,
     peer_name: String,
     local_session_id: String,
     mut inbound_rx: mpsc::Receiver<String>,
@@ -14,7 +14,7 @@ pub fn spawn_relay(
 ) -> RemotePeer {
     let connected = Arc::new(std::sync::atomic::AtomicBool::new(true));
     let connected_relay = connected.clone();
-    let session_for_inbound = session.clone();
+    let hub_for_inbound = hub.clone();
     let local_id = local_session_id.clone();
     let reply_tx = outbound_tx.clone();
     let initial_peer_name = peer_name.clone();
@@ -49,7 +49,7 @@ pub fn spawn_relay(
                         addressee,
                         ..Message::default()
                     };
-                    let _ = session_for_inbound.broadcast(&message);
+                    let _ = hub_for_inbound.broadcast(&message);
                 }
                 PeerMessage::Hello { name, .. } => {
                     current_name = name.clone();
@@ -60,13 +60,13 @@ pub fn spawn_relay(
                         message_type: crate::message::MessageType::System,
                         ..Message::default()
                     };
-                    let _ = session_for_inbound.broadcast(&joined);
+                    let _ = hub_for_inbound.broadcast(&joined);
                 }
                 PeerMessage::LessonSync { lessons_json } => {
                     if let Ok(remote_index) =
                         serde_json::from_str::<crate::memory::lessons::LessonIndex>(&lessons_json)
                     {
-                        let _ = session_for_inbound
+                        let _ = hub_for_inbound
                             .storage
                             .save_peer_lessons(&current_name, &remote_index);
                     }
@@ -76,7 +76,7 @@ pub fn spawn_relay(
                         serde_json::from_str::<crate::memory::lessons::AgentLesson>(&lesson_json)
                     {
                         let mut peer_index =
-                            session_for_inbound.storage.load_peer_lessons(&current_name);
+                            hub_for_inbound.storage.load_peer_lessons(&current_name);
                         let existing = peer_index.lessons.iter_mut().find(|l| {
                             l.topic == lesson.topic && l.author_role == lesson.author_role
                         });
@@ -85,13 +85,13 @@ pub fn spawn_relay(
                         } else {
                             peer_index.lessons.push(lesson);
                         }
-                        let _ = session_for_inbound
+                        let _ = hub_for_inbound
                             .storage
                             .save_peer_lessons(&current_name, &peer_index);
                     }
                 }
                 PeerMessage::LessonQuery => {
-                    let local_index = session_for_inbound.storage.load_lessons();
+                    let local_index = hub_for_inbound.storage.load_lessons();
                     if let Ok(lessons_json) = serde_json::to_string(&local_index) {
                         let response = PeerMessage::LessonQueryResponse { lessons_json };
                         if let Ok(json) = serde_json::to_string(&response) {
@@ -103,7 +103,7 @@ pub fn spawn_relay(
                     if let Ok(remote_index) =
                         serde_json::from_str::<crate::memory::lessons::LessonIndex>(&lessons_json)
                     {
-                        let _ = session_for_inbound
+                        let _ = hub_for_inbound
                             .storage
                             .save_peer_lessons(&current_name, &remote_index);
                     }
@@ -117,17 +117,17 @@ pub fn spawn_relay(
             message_type: crate::message::MessageType::System,
             ..Message::default()
         };
-        let _ = session_for_inbound.broadcast(&left);
+        let _ = hub_for_inbound.broadcast(&left);
         connected_relay.store(false, std::sync::atomic::Ordering::Relaxed);
     });
 
-    let mut session_rx = session.subscribe();
+    let mut hub_rx = hub.subscribe();
     let outbound_for_relay = outbound_tx.clone();
     let connected_outbound = connected.clone();
 
     tokio::spawn(async move {
         loop {
-            match session_rx.recv().await {
+            match hub_rx.recv().await {
                 Ok(msg) => {
                     let peer_msg = PeerMessage::Chat {
                         from: msg.from,

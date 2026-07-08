@@ -4,8 +4,8 @@ use axum::extract::ws::{Message as WsMessage, WebSocket};
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
 
+use crate::hub;
 use crate::routing::short_name;
-use crate::session;
 use crate::transport::protocol::ServerMessage;
 
 mod client;
@@ -36,7 +36,7 @@ use snapshot::system_announcement;
 const HEARTBEAT_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
 
 pub(super) struct WsDeps {
-    session: Arc<session::Session>,
+    hub: Arc<hub::Hub>,
     store: Arc<crate::store::Store>,
     dispatch: crate::store::Dispatch,
     pty_registry: Arc<crate::room::LivePtyRegistry>,
@@ -51,7 +51,7 @@ pub(super) async fn run_ws_session(
     deps: WsDeps,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let WsDeps {
-        session,
+        hub,
         store,
         dispatch,
         pty_registry,
@@ -62,16 +62,16 @@ pub(super) async fn run_ws_session(
     let (mut identity, replay_cursor) = wait_for_identify(&mut tx, &mut rx).await?;
     let routing_session_id = routing.resolve(short_name(&identity)).into_iter().next();
     let mut roster_key = roster_key_for(&routing_session_id, &identity);
-    session.peer_connected();
+    hub.peer_connected();
     if let Some(ref key) = roster_key {
         dispatch_roster_join(&store, key, &identity).await;
     }
-    let mut broadcast_rx = session.subscribe();
+    let mut broadcast_rx = hub.subscribe();
     let mut heartbeat = tokio::time::interval(HEARTBEAT_INTERVAL);
     heartbeat.tick().await;
     startup::send_startup_frames(
         &mut tx,
-        &session,
+        &hub,
         &store,
         &orchestrator,
         &identity,
@@ -87,7 +87,7 @@ pub(super) async fn run_ws_session(
         loop {
             tokio::select! {
                 broadcast_result = broadcast_rx.recv() => {
-                    if !loop_handlers::handle_broadcast(&mut tx, broadcast_result, &identity, &session).await? {
+                    if !loop_handlers::handle_broadcast(&mut tx, broadcast_result, &identity, &hub).await? {
                         break;
                     }
                 }
@@ -108,7 +108,7 @@ pub(super) async fn run_ws_session(
                     match ws_result {
                         Some(Ok(WsMessage::Text(text))) => {
                             let client_ctx = client::ClientCtx {
-                                session: &session,
+                                hub: &hub,
                                 store: &store,
                                 dispatch: &dispatch,
                                 pty_registry: &pty_registry,
@@ -118,7 +118,7 @@ pub(super) async fn run_ws_session(
                                 reply_tx: &reply_tx,
                             };
                             if let Some(new_identity) = handle_client_message(&text, &identity, &client_ctx, &mut tx, &mut pty_readers).await? {
-                                let _ = session.broadcast(&system_announcement(&format!("{identity} left")));
+                                let _ = hub.broadcast(&system_announcement(&format!("{identity} left")));
                                 identity = new_identity;
                                 if let Some(ref session_id) = routing_session_id {
                                     routing.rename(session_id, short_name(&identity));
@@ -131,7 +131,7 @@ pub(super) async fn run_ws_session(
                                     dispatch_roster_join(&store, key, &identity).await;
                                 }
                                 roster_key = new_key;
-                                let _ = session.broadcast(&system_announcement(&format!("{identity} joined")));
+                                let _ = hub.broadcast(&system_announcement(&format!("{identity} joined")));
                             }
                         }
                         Some(Ok(WsMessage::Close(_))) | None => break,
@@ -150,8 +150,8 @@ pub(super) async fn run_ws_session(
     }
     .await;
     let leave_msg = system_announcement(&format!("{identity} left"));
-    let _ = session.broadcast(&leave_msg);
-    session.peer_disconnected();
+    let _ = hub.broadcast(&leave_msg);
+    hub.peer_disconnected();
     if let Some(ref key) = roster_key {
         dispatch_roster_leave(&store, key).await;
     }

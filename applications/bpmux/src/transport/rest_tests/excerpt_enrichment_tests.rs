@@ -17,8 +17,8 @@ use super::{
 };
 
 use super::{init_session, seed_messages, seed_mixed_messages, test_app};
+use crate::hub;
 use crate::message::MessageType;
-use crate::session;
 use crate::transport::rest::*;
 
 #[test]
@@ -180,7 +180,7 @@ async fn post_reaction_cascade_threads_excerpt_into_broadcast_event_text() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(session::Session::new(
+    let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),
         "test".to_string(),
         tx.clone(),
@@ -195,10 +195,10 @@ async fn post_reaction_cascade_threads_excerpt_into_broadcast_event_text() {
         ts: target_ts,
         ..crate::message::Message::default()
     };
-    session.broadcast(&target_msg).expect("seed target message");
+    hub.broadcast(&target_msg).expect("seed target message");
 
     let orch = std::sync::Arc::new(crate::store::Store::new(
-        session.clone(),
+        hub.clone(),
         None,
         crate::ci::CiStateStore::new(),
         tokio_util::sync::CancellationToken::new(),
@@ -206,7 +206,7 @@ async fn post_reaction_cascade_threads_excerpt_into_broadcast_event_text() {
     let router = axum::Router::new()
         .route("/api/reactions", axum::routing::post(post_reaction))
         .layer(axum::Extension(orch))
-        .with_state(session.clone());
+        .with_state(hub.clone());
 
     let message_key = format!("{}|dev:claude-code", target_ts.to_rfc3339());
     let toggle_body = format!(
@@ -221,7 +221,7 @@ async fn post_reaction_cascade_threads_excerpt_into_broadcast_event_text() {
     let response = router.oneshot(request).await.expect("response");
     assert_eq!(response.status(), StatusCode::OK);
 
-    let messages = session.read_messages().expect("read messages");
+    let messages = hub.read_messages().expect("read messages");
     let reaction_event = messages
         .iter()
         .find(|m| {
@@ -229,7 +229,7 @@ async fn post_reaction_cascade_threads_excerpt_into_broadcast_event_text() {
                 && m.message_type == MessageType::Insight
                 && m.text.contains("reacted")
         })
-        .expect("synthesized reaction event must broadcast to session log");
+        .expect("synthesized reaction event must broadcast to hub log");
 
     assert!(
         reaction_event
@@ -255,14 +255,14 @@ async fn post_reaction_cascade_falls_back_to_no_excerpt_when_target_absent() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(session::Session::new(
+    let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),
         "test".to_string(),
         tx.clone(),
     ));
 
     let orch = std::sync::Arc::new(crate::store::Store::new(
-        session.clone(),
+        hub.clone(),
         None,
         crate::ci::CiStateStore::new(),
         tokio_util::sync::CancellationToken::new(),
@@ -270,7 +270,7 @@ async fn post_reaction_cascade_falls_back_to_no_excerpt_when_target_absent() {
     let router = axum::Router::new()
         .route("/api/reactions", axum::routing::post(post_reaction))
         .layer(axum::Extension(orch))
-        .with_state(session.clone());
+        .with_state(hub.clone());
 
     let toggle_body = r#"{"channel":"broadcast","message_key":"2026-04-23T11:30:00+00:00|dev:claude-code","emoji":"👍","user":"owner"}"#;
     let request = Request::builder()
@@ -282,7 +282,7 @@ async fn post_reaction_cascade_falls_back_to_no_excerpt_when_target_absent() {
     let response = router.oneshot(request).await.expect("response");
     assert_eq!(response.status(), StatusCode::OK);
 
-    let messages = session.read_messages().expect("read messages");
+    let messages = hub.read_messages().expect("read messages");
     let reaction_event = messages
         .iter()
         .find(|m| {

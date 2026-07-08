@@ -2,15 +2,15 @@
 
 use super::view_verdicts::*;
 use crate::bridge::tools::handle_submit_verdict;
-use crate::session::Session;
+use crate::hub::Hub;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::sync::broadcast;
 
-fn make_session(dir: PathBuf) -> Arc<Session> {
+fn make_hub(dir: PathBuf) -> Arc<Hub> {
     let (tx, _) = broadcast::channel(16);
-    Arc::new(Session::new(dir, "owner".to_string(), tx))
+    Arc::new(Hub::new(dir, "owner".to_string(), tx))
 }
 
 fn submit_args(
@@ -37,15 +37,15 @@ fn view_args(id: u64) -> serde_json::Map<String, serde_json::Value> {
 #[tokio::test]
 async fn returns_record_after_write() {
     let dir = TempDir::new().unwrap();
-    let session = make_session(dir.path().to_path_buf());
+    let hub = make_hub(dir.path().to_path_buf());
     handle_submit_verdict(
         &submit_args(42, "verified", "src/foo.rs cite"),
         "designer:claude-code",
-        &session,
+        &hub,
     )
     .await
     .unwrap();
-    let response = handle_view_verdicts(&view_args(42), &session, None)
+    let response = handle_view_verdicts(&view_args(42), &hub, None)
         .await
         .unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();

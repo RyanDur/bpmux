@@ -5,10 +5,10 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 
 use super::shared::{err_body, json_headers};
-use crate::session;
+use crate::hub;
 
-pub async fn get_metrics(State(session): State<Arc<session::Session>>) -> impl IntoResponse {
-    let messages = match session.read_messages() {
+pub async fn get_metrics(State(hub): State<Arc<hub::Hub>>) -> impl IntoResponse {
+    let messages = match hub.read_messages() {
         Ok(m) => m,
         Err(e) => {
             return (

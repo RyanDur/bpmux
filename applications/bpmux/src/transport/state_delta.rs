@@ -1,7 +1,7 @@
-use crate::session;
+use crate::hub;
 
 pub(crate) fn broadcast_state_delta(
-    session: &session::Session,
+    hub: &hub::Hub,
     payload: crate::message::StateDeltaPayload,
     label: &str,
 ) {
@@ -13,7 +13,7 @@ pub(crate) fn broadcast_state_delta(
         state_delta: Some(payload),
         ..crate::message::Message::default()
     };
-    if let Err(e) = session.broadcast(&msg) {
+    if let Err(e) = hub.broadcast(&msg) {
         crate::diag::log_diag(&format!("{label}: state-delta broadcast failed: {e}"));
     }
 }

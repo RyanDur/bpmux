@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::labels::{LabelMutationPayload, post_story_labels};
+use crate::hub::Hub;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::{Story, StoryId, Work};
-use crate::session::Session;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use axum::Json;
 use axum::extract::{Path, State};
@@ -39,7 +39,7 @@ async fn reordering_a_member_through_the_label_endpoint_never_orphans_it_1524() 
 
     let dir = tempfile::tempdir().unwrap();
     let (wake_tx, _wake_rx) = broadcast::channel(16);
-    let session = Arc::new(Session::new(
+    let hub = Arc::new(Hub::new(
         dir.path().to_path_buf(),
         "test".to_string(),
         wake_tx,
@@ -51,7 +51,7 @@ async fn reordering_a_member_through_the_label_endpoint_never_orphans_it_1524() 
     };
     let (dispatch_tx, _dispatch_rx) = tokio::sync::mpsc::unbounded_channel();
     let response = post_story_labels(
-        State(session),
+        State(hub),
         axum::Extension(Some(Arc::clone(&refresh))),
         axum::Extension(crate::store::Dispatch::new(dispatch_tx)),
         Path(1687),

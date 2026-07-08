@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::session;
+use crate::hub;
 
 mod gated;
 mod test;
@@ -8,4 +8,4 @@ mod test;
 pub(super) use gated::gated_routes;
 pub(super) use test::{test_routes, test_seed_routes};
 
-type SessionRouter = axum::Router<Arc<session::Session>>;
+type HubRouter = axum::Router<Arc<hub::Hub>>;

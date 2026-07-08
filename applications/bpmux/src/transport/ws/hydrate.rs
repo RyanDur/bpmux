@@ -44,10 +44,10 @@ pub(super) async fn handle_history_hydrate(
     activity_limit: usize,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let chat = ctx
-        .session
+        .hub
         .read_recent(chat_limit, 0, &|m: &crate::message::Message| m.is_chat());
     let activity = ctx
-        .session
+        .hub
         .read_recent(activity_limit, 0, &|m: &crate::message::Message| {
             m.message_type == MessageType::Activity
         });
@@ -80,7 +80,7 @@ pub(super) async fn handle_history_page(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let messages: Vec<serde_json::Value> = match before.parse::<chrono::DateTime<chrono::Utc>>() {
         Ok(before_ts) => match ctx
-            .session
+            .hub
             .read_recent(limit, 0, &|m: &crate::message::Message| {
                 m.is_chat() && m.ts < before_ts
             }) {

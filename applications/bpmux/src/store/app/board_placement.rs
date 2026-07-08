@@ -44,12 +44,12 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
 }
 
 pub struct BoardPlacementPersister {
-    session: Arc<crate::session::Session>,
+    hub: Arc<crate::hub::Hub>,
 }
 
 impl BoardPlacementPersister {
-    pub fn new(session: Arc<crate::session::Session>) -> Self {
-        Self { session }
+    pub fn new(hub: Arc<crate::hub::Hub>) -> Self {
+        Self { hub }
     }
 }
 
@@ -64,7 +64,7 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
             return Box::pin(async {});
         }
         let placements = reaction.current.board.clone();
-        let dir = self.session.dir.clone();
+        let dir = self.hub.dir.clone();
         Box::pin(async move {
             if let Err(e) = crate::board::persistence::save(&dir, &placements) {
                 crate::diag::log_diag(&format!("board: placement persist failed: {e}"));

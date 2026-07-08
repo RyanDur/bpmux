@@ -8,7 +8,7 @@ use axum::response::IntoResponse;
 use super::shared::{
     CommentPayload, TrackerHandle, broadcast_board_invalidate, err_body, json_headers,
 };
-use crate::session;
+use crate::hub;
 
 pub async fn get_story_comments(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
@@ -70,7 +70,7 @@ pub async fn get_story_timeline(
 }
 
 pub async fn post_story_comment(
-    State(session): State<Arc<session::Session>>,
+    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
     axum::extract::Path(number): axum::extract::Path<u64>,
     Json(payload): Json<CommentPayload>,
@@ -91,7 +91,7 @@ pub async fn post_story_comment(
     }
     match tracker.post_story_comment(number, &payload.body).await {
         Ok(()) => {
-            broadcast_board_invalidate(&session);
+            broadcast_board_invalidate(&hub);
             (
                 StatusCode::OK,
                 json_headers(),

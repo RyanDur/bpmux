@@ -9,10 +9,10 @@ use crate::transport::protocol::ClientMessage;
 mod verdict_substrate_integration_1407 {
     use crate::bridge::tools::handle_submit_verdict;
     use crate::bridge::tools_stories::handle_accept_story;
+    use crate::hub::Hub;
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::evidence::{evidence_for_story, load};
     use crate::product_management::story::{Story, StoryId, Work};
-    use crate::session::Session;
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
@@ -22,9 +22,9 @@ mod verdict_substrate_integration_1407 {
     use tokio::sync::Mutex;
     use tokio::sync::broadcast;
 
-    fn make_session(dir: PathBuf) -> Arc<Session> {
+    fn make_hub(dir: PathBuf) -> Arc<Hub> {
         let (tx, _) = broadcast::channel(16);
-        Arc::new(Session::new(dir, "owner".to_string(), tx))
+        Arc::new(Hub::new(dir, "owner".to_string(), tx))
     }
 
     async fn build_orchestrator_with_seed(seeded: Story) -> Arc<dyn RefreshDriver> {
@@ -48,9 +48,9 @@ mod verdict_substrate_integration_1407 {
         story
     }
 
-    fn seed_expired_verdict(session: &Arc<Session>, id: u64, role: &str) {
+    fn seed_expired_verdict(hub: &Arc<Hub>, id: u64, role: &str) {
         use crate::product_management::evidence::{Evidence, add_or_replace_evidence, save};
-        let mut store = load(&session.dir);
+        let mut store = load(&hub.dir);
         add_or_replace_evidence(
             &mut store,
             Evidence {
@@ -62,12 +62,12 @@ mod verdict_substrate_integration_1407 {
                 grounded_head: None,
             },
         );
-        save(&session.dir, &store).unwrap();
+        save(&hub.dir, &store).unwrap();
     }
 
-    fn seed_verdict_grounded_on(session: &Arc<Session>, id: u64, role: &str, head: &str) {
+    fn seed_verdict_grounded_on(hub: &Arc<Hub>, id: u64, role: &str, head: &str) {
         use crate::product_management::evidence::{Evidence, add_or_replace_evidence, save};
-        let mut store = load(&session.dir);
+        let mut store = load(&hub.dir);
         add_or_replace_evidence(
             &mut store,
             Evidence {
@@ -79,7 +79,7 @@ mod verdict_substrate_integration_1407 {
                 grounded_head: Some(head.to_string()),
             },
         );
-        save(&session.dir, &store).unwrap();
+        save(&hub.dir, &store).unwrap();
     }
 
     fn verdict_args(id: u64) -> serde_json::Map<String, serde_json::Value> {
@@ -101,16 +101,16 @@ mod verdict_substrate_integration_1407 {
     }
 
     #[tokio::test]
-    async fn submit_verdict_persists_to_verdicts_store_at_session_dir() {
+    async fn submit_verdict_persists_to_verdicts_store_at_hub_dir() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
-        handle_submit_verdict(&verdict_args(42), "designer:claude-code", &session)
+        let hub = make_hub(dir.path().to_path_buf());
+        handle_submit_verdict(&verdict_args(42), "designer:claude-code", &hub)
             .await
             .expect("designer submit_verdict");
-        handle_submit_verdict(&verdict_args(42), "dev:claude-code", &session)
+        handle_submit_verdict(&verdict_args(42), "dev:claude-code", &hub)
             .await
             .expect("dev submit_verdict");
-        let store = load(&session.dir);
+        let store = load(&hub.dir);
         let stored = evidence_for_story(&store, StoryId::new(42));
         assert_eq!(stored.len(), 2);
         let roles: Vec<&str> = stored.iter().map(|v| v.from_role.as_str()).collect();
@@ -121,16 +121,16 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn accept_story_succeeds_when_both_verdicts_present_for_target_story() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
-        handle_submit_verdict(&verdict_args(42), "designer", &session)
+        let hub = make_hub(dir.path().to_path_buf());
+        handle_submit_verdict(&verdict_args(42), "designer", &hub)
             .await
             .unwrap();
-        handle_submit_verdict(&verdict_args(42), "dev", &session)
+        handle_submit_verdict(&verdict_args(42), "dev", &hub)
             .await
             .unwrap();
 
         let orch = build_orchestrator_with_seed(delivered_story(42)).await;
-        let result = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&session)).await;
+        let result = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&hub)).await;
         assert!(
             result.is_ok(),
             "accept_story must succeed when both verdicts present for target story; got {result:?}"
@@ -140,13 +140,13 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn accept_reprompts_each_role_whose_verdict_has_expired() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
-        seed_expired_verdict(&session, 42, "designer");
-        seed_expired_verdict(&session, 42, "dev");
+        let hub = make_hub(dir.path().to_path_buf());
+        seed_expired_verdict(&hub, 42, "designer");
+        seed_expired_verdict(&hub, 42, "dev");
 
         let orch = build_orchestrator_with_seed(delivered_story(42)).await;
-        let mut rx = session.subscribe();
-        let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&session))
+        let mut rx = hub.subscribe();
+        let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&hub))
             .await
             .expect_err("expired verdicts must still block the accept");
         assert!(
@@ -163,7 +163,7 @@ mod verdict_substrate_integration_1407 {
         assert_eq!(
             reprompts.len(),
             2,
-            "each expired role is reprompted — and it REACHES the user via session.broadcast on the live (empty_ws=None) path, not a dropped ws-signal; got {reprompts:?}"
+            "each expired role is reprompted — and it REACHES the user via hub.broadcast on the live (empty_ws=None) path, not a dropped ws-signal; got {reprompts:?}"
         );
         let addressees: Vec<String> = reprompts
             .iter()
@@ -183,9 +183,9 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn view_verdicts_marks_verdict_expired_when_grounded_head_moved() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
+        let hub = make_hub(dir.path().to_path_buf());
         seed_verdict_grounded_on(
-            &session,
+            &hub,
             42,
             "designer",
             "a-frozen-sha-that-is-not-current-head",
@@ -193,7 +193,7 @@ mod verdict_substrate_integration_1407 {
 
         let orch = build_orchestrator_with_seed(delivered_story(42)).await;
         let response =
-            crate::bridge::tools::handle_view_verdicts(&view_args(42), &session, Some(&orch))
+            crate::bridge::tools::handle_view_verdicts(&view_args(42), &hub, Some(&orch))
                 .await
                 .expect("view_verdicts succeeds");
         let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");
@@ -214,13 +214,13 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn accept_blocks_and_reprompts_when_a_grounded_head_has_moved() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
-        seed_verdict_grounded_on(&session, 42, "designer", "stale-sha-x");
-        seed_verdict_grounded_on(&session, 42, "dev", "stale-sha-x");
+        let hub = make_hub(dir.path().to_path_buf());
+        seed_verdict_grounded_on(&hub, 42, "designer", "stale-sha-x");
+        seed_verdict_grounded_on(&hub, 42, "dev", "stale-sha-x");
 
         let orch = build_orchestrator_with_seed(delivered_story(42)).await;
-        let mut rx = session.subscribe();
-        let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&session))
+        let mut rx = hub.subscribe();
+        let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&hub))
             .await
             .expect_err(
                 "a moved grounded-head must block accept even though the verdicts are time-fresh",
@@ -239,23 +239,23 @@ mod verdict_substrate_integration_1407 {
         assert_eq!(
             reprompts.len(),
             2,
-            "both head-stale roles are reprompted against the new head — reaching the user via session.broadcast on the live (empty_ws=None) path; got {reprompts:?}"
+            "both head-stale roles are reprompted against the new head — reaching the user via hub.broadcast on the live (empty_ws=None) path; got {reprompts:?}"
         );
     }
 
     #[tokio::test]
     async fn accept_story_refuses_when_verdicts_exist_only_on_a_different_story() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
-        handle_submit_verdict(&verdict_args(99), "designer", &session)
+        let hub = make_hub(dir.path().to_path_buf());
+        handle_submit_verdict(&verdict_args(99), "designer", &hub)
             .await
             .unwrap();
-        handle_submit_verdict(&verdict_args(99), "dev", &session)
+        handle_submit_verdict(&verdict_args(99), "dev", &hub)
             .await
             .unwrap();
 
         let orch = build_orchestrator_with_seed(delivered_story(42)).await;
-        let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&session))
+        let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&hub))
             .await
             .expect_err("verdicts on #99 must not satisfy accept_story #42");
         assert!(
@@ -271,13 +271,13 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn accept_story_refuses_when_only_designer_verdict_present() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
-        handle_submit_verdict(&verdict_args(42), "designer", &session)
+        let hub = make_hub(dir.path().to_path_buf());
+        handle_submit_verdict(&verdict_args(42), "designer", &hub)
             .await
             .unwrap();
 
         let orch = build_orchestrator_with_seed(delivered_story(42)).await;
-        let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&session))
+        let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&hub))
             .await
             .expect_err("missing dev-verdict must refuse");
         assert!(
@@ -293,9 +293,9 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn submit_verdict_broadcasts_pm_addressed_system_on_success() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
-        let mut rx = session.subscribe();
-        handle_submit_verdict(&verdict_args(42), "designer:claude-code", &session)
+        let hub = make_hub(dir.path().to_path_buf());
+        let mut rx = hub.subscribe();
+        handle_submit_verdict(&verdict_args(42), "designer:claude-code", &hub)
             .await
             .expect("designer submit_verdict");
         let msg = tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv())
@@ -329,9 +329,9 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn submit_verdict_broadcasts_exactly_once_per_fire() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
-        let mut rx = session.subscribe();
-        handle_submit_verdict(&verdict_args(42), "designer:claude-code", &session)
+        let hub = make_hub(dir.path().to_path_buf());
+        let mut rx = hub.subscribe();
+        handle_submit_verdict(&verdict_args(42), "designer:claude-code", &hub)
             .await
             .expect("designer submit_verdict");
         let _first = tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv())
@@ -348,9 +348,9 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn submit_verdict_broadcasts_replacement_on_replay() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
-        let mut rx = session.subscribe();
-        handle_submit_verdict(&verdict_args(42), "designer:claude-code", &session)
+        let hub = make_hub(dir.path().to_path_buf());
+        let mut rx = hub.subscribe();
+        handle_submit_verdict(&verdict_args(42), "designer:claude-code", &hub)
             .await
             .expect("first submit_verdict");
         let first = tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv())
@@ -366,7 +366,7 @@ mod verdict_substrate_integration_1407 {
             "substrate_grounding".into(),
             serde_json::json!("updated cite after second pass"),
         );
-        handle_submit_verdict(&second_args, "designer:claude-code", &session)
+        handle_submit_verdict(&second_args, "designer:claude-code", &hub)
             .await
             .expect("replay submit_verdict");
         let replacement = tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv())
@@ -383,12 +383,12 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn submit_verdict_does_not_broadcast_when_substrate_grounding_missing() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
-        let mut rx = session.subscribe();
+        let hub = make_hub(dir.path().to_path_buf());
+        let mut rx = hub.subscribe();
         let mut bad_args = serde_json::Map::new();
         bad_args.insert("story_id".into(), serde_json::json!(42));
         bad_args.insert("verdict".into(), serde_json::json!("verified"));
-        let err = handle_submit_verdict(&bad_args, "designer:claude-code", &session)
+        let err = handle_submit_verdict(&bad_args, "designer:claude-code", &hub)
             .await
             .expect_err("missing substrate_grounding must refuse");
         assert!(err.contains("substrate_grounding"));
@@ -402,9 +402,9 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn submit_verdict_does_not_broadcast_when_role_refused() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
-        let mut rx = session.subscribe();
-        let err = handle_submit_verdict(&verdict_args(42), "pm:claude-code", &session)
+        let hub = make_hub(dir.path().to_path_buf());
+        let mut rx = hub.subscribe();
+        let err = handle_submit_verdict(&verdict_args(42), "pm:claude-code", &hub)
             .await
             .expect_err("pm role must refuse");
         assert!(err.contains("restricted to"));
@@ -424,15 +424,15 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn view_verdicts_returns_record_after_submit() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
+        let hub = make_hub(dir.path().to_path_buf());
         crate::bridge::tools::handle_submit_verdict(
             &verdict_args(42),
             "designer:claude-code",
-            &session,
+            &hub,
         )
         .await
         .expect("designer submit_verdict");
-        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), &session, None)
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), &hub, None)
             .await
             .expect("view_verdicts succeeds after write");
         let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");
@@ -448,11 +448,10 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn view_verdicts_returns_empty_for_unknown_story() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
-        let response =
-            crate::bridge::tools::handle_view_verdicts(&view_args(99999), &session, None)
-                .await
-                .expect("view_verdicts succeeds for empty store");
+        let hub = make_hub(dir.path().to_path_buf());
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(99999), &hub, None)
+            .await
+            .expect("view_verdicts succeeds for empty store");
         let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");
         let records = parsed.as_array().expect("response is array");
         assert!(
@@ -464,26 +463,26 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn view_verdicts_scopes_by_story_id() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
+        let hub = make_hub(dir.path().to_path_buf());
         crate::bridge::tools::handle_submit_verdict(
             &verdict_args(10),
             "designer:claude-code",
-            &session,
+            &hub,
         )
         .await
         .unwrap();
-        crate::bridge::tools::handle_submit_verdict(&verdict_args(20), "dev:claude-code", &session)
+        crate::bridge::tools::handle_submit_verdict(&verdict_args(20), "dev:claude-code", &hub)
             .await
             .unwrap();
         crate::bridge::tools::handle_submit_verdict(
             &verdict_args(30),
             "designer:claude-code",
-            &session,
+            &hub,
         )
         .await
         .unwrap();
 
-        let response = crate::bridge::tools::handle_view_verdicts(&view_args(20), &session, None)
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(20), &hub, None)
             .await
             .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
@@ -496,18 +495,18 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn view_verdicts_returns_both_roles_for_one_story() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
+        let hub = make_hub(dir.path().to_path_buf());
         crate::bridge::tools::handle_submit_verdict(
             &verdict_args(42),
             "designer:claude-code",
-            &session,
+            &hub,
         )
         .await
         .unwrap();
-        crate::bridge::tools::handle_submit_verdict(&verdict_args(42), "dev:claude-code", &session)
+        crate::bridge::tools::handle_submit_verdict(&verdict_args(42), "dev:claude-code", &hub)
             .await
             .unwrap();
-        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), &session, None)
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), &hub, None)
             .await
             .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
@@ -524,28 +523,28 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn view_verdicts_is_pure_read() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
+        let hub = make_hub(dir.path().to_path_buf());
         crate::bridge::tools::handle_submit_verdict(
             &verdict_args(42),
             "designer:claude-code",
-            &session,
+            &hub,
         )
         .await
         .unwrap();
-        let before = load(&session.dir);
+        let before = load(&hub.dir);
         let count_before = evidence_for_story(&before, StoryId::new(42)).len();
 
-        crate::bridge::tools::handle_view_verdicts(&view_args(42), &session, None)
+        crate::bridge::tools::handle_view_verdicts(&view_args(42), &hub, None)
             .await
             .unwrap();
-        crate::bridge::tools::handle_view_verdicts(&view_args(42), &session, None)
+        crate::bridge::tools::handle_view_verdicts(&view_args(42), &hub, None)
             .await
             .unwrap();
-        crate::bridge::tools::handle_view_verdicts(&view_args(42), &session, None)
+        crate::bridge::tools::handle_view_verdicts(&view_args(42), &hub, None)
             .await
             .unwrap();
 
-        let after = load(&session.dir);
+        let after = load(&hub.dir);
         let count_after = evidence_for_story(&after, StoryId::new(42)).len();
         assert_eq!(
             count_before, count_after,
@@ -556,9 +555,9 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn view_verdicts_refuses_missing_story_id() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
+        let hub = make_hub(dir.path().to_path_buf());
         let empty_args = serde_json::Map::new();
-        let err = crate::bridge::tools::handle_view_verdicts(&empty_args, &session, None)
+        let err = crate::bridge::tools::handle_view_verdicts(&empty_args, &hub, None)
             .await
             .expect_err("missing story_id must refuse");
         assert!(err.contains("story_id"));
@@ -567,17 +566,17 @@ mod verdict_substrate_integration_1407 {
     #[tokio::test]
     async fn view_verdicts_surfaces_freshness_state_at_the_read_axis() {
         let dir = TempDir::new().unwrap();
-        let session = make_session(dir.path().to_path_buf());
+        let hub = make_hub(dir.path().to_path_buf());
         let orch = build_orchestrator_with_seed(delivered_story(42)).await;
         crate::bridge::tools::handle_submit_verdict(
             &verdict_args(42),
             "designer:claude-code",
-            &session,
+            &hub,
         )
         .await
         .expect("designer submit_verdict");
         let response =
-            crate::bridge::tools::handle_view_verdicts(&view_args(42), &session, Some(&orch))
+            crate::bridge::tools::handle_view_verdicts(&view_args(42), &hub, Some(&orch))
                 .await
                 .expect("view_verdicts succeeds with the board store");
         let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");

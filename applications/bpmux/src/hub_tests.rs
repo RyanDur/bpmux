@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+use crate::hub::{BROADCAST_CHANNEL_CAPACITY, Hub};
 use crate::message::Message;
-use crate::session::{BROADCAST_CHANNEL_CAPACITY, Session};
 use chrono::Utc;
 use tempfile::TempDir;
 use tokio::sync::broadcast;
@@ -10,7 +10,7 @@ use tokio::sync::broadcast;
 fn broadcast_mints_and_persists_a_message_id() {
     let dir = tempfile::tempdir().unwrap();
     let (wake_tx, _rx) = broadcast::channel(BROADCAST_CHANNEL_CAPACITY);
-    let session = Session::new(dir.path().to_path_buf(), "test".to_string(), wake_tx);
+    let hub = Hub::new(dir.path().to_path_buf(), "test".to_string(), wake_tx);
     let msg = Message {
         from: "dev".to_string(),
         text: "hi".to_string(),
@@ -18,8 +18,8 @@ fn broadcast_mints_and_persists_a_message_id() {
         ..Message::default()
     };
     assert!(msg.id.is_empty());
-    session.broadcast(&msg).unwrap();
-    let stored = session.read_messages().unwrap();
+    hub.broadcast(&msg).unwrap();
+    let stored = hub.read_messages().unwrap();
     assert_eq!(stored.len(), 1);
     assert!(
         !stored[0].id.is_empty(),
@@ -28,12 +28,12 @@ fn broadcast_mints_and_persists_a_message_id() {
 }
 
 #[test]
-fn cloned_session_starts_with_empty_roster() {
+fn cloned_hub_starts_with_empty_roster() {
     let dir = TempDir::new().expect("temp dir");
     let (tx, _rx) = broadcast::channel(16);
-    let session = Session::new(dir.path().to_path_buf(), "owner".to_string(), tx);
-    session.roster_join("dev:claude-code");
-    let cloned = session.clone();
+    let hub = Hub::new(dir.path().to_path_buf(), "owner".to_string(), tx);
+    hub.roster_join("dev:claude-code");
+    let cloned = hub.clone();
     assert!(
         cloned.roster_snapshot().is_empty(),
         "clone must start with a fresh roster (snapshot semantics), not inherit live WS peers"
@@ -41,58 +41,54 @@ fn cloned_session_starts_with_empty_roster() {
 }
 
 #[test]
-fn session_broadcasts_and_reads() {
+fn hub_broadcasts_and_reads() {
     let dir = TempDir::new().expect("temp dir");
     let (tx, mut rx) = broadcast::channel(16);
-    let session = Session::new(dir.path().to_path_buf(), "test".to_string(), tx);
+    let hub = Hub::new(dir.path().to_path_buf(), "test".to_string(), tx);
     let msg = Message {
         from: "owner:human".to_string(),
-        text: "via session".to_string(),
+        text: "via hub".to_string(),
         ts: Utc::now(),
         ..Message::default()
     };
-    session.broadcast(&msg).expect("broadcast");
+    hub.broadcast(&msg).expect("broadcast");
     let received = rx.try_recv().expect("receive broadcast");
-    assert_eq!(received.text, "via session");
-    let messages = session.read_messages().expect("read");
+    assert_eq!(received.text, "via hub");
+    let messages = hub.read_messages().expect("read");
     assert_eq!(messages.len(), 1);
-    assert_eq!(messages[0].text, "via session");
+    assert_eq!(messages[0].text, "via hub");
 }
 
 #[test]
-fn session_derives_id_from_dir_name() {
+fn hub_derives_id_from_dir_name() {
     let base = TempDir::new().expect("temp base");
-    let session_dir = base.path().join("my-session-id");
-    std::fs::create_dir_all(&session_dir).expect("create dir");
+    let hub_dir = base.path().join("my-session-id");
+    std::fs::create_dir_all(&hub_dir).expect("create dir");
     let (tx, _rx) = broadcast::channel(16);
-    let session = Session::new(session_dir, "test".to_string(), tx);
-    assert_eq!(session.id, "my-session-id");
+    let hub = Hub::new(hub_dir, "test".to_string(), tx);
+    assert_eq!(hub.id, "my-session-id");
 }
 
 #[test]
 fn peer_count_shared_through_arc() {
     let dir = TempDir::new().expect("temp dir");
     let (tx, _rx) = broadcast::channel(16);
-    let session = std::sync::Arc::new(Session::new(
-        dir.path().to_path_buf(),
-        "test".to_string(),
-        tx,
-    ));
-    let server_session = std::sync::Arc::clone(&session);
+    let hub = std::sync::Arc::new(Hub::new(dir.path().to_path_buf(), "test".to_string(), tx));
+    let server_hub = std::sync::Arc::clone(&hub);
 
-    assert_eq!(session.peer_count(), 0);
+    assert_eq!(hub.peer_count(), 0);
 
-    server_session.peer_connected();
-    assert_eq!(session.peer_count(), 1);
+    server_hub.peer_connected();
+    assert_eq!(hub.peer_count(), 1);
 
-    server_session.peer_connected();
-    assert_eq!(session.peer_count(), 2);
+    server_hub.peer_connected();
+    assert_eq!(hub.peer_count(), 2);
 
-    server_session.peer_disconnected();
-    assert_eq!(session.peer_count(), 1);
+    server_hub.peer_disconnected();
+    assert_eq!(hub.peer_count(), 1);
 
-    server_session.peer_disconnected();
-    assert_eq!(session.peer_count(), 0);
+    server_hub.peer_disconnected();
+    assert_eq!(hub.peer_count(), 0);
 }
 
 fn burst_message(i: usize) -> Message {

@@ -4,8 +4,8 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use crate::ci::CiStateStore;
+use crate::hub;
 use crate::kernel;
-use crate::session;
 use crate::sync::RefreshDriver;
 use crate::transport::rest::broadcast_listeners::{
     EpicBroadcast, IterationBroadcast, OutcomeBroadcast, StoryBroadcast,
@@ -37,16 +37,15 @@ mod test_support;
 pub use action::PollKind;
 pub use app::{AppAction, AppState, app_reduce};
 pub use ci::{
-    BoxedFuture, CiAction, CiBroadcastListener, CiPollFetch, CiSessionBroadcaster, CiSnapshot,
+    BoxedFuture, CiAction, CiBroadcastListener, CiHubBroadcaster, CiPollFetch, CiSnapshot,
     CiStateStoreWriter,
 };
 pub use dispatch::Dispatch;
 pub use reactions::{
-    AggregatedReaction, ReactionsAction, ReactionsBroadcastListener, ReactionsSessionBroadcaster,
+    AggregatedReaction, ReactionsAction, ReactionsBroadcastListener, ReactionsHubBroadcaster,
 };
 pub use roster::{
-    Presence, RosterAction, RosterBroadcastListener, RosterMember, RosterRole,
-    RosterSessionBroadcaster,
+    Presence, RosterAction, RosterBroadcastListener, RosterHubBroadcaster, RosterMember, RosterRole,
 };
 pub use select::Select;
 #[cfg(test)]
@@ -54,7 +53,7 @@ pub(crate) use select::{SeededStore, bind_seeded_refresh};
 pub use sync::SyncAction;
 
 pub struct Store {
-    session: Arc<session::Session>,
+    hub: Arc<hub::Hub>,
     parent_ct: CancellationToken,
     rate_limit_observer: crate::github::RateLimitObserver,
     ci_poll: Arc<ci::CiPoll>,
@@ -68,7 +67,7 @@ pub struct Store {
 
 impl Store {
     pub fn new(
-        session: Arc<session::Session>,
+        hub: Arc<hub::Hub>,
         tracker: Option<Arc<dyn CiPollFetch>>,
         ci_state_store: CiStateStore,
         parent_ct: CancellationToken,
@@ -81,11 +80,11 @@ impl Store {
         let reactions_listeners: app::ReactionsListeners = Arc::new(Mutex::new(Vec::new()));
         let ci_listeners: app::CiListeners = Arc::new(Mutex::new(Vec::new()));
         let app_store = kernel::Store::new(
-            app::AppState::with_board(crate::board::persistence::load(&session.dir))
+            app::AppState::with_board(crate::board::persistence::load(&hub.dir))
                 .with_shared_history(crate::product_management::history_persistence::load(
-                    &session.dir,
+                    &hub.dir,
                 ))
-                .with_local_history(crate::board::history_persistence::load(&session.dir)),
+                .with_local_history(crate::board::history_persistence::load(&hub.dir)),
             Box::new(app::app_reduce),
         );
         app_store.add_listener(Arc::new(app::RosterBroadcast::new(
@@ -98,13 +97,13 @@ impl Store {
         let ci_poll = Arc::new(ci::CiPoll::new(
             tracker.clone(),
             ci_state_store.clone(),
-            session.clone(),
+            hub.clone(),
             parent_ct.clone(),
             rate_limit_observer.clone(),
         ));
         app_store.add_listener(ci_poll.clone());
         Self {
-            session,
+            hub,
             parent_ct,
             rate_limit_observer,
             ci_poll,
@@ -132,20 +131,20 @@ impl Store {
         ));
         self.app_store.add_listener(sync_poll.clone());
         self.app_store.add_listener(Arc::new(OutcomeBroadcast::new(
-            self.session.clone(),
+            self.hub.clone(),
             refresh.clone(),
         )));
         self.app_store
             .add_listener(Arc::new(IterationBroadcast::new(
-                self.session.clone(),
+                self.hub.clone(),
                 refresh.clone(),
             )));
         self.app_store.add_listener(Arc::new(EpicBroadcast::new(
-            self.session.clone(),
+            self.hub.clone(),
             refresh.clone(),
         )));
         self.app_store.add_listener(Arc::new(StoryBroadcast::new(
-            self.session.clone(),
+            self.hub.clone(),
             refresh.clone(),
         )));
         self.app_store.add_listener(Arc::new(OwnerParkListener));
@@ -153,16 +152,12 @@ impl Store {
             .add_listener(Arc::new(app::BoardPlacementReconciler));
         self.app_store
             .add_listener(Arc::new(app::BoardPlacementPersister::new(
-                self.session.clone(),
+                self.hub.clone(),
             )));
         self.app_store
-            .add_listener(Arc::new(app::SharedHistoryPersister::new(
-                self.session.clone(),
-            )));
+            .add_listener(Arc::new(app::SharedHistoryPersister::new(self.hub.clone())));
         self.app_store
-            .add_listener(Arc::new(app::LocalHistoryPersister::new(
-                self.session.clone(),
-            )));
+            .add_listener(Arc::new(app::LocalHistoryPersister::new(self.hub.clone())));
         let github_drain = Arc::new(sync::GithubDrain::new(refresh, self.parent_ct.clone()));
         self.app_store.add_listener(github_drain.clone());
         self.sync_poll = Some(sync_poll);
@@ -174,8 +169,8 @@ impl Store {
         &self.rate_limit_observer
     }
 
-    pub fn session(&self) -> Arc<session::Session> {
-        Arc::clone(&self.session)
+    pub fn hub(&self) -> Arc<hub::Hub> {
+        Arc::clone(&self.hub)
     }
 
     pub fn spawn_action_drainer(

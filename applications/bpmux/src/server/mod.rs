@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::session;
+use crate::hub;
 use crate::sync::OrchestratorHandle;
 use crate::transport;
 
@@ -15,7 +15,7 @@ fn startup_routing_id(routing: &crate::routing::RoutingStore, identity: &str) ->
 }
 
 pub async fn run_server(
-    session: Arc<session::Session>,
+    hub: Arc<hub::Hub>,
     port: u16,
     ct: CancellationToken,
 ) -> anyhow::Result<()> {
@@ -35,7 +35,7 @@ pub async fn run_server(
         );
         Some(
             build_test_orchestrator(
-                session.clone(),
+                hub.clone(),
                 Some(action_tx.clone()),
                 ci_state_store.clone(),
                 race_window_barrier.clone(),
@@ -44,7 +44,7 @@ pub async fn run_server(
         )
     } else if let Some(tracker_arc) = tracker.as_ref().cloned() {
         Some(build_prod_orchestrator(
-            session.clone(),
+            hub.clone(),
             tracker_arc,
             Some(action_tx.clone()),
             ci_state_store.clone(),
@@ -57,7 +57,7 @@ pub async fn run_server(
     if let Some(refresh) = orchestrator.as_ref().cloned() {
         tokio::spawn(crate::bridge::run_drain_loop(
             refresh.clone(),
-            session.clone(),
+            hub.clone(),
             crate::bridge::drain_interval_from_env(),
         ));
     }
@@ -65,17 +65,16 @@ pub async fn run_server(
     let electron_capture_lock: std::sync::Arc<tokio::sync::Mutex<()>> =
         std::sync::Arc::new(tokio::sync::Mutex::new(()));
     let pty_registry = std::sync::Arc::new(crate::room::LivePtyRegistry::new());
-    let routing_store =
-        std::sync::Arc::new(crate::routing::RoutingStore::new(session.storage.clone()));
+    let routing_store = std::sync::Arc::new(crate::routing::RoutingStore::new(hub.storage.clone()));
     let commitment_store = std::sync::Arc::new(crate::room::CommitmentStore::new());
     crate::room::spawn_terminal_delivery_loop(
-        session.clone(),
+        hub.clone(),
         pty_registry.clone(),
         routing_store.clone(),
         commitment_store.clone(),
     );
     let mut store_inner = crate::store::Store::new(
-        session.clone(),
+        hub.clone(),
         tracker
             .as_ref()
             .cloned()
@@ -100,8 +99,8 @@ pub async fn run_server(
         );
     }
     store.spawn_action_drainer(action_rx);
-    wire_store_listeners(&store, &session, &ci_state_store);
-    wire_startup_roster(&store, &session, &pty_registry, &routing_store).await;
+    wire_store_listeners(&store, &hub, &ci_state_store);
+    wire_startup_roster(&store, &hub, &pty_registry, &routing_store).await;
     start_polling(&store, orchestrator.is_some()).await;
 
     let unfurl_cache: transport::unfurl::UnfurlCacheHandle =
@@ -110,7 +109,7 @@ pub async fn run_server(
     let router = build_router(RouterDeps {
         auth_state,
         unfurl_cache,
-        session,
+        hub,
         tracker,
         ci_state_store,
         ci_log_store,

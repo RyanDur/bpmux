@@ -64,7 +64,7 @@ pub(crate) async fn dispatch_edit_story(
 pub(crate) async fn dispatch_submit_verdict(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    session: &Arc<crate::session::Session>,
+    hub: &Arc<crate::hub::Hub>,
 ) -> Result<String, String> {
-    tools::handle_submit_verdict(&args, agent_name, session).await
+    tools::handle_submit_verdict(&args, agent_name, hub).await
 }

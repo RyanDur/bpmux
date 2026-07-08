@@ -8,7 +8,7 @@ use std::sync::Arc;
 pub(in crate::bridge) async fn handle_submit_verdict(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
-    session: &Arc<crate::session::Session>,
+    hub: &Arc<crate::hub::Hub>,
 ) -> Result<String, String> {
     let role = agent_name.split(':').next().unwrap_or(agent_name);
     let workflow = crate::workflow::current_workflow();
@@ -50,9 +50,9 @@ pub(in crate::bridge) async fn handle_submit_verdict(
         grounded_head: crate::bridge::tools::git_repo::current_head_sha(),
     };
 
-    let mut store = load(&session.dir);
+    let mut store = load(&hub.dir);
     let outcome = add_or_replace_evidence(&mut store, entry);
-    save(&session.dir, &store).map_err(|e| format!("save verdicts: {e}"))?;
+    save(&hub.dir, &store).map_err(|e| format!("save verdicts: {e}"))?;
 
     let pm_id = workflow.role_id_for_purpose("pm").unwrap_or("pm");
     let notification = Message {
@@ -63,7 +63,7 @@ pub(in crate::bridge) async fn handle_submit_verdict(
         addressee: Some(pm_id.to_string()),
         ..Message::default()
     };
-    if let Err(e) = session.broadcast(&notification) {
+    if let Err(e) = hub.broadcast(&notification) {
         crate::diag::log_diag(&format!(
             "submit_verdict: verdict-cast broadcast failed for #{story_id}: {e}"
         ));

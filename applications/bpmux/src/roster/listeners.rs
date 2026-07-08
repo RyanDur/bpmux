@@ -1,25 +1,25 @@
 use std::sync::Arc;
 
+use crate::hub;
 use crate::message::{RosterMemberWire, StateDeltaPayload};
-use crate::session;
 use crate::transport::state_delta::broadcast_state_delta;
 
 use super::{RosterBroadcastListener, RosterMember};
 
-pub struct RosterSessionBroadcaster {
-    session: Arc<session::Session>,
+pub struct RosterHubBroadcaster {
+    hub: Arc<hub::Hub>,
 }
 
-impl RosterSessionBroadcaster {
-    pub fn new(session: Arc<session::Session>) -> Self {
-        Self { session }
+impl RosterHubBroadcaster {
+    pub fn new(hub: Arc<hub::Hub>) -> Self {
+        Self { hub }
     }
 }
 
-impl RosterBroadcastListener for RosterSessionBroadcaster {
+impl RosterBroadcastListener for RosterHubBroadcaster {
     fn on_changed(&self, members: &[RosterMember]) {
         broadcast_state_delta(
-            &self.session,
+            &self.hub,
             StateDeltaPayload::Roster {
                 members: roster_to_wire(members),
             },

@@ -10,18 +10,18 @@ use tokio::sync::broadcast;
 use tower::ServiceExt;
 
 use super::{init_session, seed_messages, seed_mixed_messages, test_app};
+use crate::hub;
 use crate::message::MessageType;
-use crate::session;
 use crate::transport::rest::*;
 
 #[tokio::test]
 async fn gets_messages_with_limit() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let session = seed_messages(&dir, 5);
+    let hub = seed_messages(&dir, 5);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
-        .with_state(session);
+        .with_state(hub);
     let request = Request::builder()
         .method("GET")
         .uri("/api/messages?limit=2")
@@ -43,7 +43,7 @@ async fn gets_messages_before_timestamp_returns_only_older() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (tx, _rx) = broadcast::channel(16);
-    let session = Arc::new(session::Session::new(
+    let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),
         "test".to_string(),
         tx,
@@ -56,12 +56,12 @@ async fn gets_messages_before_timestamp_returns_only_older() {
             ts: base + chrono::Duration::seconds(i as i64),
             ..crate::message::Message::default()
         };
-        session.broadcast(&msg).expect("broadcast");
+        hub.broadcast(&msg).expect("broadcast");
     }
     let boundary = base + chrono::Duration::seconds(3);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
-        .with_state(session);
+        .with_state(hub);
     let boundary_z = boundary.to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true);
     let uri = format!("/api/messages?limit=10&before={boundary_z}");
     let request = Request::builder()
@@ -89,10 +89,10 @@ async fn gets_messages_before_timestamp_returns_only_older() {
 async fn gets_messages_before_invalid_timestamp_falls_back_to_no_filter() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let session = seed_messages(&dir, 3);
+    let hub = seed_messages(&dir, 3);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
-        .with_state(session);
+        .with_state(hub);
     let request = Request::builder()
         .method("GET")
         .uri("/api/messages?limit=10&before=not-a-timestamp")
@@ -111,10 +111,10 @@ async fn gets_messages_before_invalid_timestamp_falls_back_to_no_filter() {
 async fn gets_messages_with_offset() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let session = seed_messages(&dir, 5);
+    let hub = seed_messages(&dir, 5);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
-        .with_state(session);
+        .with_state(hub);
     let request = Request::builder()
         .method("GET")
         .uri("/api/messages?limit=2&offset=2")

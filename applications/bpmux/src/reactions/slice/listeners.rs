@@ -1,25 +1,25 @@
 use std::sync::Arc;
 
+use crate::hub;
 use crate::message::{ReactionAggregateWire, StateDeltaPayload};
-use crate::session;
 use crate::transport::state_delta::broadcast_state_delta;
 
 use super::{AggregatedReaction, ReactionsBroadcastListener};
 
-pub struct ReactionsSessionBroadcaster {
-    session: Arc<session::Session>,
+pub struct ReactionsHubBroadcaster {
+    hub: Arc<hub::Hub>,
 }
 
-impl ReactionsSessionBroadcaster {
-    pub fn new(session: Arc<session::Session>) -> Self {
-        Self { session }
+impl ReactionsHubBroadcaster {
+    pub fn new(hub: Arc<hub::Hub>) -> Self {
+        Self { hub }
     }
 }
 
-impl ReactionsBroadcastListener for ReactionsSessionBroadcaster {
+impl ReactionsBroadcastListener for ReactionsHubBroadcaster {
     fn on_changed(&self, channel: &str, aggregated: &[AggregatedReaction]) {
         broadcast_state_delta(
-            &self.session,
+            &self.hub,
             StateDeltaPayload::Reactions {
                 channel: channel.to_string(),
                 aggregated: reactions_to_wire(aggregated),

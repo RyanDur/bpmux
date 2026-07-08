@@ -7,7 +7,7 @@ use base64::Engine;
 use futures::stream::SplitSink;
 use tokio::sync::broadcast;
 
-use crate::session;
+use crate::hub;
 use crate::transport::protocol::ServerMessage;
 
 use super::{build_peer_lag_message, send_json, should_deliver};
@@ -16,7 +16,7 @@ pub(super) async fn handle_broadcast(
     tx: &mut SplitSink<WebSocket, WsMessage>,
     result: Result<crate::message::Message, broadcast::error::RecvError>,
     identity: &str,
-    session: &Arc<session::Session>,
+    hub: &Arc<hub::Hub>,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     match result {
         Ok(msg) => {
@@ -31,7 +31,7 @@ pub(super) async fn handle_broadcast(
             };
             let _ = send_json(tx, &lag_notice).await;
             let lag_broadcast = build_peer_lag_message(identity, n, chrono::Utc::now());
-            if let Err(e) = session.broadcast(&lag_broadcast) {
+            if let Err(e) = hub.broadcast(&lag_broadcast) {
                 crate::diag::log_diag(&format!(
                     "ws: peer-lag broadcast failed for {identity}: {e}"
                 ));

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::session;
+use crate::hub;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 
 pub(super) fn test_mode_enabled() -> bool {
@@ -41,17 +41,16 @@ pub(super) fn seed_ci_green_for_tests(store: &crate::ci::CiStateStore) {
 }
 
 pub(super) async fn build_test_orchestrator(
-    session: Arc<session::Session>,
+    hub: Arc<hub::Hub>,
     action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::store::AppAction>>,
     ci_state_store: crate::ci::CiStateStore,
     race_window_barrier: Option<Arc<crate::sync::RaceWindowBarrier>>,
 ) -> Arc<dyn RefreshDriver> {
     let adapter = Arc::new(crate::integrations::in_memory::InMemorySourceAdapter::new());
-    let orch_concrete =
-        match SyncOrchestrator::with_storage(adapter.clone(), session.storage.clone()) {
-            Ok(o) => o,
-            Err(_) => SyncOrchestrator::new(adapter),
-        };
+    let orch_concrete = match SyncOrchestrator::with_storage(adapter.clone(), hub.storage.clone()) {
+        Ok(o) => o,
+        Err(_) => SyncOrchestrator::new(adapter),
+    };
     let orch_concrete = match action_tx {
         Some(tx) => orch_concrete.with_action_tx(tx),
         None => orch_concrete,
@@ -66,28 +65,27 @@ pub(super) async fn build_test_orchestrator(
 }
 
 pub(super) fn build_prod_orchestrator(
-    session: Arc<session::Session>,
+    hub: Arc<hub::Hub>,
     adapter: Arc<crate::integrations::github::GitHubSourceAdapter>,
     action_tx: Option<tokio::sync::mpsc::UnboundedSender<crate::store::AppAction>>,
     ci_state_store: crate::ci::CiStateStore,
     race_window_barrier: Option<Arc<crate::sync::RaceWindowBarrier>>,
 ) -> Arc<dyn RefreshDriver> {
-    let orch_concrete =
-        match SyncOrchestrator::with_storage(adapter.clone(), session.storage.clone()) {
-            Ok(o) => {
-                let pending_count = o.snapshot_status().pending_events;
-                crate::diag::log_diag(&format!(
-                    "server: board-outbox hydrated via storage ({pending_count} pending events)"
-                ));
-                o
-            }
-            Err(e) => {
-                crate::diag::log_diag(&format!(
-                    "server: board-outbox storage-load failed ({e}); starting with empty outbox"
-                ));
-                SyncOrchestrator::new(adapter.clone())
-            }
-        };
+    let orch_concrete = match SyncOrchestrator::with_storage(adapter.clone(), hub.storage.clone()) {
+        Ok(o) => {
+            let pending_count = o.snapshot_status().pending_events;
+            crate::diag::log_diag(&format!(
+                "server: board-outbox hydrated via storage ({pending_count} pending events)"
+            ));
+            o
+        }
+        Err(e) => {
+            crate::diag::log_diag(&format!(
+                "server: board-outbox storage-load failed ({e}); starting with empty outbox"
+            ));
+            SyncOrchestrator::new(adapter.clone())
+        }
+    };
     let orch_concrete = match action_tx {
         Some(tx) => orch_concrete.with_action_tx(tx),
         None => orch_concrete,

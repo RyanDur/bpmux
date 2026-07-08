@@ -46,10 +46,10 @@ pub(crate) fn verdict_to_id(verdict: &crate::product_management::story::Verdict)
 }
 
 pub(crate) fn recent_evidence_for_story(
-    session: &std::sync::Arc<crate::session::Session>,
+    hub: &std::sync::Arc<crate::hub::Hub>,
     story_id: u64,
 ) -> Result<Vec<EvidenceMessage>, String> {
-    let store = crate::product_management::evidence::load(&session.dir);
+    let store = crate::product_management::evidence::load(&hub.dir);
     let verdicts = crate::product_management::evidence::evidence_for_story(
         &store,
         crate::product_management::story::StoryId::new(story_id),
