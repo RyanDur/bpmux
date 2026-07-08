@@ -66,10 +66,7 @@ pub(super) async fn render_epic_detail(
     let workflow_state = match refresh {
         Some(r) => {
             let stories = r.all_stories();
-            let children: Vec<&crate::product_management::story::Story> = stories
-                .iter()
-                .filter(|s| s.parent_epic() == Some(epic.id))
-                .collect();
+            let children = crate::product_management::epic::children_of(&stories, epic.id);
             let iterations = r.iterations();
             crate::product_management::epic::derive_epic_state(&children, &iterations).as_str()
         }

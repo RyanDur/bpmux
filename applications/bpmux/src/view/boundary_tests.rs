@@ -10,6 +10,7 @@ const FORBIDDEN_TOKENS: &[&str] = &[
     "crate::integrations",
     "crate::bridge",
     "crate::sync",
+    "crate::product_management::scheduling",
 ];
 
 fn collect_rs_files(dir: &Path, out: &mut Vec<PathBuf>) {
@@ -58,7 +59,7 @@ fn view_formats_domain_data_only() {
 
     assert!(
         violations.is_empty(),
-        "view is the read-model projection: it formats already-selected domain data (product_management types, workflow config, message) into the renderer wire shape and nothing more. It must not reach the redux composition (crate::store), the delivery edge (crate::transport), an integration adapter (crate::integrations), the MCP surface (crate::bridge), or the synchronization engine (crate::sync). A view file naming one of these is pulling infrastructure into a projection — take the projected value as a function argument instead; the composition/surface selects from the store and hands the view plain domain data. Test projections that construct a concrete codec are exempt. Violations:\n{}",
+        "view is the read-model projection: it formats already-selected domain data (product_management types, workflow config, message) into the renderer wire shape and nothing more. It must not reach the redux composition (crate::store), the delivery edge (crate::transport), an integration adapter (crate::integrations), the MCP surface (crate::bridge), the synchronization engine (crate::sync), or the state-projection derivation (crate::product_management::scheduling — the view receives the already-projected column/state, it does not re-derive it). A view file naming one of these is pulling infrastructure or domain derivation into a projection — take the projected value as a function argument instead; the composition/surface selects from the store and hands the view plain domain data. Test projections that construct a concrete codec are exempt. Violations:\n{}",
         violations.join("\n")
     );
 }

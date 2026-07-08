@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::iteration::{Iteration, IterationId};
-use super::scheduling::{ProjectedState, projected_state};
+use super::scheduling::{ProjectedState, projected_state, ready_membership_rank};
 use super::story::{Story, StoryId, Work};
 use chrono::{TimeZone, Utc};
 
@@ -93,5 +93,38 @@ fn a_complete_but_still_current_iteration_does_not_count_as_current() {
     assert_eq!(
         projected_state(&story(10, Work::NotStarted), &iterations),
         ProjectedState::Icebox
+    );
+}
+
+#[test]
+fn a_wire_row_absent_from_the_membership_order_ranks_after_a_member() {
+    let current_order = [5002];
+    assert!(
+        ready_membership_rank(5002, &current_order) < ready_membership_rank(5001, &current_order),
+        "a row the membership order names ranks before one it does not"
+    );
+}
+
+#[test]
+fn members_rank_by_their_position_in_the_current_order() {
+    let current_order = [5002, 5003, 5001];
+    let mut ids = [5001, 5002, 5003];
+    ids.sort_by_key(|&id| ready_membership_rank(id, &current_order));
+    assert_eq!(
+        ids,
+        [5002, 5003, 5001],
+        "members order by their index in the current iteration's stories list"
+    );
+}
+
+#[test]
+fn nonmembers_rank_after_members_ordered_by_id() {
+    let current_order = [5002, 5001];
+    let mut ids = [5050, 5001, 5040, 5002];
+    ids.sort_by_key(|&id| ready_membership_rank(id, &current_order));
+    assert_eq!(
+        ids,
+        [5002, 5001, 5040, 5050],
+        "members found in the membership order come first in that order; rows absent from it fall back to id"
     );
 }

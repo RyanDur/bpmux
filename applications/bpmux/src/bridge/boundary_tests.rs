@@ -14,6 +14,7 @@ const GRAIN_FIELDS: &[&str] = &[
     "epics",
     "outcomes",
     "board",
+    "reactions",
     "shared_history",
     "local_history",
 ];

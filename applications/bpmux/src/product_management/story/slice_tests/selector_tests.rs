@@ -1,5 +1,5 @@
 use crate::product_management::story::slice::{
-    Stories, StoryAction, all, feature_ids, get, reduce,
+    Stories, StoryAction, all, feature_ids, get, is_empty, reduce,
 };
 use crate::product_management::story::{Story, StoryId, StoryKind, Work};
 use chrono::{TimeZone, Utc};
@@ -58,4 +58,13 @@ fn feature_ids_keeps_features_and_drops_bugs_and_chores() {
     ids.sort_unstable();
 
     assert_eq!(ids, vec![1, 4]);
+}
+
+#[test]
+fn is_empty_is_true_for_no_stories_and_false_once_one_is_stored() {
+    assert!(is_empty(&Stories::default()));
+    assert!(!is_empty(&stories_of(vec![story_of(
+        1,
+        StoryKind::Feature
+    )])));
 }

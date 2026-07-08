@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
+use crate::board::{Column, board_columns, group_by_column};
 use crate::product_management::story::StoryId;
-use crate::view::board::arrangement::{Column, board_columns, column_header, group_by_column};
+use crate::view::board::arrangement::column_header;
 use crate::workflow::StageId;
 
 #[derive(Default)]
@@ -81,10 +82,7 @@ pub(in crate::bridge) fn build_board_text(
         if !epics.is_empty() {
             out.push_str(&format!("EPICS ({})\n", epics.len()));
             for epic in &epics {
-                let children: Vec<&crate::product_management::story::Story> = stories
-                    .iter()
-                    .filter(|c| c.parent_epic() == Some(epic.id))
-                    .collect();
+                let children = crate::product_management::epic::children_of(stories, epic.id);
                 let counts =
                     crate::product_management::epic::derive_epic_counts(&children, iterations);
                 let derived =

@@ -64,3 +64,10 @@ pub fn projected_state(story: &Story, iterations: &[Iteration]) -> ProjectedStat
         Work::Retired => ProjectedState::Retired,
     }
 }
+
+pub fn ready_membership_rank(id: u64, current_order: &[u64]) -> (u8, usize, u64) {
+    match current_order.iter().position(|&existing| existing == id) {
+        Some(idx) => (0, idx, id),
+        None => (1, usize::MAX, id),
+    }
+}

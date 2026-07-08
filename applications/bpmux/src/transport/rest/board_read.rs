@@ -1,7 +1,7 @@
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 
-use super::board::{board_iterations, ordered_board_stories};
+use super::board::{board_iterations, ordered_board_stories, sort_ready_by_membership};
 use super::shared::{TrackerHandle, err_body, json_headers};
 
 pub async fn get_board(
@@ -46,8 +46,7 @@ pub async fn get_board(
     };
     match tracker.fetch_board_stories().await {
         Ok(stories) => {
-            let ordered =
-                crate::view::board::membership_order::sort_board_ready_by_membership(stories, &[]);
+            let ordered = sort_ready_by_membership(stories, &[]);
             let body = serde_json::json!({
                 "stories": ordered,
                 "columns": super::board::board_columns_json(),

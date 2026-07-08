@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+use bpmux::board::{Column, column_of};
 use bpmux::integrations::github::mapper::state_from_labels;
 use bpmux::product_management::iteration::{Iteration, IterationId};
 use bpmux::product_management::story::{Stage, Story, StoryId, Work};
-use bpmux::view::board::arrangement::{Column, column_of};
 use chrono::Utc;
 
 fn story_in(state: Work) -> Story {

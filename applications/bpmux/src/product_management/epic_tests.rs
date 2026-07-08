@@ -2,7 +2,7 @@
 
 use crate::integrations::github::mapper::decode_epic_from_story;
 use crate::product_management::epic::{
-    EpicAction, EpicState, derive_epic_counts, derive_epic_state, reduce,
+    EpicAction, EpicId, EpicState, children_of, derive_epic_counts, derive_epic_state, reduce,
 };
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::scheduling::ProjectedState;
@@ -444,4 +444,19 @@ fn epic_own_state_label_change_is_not_an_epic_change() {
         result.is_none(),
         "an upsert differing only in the epic's own (shed) state label must reduce to None — the wire epic state derives from children, so that label never carried an observable difference"
     );
+}
+
+#[test]
+fn children_of_keeps_only_stories_parented_to_the_epic() {
+    let mut child = epic_child(10, Work::InProgress);
+    child.parent_epic = Some(EpicId::new(7));
+    let mut other = epic_child(11, Work::InProgress);
+    other.parent_epic = Some(EpicId::new(8));
+    let orphan = epic_child(12, Work::InProgress);
+    let stories = vec![child, other, orphan];
+    let selected: Vec<u64> = children_of(&stories, EpicId::new(7))
+        .iter()
+        .map(|s| s.id.value())
+        .collect();
+    assert_eq!(selected, vec![10]);
 }

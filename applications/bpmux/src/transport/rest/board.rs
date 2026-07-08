@@ -18,7 +18,34 @@ pub(crate) fn ordered_board_stories(
         crate::product_management::iteration::label::current_iteration(&iterations)
             .map(|iteration| iteration.stories.iter().map(|id| id.value()).collect())
             .unwrap_or_default();
-    crate::view::board::membership_order::sort_board_ready_by_membership(items, &current_order)
+    sort_ready_by_membership(items, &current_order)
+}
+
+pub(crate) fn sort_ready_by_membership(
+    stories: Vec<serde_json::Value>,
+    current_order: &[u64],
+) -> Vec<serde_json::Value> {
+    let mut by_state: Vec<(String, Vec<serde_json::Value>)> = Vec::new();
+    for s in stories {
+        let state = s
+            .get("state")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string();
+        match by_state.iter_mut().find(|(k, _)| k == &state) {
+            Some((_, list)) => list.push(s),
+            None => by_state.push((state, vec![s])),
+        }
+    }
+    for (state, list) in by_state.iter_mut() {
+        if state == crate::product_management::scheduling::ProjectedState::Ready.as_str() {
+            list.sort_by_cached_key(|s| {
+                let id = s.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
+                crate::product_management::scheduling::ready_membership_rank(id, current_order)
+            });
+        }
+    }
+    by_state.into_iter().flat_map(|(_, list)| list).collect()
 }
 
 pub(crate) fn board_stories(
@@ -30,7 +57,7 @@ pub(crate) fn board_stories(
 pub(crate) fn board_columns_json() -> Vec<serde_json::Value> {
     let workflow = crate::workflow::current_workflow();
     let middle = crate::workflow::board_middle_stage_ids(workflow);
-    crate::view::board::arrangement::board_columns(&middle)
+    crate::board::board_columns(&middle)
         .iter()
         .map(|column| {
             let id = column_wire_id(column);
@@ -39,8 +66,8 @@ pub(crate) fn board_columns_json() -> Vec<serde_json::Value> {
         .collect()
 }
 
-fn column_wire_id(column: &crate::view::board::arrangement::Column) -> String {
-    use crate::view::board::arrangement::Column;
+fn column_wire_id(column: &crate::board::Column) -> String {
+    use crate::board::Column;
     match column {
         Column::Icebox => "icebox".to_string(),
         Column::Ready => "ready".to_string(),
@@ -71,10 +98,7 @@ pub(crate) fn board_epics(refresh: &Arc<dyn crate::sync::RefreshDriver>) -> Vec<
         .epics()
         .iter()
         .map(|epic| {
-            let children: Vec<&crate::product_management::story::Story> = stories
-                .iter()
-                .filter(|s| s.parent_epic() == Some(epic.id))
-                .collect();
+            let children = crate::product_management::epic::children_of(&stories, epic.id);
             let derived =
                 crate::product_management::epic::derive_epic_state(&children, &iterations);
             serde_json::json!({

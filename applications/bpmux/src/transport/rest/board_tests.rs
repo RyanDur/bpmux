@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
-use super::board::{board_iterations, board_roadmap};
+use super::board::{board_iterations, board_roadmap, sort_ready_by_membership};
 use crate::integrations::github::mapper::{decode_iteration_from_story, decode_outcome_from_story};
 use crate::integrations::github::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
@@ -153,5 +153,26 @@ fn board_columns_json_lists_the_configured_columns_in_order() {
     assert_eq!(
         desk_check["label"], "Desk Check",
         "labels render title-case from the stage id"
+    );
+}
+
+#[test]
+fn sort_ready_by_membership_orders_the_ready_bucket_and_leaves_other_buckets_untouched() {
+    let stories = vec![
+        serde_json::json!({"id": 9002, "state": "icebox"}),
+        serde_json::json!({"id": 5050, "state": "ready"}),
+        serde_json::json!({"id": 9001, "state": "icebox"}),
+        serde_json::json!({"id": 5001, "state": "ready"}),
+        serde_json::json!({"id": 5002, "state": "ready"}),
+    ];
+    let current_order = [5002, 5001];
+
+    let sorted = sort_ready_by_membership(stories, &current_order);
+
+    let ids: Vec<u64> = sorted.iter().filter_map(|s| s["id"].as_u64()).collect();
+    assert_eq!(
+        ids,
+        vec![9002, 9001, 5002, 5001, 5050],
+        "buckets keep their order of first appearance (icebox before ready); the icebox bucket keeps its original relative order; the ready bucket sorts members first by membership position, then absentees by issue number"
     );
 }

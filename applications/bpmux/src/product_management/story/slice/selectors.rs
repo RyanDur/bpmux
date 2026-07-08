@@ -11,6 +11,10 @@ pub fn get(stories: &Stories, id: StoryId) -> Option<Story> {
     stories.get(&StoryKey::Saved(id)).cloned()
 }
 
+pub fn is_empty(stories: &Stories) -> bool {
+    stories.is_empty()
+}
+
 pub fn feature_ids(stories: &Stories) -> HashSet<StoryId> {
     stories
         .values()

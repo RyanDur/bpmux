@@ -1,7 +1,6 @@
 pub mod arrangement;
 mod iteration;
 mod json;
-pub mod membership_order;
 mod outcome;
 mod story;
 
@@ -9,8 +8,6 @@ mod story;
 mod canonical_tests;
 #[cfg(test)]
 mod json_tests;
-#[cfg(test)]
-mod membership_order_tests;
 #[cfg(test)]
 mod story_view_projection;
 #[cfg(test)]

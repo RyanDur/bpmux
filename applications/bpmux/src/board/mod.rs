@@ -179,5 +179,8 @@ pub fn wire_state(
     }
 }
 
+mod arrangement;
+pub use arrangement::{Column, board_columns, column_of, group_by_column};
+
 mod decision;
 pub use decision::{Decision, advance};

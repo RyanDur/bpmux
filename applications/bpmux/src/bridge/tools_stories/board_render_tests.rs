@@ -3,11 +3,11 @@
 use std::collections::HashMap;
 
 use super::board_render::*;
+use crate::board::Column;
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::Story;
 use crate::product_management::story::StoryId;
 use crate::product_management::story::Work;
-use crate::view::board::arrangement::Column;
 use crate::workflow::StageId;
 use chrono::{TimeZone, Utc};
 

@@ -74,6 +74,13 @@ impl EpicCounts {
     }
 }
 
+pub fn children_of(stories: &[Story], epic: EpicId) -> Vec<&Story> {
+    stories
+        .iter()
+        .filter(|story| story.parent_epic() == Some(epic))
+        .collect()
+}
+
 pub fn derive_epic_counts(children: &[&Story], iterations: &[Iteration]) -> EpicCounts {
     let mut counts = EpicCounts {
         accepted_count: 0,
