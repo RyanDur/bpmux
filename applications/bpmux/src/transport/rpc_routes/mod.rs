@@ -103,9 +103,12 @@ pub async fn post_rpc_tool(
                 Json(serde_json::json!({ "message": message })),
             )
         }
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({ "error": e })),
-        ),
+        Err(e) => {
+            crate::diag::log_diag(&format!("rpc: {tool} rejected: {e}"));
+            (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": e })),
+            )
+        }
     }
 }
