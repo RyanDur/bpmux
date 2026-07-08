@@ -4,7 +4,7 @@ use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{CastVerdict, FreeComment, Story, StoryId};
 use crate::sync::{ConditionalBody, SourceAdapter, SyncError};
 
-use super::{BoxedFuture, RefreshDriver, SyncOrchestrator, SyncStatus, acknowledge_dropped};
+use super::{BoxedFuture, RefreshDriver, SyncOrchestrator, SyncStatus};
 
 impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
     fn refresh_story(&self, number: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>> {
@@ -54,12 +54,8 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.snapshot_status()
     }
 
-    fn status_handle(&self) -> Arc<std::sync::Mutex<SyncStatus>> {
-        self.status_handle()
-    }
-
     fn acknowledge_dropped(&self) -> usize {
-        acknowledge_dropped(&self.status)
+        self.acknowledge_dropped()
     }
 
     fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {

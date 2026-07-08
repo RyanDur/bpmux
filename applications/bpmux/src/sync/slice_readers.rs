@@ -19,6 +19,22 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         }
     }
 
+    pub(super) fn read_health_snapshot(&self) -> crate::store::sync_health::SyncHealthState {
+        match self.select.get() {
+            Some(s) => s.select(|state| crate::store::sync_health::snapshot(&state.sync_health)),
+            None => crate::store::sync_health::SyncHealthState::default(),
+        }
+    }
+
+    pub(super) fn read_dropped_count(&self) -> usize {
+        match self.select.get() {
+            Some(s) => {
+                s.select(|state| crate::store::sync_health::dropped_count(&state.sync_health))
+            }
+            None => 0,
+        }
+    }
+
     pub(super) fn read_next_unpushed(&self, skip: &HashSet<MutationId>) -> Option<QueuedWrite> {
         match self.select.get() {
             Some(s) => s.select(|state| crate::store::sync::next_unpushed(&state.sync, skip)),

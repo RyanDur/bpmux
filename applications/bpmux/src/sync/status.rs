@@ -1,6 +1,3 @@
-use std::sync::Arc;
-use std::sync::Mutex;
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -45,49 +42,4 @@ pub fn is_stale(
 
 pub fn is_startup_fail(last_ingest_at: Option<DateTime<Utc>>, last_error: Option<&str>) -> bool {
     last_ingest_at.is_none() && last_error.is_some()
-}
-
-pub(super) fn with_status_mut<R>(
-    status: &Arc<Mutex<SyncStatus>>,
-    f: impl FnOnce(&mut SyncStatus) -> R,
-) -> R {
-    let mut s = status.lock().unwrap_or_else(|e| e.into_inner());
-    f(&mut s)
-}
-
-pub(super) fn record_ingest_success(status: &Arc<Mutex<SyncStatus>>) {
-    with_status_mut(status, |s| {
-        s.last_ingest_at = Some(Utc::now());
-        s.last_error = None;
-    });
-}
-
-pub(super) fn record_push_success(status: &Arc<Mutex<SyncStatus>>) {
-    with_status_mut(status, |s| {
-        s.last_push_at = Some(Utc::now());
-    });
-}
-
-pub(super) fn record_error(status: &Arc<Mutex<SyncStatus>>, msg: &str) {
-    with_status_mut(status, |s| {
-        s.last_error = Some(msg.to_string());
-    });
-}
-
-pub(super) fn record_dropped(status: &Arc<Mutex<SyncStatus>>, story_id: u64, error: String) {
-    with_status_mut(status, |s| {
-        s.dropped_events.push(DroppedEvent {
-            story_id,
-            error,
-            ts: Utc::now(),
-        });
-    });
-}
-
-pub fn acknowledge_dropped(status: &Arc<Mutex<SyncStatus>>) -> usize {
-    with_status_mut(status, |s| {
-        let cleared = s.dropped_events.len();
-        s.dropped_events.clear();
-        cleared
-    })
 }

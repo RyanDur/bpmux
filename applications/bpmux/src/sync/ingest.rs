@@ -1,5 +1,4 @@
 use super::SyncOrchestrator;
-use super::status::{record_error, record_ingest_success};
 use crate::sync::{SourceAdapter, SyncError};
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
@@ -80,11 +79,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     ));
                 }
                 self.seed_and_place(items, placements);
-                record_ingest_success(&self.status);
+                self.record_ingest_success();
                 Ok(())
             }
             Err(e) => {
-                record_error(&self.status, &format!("ingest: {e}"));
+                self.record_error(&format!("ingest: {e}"));
                 Err(e)
             }
         }
@@ -110,15 +109,15 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                         .collect::<Vec<_>>();
                     self.seed_and_place(vec![story.clone()], placements);
                 }
-                record_ingest_success(&self.status);
+                self.record_ingest_success();
                 Ok(Some(story))
             }
             Ok(None) => {
-                record_ingest_success(&self.status);
+                self.record_ingest_success();
                 Ok(None)
             }
             Err(e) => {
-                record_error(&self.status, &format!("refresh_story({number}): {e}"));
+                self.record_error(&format!("refresh_story({number}): {e}"));
                 Err(e)
             }
         }

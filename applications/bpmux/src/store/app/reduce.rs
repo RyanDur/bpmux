@@ -10,6 +10,7 @@ use crate::store::ci::{self, CiAction};
 use crate::store::reactions;
 use crate::store::roster;
 use crate::store::sync::SyncAction;
+use crate::store::sync_health::SyncHealthAction;
 
 use super::{AppAction, AppState};
 
@@ -50,6 +51,15 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
             },
             None => state.clone(),
         },
+        AppAction::SyncHealth(action) => {
+            match crate::store::sync_health::reduce(&state.sync_health, action) {
+                Some(sync_health) => AppState {
+                    sync_health: Arc::new(sync_health),
+                    ..state.clone()
+                },
+                None => state.clone(),
+            }
+        }
         AppAction::Outcome(action) => match outcome::reduce(&state.outcomes, action) {
             Some(outcomes) => AppState {
                 outcomes: Arc::new(outcomes),
@@ -123,6 +133,15 @@ pub fn validate_and_log(action: &AppAction) {
         AppAction::Sync(SyncAction::WritesQueued(_)) => "Sync.WritesQueued",
         AppAction::Sync(SyncAction::WritePushed { .. }) => "Sync.WritePushed",
         AppAction::Sync(SyncAction::WriteDropped { .. }) => "Sync.WriteDropped",
+        AppAction::SyncHealth(SyncHealthAction::IngestSucceeded { .. }) => {
+            "SyncHealth.IngestSucceeded"
+        }
+        AppAction::SyncHealth(SyncHealthAction::PushSucceeded { .. }) => "SyncHealth.PushSucceeded",
+        AppAction::SyncHealth(SyncHealthAction::ErrorRecorded { .. }) => "SyncHealth.ErrorRecorded",
+        AppAction::SyncHealth(SyncHealthAction::EventDropped { .. }) => "SyncHealth.EventDropped",
+        AppAction::SyncHealth(SyncHealthAction::DroppedAcknowledged) => {
+            "SyncHealth.DroppedAcknowledged"
+        }
         AppAction::Reactions(_) => "Reactions",
         AppAction::Evidence(_) => "Evidence",
         AppAction::Roster(_) => "Roster",

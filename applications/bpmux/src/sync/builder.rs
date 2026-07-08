@@ -1,6 +1,5 @@
 use super::*;
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::sync::SourceAdapter;
@@ -10,7 +9,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         Self {
             dispatch: std::sync::OnceLock::new(),
             adapter,
-            status: Arc::new(Mutex::new(SyncStatus::default())),
             codec: Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
             next_mutation_id: AtomicU64::new(1),
             select: std::sync::OnceLock::new(),

@@ -1,4 +1,3 @@
-use super::status::{record_error, record_ingest_success};
 use super::types::cache_fill_meta;
 use super::{CastVerdict, FreeComment, SyncOrchestrator};
 use crate::product_management::story::StoryId;
@@ -18,11 +17,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     },
                 );
                 self.apply_story_event(&event);
-                record_ingest_success(&self.status);
+                self.record_ingest_success();
                 Ok(body)
             }
             Err(e) => {
-                record_error(&self.status, &format!("fetch_body({number}): {e}"));
+                self.record_error(&format!("fetch_body({number}): {e}"));
                 Err(e)
             }
         }
@@ -39,7 +38,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             .await
         {
             Ok(ConditionalBody::NotModified) => {
-                record_ingest_success(&self.status);
+                self.record_ingest_success();
                 Ok(ConditionalBody::NotModified)
             }
             Ok(ConditionalBody::Modified { body, etag }) => {
@@ -52,14 +51,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     },
                 );
                 self.apply_story_event(&event);
-                record_ingest_success(&self.status);
+                self.record_ingest_success();
                 Ok(ConditionalBody::Modified { body, etag })
             }
             Err(e) => {
-                record_error(
-                    &self.status,
-                    &format!("fetch_body_conditional({number}): {e}"),
-                );
+                self.record_error(&format!("fetch_body_conditional({number}): {e}"));
                 Err(e)
             }
         }
@@ -76,11 +72,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     },
                 );
                 self.apply_story_event(&event);
-                record_ingest_success(&self.status);
+                self.record_ingest_success();
                 Ok(comments)
             }
             Err(e) => {
-                record_error(&self.status, &format!("fetch_free_comments({number}): {e}"));
+                self.record_error(&format!("fetch_free_comments({number}): {e}"));
                 Err(e)
             }
         }
@@ -97,11 +93,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     },
                 );
                 self.apply_story_event(&event);
-                record_ingest_success(&self.status);
+                self.record_ingest_success();
                 Ok(verdicts)
             }
             Err(e) => {
-                record_error(&self.status, &format!("fetch_verdicts({number}): {e}"));
+                self.record_error(&format!("fetch_verdicts({number}): {e}"));
                 Err(e)
             }
         }

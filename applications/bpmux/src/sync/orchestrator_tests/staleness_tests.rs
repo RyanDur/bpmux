@@ -111,7 +111,9 @@ mod staleness {
     async fn snapshot_status_surfaces_startup_fail_when_ingest_fails_with_no_prior_success() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.set_ingest_failures(true);
-        let orch = SyncOrchestrator::new(adapter);
+        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
         let _ = orch.ingest_once().await;
         let snap = orch.snapshot_status();
         assert!(snap.last_ingest_at.is_none(), "no successful ingest yet");

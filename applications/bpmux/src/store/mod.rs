@@ -10,6 +10,7 @@ pub use crate::ci::slice as ci;
 pub use crate::reactions::slice as reactions;
 pub use crate::roster;
 pub mod sync;
+pub mod sync_health;
 
 mod action;
 mod app;
@@ -45,6 +46,7 @@ pub use select::Select;
 #[cfg(test)]
 pub(crate) use select::{SeededStore, bind_seeded_refresh};
 pub use sync::SyncAction;
+pub use sync_health::SyncHealthAction;
 
 pub struct Store {
     hub: Arc<hub::Hub>,

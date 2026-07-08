@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::sync::{MutationId, SourceAdapter, SyncError, is_permanent_push_failure};
 
-use super::super::{SyncOrchestrator, record_dropped, record_error, record_push_success};
+use super::super::SyncOrchestrator;
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub async fn drain_pass(&self) -> Result<usize, SyncError> {
@@ -26,7 +26,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     self.dispatch_write_pushed(queued.id);
                     skip.insert(queued.id);
                     drained += 1;
-                    record_push_success(&self.status);
+                    self.record_push_success();
                     if let Some(refresh_event) = follow_up {
                         let story_id = event.story_id();
                         let queued_for_story =
@@ -43,11 +43,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 }
                 Err(e) => {
                     failures += 1;
-                    record_error(&self.status, &format!("push: {e}"));
+                    self.record_error(&format!("push: {e}"));
                     if is_permanent_push_failure(&e) {
                         self.dispatch_write_dropped(queued.id);
                         skip.insert(queued.id);
-                        record_dropped(&self.status, event.story_id().value(), format!("{e}"));
+                        self.record_dropped(event.story_id().value(), format!("{e}"));
                         crate::diag::log_diag(&format!(
                             "orchestrator: dropped event after permanent push failure ({e}); event #{}",
                             event.story_id().value()

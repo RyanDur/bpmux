@@ -12,6 +12,7 @@ use crate::store::ci::{CiAction, CiState};
 use crate::store::reactions::{ReactionsAction, ReactionsState};
 use crate::store::roster::{RosterAction, RosterState};
 use crate::store::sync::{SyncAction, SyncState};
+use crate::store::sync_health::{SyncHealthAction, SyncHealthState};
 
 mod board_placement;
 mod evidence;
@@ -54,6 +55,7 @@ pub struct AppState {
     pub shared_history: Arc<SharedHistory>,
     pub local_history: Arc<PlacementHistory>,
     pub sync: Arc<SyncState>,
+    pub sync_health: Arc<SyncHealthState>,
 }
 
 impl AppState {
@@ -99,6 +101,7 @@ pub enum AppAction {
     Evidence(EvidenceAction),
     Ci(CiAction),
     Sync(SyncAction),
+    SyncHealth(SyncHealthAction),
     Outcome(OutcomeAction),
     Iteration(IterationAction),
     Epic(EpicAction),
@@ -134,6 +137,12 @@ impl From<CiAction> for AppAction {
 impl From<SyncAction> for AppAction {
     fn from(action: SyncAction) -> Self {
         Self::Sync(action)
+    }
+}
+
+impl From<SyncHealthAction> for AppAction {
+    fn from(action: SyncHealthAction) -> Self {
+        Self::SyncHealth(action)
     }
 }
 

@@ -28,7 +28,6 @@ pub trait RefreshDriver: Send + Sync {
     fn mutate_batch_sync(&self, events: Vec<StoryEvent>) -> Result<(), SyncError>;
     fn issue_lock(&self, issue: u64) -> BoxedFuture<'_, Arc<tokio::sync::Mutex<()>>>;
     fn snapshot_status(&self) -> SyncStatus;
-    fn status_handle(&self) -> Arc<std::sync::Mutex<SyncStatus>>;
     fn acknowledge_dropped(&self) -> usize;
     fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
     fn reconcile_dual_state_labels(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;

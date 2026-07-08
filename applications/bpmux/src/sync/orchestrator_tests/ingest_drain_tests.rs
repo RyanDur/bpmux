@@ -36,12 +36,42 @@ async fn ingest_once_populates_store_from_adapter() {
 async fn ingest_once_records_error_on_source_failure() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.set_ingest_failures(true);
-    let orchestrator = SyncOrchestrator::new(adapter);
+    let orchestrator = Arc::new(SyncOrchestrator::new(adapter));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
     let result = orchestrator.ingest_once().await;
     assert!(result.is_err());
     let status = orchestrator.snapshot_status();
     assert!(status.last_error.is_some());
     assert!(status.last_ingest_at.is_none());
+}
+
+#[tokio::test]
+async fn ingest_success_after_failure_clears_the_last_error() {
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.set_ingest_failures(true);
+    let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
+
+    assert!(orchestrator.ingest_once().await.is_err());
+    assert!(
+        orchestrator.snapshot_status().last_error.is_some(),
+        "the failed ingest records an error on the shared field"
+    );
+
+    adapter.set_ingest_failures(false);
+    orchestrator.ingest_once().await.unwrap();
+
+    let status = orchestrator.snapshot_status();
+    assert!(
+        status.last_error.is_none(),
+        "a subsequent successful ingest clears the error the shared field carried"
+    );
+    assert!(status.last_ingest_at.is_some());
+    assert!(!status.startup_fail);
 }
 
 #[tokio::test]

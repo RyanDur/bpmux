@@ -45,7 +45,10 @@ async fn refresh_story_fails_fast_when_source_unreachable() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(1, Work::NotStarted)]);
     adapter.set_ingest_failures(true);
-    let orchestrator = SyncOrchestrator::new(adapter);
+    let orchestrator = Arc::new(SyncOrchestrator::new(adapter));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
     let result = orchestrator.refresh_story(1).await;
     assert!(result.is_err());
     assert!(
@@ -126,7 +129,10 @@ async fn fetch_body_records_error_when_source_fails() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(7, Work::NotStarted)]);
     adapter.set_ingest_failures(true);
-    let orchestrator = SyncOrchestrator::new(adapter);
+    let orchestrator = Arc::new(SyncOrchestrator::new(adapter));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
     let err = orchestrator.fetch_body(7).await.unwrap_err();
     assert!(matches!(err, crate::sync::SyncError::SourceUnreachable(_)));
     let status = orchestrator.snapshot_status();
@@ -190,7 +196,10 @@ async fn fetch_verdicts_records_error_when_source_fails() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(11, Work::NotStarted)]);
     adapter.set_ingest_failures(true);
-    let orchestrator = SyncOrchestrator::new(adapter);
+    let orchestrator = Arc::new(SyncOrchestrator::new(adapter));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
     let err = orchestrator.fetch_verdicts(11).await.unwrap_err();
     assert!(matches!(err, crate::sync::SyncError::SourceUnreachable(_)));
     assert!(

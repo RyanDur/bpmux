@@ -255,7 +255,6 @@ mod outbox_persistence {
 
     #[tokio::test]
     async fn acknowledge_dropped_clears_dropped_events() {
-        use crate::sync::acknowledge_dropped;
         let dir = tempfile::tempdir().unwrap();
         let path = outbox_path(&dir);
         let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -271,7 +270,7 @@ mod outbox_persistence {
         adapter.set_permanent_push_failures(true);
         let _ = orch.drain_pass().await;
         assert_eq!(orch.snapshot_status().dropped_events.len(), 1);
-        let cleared = acknowledge_dropped(&orch.status_handle());
+        let cleared = orch.acknowledge_dropped();
         assert_eq!(cleared, 1);
         assert!(orch.snapshot_status().dropped_events.is_empty());
     }

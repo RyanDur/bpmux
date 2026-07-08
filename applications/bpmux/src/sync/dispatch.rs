@@ -1,4 +1,7 @@
+use chrono::Utc;
+
 use crate::product_management::story::events::StoryEvent;
+use crate::store::SyncHealthAction;
 use crate::sync::SourceAdapter;
 
 use super::SyncOrchestrator;
@@ -50,5 +53,43 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self.dispatch_story(
             crate::product_management::story::slice::StoryAction::Events(events.to_vec()),
         );
+    }
+
+    pub(super) fn record_ingest_success(&self) {
+        self.emit(crate::store::AppAction::SyncHealth(
+            SyncHealthAction::IngestSucceeded { at: Utc::now() },
+        ));
+    }
+
+    pub(super) fn record_push_success(&self) {
+        self.emit(crate::store::AppAction::SyncHealth(
+            SyncHealthAction::PushSucceeded { at: Utc::now() },
+        ));
+    }
+
+    pub(super) fn record_error(&self, msg: &str) {
+        self.emit(crate::store::AppAction::SyncHealth(
+            SyncHealthAction::ErrorRecorded {
+                msg: msg.to_string(),
+            },
+        ));
+    }
+
+    pub(super) fn record_dropped(&self, story_id: u64, error: String) {
+        self.emit(crate::store::AppAction::SyncHealth(
+            SyncHealthAction::EventDropped {
+                story_id,
+                error,
+                ts: Utc::now(),
+            },
+        ));
+    }
+
+    pub fn acknowledge_dropped(&self) -> usize {
+        let cleared = self.read_dropped_count();
+        self.emit(crate::store::AppAction::SyncHealth(
+            SyncHealthAction::DroppedAcknowledged,
+        ));
+        cleared
     }
 }

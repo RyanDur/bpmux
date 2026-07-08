@@ -1,6 +1,5 @@
 use std::collections::VecDeque;
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::sync::atomic::AtomicU64;
 
 use chrono::Utc;
@@ -32,11 +31,7 @@ pub(crate) use outbox::persist_outbox_to_disk;
 pub use outbox::{default_outbox_path, load_outbox_from_disk};
 pub use port::*;
 pub use race_window::*;
-pub use status::{
-    DroppedEvent, SyncStatus, acknowledge_dropped, is_stale, is_startup_fail,
-    staleness_threshold_secs,
-};
-use status::{record_dropped, record_error, record_push_success};
+pub use status::{DroppedEvent, SyncStatus, is_stale, is_startup_fail, staleness_threshold_secs};
 pub use types::*;
 
 pub trait OutboxRepo: Send + Sync {
@@ -47,7 +42,6 @@ pub trait OutboxRepo: Send + Sync {
 pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     pub(super) dispatch: std::sync::OnceLock<crate::store::Dispatch>,
     pub(super) adapter: Arc<A>,
-    pub(super) status: Arc<Mutex<SyncStatus>>,
     pub(super) codec: Arc<dyn crate::product_management::label_codec::LabelCodec + Send + Sync>,
     pub(super) next_mutation_id: AtomicU64,
     pub(super) select: std::sync::OnceLock<crate::store::Select>,
@@ -59,10 +53,6 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
 }
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
-    pub fn status_handle(&self) -> Arc<Mutex<SyncStatus>> {
-        Arc::clone(&self.status)
-    }
-
     pub async fn issue_lock(&self, issue: u64) -> Arc<tokio::sync::Mutex<()>> {
         let mut locks = self.issue_locks.lock().await;
         Arc::clone(
@@ -73,20 +63,21 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     pub fn snapshot_status(&self) -> SyncStatus {
-        let snapshot = self
-            .status
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .clone();
+        let health = self.read_health_snapshot();
+        let stale = is_stale(
+            health.last_ingest_at,
+            staleness_threshold_secs(),
+            Utc::now(),
+        );
+        let startup_fail = is_startup_fail(health.last_ingest_at, health.last_error.as_deref());
         SyncStatus {
+            last_ingest_at: health.last_ingest_at,
+            last_push_at: health.last_push_at,
             pending_events: self.read_pending_count(),
-            stale: is_stale(
-                snapshot.last_ingest_at,
-                staleness_threshold_secs(),
-                Utc::now(),
-            ),
-            startup_fail: is_startup_fail(snapshot.last_ingest_at, snapshot.last_error.as_deref()),
-            ..snapshot
+            last_error: health.last_error,
+            dropped_events: health.dropped_events,
+            stale,
+            startup_fail,
         }
     }
 
@@ -98,11 +89,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     ) -> Result<u64, SyncError> {
         match self.adapter.create_story(title, body, initial_labels).await {
             Ok(number) => {
-                record_push_success(&self.status);
+                self.record_push_success();
                 Ok(number)
             }
             Err(e) => {
-                record_error(&self.status, &format!("create_story: {e}"));
+                self.record_error(&format!("create_story: {e}"));
                 Err(e)
             }
         }
