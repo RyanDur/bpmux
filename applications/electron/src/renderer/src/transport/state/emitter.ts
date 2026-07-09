@@ -69,7 +69,7 @@ export const subscribePtyExit = (handler: (terminalId: string) => void): (() => 
   }
 }
 
-export const resetSessionEmitter = (): void => {
+export const resetStateEmitter = (): void => {
   liveMessageListeners.clear()
   ptyOutputListeners.clear()
   ptyModeListeners.clear()

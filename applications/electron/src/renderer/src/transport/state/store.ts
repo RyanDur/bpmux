@@ -4,7 +4,7 @@ import { reset, type StateAction } from './actions'
 import { socketMiddleware } from './socketMiddleware'
 import { historyMiddleware } from './historyMiddleware'
 import { emitMiddleware } from './emitMiddleware'
-import { resetSessionEmitter } from './emitter'
+import { resetStateEmitter } from './emitter'
 import { stopSentFrameCapture } from './testCapture'
 
 const makeStore = (): Store<StateSnapshot, StateAction> =>
@@ -24,7 +24,7 @@ export const subscribeState = (listener: () => void): (() => void) => store.subs
 
 export const resetStateForTest = (): void => {
   store.dispatch(reset())
-  resetSessionEmitter()
+  resetStateEmitter()
   stopSentFrameCapture()
   store = makeStore()
 }
