@@ -50,7 +50,6 @@ pub(crate) async fn handle_label_story(
         let meta = crate::product_management::story::events::EventMeta {
             actor: crate::routing::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::product_management::story::peer::PeerId::local(),
         };
         let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
         let tag = codec.decode_tag(label);
@@ -132,7 +131,6 @@ pub(crate) async fn handle_comment_on_story(
             crate::product_management::story::events::EventMeta {
                 actor: crate::routing::short_name(agent_name).to_string(),
                 ts: chrono::Utc::now(),
-                peer_id: crate::product_management::story::peer::PeerId::local(),
             },
             StoryId::new(id),
             crate::product_management::story::events::StoryEventKind::FreeCommentAppended {

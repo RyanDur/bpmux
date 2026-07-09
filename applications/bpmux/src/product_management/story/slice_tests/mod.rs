@@ -10,7 +10,6 @@ mod write_path_tests;
 use chrono::{TimeZone, Utc};
 
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Story, StoryId, StoryKey, Work};
 use crate::store::{AppAction, SeededStore};
@@ -19,11 +18,10 @@ fn seeded() -> SeededStore {
     SeededStore::new(Vec::new(), Vec::new(), Vec::new())
 }
 
-fn meta(actor: &str, ts_year: i32, peer: &str) -> EventMeta {
+fn meta(actor: &str, ts_year: i32) -> EventMeta {
     EventMeta {
         actor: actor.to_string(),
         ts: Utc.with_ymd_and_hms(ts_year, 1, 1, 0, 0, 0).unwrap(),
-        peer_id: PeerId::named(peer),
     }
 }
 
@@ -58,7 +56,7 @@ fn created(store: &SeededStore, id: u64, title: &str, state: Work) {
     apply(
         store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(id),
             StoryEventKind::StoryCreated {
                 title: title.to_string(),

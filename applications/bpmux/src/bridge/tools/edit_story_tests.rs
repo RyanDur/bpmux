@@ -160,7 +160,6 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
     let meta = EventMeta {
         actor: "pm".to_string(),
         ts: Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
-        peer_id: crate::product_management::story::peer::PeerId::local(),
     };
     refresh
         .mutate_sync(StoryEvent::new(

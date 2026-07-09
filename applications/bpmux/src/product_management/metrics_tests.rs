@@ -10,7 +10,6 @@ use super::metrics::{
     acceptance_rejection_rate, accepted, lead_time_median_hours, velocity, velocity_series,
 };
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{StoryId, Verdict};
 
@@ -23,7 +22,6 @@ fn verdict_event(story: u64, hour: u32, verdict: Verdict) -> StoryEvent {
         EventMeta {
             actor: "owner".to_string(),
             ts: at(hour),
-            peer_id: PeerId::local(),
         },
         StoryId::new(story),
         StoryEventKind::VerdictCast {

@@ -5,7 +5,6 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 
 #[derive(
     Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
@@ -70,6 +69,5 @@ pub(crate) fn cache_fill_meta() -> EventMeta {
     EventMeta {
         actor: "source-ingest".to_string(),
         ts: Utc::now(),
-        peer_id: PeerId::local(),
     }
 }

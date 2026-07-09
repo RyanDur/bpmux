@@ -6,28 +6,28 @@ use crate::product_management::epic::EpicId;
 use crate::product_management::story::events::{
     EventMeta, LabelDerivedFields, StoryEvent, StoryEventKind,
 };
-use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{
     Acceptor, CastVerdict, FreeComment, Stage, Story, StoryId, StoryKind, Tag, Verdict, Work,
 };
 use crate::sync::{QueuedEvent, load_outbox_from_disk};
 
-const FIX_QUEUED_TAG_ADDED: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}}}"#;
-const FIX_QUEUED_TRANSITIONED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress","placement":"desk-check"}}}"#;
-const FIX_QUEUED_VERDICT: &str = r#"{"id":0,"event":{"VerdictCast":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"verdict":{"Fail":{"step":"acceptance"}},"payload":"narrow viewport"}}}"#;
-const FIX_QUEUED_REFRESHED: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[]}}}}"#;
-const FIX_STORY_EVENT: &str = r#"{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}}"#;
+const FIX_QUEUED_TAG_ADDED: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"label":"ready"}}}"#;
+const FIX_QUEUED_TRANSITIONED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"new_state":"in-progress","placement":"desk-check"}}}"#;
+const FIX_QUEUED_VERDICT: &str = r#"{"id":0,"event":{"VerdictCast":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"verdict":{"Fail":{"step":"acceptance"}},"payload":"narrow viewport"}}}"#;
+const FIX_QUEUED_REFRESHED: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[]}}}}"#;
+const FIX_STORY_EVENT: &str =
+    r#"{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"label":"ready"}}"#;
 
-const FIX_ABSENT_PLACEMENT: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress"}}}"#;
-const FIX_ABSENT_PLACEMENT_NORMALIZED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"new_state":"in-progress","placement":null}}}"#;
-const FIX_ABSENT_ETAG: &str = r#"{"id":0,"event":{"BodyFetched":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"body":"hydrated"}}}"#;
-const FIX_ABSENT_ETAG_NORMALIZED: &str = r#"{"id":0,"event":{"BodyFetched":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"body":"hydrated","etag":null}}}"#;
+const FIX_ABSENT_PLACEMENT: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"new_state":"in-progress"}}}"#;
+const FIX_ABSENT_PLACEMENT_NORMALIZED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"new_state":"in-progress","placement":null}}}"#;
+const FIX_ABSENT_ETAG: &str = r#"{"id":0,"event":{"BodyFetched":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"body":"hydrated"}}}"#;
+const FIX_ABSENT_ETAG_NORMALIZED: &str = r#"{"id":0,"event":{"BodyFetched":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"body":"hydrated","etag":null}}}"#;
+const FIX_LEGACY_ROW_WITH_PEER_ID: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}}}"#;
 
 fn fixture_meta() -> EventMeta {
     EventMeta {
         actor: "dev".to_string(),
         ts: Utc.with_ymd_and_hms(2026, 7, 7, 12, 0, 0).unwrap(),
-        peer_id: PeerId::local(),
     }
 }
 
@@ -87,6 +87,22 @@ fn story_event_round_trips_byte_identically() {
     assert_eq!(parsed, fixture_tag_added());
     let reserialized = serde_json::to_string(&parsed).expect("story event reserializes");
     assert_eq!(reserialized, FIX_STORY_EVENT);
+}
+
+#[test]
+fn a_legacy_disk_row_carrying_peer_id_still_deserializes() {
+    let parsed: QueuedEvent =
+        serde_json::from_str(FIX_LEGACY_ROW_WITH_PEER_ID).expect("legacy row deserializes");
+    assert_eq!(parsed.id, crate::sync::MutationId(0));
+    assert_eq!(parsed.event.meta.actor, "dev");
+    assert_eq!(
+        parsed.event.meta.ts,
+        Utc.with_ymd_and_hms(2026, 7, 7, 12, 0, 0).unwrap()
+    );
+    match &parsed.event.kind {
+        StoryEventKind::TagAdded { label } => assert_eq!(label, "ready"),
+        other => panic!("fixture is a TagAdded row; got {other:?}"),
+    }
 }
 
 #[test]

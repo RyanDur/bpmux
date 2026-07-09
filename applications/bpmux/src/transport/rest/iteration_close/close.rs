@@ -132,7 +132,6 @@ pub(crate) async fn close_iteration_canonical(
     let meta = || crate::product_management::story::events::EventMeta {
         actor: "pm".to_string(),
         ts: chrono::Utc::now(),
-        peer_id: crate::product_management::story::peer::PeerId::local(),
     };
     refresh
         .mutate_sync(crate::product_management::story::events::StoryEvent::new(

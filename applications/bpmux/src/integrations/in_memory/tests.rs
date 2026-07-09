@@ -5,7 +5,6 @@ use chrono::{TimeZone, Utc};
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{FreeComment, Story, StoryId, Work};
 use crate::sync::{SourceAdapter, SyncError};
 
@@ -13,7 +12,6 @@ fn meta() -> EventMeta {
     EventMeta {
         actor: "dev".to_string(),
         ts: Utc.with_ymd_and_hms(2026, 4, 24, 0, 0, 0).unwrap(),
-        peer_id: PeerId::local(),
     }
 }
 

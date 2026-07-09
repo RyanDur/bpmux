@@ -77,7 +77,6 @@ pub(crate) async fn handle_fail_desk_check(
         let meta = crate::product_management::story::events::EventMeta {
             actor: crate::routing::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::product_management::story::peer::PeerId::local(),
         };
         let mut events = Vec::new();
         if was_accepted {

@@ -4,7 +4,6 @@ use serde_json::Map;
 use serde_json::Value;
 
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{StoryId, Work};
 use crate::sync::RefreshDriver;
 
@@ -71,7 +70,6 @@ pub(in crate::bridge) async fn handle_move_story(
     let meta = EventMeta {
         actor: actor_short.clone(),
         ts: chrono::Utc::now(),
-        peer_id: PeerId::local(),
     };
     let story_id = StoryId::new(id);
 

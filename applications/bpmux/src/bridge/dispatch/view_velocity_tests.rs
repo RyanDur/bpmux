@@ -6,7 +6,6 @@ use serde_json::Value;
 use super::view::dispatch_view_velocity;
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Story, StoryId, StoryKind, Verdict, Work};
 use crate::store::{AppAction, SeededStore};
@@ -20,7 +19,6 @@ fn meta(hour: u32) -> EventMeta {
     EventMeta {
         actor: "owner".to_string(),
         ts: at(hour),
-        peer_id: PeerId::local(),
     }
 }
 

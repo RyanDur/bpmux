@@ -114,7 +114,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 let meta = crate::product_management::story::events::EventMeta {
                     actor: "bpmux:reconcile".to_string(),
                     ts: Utc::now(),
-                    peer_id: crate::product_management::story::peer::PeerId::local(),
                 };
                 self.mutate(StoryEvent::new(
                     meta,

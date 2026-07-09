@@ -13,7 +13,6 @@ use crate::kernel::{Dispatch, Listener, Reaction};
 use crate::message::Message;
 use crate::product_management::history_persistence as shared_persistence;
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Stage, Story, StoryId, Verdict, Work};
 use crate::store::{AppAction, AppState, app_reduce};
@@ -34,7 +33,6 @@ fn verdict_action() -> AppAction {
         EventMeta {
             actor: "owner".to_string(),
             ts: Utc.with_ymd_and_hms(2026, 7, 7, 9, 0, 0).unwrap(),
-            peer_id: PeerId::local(),
         },
         StoryId::new(700),
         StoryEventKind::VerdictCast {
@@ -51,7 +49,6 @@ fn transition_action() -> AppAction {
         EventMeta {
             actor: "dev".to_string(),
             ts: Utc.with_ymd_and_hms(2026, 7, 7, 9, 0, 0).unwrap(),
-            peer_id: PeerId::local(),
         },
         StoryId::new(700),
         StoryEventKind::StateTransitioned {

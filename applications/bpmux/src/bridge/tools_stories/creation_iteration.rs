@@ -58,7 +58,6 @@ pub(crate) async fn handle_create_iteration(
     let meta = crate::product_management::story::events::EventMeta {
         actor: filed_by.clone(),
         ts: filed_at,
-        peer_id: crate::product_management::story::peer::PeerId::local(),
     };
     r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
         meta.clone(),

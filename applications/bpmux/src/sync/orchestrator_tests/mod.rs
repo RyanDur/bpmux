@@ -13,14 +13,12 @@ mod staleness_tests;
 use chrono::{TimeZone, Utc};
 
 use crate::product_management::story::events::EventMeta;
-use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{Story, StoryId, Work};
 
 pub(super) fn meta() -> EventMeta {
     EventMeta {
         actor: "dev".to_string(),
         ts: Utc.with_ymd_and_hms(2026, 4, 24, 16, 0, 0).unwrap(),
-        peer_id: PeerId::local(),
     }
 }
 

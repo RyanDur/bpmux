@@ -171,9 +171,14 @@ sheds (`Epic.state` SHED (this slice); `iteration_slot` SHED (slice D);
 for a story's kind (labels-over-title at `story_decode.rs:62`), read by live
 gate-class/signal-routing/chore-guard/ATP logic, pinned on the wire and outbox
 deliberately; retiring it would reintroduce multiple-authority re-derivation);
-drain trigger action→state; `EventMeta` envelope made structural (the 26-arm
-double-match); fitness locks for unowned seams (bridge→*, sync→store,
-integrations→store, view scope); reactions dual-write.
+`peer_id` SHED (2026-07-09: multi-instance bpmux is chat-only, never direct
+event-merge, so the `(ts, peer_id)` LWW tiebreaker `PeerId` served has no
+model behind it; `EventMeta` is now `{ actor, ts }`; backward-read compat for
+old disk rows carrying `peer_id` retained because serde ignores unknown
+fields by default, pinned by a dedicated legacy-fixture test); drain trigger action→state; `EventMeta`
+envelope made structural (the 26-arm double-match); fitness locks for unowned
+seams (bridge→*, sync→store, integrations→store, view scope); reactions
+dual-write.
 
 Decided, not behavior-preserving at the shared edge (owner-approved
 2026-07-04): the desk-check label de-leak + local middle placement storage.

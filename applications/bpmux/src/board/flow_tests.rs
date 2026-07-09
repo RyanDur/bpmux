@@ -5,7 +5,6 @@ use chrono::{TimeZone, Utc};
 use super::flow::{Position, ReworkBreakdown, desk_check_rework, sub_section_timings};
 use super::history::{PlacementHistory, react_to_story};
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Stage, StoryId, Work};
 
@@ -14,7 +13,6 @@ fn transition(story: u64, hour: u32, to: Work, placement: Option<Stage>) -> Stor
         EventMeta {
             actor: "dev".to_string(),
             ts: Utc.with_ymd_and_hms(2026, 7, 7, hour, 0, 0).unwrap(),
-            peer_id: PeerId::local(),
         },
         StoryId::new(story),
         StoryEventKind::StateTransitioned {

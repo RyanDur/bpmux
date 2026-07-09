@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Story, StoryId, StoryKind, Work};
 use crate::store::{AppAction, SeededStore};
@@ -15,7 +14,6 @@ fn meta() -> EventMeta {
     EventMeta {
         actor: "pm".to_string(),
         ts: Utc.with_ymd_and_hms(2026, 7, 3, 0, 0, 0).unwrap(),
-        peer_id: PeerId::named("local"),
     }
 }
 

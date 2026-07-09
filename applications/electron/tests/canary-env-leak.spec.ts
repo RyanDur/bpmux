@@ -111,8 +111,7 @@ test.describe('#1216 env-leak canary — launchIsolatedElectron isolation', () =
               FreeCommentAppended: {
                 meta: {
                   actor: marker,
-                  ts: '2026-01-01T00:00:00Z',
-                  peer_id: 'leak-canary'
+                  ts: '2026-01-01T00:00:00Z'
                 },
                 id: 99999,
                 body: 'leak-outbox-canary'

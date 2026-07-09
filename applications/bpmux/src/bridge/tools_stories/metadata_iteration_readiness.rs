@@ -25,7 +25,6 @@ pub(crate) async fn handle_designate_current_iteration(
     let meta = || crate::product_management::story::events::EventMeta {
         actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
-        peer_id: crate::product_management::story::peer::PeerId::local(),
     };
     let prior: Vec<crate::product_management::iteration::Iteration> = r
         .iterations()
@@ -91,7 +90,6 @@ pub(crate) async fn handle_close_pre_pickup_review(
     let meta = crate::product_management::story::events::EventMeta {
         actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
-        peer_id: crate::product_management::story::peer::PeerId::local(),
     };
     r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
         meta,
@@ -140,7 +138,6 @@ pub(crate) async fn handle_dev_ok_iteration(
     let meta = crate::product_management::story::events::EventMeta {
         actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
-        peer_id: crate::product_management::story::peer::PeerId::local(),
     };
     r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
         meta,

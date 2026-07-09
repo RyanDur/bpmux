@@ -193,7 +193,6 @@ async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
 #[tokio::test]
 async fn local_body_mutate_invalidates_prior_etag() {
     use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-    use crate::product_management::story::peer::PeerId;
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let handle = SeededStore::new(vec![], vec![], vec![]);
@@ -208,7 +207,6 @@ async fn local_body_mutate_invalidates_prior_etag() {
         EventMeta {
             actor: "test".to_string(),
             ts: Utc::now(),
-            peer_id: PeerId::local(),
         },
         StoryId::new(9100),
         StoryEventKind::StoryRefreshed {
@@ -226,7 +224,6 @@ async fn local_body_mutate_invalidates_prior_etag() {
 #[tokio::test]
 async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh() {
     use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-    use crate::product_management::story::peer::PeerId;
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let handle = SeededStore::new(vec![], vec![], vec![]);
@@ -238,7 +235,6 @@ async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh(
         EventMeta {
             actor: "test".to_string(),
             ts: Utc::now(),
-            peer_id: PeerId::local(),
         },
         StoryId::new(9200),
         StoryEventKind::LabelsRefreshed {

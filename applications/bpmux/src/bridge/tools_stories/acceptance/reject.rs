@@ -83,7 +83,6 @@ pub(crate) async fn reject_via_canonical_store(
     let meta = crate::product_management::story::events::EventMeta {
         actor,
         ts: chrono::Utc::now(),
-        peer_id: crate::product_management::story::peer::PeerId::local(),
     };
     let mut events = Vec::new();
     if was_accepted {

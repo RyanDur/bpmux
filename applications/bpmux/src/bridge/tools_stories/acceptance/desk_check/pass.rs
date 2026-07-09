@@ -85,7 +85,6 @@ pub(crate) async fn handle_pass_desk_check(
         let meta = crate::product_management::story::events::EventMeta {
             actor: crate::routing::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::product_management::story::peer::PeerId::local(),
         };
         let crate::board::Decision {
             coarse: new_state,

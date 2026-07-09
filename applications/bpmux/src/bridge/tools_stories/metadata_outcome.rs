@@ -4,7 +4,6 @@ use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::product_management::outcome::{Outcome, OutcomeAction};
 use crate::product_management::story::Horizon;
 use crate::product_management::story::events::EventMeta;
-use crate::product_management::story::peer::PeerId;
 use crate::sync::RefreshDriver;
 use std::sync::Arc;
 
@@ -51,7 +50,6 @@ pub(crate) async fn handle_reprioritize_outcome(
     let meta = || EventMeta {
         actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
-        peer_id: PeerId::local(),
     };
 
     let band_changed = outcome.horizon() != Some(target_band);

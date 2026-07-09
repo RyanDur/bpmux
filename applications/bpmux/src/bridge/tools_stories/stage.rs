@@ -1,6 +1,5 @@
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string, role_from_name};
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{Story, StoryId, Verdict, Work};
 use crate::sync::RefreshDriver;
 use crate::workflow::StageId;
@@ -134,7 +133,6 @@ fn cast_and_transition(
     let meta = EventMeta {
         actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
-        peer_id: PeerId::local(),
     };
     r.mutate_batch_sync(vec![
         StoryEvent::new(

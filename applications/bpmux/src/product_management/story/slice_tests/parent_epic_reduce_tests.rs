@@ -15,7 +15,7 @@ fn parent_epic_set_event_decodes_into_the_stored_parent_epic_field() {
     apply(
         &store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(12),
             StoryEventKind::ParentEpicSet {
                 epic_id: EpicId::new(300),
@@ -36,7 +36,7 @@ fn parent_epic_set_event_makes_story_read_its_parent_epic() {
     apply(
         &store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(100),
             StoryEventKind::ParentEpicSet {
                 epic_id: EpicId::new(50),
@@ -56,7 +56,7 @@ fn parent_epic_unset_event_makes_story_read_no_parent_epic() {
     apply(
         &store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(101),
             StoryEventKind::ParentEpicSet {
                 epic_id: EpicId::new(51),
@@ -66,7 +66,7 @@ fn parent_epic_unset_event_makes_story_read_no_parent_epic() {
     apply(
         &store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(101),
             StoryEventKind::ParentEpicUnset,
         ),
@@ -80,7 +80,7 @@ fn parent_epic_events_no_op_on_missing_story() {
     apply(
         &store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(999),
             StoryEventKind::ParentEpicSet {
                 epic_id: EpicId::new(888),
@@ -90,7 +90,7 @@ fn parent_epic_events_no_op_on_missing_story() {
     apply(
         &store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(999),
             StoryEventKind::ParentEpicUnset,
         ),

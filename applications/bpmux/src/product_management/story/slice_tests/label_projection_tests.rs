@@ -10,7 +10,7 @@ fn acceptor_assigned_lands_typed_without_any_label_projection_1551() {
     apply(
         &store,
         StoryEvent::new(
-            meta("designer", 2026, "local"),
+            meta("designer", 2026),
             StoryId::new(1),
             StoryEventKind::AcceptorAssigned {
                 acceptor: Acceptor::Team,
@@ -32,7 +32,7 @@ fn tag_added_unknown_label_is_dropped() {
     apply(
         &store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(1),
             StoryEventKind::TagAdded {
                 label: "high-priority".to_string(),
@@ -52,7 +52,7 @@ fn generic_label_churn_does_not_clobber_the_typed_tags_field() {
     apply(
         &store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(1),
             StoryEventKind::TagSet {
                 tag: Tag::DeskCheckFail,
@@ -62,7 +62,7 @@ fn generic_label_churn_does_not_clobber_the_typed_tags_field() {
     apply(
         &store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(1),
             StoryEventKind::TagAdded {
                 label: "high-priority".to_string(),
@@ -72,7 +72,7 @@ fn generic_label_churn_does_not_clobber_the_typed_tags_field() {
     apply(
         &store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(1),
             StoryEventKind::TagRemoved {
                 label: "high-priority".to_string(),
@@ -92,7 +92,7 @@ fn story_created_event_carries_story_type() {
     apply(
         &store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(1),
             StoryEventKind::StoryCreated {
                 title: "t".to_string(),
@@ -116,7 +116,7 @@ fn labels_refreshed_purely_assigns_typed_fields_and_leaves_state_to_state_transi
     apply(
         &store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(77),
             StoryEventKind::LabelsRefreshed {
                 fields: LabelDerivedFields {

@@ -13,7 +13,7 @@ mod wire_encode;
 
 pub use kind::StoryEventKind;
 pub use label_fields::LabelDerivedFields;
-pub use meta::{EventMeta, event_wins, resolve_order_key};
+pub use meta::EventMeta;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(from = "wire::StoryEventWire", into = "wire::StoryEventWire")]

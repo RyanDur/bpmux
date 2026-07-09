@@ -22,7 +22,6 @@ use bpmux::hub::Hub;
 use bpmux::integrations::in_memory::InMemorySourceAdapter;
 use bpmux::product_management::story::events::EventMeta;
 use bpmux::product_management::story::events::{StoryEvent, StoryEventKind};
-use bpmux::product_management::story::peer::PeerId;
 use bpmux::product_management::story::{Story, StoryId, Work};
 use bpmux::sync::RefreshDriver;
 use bpmux::sync::SyncOrchestrator;
@@ -66,7 +65,6 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
     let meta = EventMeta {
         actor: "dev".into(),
         ts: Utc::now(),
-        peer_id: PeerId::local(),
     };
 
     // Drive an explicit reap call against in-memory adapter — counts

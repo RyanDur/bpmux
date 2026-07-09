@@ -168,7 +168,6 @@ fn state_transitioned(
         crate::product_management::story::events::EventMeta {
             actor: actor.to_string(),
             ts: chrono::Utc::now(),
-            peer_id: crate::product_management::story::peer::PeerId::local(),
         },
         crate::product_management::story::StoryId::new(id),
         crate::product_management::story::events::StoryEventKind::StateTransitioned {

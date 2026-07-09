@@ -5,7 +5,6 @@ use chrono::{TimeZone, Utc};
 use super::history::{SharedHistory, react_to_story};
 use super::history_persistence;
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{StoryId, Verdict};
 
@@ -23,7 +22,6 @@ fn one_verdict() -> SharedHistory {
             EventMeta {
                 actor: "owner".to_string(),
                 ts: Utc.with_ymd_and_hms(2026, 7, 7, 9, 0, 0).unwrap(),
-                peer_id: PeerId::local(),
             },
             StoryId::new(700),
             StoryEventKind::VerdictCast {

@@ -2,7 +2,6 @@ pub mod enums;
 pub mod events;
 mod gate_class;
 pub mod key;
-pub mod peer;
 pub mod rework;
 pub(crate) mod slice;
 pub mod stage;
@@ -20,15 +19,11 @@ pub use verdict::Verdict;
 #[cfg(test)]
 mod enums_tests;
 #[cfg(test)]
-mod events_tests;
-#[cfg(test)]
 mod gate_class_tests;
 #[cfg(test)]
 mod key_tests;
 #[cfg(test)]
 mod order_state_pin_tests;
-#[cfg(test)]
-mod peer_tests;
 #[cfg(test)]
 mod rework_tests;
 #[cfg(test)]

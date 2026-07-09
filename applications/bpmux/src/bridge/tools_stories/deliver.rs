@@ -1,7 +1,6 @@
 use super::acceptance_test_path::validate_acceptance_test_path_at_deliver;
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string, role_from_name};
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{Story, StoryId, Verdict};
 use crate::sync::RefreshDriver;
 
@@ -63,7 +62,6 @@ pub(crate) async fn handle_deliver_story(
         let meta = EventMeta {
             actor: crate::routing::short_name(agent_name).to_string(),
             ts: chrono::Utc::now(),
-            peer_id: PeerId::local(),
         };
         let held_step = refreshed
             .as_ref()

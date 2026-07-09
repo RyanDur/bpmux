@@ -61,8 +61,7 @@ test.describe('#1158 — offline-first board', () => {
           StateTransitioned: {
             meta: {
               actor: 'dev',
-              ts: '2026-05-03T20:00:00Z',
-              peer_id: 'local'
+              ts: '2026-05-03T20:00:00Z'
             },
             id: 100,
             new_state: 'in-progress'
@@ -75,8 +74,7 @@ test.describe('#1158 — offline-first board', () => {
           StateTransitioned: {
             meta: {
               actor: 'dev',
-              ts: '2026-05-03T20:00:01Z',
-              peer_id: 'local'
+              ts: '2026-05-03T20:00:01Z'
             },
             id: 101,
             new_state: 'in-progress'
@@ -161,8 +159,7 @@ test.describe('#1158 — offline-first board', () => {
         StateTransitioned: {
           meta: {
             actor: 'dev',
-            ts: '2026-05-03T20:00:00Z',
-            peer_id: 'local'
+            ts: '2026-05-03T20:00:00Z'
           },
           id: 200,
           new_state: 'acceptance'

@@ -13,7 +13,6 @@ use crate::hub::Hub;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::message::Message;
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{Story, StoryId, Work};
 use crate::storage::StorageBackend;
 use crate::store::Store;
@@ -24,7 +23,6 @@ fn meta() -> EventMeta {
     EventMeta {
         actor: "test".to_string(),
         ts: Utc::now(),
-        peer_id: PeerId::local(),
     }
 }
 

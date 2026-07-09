@@ -1,7 +1,6 @@
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
 use crate::product_management::story::StoryId;
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 use crate::sync::RefreshDriver;
 use std::sync::Arc;
 
@@ -28,7 +27,6 @@ pub(crate) async fn handle_retire_outcome(
     let meta = || EventMeta {
         actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
-        peer_id: PeerId::local(),
     };
     r.mutate_sync(StoryEvent::new(
         meta(),

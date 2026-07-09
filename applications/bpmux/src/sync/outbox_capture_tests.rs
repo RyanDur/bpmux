@@ -3,7 +3,6 @@
 use chrono::{TimeZone, Utc};
 
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{StoryId, Work};
 use crate::sync::{QueuedEvent, load_outbox_from_disk};
 
@@ -11,7 +10,6 @@ fn meta() -> EventMeta {
     EventMeta {
         actor: "dev".to_string(),
         ts: Utc.with_ymd_and_hms(2026, 5, 5, 22, 0, 0).unwrap(),
-        peer_id: PeerId::local(),
     }
 }
 

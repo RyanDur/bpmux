@@ -11,7 +11,7 @@ fn verdict_cast_event_accumulates() {
     apply(
         &store,
         StoryEvent::new(
-            meta("dev", 2026, "local"),
+            meta("dev", 2026),
             StoryId::new(1),
             StoryEventKind::VerdictCast {
                 verdict: Verdict::Succeed {
@@ -24,7 +24,7 @@ fn verdict_cast_event_accumulates() {
     apply(
         &store,
         StoryEvent::new(
-            meta("dev", 2026, "local"),
+            meta("dev", 2026),
             StoryId::new(1),
             StoryEventKind::VerdictCast {
                 verdict: Verdict::Succeed {
@@ -58,7 +58,7 @@ fn free_comment_appended_event_accumulates() {
     apply(
         &store,
         StoryEvent::new(
-            meta("designer", 2026, "local"),
+            meta("designer", 2026),
             StoryId::new(1),
             StoryEventKind::FreeCommentAppended {
                 body: "design note".to_string(),
@@ -80,7 +80,7 @@ fn body_fetched_event_populates_lazy_body() {
     apply(
         &store,
         StoryEvent::new(
-            meta("dev", 2026, "local"),
+            meta("dev", 2026),
             StoryId::new(1),
             StoryEventKind::BodyFetched {
                 body: "fetched body text".to_string(),
@@ -106,7 +106,7 @@ fn free_comments_fetched_event_replaces_lazy_field() {
     apply(
         &store,
         StoryEvent::new(
-            meta("dev", 2026, "local"),
+            meta("dev", 2026),
             StoryId::new(1),
             StoryEventKind::FreeCommentsFetched {
                 comments: comments.clone(),

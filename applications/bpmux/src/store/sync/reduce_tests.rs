@@ -5,7 +5,6 @@ use chrono::{TimeZone, Utc};
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::product_management::story::StoryId;
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 use crate::sync::{MutationId, QueuedWrite};
 
 use super::{SyncAction, SyncState, reduce};
@@ -14,7 +13,6 @@ fn meta() -> EventMeta {
     EventMeta {
         actor: "dev".to_string(),
         ts: Utc.with_ymd_and_hms(2026, 7, 8, 0, 0, 0).unwrap(),
-        peer_id: PeerId::local(),
     }
 }
 

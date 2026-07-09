@@ -8,7 +8,7 @@ fn story_created_event_populates_the_central_store() {
     apply(
         &store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(500),
             StoryEventKind::StoryCreated {
                 title: "new story".to_string(),
@@ -32,7 +32,7 @@ fn state_transitioned_event_updates_existing_story() {
     apply(
         &store,
         StoryEvent::new(
-            meta("dev", 2026, "local"),
+            meta("dev", 2026),
             StoryId::new(1),
             StoryEventKind::StateTransitioned {
                 new_state: Work::InProgress,
@@ -49,7 +49,7 @@ fn state_transitioned_event_silently_drops_when_story_missing() {
     apply(
         &store,
         StoryEvent::new(
-            meta("dev", 2026, "local"),
+            meta("dev", 2026),
             StoryId::new(999),
             StoryEventKind::StateTransitioned {
                 new_state: Work::InProgress,
@@ -72,7 +72,7 @@ fn acceptor_assigned_event_sets_the_stored_acceptor_field() {
     apply(
         &store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(8),
             StoryEventKind::AcceptorAssigned {
                 acceptor: Acceptor::Owner,
@@ -97,7 +97,7 @@ fn tag_set_event_sets_the_typed_tags_field_directly() {
     apply(
         &store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(15),
             StoryEventKind::TagSet {
                 tag: Tag::DeskCheckFail,
@@ -112,7 +112,7 @@ fn tag_set_event_sets_the_typed_tags_field_directly() {
     apply(
         &store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(15),
             StoryEventKind::TagSet {
                 tag: Tag::DeskCheckFail,
@@ -127,7 +127,7 @@ fn tag_set_event_sets_the_typed_tags_field_directly() {
     apply(
         &store,
         StoryEvent::new(
-            meta("pm", 2026, "local"),
+            meta("pm", 2026),
             StoryId::new(15),
             StoryEventKind::TagUnset {
                 tag: Tag::DeskCheckFail,

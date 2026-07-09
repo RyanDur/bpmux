@@ -7,7 +7,6 @@ use chrono::{TimeZone, Utc};
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::{Stage, Story, StoryId, Work};
 use crate::store::SeededStore;
 use crate::sync::RefreshDriver;

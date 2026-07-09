@@ -5,7 +5,6 @@ use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::integrations::github::mapper::decode_story_metadata;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::peer::PeerId;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Story, StoryId, StoryKind, Work};
 use crate::store::{AppAction, SeededStore};
@@ -18,7 +17,6 @@ fn meta() -> EventMeta {
     EventMeta {
         actor: "test".to_string(),
         ts: Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
-        peer_id: PeerId::local(),
     }
 }
 

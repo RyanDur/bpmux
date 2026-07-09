@@ -54,7 +54,6 @@ pub(crate) async fn handle_create_outcome(
     let meta = crate::product_management::story::events::EventMeta {
         actor: crate::routing::short_name(agent_name).to_string(),
         ts: chrono::Utc::now(),
-        peer_id: crate::product_management::story::peer::PeerId::local(),
     };
     r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
         meta,
