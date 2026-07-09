@@ -175,7 +175,7 @@ to SQLite; `MemoryStorage` is retired):
   semantics stay inside FileStorage; tests' knowledge of those
   idiosyncrasies is zero. Retained for the legacy-jsonl read the
   `migrate-storage` cutover path needs.
-- `SqliteStorage` — SQLite-backed (`session.db`); schema defined by
+- `SqliteStorage` — SQLite-backed (`data.db`); schema defined by
   **refinery versioned migrations** (`migrations/V{N}__*.sql`,
   embedded + run on connection-open), never inline DDL — forward-only,
   guarded by `migrations_are_forward_only_versioned` (any `U`/down/

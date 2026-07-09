@@ -91,7 +91,7 @@ fn repo_port_modules_import_no_storage_mechanism() {
         "a repo PORT is an abstract persistence interface: the feature states WHAT it needs \
          (load/save its records) in domain terms, and storage's SQLite/File backends implement \
          it. The SQL mechanism (rusqlite, refinery migrations) lives ONLY in the storage edge, \
-         never in a port-owning feature module. Move the offending code into storage/session/. \
+         never in a port-owning feature module. Move the offending code into storage/data/. \
          Violations:\n{}",
         violations.join("\n")
     );

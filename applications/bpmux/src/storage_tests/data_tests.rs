@@ -433,10 +433,10 @@ fn sqlite_backend_writes_the_db_not_the_flat_log() {
         .append_message(&fresh_message("sqlite-mode-test"))
         .unwrap();
 
-    let sqlite_path = dir.path().join("session.db");
+    let sqlite_path = dir.path().join("data.db");
     assert!(
         sqlite_path.exists(),
-        "the sqlite backend must write to session.db at {sqlite_path:?}"
+        "the sqlite backend must write to data.db at {sqlite_path:?}"
     );
     let jsonl_path = crate::log::log_path(dir.path());
     assert!(

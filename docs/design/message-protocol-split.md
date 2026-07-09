@@ -28,7 +28,7 @@ mechanical abuse is the direct cause of three warts:
    chat table purely as a reconnect-replay cache: derived store state stored
    durably beside chat — a rogue stored-shadow of the one store.
 2. **The migration purge.** `Stories` deltas were once persisted, later
-   reclassified ephemeral; `storage/session/migrate.rs` carries a permanent
+   reclassified ephemeral; `storage/data/migrate.rs` carries a permanent
    special case deleting the stale rows.
 3. **The tolerant deserializers.** `state_delta`/`state_snapshot` parse via
    `from_value(..).ok()` only because evolving wire DTOs land in the durable

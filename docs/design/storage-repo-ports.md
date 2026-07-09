@@ -22,8 +22,8 @@ concepts through free functions, never the trait:
 | Method(s) | Real production home | Trait-consumer |
 |---|---|---|
 | `search_messages` | `read_messages()` + `comprehension::search` (`rest/search.rs`) | test only |
-| `load_state`/`save_state` | **LIVE — `storage/session/migrate.rs` migration flags** (not dead; the survey missed it) → StateKv stays storage-owned | migrate.rs (prod) |
-| `dir` | `session.dir` field | test only |
+| `load_state`/`save_state` | **LIVE — `storage/data/migrate.rs` migration flags** (not dead; the survey missed it) → StateKv stays storage-owned | migrate.rs (prod) |
+| `dir` | `FileStorage`/`SqliteStorage` `dir` field | test only |
 | `load_bookmark`/`save_bookmark` | free fns `bookmark::{load,save}_bookmark` (file-path, backend-bypassing) | test only |
 | `load_reactions`/`save_reactions` | free fns / reactions store; `save_reactions` only at `transport/test_seed.rs` | test-seed + tests |
 | `save_lessons` | — | no non-test caller |

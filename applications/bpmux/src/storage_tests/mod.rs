@@ -3,4 +3,4 @@
 #![allow(clippy::panic)]
 #![allow(unsafe_code)]
 
-mod session_tests;
+mod data_tests;

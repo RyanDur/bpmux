@@ -1,9 +1,9 @@
 mod backend;
+mod data;
 mod instrumented;
-mod session;
 
 pub use backend::StorageBackend;
-pub use session::*;
+pub use data::*;
 
 pub trait Storage:
     crate::awareness::SurfacedTopicsRepo

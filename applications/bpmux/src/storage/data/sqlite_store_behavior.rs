@@ -56,7 +56,7 @@ fn an_outbox_row_round_trips_byte_identically_through_the_real_store() {
     use crate::sync::OutboxRepo;
     let dir = tempfile::TempDir::new().unwrap();
     let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
-    let raw = rusqlite::Connection::open(dir.path().join("session.db")).unwrap();
+    let raw = rusqlite::Connection::open(dir.path().join("data.db")).unwrap();
     raw.execute(
         "INSERT INTO outbox (event) VALUES (?1)",
         [FIX_QUEUED_VERDICT_ROW],
