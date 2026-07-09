@@ -14,6 +14,15 @@ fn osc7(path: &str) -> Vec<u8> {
     format!("\x1b]7;file://host{path}\x07").into_bytes()
 }
 
+fn slice_select(
+    routing: &crate::routing::RoutingStore,
+) -> (crate::store::SeededStore, crate::store::Select) {
+    let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
+    routing.bind_dispatch(seeded.dispatcher());
+    let select = seeded.select();
+    (seeded, select)
+}
+
 const GATE: Duration = Duration::from_millis(1000);
 
 #[test]
@@ -178,11 +187,13 @@ async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless()
     let terminal_id = "term-agnostic".to_string();
     registry.insert(terminal_id.clone(), live);
 
+    let (_seed, select) = slice_select(&routing);
     spawn_agent_run_detector(
         terminal_id.clone(),
         output,
         registry.clone(),
         routing.clone(),
+        select,
         empty_message_hub(),
         None,
     );
@@ -243,11 +254,13 @@ async fn a_cd_through_a_dir_without_running_an_agent_mints_no_id() {
     let output = live.subscribe();
     let terminal_id = "term-passthrough".to_string();
     registry.insert(terminal_id.clone(), live);
+    let (_seed, select) = slice_select(&routing);
     spawn_agent_run_detector(
         terminal_id.clone(),
         output,
         registry.clone(),
         routing.clone(),
+        select,
         empty_message_hub(),
         None,
     );
@@ -297,11 +310,13 @@ async fn an_agent_started_in_place_with_no_cd_registers_via_the_startup_emit() {
     let output = live.subscribe();
     let terminal_id = "term-inplace".to_string();
     registry.insert(terminal_id.clone(), live);
+    let (_seed, select) = slice_select(&routing);
     spawn_agent_run_detector(
         terminal_id.clone(),
         output,
         registry.clone(),
         routing.clone(),
+        select,
         empty_message_hub(),
         None,
     );

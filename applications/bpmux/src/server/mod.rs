@@ -6,9 +6,11 @@ use crate::hub;
 use crate::sync::OrchestratorHandle;
 use crate::transport;
 
-fn startup_routing_id(routing: &crate::routing::RoutingStore, identity: &str) -> String {
-    routing
-        .resolve(crate::routing::short_name(identity))
+fn startup_routing_id(select: &crate::store::Select, identity: &str) -> String {
+    select
+        .select(|s| {
+            crate::store::routing::resolve(&s.routing, crate::routing::short_name(identity))
+        })
         .into_iter()
         .next()
         .unwrap_or_else(|| identity.to_string())
@@ -95,7 +97,7 @@ pub async fn run_server(
         startup_tasks::spawn_background_ingest(refresh.clone(), store.dispatcher());
     }
     wire_store_listeners(&store, &hub, &ci_state_store);
-    wire_startup_roster(&store, &hub, &pty_registry, &routing_store).await;
+    wire_startup_roster(&store, &hub, &pty_registry).await;
     start_polling(&store, orchestrator.is_some()).await;
 
     let unfurl_cache: transport::unfurl::UnfurlCacheHandle =

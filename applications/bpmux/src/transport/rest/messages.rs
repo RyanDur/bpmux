@@ -84,7 +84,7 @@ pub async fn get_messages(
 
 pub async fn post_message(
     State(hub): State<Arc<hub::Hub>>,
-    axum::Extension(routing): axum::Extension<Arc<crate::routing::RoutingStore>>,
+    axum::Extension(select): axum::Extension<crate::store::Select>,
     Json(payload): Json<PostMessage>,
 ) -> impl IntoResponse {
     if payload.text.is_empty() {
@@ -109,8 +109,10 @@ pub async fn post_message(
         );
     }
     let explicit_privacy = payload.to.is_some();
-    let sender_id = routing
-        .resolve(crate::routing::short_name(&payload.from))
+    let sender_id = select
+        .select(|s| {
+            crate::store::routing::resolve(&s.routing, crate::routing::short_name(&payload.from))
+        })
         .into_iter()
         .next();
     let msg = crate::message::Message {

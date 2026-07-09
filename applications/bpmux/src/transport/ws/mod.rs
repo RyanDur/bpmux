@@ -60,7 +60,11 @@ pub(super) async fn run_ws_session(
         orchestrator,
     } = deps;
     let (mut identity, replay_cursor) = wait_for_identify(&mut tx, &mut rx).await?;
-    let routing_session_id = routing.resolve(short_name(&identity)).into_iter().next();
+    let routing_session_id = store
+        .selector()
+        .select(|s| crate::store::routing::resolve(&s.routing, short_name(&identity)))
+        .into_iter()
+        .next();
     let mut roster_key = roster_key_for(&routing_session_id, &identity);
     hub.peer_connected();
     if let Some(ref key) = roster_key {

@@ -27,12 +27,16 @@ fn orchestrator() -> Arc<crate::store::Store> {
     ))
 }
 
-fn routing_with_dev_session() -> Arc<RoutingStore> {
+fn select_with_dev_session() -> crate::store::Select {
     let dir = tempfile::TempDir::new().expect("tempdir");
     let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
     std::mem::forget(dir);
+    let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
+    routing.bind_dispatch(seeded.dispatcher());
     routing.register("sess-dev", "dev");
-    Arc::new(routing)
+    let select = seeded.select();
+    std::mem::forget(seeded);
+    select
 }
 
 fn dev_headers() -> HeaderMap {
@@ -44,7 +48,7 @@ fn dev_headers() -> HeaderMap {
 async fn post_state(state: &str) -> StatusCode {
     let response = post_presence(
         dev_headers(),
-        Extension(routing_with_dev_session()),
+        Extension(select_with_dev_session()),
         Extension(orchestrator()),
         Json(PresenceRequest {
             state: state.to_string(),

@@ -49,6 +49,9 @@ impl Store {
                     &hub.dir,
                 ))
                 .with_local_history(crate::board::history_persistence::load(&hub.dir))
+                .with_routing(crate::store::routing::from_users(
+                    &hub.storage.load_users().unwrap_or_default(),
+                ))
                 .with_outbox(initial_outbox),
             Box::new(app::app_reduce),
         );

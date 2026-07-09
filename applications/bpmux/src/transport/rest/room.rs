@@ -7,6 +7,7 @@ use axum::response::IntoResponse;
 use super::shared::json_headers;
 use crate::room::LivePtyRegistry;
 use crate::routing::RoutingStore;
+use crate::store::Select;
 
 #[derive(serde::Deserialize)]
 pub struct TerminalCloseRequest {
@@ -19,6 +20,7 @@ pub async fn post_terminal_spawn(
     Extension(pty_registry): Extension<Arc<LivePtyRegistry>>,
     Extension(port): Extension<u16>,
     Extension(routing): Extension<Arc<RoutingStore>>,
+    Extension(select): Extension<Select>,
     store: Option<Extension<Arc<crate::store::Store>>>,
     State(hub): State<Arc<crate::hub::Hub>>,
 ) -> impl IntoResponse {
@@ -72,6 +74,7 @@ pub async fn post_terminal_spawn(
                     output,
                     pty_registry.clone(),
                     routing.clone(),
+                    select.clone(),
                     hub.clone(),
                     store.as_ref().map(|Extension(o)| o.clone()),
                 );

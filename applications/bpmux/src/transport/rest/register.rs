@@ -18,6 +18,7 @@ pub struct RegisterRequest {
 
 pub async fn post_register(
     Extension(routing): Extension<Arc<RoutingStore>>,
+    Extension(select): Extension<crate::store::Select>,
     Extension(store): Extension<Arc<crate::store::Store>>,
     Json(payload): Json<RegisterRequest>,
 ) -> impl IntoResponse {
@@ -30,7 +31,9 @@ pub async fn post_register(
     let superseded = payload
         .terminal_id
         .as_ref()
-        .and_then(|terminal_id| routing.session_for_terminal(terminal_id))
+        .and_then(|terminal_id| {
+            select.select(|s| crate::store::routing::session_for_terminal(&s.routing, terminal_id))
+        })
         .filter(|prior| *prior != payload.session_id);
     routing.register(&payload.session_id, &payload.display);
     if let Some(terminal_id) = &payload.terminal_id {

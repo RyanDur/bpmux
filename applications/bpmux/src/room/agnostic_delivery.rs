@@ -34,11 +34,11 @@ pub fn spawn_terminal_delivery_loop(
         loop {
             match rx.recv().await {
                 Ok(msg) => {
-                    for inject in deliver_to_terminals(&msg, &registry, &routing) {
+                    for inject in deliver_to_terminals(&msg, &registry, &routing, &select) {
                         spawn_deferred_inject(registry.clone(), routing.clone(), inject);
                     }
                     for inject in super::wake_delivery::wake_committed_terminals(
-                        &msg, &registry, &routing, &select, &dispatch,
+                        &msg, &registry, &select, &dispatch,
                     ) {
                         spawn_deferred_inject(registry.clone(), routing.clone(), inject);
                     }
@@ -82,6 +82,7 @@ pub fn deliver_to_terminals(
     msg: &Message,
     registry: &LivePtyRegistry,
     routing: &RoutingStore,
+    select: &Select,
 ) -> Vec<HeldInject> {
     let mut held = Vec::new();
     if !msg.is_chat() {
@@ -89,7 +90,9 @@ pub fn deliver_to_terminals(
     }
     let line = framed_line(msg);
     let ts = msg.ts.to_rfc3339();
-    for (session_id, terminal_id) in routing.delivery_targets(msg.to.as_deref(), &msg.from) {
+    for (session_id, terminal_id) in select.select(|s| {
+        crate::store::routing::delivery_targets(&s.routing, msg.to.as_deref(), &msg.from)
+    }) {
         if !after_cursor(routing, &session_id, msg.ts) {
             continue;
         }

@@ -91,6 +91,11 @@ impl AppState {
         self
     }
 
+    pub fn with_routing(mut self, routing: RoutingState) -> Self {
+        self.routing = Arc::new(routing);
+        self
+    }
+
     pub fn with_outbox(mut self, writes: Vec<crate::sync::QueuedWrite>) -> Self {
         self.sync = Arc::new(SyncState {
             queue: writes.into_iter().collect(),

@@ -165,6 +165,43 @@ fn the_slice_mirrors_register_agent_including_the_backward_cursor_reset_and_the_
 }
 
 #[test]
+fn a_restart_hydrates_the_slice_identical_to_a_reloaded_routing_store_no_terminal_links() {
+    let dir = tempfile::TempDir::new().expect("dir");
+    let storage = sqlite_test_storage(dir.path());
+    let store = RoutingStore::new(storage.clone());
+    store.register("sess-dev", "dev");
+    store.link_terminal("sess-dev", "term-dev");
+    store.mark_delivered("sess-dev", "2026-06-13T10:00:00Z");
+    store.register("sess-pm", "pm");
+
+    let reloaded = RoutingStore::new(storage.clone());
+    let hydrated = crate::kernel::Store::new(
+        crate::store::AppState::default().with_routing(crate::store::routing::from_users(
+            &storage.load_users().expect("load_users"),
+        )),
+        Box::new(crate::store::app_reduce),
+    );
+
+    for display in ["dev", "pm"] {
+        assert_eq!(
+            sorted(hydrated.select(|s| crate::store::routing::resolve(&s.routing, display))),
+            sorted(reloaded.resolve(display)),
+            "a RESTART repopulates the slice's display index identical to a reloaded RoutingStore for {display} — post-restart reads resolve the hydrated sessions"
+        );
+    }
+    assert_eq!(
+        hydrated.select(|s| crate::store::routing::cursor(&s.routing, "sess-dev")),
+        reloaded.cursor("sess-dev"),
+        "the delivery cursor hydrates from last_delivered_at byte-identical to the reloaded store — both boot from the same load_users, so post-restart delivery does not re-dump already-delivered messages"
+    );
+    assert_eq!(
+        hydrated.select(|s| crate::store::routing::terminal_for(&s.routing, "sess-dev")),
+        None,
+        "terminal links are runtime-only — not persisted; a fresh boot hydrates identity+cursor but no terminal binding, so a reconnecting agent re-links at runtime"
+    );
+}
+
+#[test]
 fn short_name_strips_tool_suffix() {
     assert_eq!(short_name("dev:claude-code"), "dev");
     assert_eq!(short_name("owner:human"), "owner");

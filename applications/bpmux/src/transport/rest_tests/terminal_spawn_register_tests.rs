@@ -19,6 +19,8 @@ fn spawn_app(store_dir: &TempDir) -> (axum::Router, Arc<LivePtyRegistry>, Arc<Ro
         tx,
     ));
     let routing = Arc::new(RoutingStore::new(hub.storage.clone()));
+    let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
+    routing.bind_dispatch(seeded.dispatcher());
     let router = axum::Router::new()
         .route(
             "/api/terminals/spawn",
@@ -26,8 +28,10 @@ fn spawn_app(store_dir: &TempDir) -> (axum::Router, Arc<LivePtyRegistry>, Arc<Ro
         )
         .layer(axum::Extension(registry.clone()))
         .layer(axum::Extension(0u16))
+        .layer(axum::Extension(seeded.select()))
         .layer(axum::Extension(routing.clone()))
         .with_state(hub);
+    std::mem::forget(seeded);
     (router, registry, routing)
 }
 

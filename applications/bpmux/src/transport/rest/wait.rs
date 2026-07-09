@@ -24,20 +24,22 @@ pub struct WaitParams {
 pub async fn wait_for_event(
     State(hub): State<Arc<hub::Hub>>,
     Extension(routing): Extension<Arc<RoutingStore>>,
+    Extension(select): Extension<crate::store::Select>,
     Query(params): Query<WaitParams>,
 ) -> impl IntoResponse {
     let role = params.as_peer.clone().unwrap_or_default();
-    drain_or_block(&hub, &routing, &params, &role).await
+    drain_or_block(&hub, &routing, &select, &params, &role).await
 }
 
 async fn drain_or_block(
     hub: &hub::Hub,
     routing: &RoutingStore,
+    select: &crate::store::Select,
     params: &WaitParams,
     role: &str,
 ) -> (StatusCode, String) {
     let timeout = Duration::from_millis(params.timeout_ms.unwrap_or(DEFAULT_WAIT_TIMEOUT_MS));
-    let after_cursor = durable_drain_cursor(routing, role, params.after.as_deref())
+    let after_cursor = durable_drain_cursor(routing, select, role, params.after.as_deref())
         .as_deref()
         .and_then(|raw| raw.parse::<chrono::DateTime<chrono::Utc>>().ok());
 
@@ -71,10 +73,15 @@ async fn drain_or_block(
 
 fn durable_drain_cursor(
     routing: &RoutingStore,
+    select: &crate::store::Select,
     role: &str,
     client_after: Option<&str>,
 ) -> Option<String> {
-    match routing.resolve(short_name(role)).into_iter().next() {
+    match select
+        .select(|s| crate::store::routing::resolve(&s.routing, short_name(role)))
+        .into_iter()
+        .next()
+    {
         Some(session_id) => routing.drain_floor(&session_id, client_after),
         None => client_after.map(str::to_string),
     }

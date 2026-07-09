@@ -1,7 +1,6 @@
 use super::terminal_inject::frame_team_message;
 use crate::message::Message;
 use crate::room::LivePtyRegistry;
-use crate::routing::RoutingStore;
 use crate::store::commitments::matching_roles;
 use crate::store::{CommitmentsAction, Dispatch, Select};
 
@@ -10,7 +9,6 @@ use super::agnostic_delivery::{HeldInject, owner_mid_typing};
 pub fn wake_committed_terminals(
     msg: &Message,
     registry: &LivePtyRegistry,
-    routing: &RoutingStore,
     select: &Select,
     dispatch: &Dispatch,
 ) -> Vec<HeldInject> {
@@ -37,8 +35,10 @@ pub fn wake_committed_terminals(
         .into(),
     );
     for role in woken {
-        for session_id in routing.resolve(&role) {
-            let Some(terminal_id) = routing.terminal_for(&session_id) else {
+        for session_id in select.select(|s| crate::store::routing::resolve(&s.routing, &role)) {
+            let Some(terminal_id) =
+                select.select(|s| crate::store::routing::terminal_for(&s.routing, &session_id))
+            else {
                 continue;
             };
             if owner_mid_typing(registry, &terminal_id) {

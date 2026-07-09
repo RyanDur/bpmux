@@ -35,15 +35,15 @@ pub(super) fn test_app(
         "test".to_string(),
         tx.clone(),
     ));
+    let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
     let router = axum::Router::new()
         .route(
             "/api/messages",
             axum::routing::get(get_messages).post(post_message),
         )
-        .layer(axum::Extension(Arc::new(
-            crate::routing::RoutingStore::new(hub.storage.clone()),
-        )))
+        .layer(axum::Extension(seeded.select()))
         .with_state(hub);
+    std::mem::forget(seeded);
     (router, tx)
 }
 

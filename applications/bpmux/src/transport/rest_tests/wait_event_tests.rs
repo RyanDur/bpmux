@@ -19,10 +19,14 @@ fn wait_app(dir: &TempDir) -> (Arc<hub::Hub>, axum::Router) {
         tx,
     ));
     let routing = Arc::new(crate::routing::RoutingStore::new(hub.storage.clone()));
+    let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
+    routing.bind_dispatch(seeded.dispatcher());
     let router = axum::Router::new()
         .route("/api/wait-for-event", axum::routing::get(wait_for_event))
+        .layer(axum::Extension(seeded.select()))
         .layer(axum::Extension(routing))
         .with_state(hub.clone());
+    std::mem::forget(seeded);
     (hub, router)
 }
 

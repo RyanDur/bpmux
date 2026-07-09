@@ -6,8 +6,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use crate::routing::RoutingStore;
-use crate::store::Presence;
+use crate::store::{Presence, Select};
 
 #[derive(Deserialize)]
 pub struct PresenceRequest {
@@ -25,7 +24,7 @@ fn presence_from_state(state: &str) -> Option<Presence> {
 
 pub async fn post_presence(
     headers: HeaderMap,
-    Extension(routing): Extension<Arc<RoutingStore>>,
+    Extension(select): Extension<Select>,
     Extension(store): Extension<Arc<crate::store::Store>>,
     Json(payload): Json<PresenceRequest>,
 ) -> impl IntoResponse {
@@ -42,7 +41,7 @@ pub async fn post_presence(
             ),
         );
     };
-    let routing_ids = routing.resolve(&agent);
+    let routing_ids = select.select(|s| crate::store::routing::resolve(&s.routing, &agent));
     if routing_ids.is_empty() {
         return (
             StatusCode::NOT_FOUND,

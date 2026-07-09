@@ -7,6 +7,7 @@ use super::Osc7CwdParser;
 use crate::location::read_or_create_dir_session;
 use crate::room::LivePtyRegistry;
 use crate::routing::RoutingStore;
+use crate::store::Select;
 
 const AGENT_RUN_GATE: Duration = Duration::from_millis(1000);
 const DETECTOR_POLL: Duration = Duration::from_millis(200);
@@ -80,6 +81,7 @@ pub fn spawn_agent_run_detector(
     mut output: broadcast::Receiver<Vec<u8>>,
     registry: Arc<LivePtyRegistry>,
     routing: Arc<RoutingStore>,
+    select: Select,
     hub: Arc<crate::hub::Hub>,
     store: Option<DetectorStore>,
 ) {
@@ -104,7 +106,9 @@ pub fn spawn_agent_run_detector(
                     };
                     let now_ts = chrono::Utc::now().to_rfc3339();
                     if let Some(mint) = detector.observe(foreground, Instant::now(), &now_ts)
-                        && !routing.is_terminal_linked(&terminal_id)
+                        && !select.select(|s| {
+                            crate::store::routing::is_terminal_linked(&s.routing, &terminal_id)
+                        })
                         && let Ok(dir_session) =
                             read_or_create_dir_session(std::path::Path::new(&mint.cwd))
                     {
@@ -133,21 +137,27 @@ pub fn spawn_agent_run_detector(
                         }
                     }
                     if foreground {
-                        present = present || routing.is_terminal_linked(&terminal_id);
+                        present = present
+                            || select.select(|s| {
+                                crate::store::routing::is_terminal_linked(&s.routing, &terminal_id)
+                            });
                     } else if present {
-                        leave_terminal(&store, &routing, &terminal_id).await;
+                        leave_terminal(&store, &select, &terminal_id).await;
                         present = false;
                         detector.on_left();
                     }
                 }
             }
         }
-        leave_terminal(&store, &routing, &terminal_id).await;
+        leave_terminal(&store, &select, &terminal_id).await;
     });
 }
 
-async fn leave_terminal(store: &Option<DetectorStore>, routing: &RoutingStore, terminal_id: &str) {
-    if let (Some(store), Some(routing_id)) = (store, routing.session_for_terminal(terminal_id)) {
+async fn leave_terminal(store: &Option<DetectorStore>, select: &Select, terminal_id: &str) {
+    if let (Some(store), Some(routing_id)) = (
+        store,
+        select.select(|s| crate::store::routing::session_for_terminal(&s.routing, terminal_id)),
+    ) {
         crate::transport::ws::dispatch_roster_leave(store, &routing_id).await;
     }
 }

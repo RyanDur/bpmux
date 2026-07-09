@@ -3,7 +3,6 @@ use std::sync::Arc;
 use crate::ci::CiStateStore;
 use crate::hub;
 use crate::room::LivePtyRegistry;
-use crate::routing::RoutingStore;
 use crate::store::Store;
 
 pub(super) fn wire_store_listeners(
@@ -27,16 +26,16 @@ pub(super) async fn wire_startup_roster(
     store: &Arc<Store>,
     hub: &Arc<hub::Hub>,
     pty_registry: &Arc<LivePtyRegistry>,
-    routing_store: &Arc<RoutingStore>,
 ) {
+    let select = store.selector();
     let live_terminal_ids = pty_registry.reap_dead_and_list_live();
     let reaped_ghosts = hub.reconcile_roster(&live_terminal_ids);
     for identity in &reaped_ghosts {
-        let routing_id = super::startup_routing_id(routing_store, identity);
+        let routing_id = super::startup_routing_id(&select, identity);
         crate::transport::ws::dispatch_roster_leave(store, &routing_id).await;
     }
     for identity in hub.roster_snapshot() {
-        let routing_id = super::startup_routing_id(routing_store, &identity);
+        let routing_id = super::startup_routing_id(&select, &identity);
         crate::transport::ws::dispatch_roster_join(store, &routing_id, &identity).await;
     }
 }
