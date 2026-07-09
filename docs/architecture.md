@@ -27,8 +27,9 @@ Evidence:
   (stories/epics/iterations/outcomes — the domain), `board`,
   `workflow`, `store` (the one redux-shaped store), `kernel`
   (dispatch + listener delivery modes), `sync` (ingest/drain/outbox
-  write-behind), `integrations` (GitHub gateway + mapper), `github`
-  (raw GH client), `bridge` (MCP tools), `mcp`, `transport`
+  write-behind), `integrations` (GitHub gateway + mapper), `rate_limit`
+  (shared rate-limit/backoff/TLS leaf), `bridge` (MCP tools; raw GH
+  client lives at `bridge/tracker/octocrab`), `mcp`, `transport`
   (WS/REST/WebRTC), `message`, `storage` (data store engines behind
   per-feature ports), `routing` (user identity), `roster`, `memory`,
   `view`, `ci`, `cli`, `server`, plus leaf capabilities (`hub`,
@@ -76,10 +77,18 @@ feedback bar. No friction currently presses toward stage progression:
    hand-mirrored in `applications/electron/src/renderer/`. Codegen
    from the Rust view/wire types, or boundary contract tests, remain
    the fix for when the drift class actually bites.
-4. **Unresolved twin: `src/github/` (raw client) vs
-   `src/integrations/github/` (gateway + mapper)** — a split any
-   crate lift would freeze into an API; resolve it before a v4
-   station touches that seam.
+4. ~~Unresolved twin: `src/github/` (raw client) vs
+   `src/integrations/github/` (gateway + mapper)~~ — RESOLVED
+   (2026-07-09): the survey showed `src/github/` was never the raw
+   client — it held exactly two octocrab-typed items beside a
+   provider-agnostic rate-limit/backoff/TLS leaf. Split + rename: the
+   vendor items (`classify_error`, `BoardFetchError`) moved to
+   `bridge/tracker/octocrab/errors.rs` (their sole consumer, avoiding
+   a `bridge::tracker` ↔ `integrations::github` import cycle); the
+   agnostic leaf renamed `src/github/` → `src/rate_limit/` to state
+   its job. Raw client = `bridge/tracker/octocrab`; vendor error
+   classification lives with it; `integrations/github` remains the
+   gateway + mapper. The pre-lift blocker is cleared.
 
 ## Where v3 is working
 

@@ -267,7 +267,7 @@ NOT part of this relocation.
   codec is injected from an edge/composition (REST handlers, bridge tools, test seeds —
   where naming it is correct). The port must be COMPLETE enough that no consumer needs
   to backdoor to the impl (slice 4 closes the current gap). The existing
-  `product_management ↛ crate::github` fitness test guards the vendor mechanism; this
+  `product_management ↛ crate::bridge::tracker` fitness test guards the vendor mechanism; this
   principle extends it to the concrete codec once it lands in `integrations/github`.
 - **Façade dissolution first.** Rewriting the pass-through re-exports (slice 1) is what
   turns a 100+-consumer fear into four small clusters; it is behavior-preserving and
@@ -287,7 +287,7 @@ NOT part of this relocation.
 ## Fitness functions
 
 - Extend the wire goldens (slice 3) — they refuse a silent `StoryView` reshape.
-- `product_management::boundary_tests` already forbids `crate::github`/`octocrab` in the
+- `product_management::boundary_tests` already forbids `crate::rate_limit`/`octocrab` in the
   domain; the CODEC/MAPPER move (slice 5) is *toward* that boundary (out of the domain
   edge-ward), so it strengthens, never weakens, the existing lock.
 - Slice 8 adds a "`product_management::board` is gone" existence check (mirrors the

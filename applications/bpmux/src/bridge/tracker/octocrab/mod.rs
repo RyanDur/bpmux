@@ -1,6 +1,7 @@
 mod ci_failures;
 mod ci_jobs;
 mod conditional;
+mod errors;
 mod fetch;
 mod json_shape;
 mod rest_helpers;
@@ -24,11 +25,11 @@ pub struct OctocrabStoryTracker {
     client: octocrab::Octocrab,
     owner: String,
     repo: String,
-    rate_limit_observer: crate::github::RateLimitObserver,
+    rate_limit_observer: crate::rate_limit::RateLimitObserver,
 }
 
 impl OctocrabStoryTracker {
-    pub fn rate_limit_observer(&self) -> crate::github::RateLimitObserver {
+    pub fn rate_limit_observer(&self) -> crate::rate_limit::RateLimitObserver {
         self.rate_limit_observer.clone()
     }
 }
@@ -46,7 +47,7 @@ impl OctocrabStoryTracker {
                     client,
                     owner,
                     repo,
-                    rate_limit_observer: crate::github::RateLimitObserver::new(),
+                    rate_limit_observer: crate::rate_limit::RateLimitObserver::new(),
                 })
             }
             TrackerSelection::OctocrabWithBaseUrl {
@@ -86,12 +87,12 @@ impl OctocrabStoryTracker {
             client,
             owner,
             repo,
-            rate_limit_observer: crate::github::RateLimitObserver::new(),
+            rate_limit_observer: crate::rate_limit::RateLimitObserver::new(),
         })
     }
 
     fn classify(err: octocrab::Error) -> String {
-        crate::github::classify_error(&err).user_message()
+        errors::classify_error(&err).user_message()
     }
 
     async fn set_issue_state(
@@ -115,7 +116,7 @@ impl OctocrabStoryTracker {
     ) -> Result<R, String> {
         use http_body_util::BodyExt;
         let response = self.client._get(path).await.map_err(Self::classify)?;
-        crate::github::rate_limit::capture_headers(
+        crate::rate_limit::capture_headers(
             response.headers(),
             &self.rate_limit_observer,
             std::time::SystemTime::now(),

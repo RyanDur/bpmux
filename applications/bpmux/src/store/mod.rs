@@ -54,7 +54,7 @@ pub use sync_health::SyncHealthAction;
 pub struct Store {
     hub: Arc<hub::Hub>,
     parent_ct: CancellationToken,
-    rate_limit_observer: crate::github::RateLimitObserver,
+    rate_limit_observer: crate::rate_limit::RateLimitObserver,
     ci_poll: Arc<ci::CiPoll>,
     sync_poll: Option<Arc<sync::SyncPoll>>,
     github_drain: Option<Arc<sync::GithubDrain>>,
@@ -65,7 +65,7 @@ pub struct Store {
 }
 
 impl Store {
-    pub fn rate_limit_observer(&self) -> &crate::github::RateLimitObserver {
+    pub fn rate_limit_observer(&self) -> &crate::rate_limit::RateLimitObserver {
         &self.rate_limit_observer
     }
 

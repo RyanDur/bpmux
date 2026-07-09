@@ -15,9 +15,9 @@ use super::{AppAction, CiAction, PollKind, Store, SyncAction};
 use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::CiState;
 use crate::ci::CiStateStore;
-use crate::github::RateLimitObserver;
 use crate::hub::Hub;
 use crate::message::Message;
+use crate::rate_limit::RateLimitObserver;
 
 fn fresh_hub() -> (Arc<Hub>, TempDir) {
     let dir = TempDir::new().expect("tempdir");
@@ -626,7 +626,7 @@ async fn rate_limit_cooldown_is_shared_across_ci_ingest_hydration_paths() {
     );
 
     let now = std::time::SystemTime::now();
-    let decision = crate::github::decide_backoff(snapshot, Duration::ZERO, now);
+    let decision = crate::rate_limit::decide_backoff(snapshot, Duration::ZERO, now);
     assert!(
         decision.wait > Duration::from_secs(50),
         "shared decide_backoff returns ~60s wait for any caller (CI/Ingest/Hydration) consulting the same observer; got {:?}",
@@ -639,7 +639,7 @@ async fn rate_limit_cooldown_is_shared_across_ci_ingest_hydration_paths() {
     );
 
     let snap_again = observer.snapshot();
-    let decision_again = crate::github::decide_backoff(snap_again, Duration::ZERO, now);
+    let decision_again = crate::rate_limit::decide_backoff(snap_again, Duration::ZERO, now);
     assert_eq!(
         decision.wait, decision_again.wait,
         "Arc-shared observer: every caller's snapshot returns the same wake-epoch — single source of truth across CI + Ingest + Hydration"
@@ -647,7 +647,7 @@ async fn rate_limit_cooldown_is_shared_across_ci_ingest_hydration_paths() {
 
     let advanced = now + Duration::from_secs(cooldown_secs + 5);
     let decision_post =
-        crate::github::decide_backoff(observer.snapshot(), Duration::ZERO, advanced);
+        crate::rate_limit::decide_backoff(observer.snapshot(), Duration::ZERO, advanced);
     assert_eq!(
         decision_post.wait,
         Duration::ZERO,

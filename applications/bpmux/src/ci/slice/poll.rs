@@ -3,9 +3,9 @@ use std::sync::{Arc, Mutex};
 use tokio_util::sync::CancellationToken;
 
 use crate::ci::CiStateStore;
-use crate::github::RateLimitObserver;
 use crate::hub::Hub;
 use crate::kernel::{DeliveryMode, Dispatch, Listener, ListenerFuture, Reaction};
+use crate::rate_limit::RateLimitObserver;
 use crate::store::{AppAction, AppState};
 use crate::transport::ci_watcher;
 

@@ -32,7 +32,7 @@ impl CiPollFetch for GitHubSourceAdapter {
         ))
     }
 
-    fn rate_limit_observer(&self) -> crate::github::RateLimitObserver {
+    fn rate_limit_observer(&self) -> crate::rate_limit::RateLimitObserver {
         GitHubSourceAdapter::rate_limit_observer(self)
     }
 }

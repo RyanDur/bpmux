@@ -23,7 +23,6 @@ pub mod comprehension;
 pub mod diag;
 #[cfg(test)]
 mod diag_tests;
-pub mod github;
 pub mod hub;
 #[cfg(test)]
 mod hub_tests;
@@ -44,6 +43,7 @@ pub mod message;
 mod message_tests;
 pub(crate) mod persist;
 pub mod product_management;
+pub mod rate_limit;
 pub mod reactions;
 #[cfg(test)]
 mod reactions_tests;

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 const FORBIDDEN_VENDOR_TOKENS: &[&str] = &[
     "octocrab",
     "reqwest",
-    "crate::github",
+    "crate::rate_limit",
     "crate::bridge::tracker",
 ];
 
@@ -65,7 +65,7 @@ fn product_management_domain_imports_no_vendor_integration() {
 
     assert!(
         violations.is_empty(),
-        "product_management is the integration-agnostic domain: it depends on the SourceAdapter port, never on a concrete integration mechanism (octocrab, reqwest, crate::github wire client, crate::bridge::tracker). Move the offending code into integrations/<provider>/ (gateway + mapper + adapter) and inject the concrete gateway at the composition root. Violations:\n{}",
+        "product_management is the integration-agnostic domain: it depends on the SourceAdapter port, never on a concrete integration mechanism (octocrab, reqwest, crate::rate_limit backoff engine, crate::bridge::tracker). Move the offending code into integrations/<provider>/ (gateway + mapper + adapter) and inject the concrete gateway at the composition root. Violations:\n{}",
         violations.join("\n")
     );
 }

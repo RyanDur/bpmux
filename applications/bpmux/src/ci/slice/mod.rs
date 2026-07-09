@@ -3,7 +3,7 @@ use std::pin::Pin;
 
 use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::CiEvent;
-use crate::github::RateLimitObserver;
+use crate::rate_limit::RateLimitObserver;
 
 pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 

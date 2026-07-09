@@ -23,7 +23,7 @@ impl OctocrabStoryTracker {
             ._get_with_headers(path, Some(headers))
             .await
             .map_err(Self::classify)?;
-        crate::github::rate_limit::capture_headers(
+        crate::rate_limit::capture_headers(
             response.headers(),
             &self.rate_limit_observer,
             std::time::SystemTime::now(),

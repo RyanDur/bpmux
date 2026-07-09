@@ -107,7 +107,7 @@ fn run_id_none_degrades_to_conclusion_only_dedup() {
 }
 
 mod backoff_decisions {
-    use crate::github::{
+    use crate::rate_limit::{
         BackoffSignal, CLOCK_SKEW_GRACE_SECS, ObservedWakes, RateLimitObserver, decide_backoff,
     };
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -201,7 +201,7 @@ mod backoff_decisions {
 }
 
 mod cascade_integration {
-    use crate::github::{
+    use crate::rate_limit::{
         BackoffSignal, RateLimitObserver, classify_and_decide, is_rate_limit_error,
     };
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -223,7 +223,7 @@ mod cascade_integration {
         );
         assert_eq!(
             result,
-            Some(crate::github::BackoffDecision {
+            Some(crate::rate_limit::BackoffDecision {
                 wait: Duration::from_secs(300),
                 signal: BackoffSignal::RetryAfterHeader,
             })
@@ -267,7 +267,7 @@ mod cascade_integration {
         );
         assert_eq!(
             result,
-            Some(crate::github::BackoffDecision {
+            Some(crate::rate_limit::BackoffDecision {
                 wait: Duration::from_secs(120),
                 signal: BackoffSignal::Exponential,
             })
@@ -287,7 +287,7 @@ mod cascade_integration {
         );
         assert_eq!(
             result,
-            Some(crate::github::BackoffDecision {
+            Some(crate::rate_limit::BackoffDecision {
                 wait: Duration::from_secs(1800),
                 signal: BackoffSignal::Exponential,
             })

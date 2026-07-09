@@ -1,4 +1,11 @@
-pub(crate) use crate::github::ensure_crypto_provider_installed;
+use std::sync::OnceLock;
+
+pub(crate) fn ensure_crypto_provider_installed() {
+    static INSTALLED: OnceLock<()> = OnceLock::new();
+    INSTALLED.get_or_init(|| {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+    });
+}
 
 pub(crate) fn log_labels_fetch_failure<E: std::fmt::Display>(
     backend: &str,

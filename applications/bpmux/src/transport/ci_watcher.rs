@@ -4,10 +4,10 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use crate::ci::CiStateStore;
-use crate::github::RateLimitObserver;
 use crate::hub::Hub;
 use crate::kernel::Dispatch;
 use crate::message::{CiSnapshotWire, Message, MessageType, StateDeltaPayload};
+use crate::rate_limit::RateLimitObserver;
 use crate::store::{CiAction, CiPollFetch, CiSnapshot};
 
 pub const POLL_INTERVAL: Duration = Duration::from_secs(10);
@@ -80,7 +80,7 @@ pub fn spawn<A>(
                 }
                 Err(e) => {
                     broadcast_ci_poll(&hub, last_snapshot.as_ref(), poll_time(&ci_state_store));
-                    if let Some(decision) = crate::github::classify_and_decide(
+                    if let Some(decision) = crate::rate_limit::classify_and_decide(
                         &e,
                         observer.snapshot(),
                         backoff,
@@ -88,7 +88,7 @@ pub fn spawn<A>(
                     ) {
                         crate::diag::log_diag(&format!(
                             "ci_watcher: rate-limited; backoff signal={} wait={}s",
-                            crate::github::signal_label(decision.signal),
+                            crate::rate_limit::signal_label(decision.signal),
                             decision.wait.as_secs()
                         ));
                         tokio::select! {
