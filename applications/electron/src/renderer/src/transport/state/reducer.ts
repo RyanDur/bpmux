@@ -10,7 +10,6 @@ import type { MirrorState } from '../state-delta'
 export interface StateSnapshot {
   status: ConnectionStatus
   messages: ChatMessage[]
-  sessionId: string | null
   mirror: MirrorState
   stories: Story[]
   columns: BoardColumn[]
@@ -30,7 +29,6 @@ export const messageKey = (m: { from: string; text: string; ts: string }): strin
 export const emptySnapshot = (url: string | undefined): StateSnapshot => ({
   status: url ? 'connecting' : 'disconnected',
   messages: [],
-  sessionId: null,
   mirror: emptyMirrorState(),
   stories: [],
   columns: [],
@@ -81,8 +79,6 @@ export const stateReducer = (state: StateSnapshot, action: StateAction): StateSn
       return { ...state, status: 'connected', reconnectTick: state.reconnectTick + 1 }
     case StateActionType.Disconnected:
       return { ...state, status: 'disconnected' }
-    case StateActionType.SessionIdentified:
-      return { ...state, sessionId: action.sessionId }
     case StateActionType.MessageReceived: {
       const key = messageKey(action.message)
       if (state.messages.some((m) => messageKey(m) === key)) return state

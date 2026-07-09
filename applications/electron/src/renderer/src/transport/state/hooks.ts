@@ -18,8 +18,6 @@ const useSelector = <T>(selector: (snapshot: ReturnType<typeof getStateSnapshot>
 
 export const useConnectionStatus = (): ConnectionStatus => useSelector((s) => s.status)
 
-export const useSessionId = (): string | null => useSelector((s) => s.sessionId)
-
 export const useLiveMessages = (): ChatMessage[] => useSelector((s) => s.messages)
 
 export const useRoster = (): RosterMemberWire[] => useSelector((s) => s.mirror.roster)

@@ -171,12 +171,13 @@ fn deserializes_send_with_to() {
 
 #[test]
 fn serializes_welcome() {
-    let msg = ServerMessage::Welcome {
-        session_id: "abc123".to_string(),
-    };
+    let msg = ServerMessage::Welcome {};
     let json = serde_json::to_string(&msg).expect("serialize");
     assert!(json.contains(r#""type":"welcome"#));
-    assert!(json.contains(r#""session_id":"abc123"#));
+    assert!(
+        !json.contains("session_id"),
+        "welcome carries no session_id: {json}"
+    );
 }
 
 #[test]

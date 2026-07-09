@@ -19,13 +19,7 @@ pub(super) async fn send_startup_frames(
     identity: &str,
     replay_cursor: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    send_json(
-        tx,
-        &ServerMessage::Welcome {
-            session_id: hub.id.clone(),
-        },
-    )
-    .await?;
+    send_json(tx, &ServerMessage::Welcome {}).await?;
     let snapshot_msg = build_state_snapshot_message(store);
     send_json(tx, &ServerMessage::from(snapshot_msg)).await?;
     if let Some(refresh) = orchestrator.as_ref() {

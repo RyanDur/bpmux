@@ -15,7 +15,7 @@ import {
 import { stateDeltaDecoder, stateSnapshotDecoder } from './stateSyncDecoders'
 
 export const welcomeDecoder: D.Decoder<ServerWelcome> = D.object({
-  required: { type: D.literal('welcome'), session_id: D.string }
+  required: { type: D.literal('welcome') }
 })
 
 export const errorDecoder: D.Decoder<ServerError> = D.object({

@@ -94,7 +94,7 @@ pub enum ClientMessage {
 #[serde(tag = "type")]
 pub enum ServerMessage {
     #[serde(rename = "welcome")]
-    Welcome { session_id: String },
+    Welcome {},
     #[serde(rename = "message")]
     Message {
         from: String,

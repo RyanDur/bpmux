@@ -190,7 +190,7 @@ mod tests {
 
     #[test]
     fn welcome_frame_is_skipped() {
-        let raw = r#"{"type":"welcome","session_id":"abc-123"}"#;
+        let raw = r#"{"type":"welcome"}"#;
         assert_eq!(extract_user_message(raw), None);
     }
 

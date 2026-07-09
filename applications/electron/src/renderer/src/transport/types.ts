@@ -4,7 +4,6 @@ import type { BoardIterationData } from '../board/selectIterations'
 import type { BoardColumn, Epic, Story } from '../board/types'
 export interface ServerWelcome {
   type: 'welcome'
-  session_id: string
 }
 
 export interface ServerChatMessage {

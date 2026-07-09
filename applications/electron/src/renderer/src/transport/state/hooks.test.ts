@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { dispatchState, resetStateForTest } from './store'
-import { connected, mirrorDeltaReceived, sessionIdentified } from './actions'
-import { useConnectionStatus, useRoster, useSessionId, useSyncStatus } from './hooks'
+import { connected, mirrorDeltaReceived } from './actions'
+import { useConnectionStatus, useRoster, useSyncStatus } from './hooks'
 
 afterEach(() => resetStateForTest())
 
@@ -12,13 +12,6 @@ describe('state selector hooks', () => {
     expect(result.current).toBe('disconnected')
     act(() => dispatchState(connected()))
     expect(result.current).toBe('connected')
-  })
-
-  it('useSessionId reflects the identify event', () => {
-    const { result } = renderHook(() => useSessionId())
-    expect(result.current).toBeNull()
-    act(() => dispatchState(sessionIdentified('sess-1')))
-    expect(result.current).toBe('sess-1')
   })
 
   it('useRoster reflects a roster mirror-delta', () => {

@@ -30,7 +30,7 @@ export const StateActionType = {
   Connected: 'state/connected',
   Reconnected: 'state/reconnected',
   Disconnected: 'state/disconnected',
-  SessionIdentified: 'state/identified',
+  Welcomed: 'state/welcomed',
   MessageReceived: 'state/messageReceived',
   HistoryLoaded: 'state/historyLoaded',
   MirrorSnapshotReceived: 'state/mirrorSnapshotReceived',
@@ -64,7 +64,7 @@ export type StateAction =
   | { type: typeof StateActionType.Connected }
   | { type: typeof StateActionType.Reconnected }
   | { type: typeof StateActionType.Disconnected }
-  | { type: typeof StateActionType.SessionIdentified; sessionId: string }
+  | { type: typeof StateActionType.Welcomed }
   | { type: typeof StateActionType.MessageReceived; message: ChatMessage }
   | { type: typeof StateActionType.HistoryLoaded; history: HistoryMessage[] }
   | { type: typeof StateActionType.MirrorSnapshotReceived; payload: StateSnapshotPayload }
@@ -151,10 +151,7 @@ export const connected = (): StateAction => ({ type: StateActionType.Connected }
 export const reconnected = (): StateAction => ({ type: StateActionType.Reconnected })
 export const disconnected = (): StateAction => ({ type: StateActionType.Disconnected })
 
-export const sessionIdentified = (sessionId: string): StateAction => ({
-  type: StateActionType.SessionIdentified,
-  sessionId
-})
+export const welcomed = (): StateAction => ({ type: StateActionType.Welcomed })
 
 export const messageReceived = (message: ChatMessage): StateAction => ({
   type: StateActionType.MessageReceived,

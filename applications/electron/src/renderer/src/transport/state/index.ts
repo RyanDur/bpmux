@@ -21,7 +21,6 @@ import type { ClientMessage } from '../types'
 export { getStateSnapshot, subscribeState, resetStateForTest } from './store'
 export {
   useConnectionStatus,
-  useSessionId,
   useLiveMessages,
   useRoster,
   useReactionsByChannel,

@@ -11,17 +11,11 @@ import {
 
 describe('welcomeDecoder', () => {
   test('decodes a welcome frame', () => {
-    const result = welcomeDecoder.validate({ type: 'welcome', session_id: 'abc' })
-    expect(result.type).toBe('ok')
-    if (result.type === 'ok') expect(result.data.session_id).toBe('abc')
+    expect(welcomeDecoder.validate({ type: 'welcome' }).type).toBe('ok')
   })
 
   test('rejects a non-welcome frame (wrong type) — the chain falls through to the next contract', () => {
     expect(welcomeDecoder.validate({ type: 'pong' }).type).toBe('error')
-  })
-
-  test('rejects a malformed welcome (missing session_id) — fails loud, not silently cast', () => {
-    expect(welcomeDecoder.validate({ type: 'welcome' }).type).toBe('error')
   })
 })
 
@@ -31,7 +25,7 @@ describe('errorDecoder', () => {
   })
 
   test('rejects a non-error frame', () => {
-    expect(errorDecoder.validate({ type: 'welcome', session_id: 'x' }).type).toBe('error')
+    expect(errorDecoder.validate({ type: 'welcome' }).type).toBe('error')
   })
 })
 

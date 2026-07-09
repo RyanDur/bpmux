@@ -25,8 +25,8 @@ import {
   ptyExitReceived,
   ptyModeReceived,
   ptyOutputReceived,
-  sessionIdentified,
   timelineHydrated,
+  welcomed,
   type StateAction
 } from './actions'
 import { type ChatMessage, type ServerChatMessage } from '../types'
@@ -69,7 +69,7 @@ export const dispatchServerFrame = (
   const frame = parseResult.value
 
   const handled = maybe(welcomeDecoder.decode(frame))
-    .map((welcome) => dispatch(sessionIdentified(welcome.session_id)))
+    .map(() => dispatch(welcomed()))
     .or(() =>
       maybe(errorDecoder.decode(frame)).map((error) => {
         console.error('bpmux ws: server error', error.reason)

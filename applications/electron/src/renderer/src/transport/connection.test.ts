@@ -23,7 +23,7 @@ const serverMessage = (over: Record<string, unknown> = {}): string =>
     ...over
   })
 
-const WELCOME = JSON.stringify({ type: 'welcome', session_id: 'test-session' })
+const WELCOME = JSON.stringify({ type: 'welcome' })
 
 const historyHydrateCount = (conn: TestWsConnection): number =>
   conn.received.filter((r) => {
