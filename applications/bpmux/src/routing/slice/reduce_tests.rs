@@ -230,6 +230,25 @@ fn cursor_advance_is_monotonic_max_a_later_cursor_applies_an_earlier_one_is_a_no
 }
 
 #[test]
+fn cursor_anchor_sets_the_cursor_unconditionally_including_backward_unlike_the_monotonic_advance() {
+    let state = registered(&RoutingState::default(), "sess-1", "dev");
+    let state = cursor_advanced(&state, "sess-1", "2099-01-01T00:00:00Z");
+
+    let anchored = apply(
+        &state,
+        RoutingAction::CursorAnchored {
+            session_id: "sess-1".to_string(),
+            cursor: "2026-06-13T12:00:00Z".to_string(),
+        },
+    );
+    assert_eq!(
+        cursor(&anchored, "sess-1"),
+        Some("2026-06-13T12:00:00Z".to_string()),
+        "CursorAnchored sets the cursor to the exact value even when it moves BACKWARD — this is the register_agent self-heal that resets a poisoned far-future floor to job-start, which the monotonic-max CursorAdvanced (which would keep 2099) cannot express"
+    );
+}
+
+#[test]
 fn cursor_advance_parses_rather_than_lexically_compares_so_subsecond_precision_wins() {
     let state = registered(&RoutingState::default(), "sess-1", "dev");
     let state = cursor_advanced(&state, "sess-1", "2026-06-11T20:00:01Z");

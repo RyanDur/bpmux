@@ -81,6 +81,7 @@ pub async fn run_server(
         );
     }
     let store = std::sync::Arc::new(store_inner);
+    routing_store.bind_dispatch(store.dispatcher());
     crate::room::spawn_terminal_delivery_loop(
         hub.clone(),
         pty_registry.clone(),

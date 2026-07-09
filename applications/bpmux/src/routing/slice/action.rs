@@ -16,6 +16,10 @@ pub enum RoutingAction {
         session_id: String,
         cursor: String,
     },
+    CursorAnchored {
+        session_id: String,
+        cursor: String,
+    },
     Reaped {
         display: String,
     },

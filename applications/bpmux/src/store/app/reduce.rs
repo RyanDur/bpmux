@@ -168,6 +168,7 @@ pub fn validate_and_log(action: &AppAction) {
         AppAction::Routing(RoutingAction::TerminalLinked { .. }) => "Routing.TerminalLinked",
         AppAction::Routing(RoutingAction::Renamed { .. }) => "Routing.Renamed",
         AppAction::Routing(RoutingAction::CursorAdvanced { .. }) => "Routing.CursorAdvanced",
+        AppAction::Routing(RoutingAction::CursorAnchored { .. }) => "Routing.CursorAnchored",
         AppAction::Routing(RoutingAction::Reaped { .. }) => "Routing.Reaped",
         AppAction::Reactions(_) => "Reactions",
         AppAction::Evidence(_) => "Evidence",

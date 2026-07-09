@@ -1,13 +1,167 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use std::sync::Arc;
+
 use super::cursor_time::later_cursor;
 use super::*;
 use crate::storage::sqlite_test_storage;
+
+type MirrorStore = Arc<crate::kernel::Store<crate::store::AppState, crate::store::AppAction>>;
+
+fn wire_slice(store: &RoutingStore) -> MirrorStore {
+    let mirror = crate::kernel::Store::new(
+        crate::store::AppState::default(),
+        Box::new(crate::store::app_reduce),
+    );
+    let for_dispatch = mirror.clone();
+    store.bind_dispatch(crate::store::Dispatch::new(Arc::new(move |action| {
+        for_dispatch.dispatch(action)
+    })));
+    mirror
+}
+
+fn sorted(mut ids: Vec<String>) -> Vec<String> {
+    ids.sort();
+    ids
+}
+
+fn sorted_targets(mut targets: Vec<(String, String)>) -> Vec<(String, String)> {
+    targets.sort();
+    targets
+}
 
 fn instant(rfc3339: &str) -> i64 {
     chrono::DateTime::parse_from_rfc3339(rfc3339)
         .unwrap()
         .timestamp_millis()
+}
+
+#[test]
+fn the_slice_mirrors_the_routing_store_across_register_link_rename_cursor_and_reap() {
+    let dir = tempfile::TempDir::new().expect("dir");
+    let store = RoutingStore::new(sqlite_test_storage(dir.path()));
+    let mirror = wire_slice(&store);
+
+    store.register("sess-dev", "dev");
+    store.register("sess-pm", "pm");
+    store.link_terminal("sess-dev", "term-dev");
+    store.link_terminal("sess-pm", "term-pm");
+    store.rename("sess-pm", "pm-renamed");
+    store.mark_delivered("sess-dev", "2026-06-13T10:00:00Z");
+    store.mark_delivered("sess-dev", "2026-06-13T09:00:00Z");
+    store.register("sess-stale", "dev");
+    store.reap_unclaimed_duplicates_of("dev");
+
+    for session in ["sess-dev", "sess-pm", "sess-stale"] {
+        assert_eq!(
+            mirror.select(|s| crate::store::routing::cursor(&s.routing, session)),
+            store.cursor(session),
+            "cursor mirror for {session}"
+        );
+        assert_eq!(
+            mirror.select(|s| crate::store::routing::terminal_for(&s.routing, session)),
+            store.terminal_for(session),
+            "terminal_for mirror for {session}"
+        );
+        assert_eq!(
+            mirror.select(|s| crate::store::routing::display_for(&s.routing, session)),
+            store.display_for(session),
+            "display_for mirror for {session}"
+        );
+    }
+    for display in ["dev", "pm", "pm-renamed"] {
+        assert_eq!(
+            sorted(mirror.select(|s| crate::store::routing::resolve(&s.routing, display))),
+            sorted(store.resolve(display)),
+            "resolve mirror for {display}"
+        );
+    }
+    for terminal in ["term-dev", "term-pm", "term-absent"] {
+        assert_eq!(
+            mirror.select(|s| crate::store::routing::session_for_terminal(&s.routing, terminal)),
+            store.session_for_terminal(terminal),
+            "session_for_terminal mirror for {terminal}"
+        );
+        assert_eq!(
+            mirror.select(|s| crate::store::routing::is_terminal_linked(&s.routing, terminal)),
+            store.is_terminal_linked(terminal),
+            "is_terminal_linked mirror for {terminal}"
+        );
+    }
+    assert_eq!(
+        sorted_targets(
+            mirror.select(|s| crate::store::routing::delivery_targets(&s.routing, None, "owner"))
+        ),
+        sorted_targets(store.delivery_targets(None, "owner")),
+        "delivery_targets mirror for a broadcast — the slice and RoutingStore route identically"
+    );
+    assert_eq!(
+        mirror.select(|s| crate::store::routing::delivery_targets(
+            &s.routing,
+            Some(&["dev".to_string()]),
+            "pm"
+        )),
+        store.delivery_targets(Some(&["dev".to_string()]), "pm"),
+        "delivery_targets mirror for a scoped to:[dev]"
+    );
+}
+
+#[test]
+fn the_slice_mirrors_register_agent_including_the_backward_cursor_reset_and_the_reap() {
+    let dir = tempfile::TempDir::new().expect("dir");
+    let store = RoutingStore::new(sqlite_test_storage(dir.path()));
+    let mirror = wire_slice(&store);
+
+    store.register_agent("sess-dev", "dev", "term-dev", "2026-06-12T10:00:00Z");
+    store.register("sess-stale", "designer");
+    store.register("sess-designer", "designer");
+    store.mark_delivered("sess-designer", "2099-01-01T00:00:00Z");
+    store.register_agent(
+        "sess-designer",
+        "designer",
+        "term-designer",
+        "2026-06-13T12:00:00Z",
+    );
+    store.mark_delivered("sess-dev", "2026-06-13T10:05:00Z");
+    store.register_agent("sess-dev", "dev", "term-dev-2", "2026-06-13T11:00:00Z");
+
+    assert_eq!(
+        store.cursor("sess-designer").as_deref(),
+        Some("2026-06-13T12:00:00Z"),
+        "precondition: register_agent reset the poisoned 2099 cursor BACKWARD to job-start — the case a monotonic CursorAdvanced could not mirror"
+    );
+    assert_eq!(
+        store.cursor("sess-dev").as_deref(),
+        Some("2026-06-13T10:05:00Z"),
+        "precondition: the returning dev whose cursor is PAST the new job-start keeps it — register_agent does not anchor forward"
+    );
+
+    for session in ["sess-dev", "sess-designer", "sess-stale"] {
+        assert_eq!(
+            mirror.select(|s| crate::store::routing::cursor(&s.routing, session)),
+            store.cursor(session),
+            "cursor mirror for {session} — the CursorAnchored decomposition tracks the backward reset AND the forward-preserve"
+        );
+        assert_eq!(
+            mirror.select(|s| crate::store::routing::terminal_for(&s.routing, session)),
+            store.terminal_for(session),
+            "terminal_for mirror for {session}"
+        );
+    }
+    for display in ["dev", "designer"] {
+        assert_eq!(
+            sorted(mirror.select(|s| crate::store::routing::resolve(&s.routing, display))),
+            sorted(store.resolve(display)),
+            "resolve mirror for {display} — register_agent's Reaped decomposition reaped the unclaimed duplicate in the slice too"
+        );
+    }
+    assert_eq!(
+        sorted_targets(
+            mirror.select(|s| crate::store::routing::delivery_targets(&s.routing, None, "owner"))
+        ),
+        sorted_targets(store.delivery_targets(None, "owner")),
+        "delivery_targets mirror after the composite register_agent sequence"
+    );
 }
 
 #[test]

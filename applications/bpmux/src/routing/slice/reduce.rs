@@ -39,6 +39,11 @@ pub fn reduce(state: &RoutingState, action: &RoutingAction) -> Option<RoutingSta
                 _ => None,
             }
         }
+        RoutingAction::CursorAnchored { session_id, cursor } => {
+            let mut identity = state.identity.clone();
+            identity.advance_cursor(session_id, cursor);
+            Some(RoutingState { identity })
+        }
         RoutingAction::Reaped { display } => {
             let mut identity = state.identity.clone();
             identity.reap_unclaimed_duplicates_of(display);
