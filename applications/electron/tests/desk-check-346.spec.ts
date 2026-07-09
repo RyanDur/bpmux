@@ -71,9 +71,9 @@ const MESSAGES_WITH_GROUPS_AND_SYSTEM = [
 const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
 }> => {
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-346-'))
+  const dataBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-346-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-346-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
+  const { app } = await launchIsolatedElectron({ dataBase, userDataDir: udd })
   const win = await app.firstWindow()
   await win.route('**/api/messages*', async (route) => {
     await route.fulfill({

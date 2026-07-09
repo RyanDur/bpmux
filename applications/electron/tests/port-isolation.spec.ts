@@ -37,7 +37,7 @@ test.describe('#394 Playwright port + session isolation', () => {
     }
   })
 
-  test('two mkdtempSync calls return distinct sessionBase + userDataDir paths', () => {
+  test('two mkdtempSync calls return distinct dataBase + userDataDir paths', () => {
     // launchIsolatedElectron's defaults call mkdtempSync with these
     // exact prefixes; verify the OS-guarantee holds for both shapes
     // back-to-back so a future helper change doesn't accidentally

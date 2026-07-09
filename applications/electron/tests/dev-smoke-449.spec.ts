@@ -13,10 +13,10 @@ test.describe('#449 board collapse-state persists across refresh — dev smoke',
     await readyToggle.click()
     await expect(readyToggle).toHaveAttribute('aria-expanded', 'false')
     const userDataDir = first.userDataDir
-    const sessionBase = first.sessionBase
+    const dataBase = first.dataBase
     await first.app.close()
 
-    const second = await launchIsolatedElectron({ userDataDir, sessionBase })
+    const second = await launchIsolatedElectron({ userDataDir, dataBase })
     const win = await second.app.firstWindow()
     await seedCurrentIterationViaTestApi(second.backendPort, second.authToken, 'DevSmoke449-1b')
     await win.reload()
@@ -40,10 +40,10 @@ test.describe('#449 board collapse-state persists across refresh — dev smoke',
     await expect(inProgress).toHaveAttribute('aria-expanded', 'true')
     await expect(delivered).toHaveAttribute('aria-expanded', 'false')
     const userDataDir = first.userDataDir
-    const sessionBase = first.sessionBase
+    const dataBase = first.dataBase
     await first.app.close()
 
-    const second = await launchIsolatedElectron({ userDataDir, sessionBase })
+    const second = await launchIsolatedElectron({ userDataDir, dataBase })
     const win = await second.app.firstWindow()
     await seedCurrentIterationViaTestApi(second.backendPort, second.authToken, 'DevSmoke449-2b')
     await win.reload()
@@ -78,10 +78,10 @@ test.describe('#449 board collapse-state persists across refresh — dev smoke',
     await accepted.click()
     await expect(accepted).toHaveAttribute('aria-expanded', 'true')
     const userDataDir = first.userDataDir
-    const sessionBase = first.sessionBase
+    const dataBase = first.dataBase
     await first.app.close()
 
-    const second = await launchIsolatedElectron({ userDataDir, sessionBase })
+    const second = await launchIsolatedElectron({ userDataDir, dataBase })
     const win = await second.app.firstWindow()
     const secondBoard = new BoardPage(win)
     await secondBoard.openTab('Done')

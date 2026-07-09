@@ -24,9 +24,9 @@ const NO_ITERATION_BOARD = {
 
 test.describe('#1684 — no active iteration → the board defaults to the roadmap-view', () => {
   test('cold render with no current iteration: the Now view shows the roadmap (not a dead board) and the Board tab is centered', async () => {
-    const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-1684-'))
+    const dataBase = mkdtempSync(join(tmpdir(), 'bpmux-1684-'))
     const udd = mkdtempSync(join(tmpdir(), 'bpmux-1684-udd-'))
-    const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
+    const { app } = await launchIsolatedElectron({ dataBase, userDataDir: udd })
     const win = await app.firstWindow()
     try {
       await win.route('**/api/board', async (route) => {

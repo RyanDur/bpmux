@@ -24,7 +24,7 @@ fn recall_emits_activity_message_visible_via_rest() {
 
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let output = std::process::Command::new(bin)
-        .arg("--session-base")
+        .arg("--data-base")
         .arg(recall_session.path())
         .arg("recall")
         .arg("--role")

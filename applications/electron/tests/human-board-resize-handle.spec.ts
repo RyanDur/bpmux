@@ -114,10 +114,10 @@ test.describe('#458 board panel — drag-resize + persistence', () => {
     await waitForFlexBasis(first.win, 408)
 
     const userDataDir = first.userDataDir
-    const sessionBase = first.sessionBase
+    const dataBase = first.dataBase
     await first.app.close()
 
-    const second = await launchIsolatedElectron({ userDataDir, sessionBase })
+    const second = await launchIsolatedElectron({ userDataDir, dataBase })
     const win2 = await second.app.firstWindow()
     await expect(new BoardPage(win2).region()).toBeVisible()
     await waitForFlexBasis(win2, 408)

@@ -57,8 +57,8 @@ const MOCK_MESSAGES = [
 const launchAndSeed = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
 }> => {
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, seedMessages: MOCK_MESSAGES })
+  const dataBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-'))
+  const { app } = await launchIsolatedElectron({ dataBase, seedMessages: MOCK_MESSAGES })
   const win = await app.firstWindow()
   await waitForMessagesLoaded(win, 'First message from designer')
   return { app }

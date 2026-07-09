@@ -33,10 +33,10 @@ const launchPushFed = async (): Promise<{
     status: 200,
     bodyJson: SUCCESS_RUNS
   })
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-372-'))
+  const dataBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-372-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-372-'))
   const { app } = await launchIsolatedElectron({
-    sessionBase,
+    dataBase,
     userDataDir: udd,
     extraEnv: {
       BPMUX_GH_BASE_URL: mockGh.baseUrl,

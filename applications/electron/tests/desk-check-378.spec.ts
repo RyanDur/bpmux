@@ -13,9 +13,9 @@ import { ChatPage } from './pages/chatPage'
 const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
 }> => {
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-378-'))
+  const dataBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-378-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-378-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
+  const { app } = await launchIsolatedElectron({ dataBase, userDataDir: udd })
   return { app }
 }
 

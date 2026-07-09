@@ -23,10 +23,10 @@ const AD_HOC_MESSAGES = [
 const launchWithFixture = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
 }> => {
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-370-'))
+  const dataBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-370-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-370-'))
   const { app } = await launchIsolatedElectron({
-    sessionBase,
+    dataBase,
     userDataDir: udd,
     seedMessages: AD_HOC_MESSAGES
   })

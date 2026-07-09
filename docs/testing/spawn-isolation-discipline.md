@@ -34,7 +34,7 @@ const app = await electron.launch({
   args: [...],
   env: {
     ...pickSafeInheritedEnv(process.env),
-    BPMUX_SESSION_BASE: sessionBase,
+    BPMUX_DATA_BASE: dataBase,
     BPMUX_BACKEND_PORT: String(backendPort),
     // ... all bpmux config set explicitly
   }

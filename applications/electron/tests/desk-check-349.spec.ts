@@ -58,9 +58,9 @@ const launchWithFixture = async (
   app: Awaited<ReturnType<typeof electron.launch>>
   udd: string
 }> => {
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-349-'))
+  const dataBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-349-'))
   const udd = userDataDir ?? mkdtempSync(join(tmpdir(), 'bpmux-userdata-349-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
+  const { app } = await launchIsolatedElectron({ dataBase, userDataDir: udd })
   const win = await app.firstWindow()
   await win.route('**/api/messages*', async (route) => {
     await route.fulfill({

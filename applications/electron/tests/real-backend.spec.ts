@@ -250,12 +250,6 @@ test.describe('real-backend', () => {
     }
   })
 
-  // #346 sidebar groups derive from message history. AC7 explicitly
-  // requires real-backend (no win.route) — so we seed a messages-
-  // current.jsonl under an isolated BPMUX_SESSION_BASE + pin a unique
-  // BPMUX_BACKEND_PORT (so Electron spawns its own bpmux instead of
-  // adopting the dev's live one on 4117). The renderer hydrates via
-  // /api/messages against the real backend reading our seeded session.
   test('sidebar groups: unique `to` arrays from message history render as sidebar items', async () => {
     const seedMessages = [
       {

@@ -109,7 +109,7 @@ http://127.0.0.1:4117/mcp
 ```
 --name <NAME>          Your name in the session (default: dev)
 --mcp-port <PORT>      HTTP/MCP server port (default: 4117)
---session-base <PATH>  Session directory (default: ~/.bpmux/sessions)
+--data-base <PATH>  Data directory (default: ~/.bpmux/sessions)
 ```
 
 ## Directed Messaging

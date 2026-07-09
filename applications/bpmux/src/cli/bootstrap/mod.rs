@@ -13,7 +13,7 @@ mod room;
 pub(crate) use resolve::user_id_from_pin_or_dir;
 pub(crate) use resolve::{resolve_bpmux_port, resolve_role, resolve_user_id};
 
-use resolve::resolve_session_base;
+use resolve::resolve_data_base;
 use room::{run_room_kill, run_room_list, run_room_read, run_room_spawn};
 
 #[derive(Parser)]
@@ -34,8 +34,8 @@ pub(crate) struct Cli {
     )]
     mcp_port: u16,
 
-    #[arg(long, help = "Session base directory (defaults to ~/.bpmux/sessions)")]
-    session_base: Option<String>,
+    #[arg(long, help = "Data base directory (defaults to ~/.bpmux/sessions)")]
+    data_base: Option<String>,
 
     #[command(subcommand)]
     command: Option<cli::Command>,
@@ -50,7 +50,7 @@ fn run_recall(cli: &Cli, role_arg: &Option<String>) -> anyhow::Result<()> {
         eprintln!("bpmux recall: no role specified (pass --role or set BPMUX_ROLE)");
         return Ok(());
     }
-    let base = resolve_session_base(&cli.session_base)?;
+    let base = resolve_data_base(&cli.data_base)?;
     let data_dir = match location::resume_or_create_data_dir(&base) {
         Ok(dir) => dir,
         Err(_) => return Ok(()),
@@ -68,7 +68,7 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
     let workflow = crate::workflow::load_workflow_from_process_env()
         .map_err(|e| anyhow::anyhow!("refusing to start on a broken workflow config: {e}"))?;
     crate::workflow::install_workflow(workflow);
-    let base = resolve_session_base(&cli.session_base)?;
+    let base = resolve_data_base(&cli.data_base)?;
     std::fs::create_dir_all(&base)?;
     let data_dir = location::resume_or_create_data_dir(&base)?;
     let (wake_tx, _wake_rx) =

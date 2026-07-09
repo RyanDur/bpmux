@@ -12,7 +12,7 @@ This recipe gives any agent an independent way to render, inspect, and interact 
 
 ```bash
 # In the repo root after `cargo build`:
-BPMUX_SESSION_BASE=/tmp/bpmux-desk-check-session \
+BPMUX_DATA_BASE=/tmp/bpmux-desk-check-data \
   target/debug/bpmux \
     --mcp-port 4118 \
     --name desk-check-peer \
@@ -40,7 +40,7 @@ These three flags / env vars are mandatory. Without them, the test instance coll
 | Knob | Value | Why |
 |------|-------|-----|
 | `--mcp-port` | `4118` (or any free port ≠ 4117) | Ryan's live bpmux binds 4117. Binding the same port from the test instance fails immediately |
-| `BPMUX_SESSION_BASE` | `/tmp/...` (or any dir outside `~/.bpmux/sessions`) | The default session base is shared. Two instances writing to the same session dir corrupt each other's state |
+| `BPMUX_DATA_BASE` | `/tmp/...` (or any dir outside `~/.bpmux/sessions`) | The default data base is shared. Two instances writing to the same session dir corrupt each other's state |
 | `--name` | anything descriptive, e.g. `desk-check-peer` | Makes log entries and message attribution legible; defaults to `dev` which collides |
 
 ## What you can actually do
@@ -88,7 +88,7 @@ Rejected requests get HTTP 401 with body `{"error":"unauthorized"}` — the resp
 
 ```bash
 # Start the instance
-BPMUX_SESSION_BASE=/tmp/bpmux-desk-check-session \
+BPMUX_DATA_BASE=/tmp/bpmux-desk-check-data \
   target/debug/bpmux --mcp-port 4118 --name peer test &
 sleep 2
 
@@ -114,7 +114,7 @@ kill %1; wait %1 2>/dev/null
 ### Example 2: verify `/help` slash command renders (the #164 class of bug)
 
 ```bash
-BPMUX_SESSION_BASE=/tmp/bpmux-desk-check-session \
+BPMUX_DATA_BASE=/tmp/bpmux-desk-check-data \
   target/debug/bpmux --mcp-port 4118 --name peer test &
 sleep 2
 

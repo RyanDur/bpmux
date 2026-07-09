@@ -11,11 +11,6 @@ const SERIAL_HEAVY_SPECS = [
 ]
 
 export default defineConfig({
-  // Each test launches its own isolated Electron+bpmux pair with a
-  // unique BPMUX_BACKEND_PORT (getFreePort), unique session-base +
-  // user-data-dir + auth-token-path (all mkdtempSync), so tests are
-  // safe to parallelize. The earlier `workers: 1` was historical —
-  // port-and-state isolation was already in place.
   fullyParallel: true,
   workers: 2,
   retries: 1,

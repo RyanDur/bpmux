@@ -58,9 +58,9 @@ const measureStateTextContrast = async (
 
 test.describe('#1649 titlebar connection-status text meets WCAG AA (4.5:1) in both themes', () => {
   test('every titlebar-app-state color (connected/connecting/disconnected) clears 4.5:1 against the titlebar background, light and dark', async () => {
-    const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-1649-'))
+    const dataBase = mkdtempSync(join(tmpdir(), 'bpmux-1649-'))
     const udd = mkdtempSync(join(tmpdir(), 'bpmux-1649-udd-'))
-    const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
+    const { app } = await launchIsolatedElectron({ dataBase, userDataDir: udd })
     const win = await app.firstWindow()
     try {
       const failures: string[] = []

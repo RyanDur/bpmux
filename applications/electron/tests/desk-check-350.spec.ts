@@ -10,9 +10,9 @@ const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 const launchIsolated = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
 }> => {
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-350-'))
+  const dataBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-350-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-350-'))
-  const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
+  const { app } = await launchIsolatedElectron({ dataBase, userDataDir: udd })
   return { app }
 }
 

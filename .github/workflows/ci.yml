@@ -37,7 +37,7 @@ jobs:
             | scripts/check-inline-comments.sh
       - name: Test (offline; no real outside-this-computer calls per Ryan 2026-05-05)
         env:
-          BPMUX_SESSION_BASE: ${{ runner.temp }}/bpmux-sessions
+          BPMUX_DATA_BASE: ${{ runner.temp }}/bpmux-data
         run: cargo test
       - name: Install cargo-audit (pre-built; avoids the ~1-2min source recompile every run — CARGO_HOME is per-run-isolated so the installed binary is never cached)
         uses: taiki-e/install-action@v2

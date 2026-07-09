@@ -30,10 +30,10 @@ const launchWithCiConclusion = async (
     status: 200,
     bodyJson: runsBody(conclusion)
   })
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-361-'))
+  const dataBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-361-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-361-'))
   const { app } = await launchIsolatedElectron({
-    sessionBase,
+    dataBase,
     userDataDir: udd,
     extraEnv: {
       BPMUX_GH_BASE_URL: mockGh.baseUrl,

@@ -22,9 +22,9 @@ const contrastRatio = (a: string, b: string): number => {
 
 test.describe('#1511 chat-panel blue accent + scope-text retired', () => {
   test('chat-scope text is gone; the blue persists as a chat-panel border-top passing WCAG 1.4.11 (3:1)', async () => {
-    const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-1511-'))
+    const dataBase = mkdtempSync(join(tmpdir(), 'bpmux-1511-'))
     const udd = mkdtempSync(join(tmpdir(), 'bpmux-1511-udd-'))
-    const { app } = await launchIsolatedElectron({ sessionBase, userDataDir: udd })
+    const { app } = await launchIsolatedElectron({ dataBase, userDataDir: udd })
     const win = await app.firstWindow()
     try {
       await win.evaluate(() => window.localStorage.setItem('bpmux-theme', 'dark'))

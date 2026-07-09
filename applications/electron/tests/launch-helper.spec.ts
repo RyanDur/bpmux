@@ -27,7 +27,7 @@ test.describe('#1205 launch-helper safe-inherited-env allow-list', () => {
       GITHUB_TOKEN: 'another-real-token',
       BPMUX_REPO: 'acme/bpmux',
       BPMUX_GH_BASE_URL: 'https://api.github.com',
-      BPMUX_SESSION_BASE: '/tmp/leaked',
+      BPMUX_DATA_BASE: '/tmp/leaked',
       RANDOM_OTHER: 'leaked',
       PATH: '/usr/bin:/bin',
       HOME: '/Users/ryandurling',
@@ -40,7 +40,7 @@ test.describe('#1205 launch-helper safe-inherited-env allow-list', () => {
     expect(picked.GITHUB_TOKEN).toBeUndefined()
     expect(picked.BPMUX_REPO).toBeUndefined()
     expect(picked.BPMUX_GH_BASE_URL).toBeUndefined()
-    expect(picked.BPMUX_SESSION_BASE).toBeUndefined()
+    expect(picked.BPMUX_DATA_BASE).toBeUndefined()
     expect(picked.RANDOM_OTHER).toBeUndefined()
 
     expect(picked.PATH).toBe('/usr/bin:/bin')

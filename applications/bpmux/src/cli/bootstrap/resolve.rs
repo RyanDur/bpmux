@@ -1,14 +1,9 @@
 use crate::{location, transport};
 
-pub(super) fn resolve_session_base(
-    cli_base: &Option<String>,
-) -> anyhow::Result<std::path::PathBuf> {
+pub(super) fn resolve_data_base(cli_base: &Option<String>) -> anyhow::Result<std::path::PathBuf> {
     match cli_base {
         Some(path) => Ok(std::path::PathBuf::from(path)),
-        None => match std::env::var("BPMUX_SESSION_BASE") {
-            Ok(path) => Ok(std::path::PathBuf::from(path)),
-            Err(_) => Ok(location::default_data_base()?),
-        },
+        None => Ok(location::default_data_base()?),
     }
 }
 

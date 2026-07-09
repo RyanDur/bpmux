@@ -55,10 +55,10 @@ const UNFURLS: Record<string, Record<string, unknown>> = {
 const launchWithMessages = async (): Promise<{
   app: Awaited<ReturnType<typeof electron.launch>>
 }> => {
-  const sessionBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-343-'))
+  const dataBase = mkdtempSync(join(tmpdir(), 'bpmux-desk-check-343-'))
   const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-343-'))
   const { app } = await launchIsolatedElectron({
-    sessionBase,
+    dataBase,
     userDataDir: udd,
     seedMessages: MOCK_MESSAGES
   })

@@ -12,7 +12,7 @@ user-data isolation and can collide with the dev's live bpmux on
 import { launchIsolatedElectron } from './helpers/launch'
 
 const { app } = await launchIsolatedElectron({
-  sessionBase, // optional; defaults to a fresh mkdtempSync
+  dataBase, // optional; defaults to a fresh mkdtempSync
   userDataDir: udd // optional; defaults to a fresh mkdtempSync
 })
 ```
@@ -21,7 +21,7 @@ What the helper guarantees:
 
 - Unique `BPMUX_BACKEND_PORT` via `getFreePort` — no collision with
   Ryan's live backend on 4117 or with parallel test processes.
-- Unique `BPMUX_SESSION_BASE` temp dir — test fixture data can't
+- Unique `BPMUX_DATA_BASE` temp dir — test fixture data can't
   leak into `~/.bpmux/`.
 - Unique Electron `--user-data-dir` — localStorage / cookies /
   indexedDB start empty, no state bleed between tests.

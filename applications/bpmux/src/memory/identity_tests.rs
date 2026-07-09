@@ -60,9 +60,9 @@ fn per_role_isolation() {
 #[test]
 fn identity_path_is_separate_from_session_path() {
     let identity_base = PathBuf::from("/home/user/.bpmux/identity");
-    let session_base = PathBuf::from("/home/user/.bpmux/sessions/some-uuid");
+    let data_base = PathBuf::from("/home/user/.bpmux/sessions/some-uuid");
     let identity_file = identity_path(&identity_base, "dev");
-    assert!(!identity_file.starts_with(&session_base));
+    assert!(!identity_file.starts_with(&data_base));
     assert!(identity_file.starts_with(&identity_base));
 }
 

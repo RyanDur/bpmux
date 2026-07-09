@@ -92,7 +92,7 @@ fn binary_change_triggers_graceful_restart_with_exit_code_200() {
         return;
     }
     let tmp = tempfile::tempdir().expect("tempdir");
-    let session_base = tempfile::tempdir().expect("session-base tempdir");
+    let data_base = tempfile::tempdir().expect("data-base tempdir");
     let auth_token = tempfile::NamedTempFile::new().expect("auth-token tempfile");
     let copy = copy_binary_to_temp(&src, &tmp);
     let port = pick_free_port();
@@ -101,8 +101,7 @@ fn binary_change_triggers_graceful_restart_with_exit_code_200() {
         .arg(port.to_string())
         .arg("--name")
         .arg("dev")
-        .env("BPMUX_SESSION_BASE", session_base.path())
-        .env("BPMUX_DATA_BASE", session_base.path())
+        .env("BPMUX_DATA_BASE", data_base.path())
         .env("BPMUX_AUTH_TOKEN_PATH", auth_token.path())
         .env("BPMUX_BINARY_WATCH_INTERVAL_SECS", "1")
         .env("BPMUX_GH_BASE_URL", "http://127.0.0.1:1/")
@@ -125,13 +124,7 @@ fn binary_change_triggers_graceful_restart_with_exit_code_200() {
         panic!("bpmux copy never reached /healthz on port {port}");
     }
 
-    // Falsifier-(d) state-preservation drive: write a marker into the
-    // session-base BEFORE triggering the restart-signal. After the
-    // subprocess exits, assert the marker is still on disk + content
-    // unchanged. This drives the load-bearing cascade per
-    // feedback_falsifier_load_bearing_test_at_e2e_layer: state on
-    // disk → restart-cycle fires → state still on disk + intact.
-    let lessons_dir = session_base.path().join("lessons");
+    let lessons_dir = data_base.path().join("lessons");
     std::fs::create_dir_all(&lessons_dir).expect("create lessons dir");
     let marker = lessons_dir.join("falsifier_d_state_preservation_marker.json");
     let marker_payload = b"falsifier-d: this content must survive the restart-cycle";
@@ -192,11 +185,9 @@ fn binary_change_triggers_graceful_restart_with_exit_code_200() {
         status.code()
     );
 
-    // Falsifier-(d) e2e assertion: marker we wrote into session-base
-    // before the restart-cycle is still on disk + content intact.
     assert!(
         marker.exists(),
-        "session-base disk content must persist across the restart-cycle per falsifier-(d); marker missing at {}",
+        "data-base disk content must persist across the restart-cycle per falsifier-(d); marker missing at {}",
         marker.display()
     );
     assert_eq!(

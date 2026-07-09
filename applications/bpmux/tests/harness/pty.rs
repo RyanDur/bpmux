@@ -83,7 +83,7 @@ impl TestBpmux {
         port_override: Option<u16>,
     ) -> Self {
         let bin = env!("CARGO_BIN_EXE_bpmux");
-        let session_base = session_dir
+        let data_base = session_dir
             .path()
             .to_str()
             .expect("temp path is utf-8")
@@ -105,8 +105,8 @@ impl TestBpmux {
         cmd.arg(name);
         cmd.arg("--mcp-port");
         cmd.arg(port.to_string());
-        cmd.arg("--session-base");
-        cmd.arg(&session_base);
+        cmd.arg("--data-base");
+        cmd.arg(&data_base);
         cmd.env("TERM", "xterm-256color");
         if let Ok(repo) = std::env::var("BPMUX_REPO") {
             cmd.env("BPMUX_REPO", repo);

@@ -37,7 +37,7 @@ export const getFreePort = async (): Promise<number> =>
 
 export interface LaunchOpts {
   userDataDir?: string
-  sessionBase?: string
+  dataBase?: string
   backendPort?: number
   seedMessages?: ReadonlyArray<Record<string, unknown>>
   /**
@@ -50,24 +50,12 @@ export interface LaunchOpts {
    */
   seedRoster?: ReadonlyArray<string>
   extraEnv?: Record<string, string>
-  /**
-   * #1291: opt-out of the auto-cleanup of helper-allocated mkdtempSync
-   * paths in `app.close`. Default is `false` (auto-cleanup ON). Set to
-   * `true` for cross-launch persistence tests (e.g. #449 board collapse
-   * state survives restart) that capture `result.userDataDir` /
-   * `result.sessionBase` from launch 1, close it, then re-launch with
-   * the SAME dirs to assert persisted state. Auto-cleanup on launch 1's
-   * close would wipe the dirs out from under launch 2. When the dirs
-   * were supplied externally (opts.userDataDir / opts.sessionBase),
-   * they're already excluded from the cleanup set — this flag only
-   * matters for the helper-allocated case.
-   */
   preserveTempPaths?: boolean
 }
 
 export interface LaunchResult {
   app: ElectronApplication
-  sessionBase: string
+  dataBase: string
   userDataDir: string
   backendPort: number
   mockGh?: MockGhServer
@@ -148,8 +136,8 @@ const purgeStaleTrash = (): void => {
 export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<LaunchResult> => {
   purgeStaleTrash()
   const ownedTempPaths: string[] = []
-  const sessionBase =
-    opts.sessionBase ??
+  const dataBase =
+    opts.dataBase ??
     (() => {
       const p = mkdtempSync(join(tmpdir(), 'bpmux-playwright-'))
       ownedTempPaths.push(p)
@@ -172,10 +160,10 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
   const hasRoster = opts.seedRoster && opts.seedRoster.length > 0
   if (hasRoster) {
     const sessionId = 'playwright-seed-' + Date.now().toString(36)
-    const sessionDir = join(sessionBase, sessionId)
+    const sessionDir = join(dataBase, sessionId)
     mkdirSync(sessionDir, { recursive: true })
     writeFileSync(join(sessionDir, 'roster_seed.json'), JSON.stringify(opts.seedRoster))
-    symlinkSync(sessionDir, join(sessionBase, 'current'))
+    symlinkSync(sessionDir, join(dataBase, 'current'))
   }
   // Per-test auth-token isolation. Without this, parallel workers
   // collide on $HOME/.bpmux/auth_token — bpmux's default location —
@@ -213,7 +201,7 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
     args: ['out/main/index.js', `--user-data-dir=${userDataDir}`],
     env: {
       ...pickSafeInheritedEnv(process.env),
-      BPMUX_SESSION_BASE: sessionBase,
+      BPMUX_DATA_BASE: dataBase,
       BPMUX_BACKEND_PORT: String(backendPort),
       BPMUX_AUTH_TOKEN_PATH: defaultAuthTokenPath,
       BPMUX_BOARD_STORE_PATH: defaultBoardStorePath,
@@ -254,7 +242,7 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       }
     }) as typeof app.close
   }
-  return { app, sessionBase, userDataDir, backendPort, mockGh: defaultMockGh }
+  return { app, dataBase, userDataDir, backendPort, mockGh: defaultMockGh }
 }
 
 const seedMessagesViaApi = async (backendPort: number, opts: LaunchOpts): Promise<void> => {
