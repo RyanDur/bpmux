@@ -6,8 +6,7 @@ use tokio::sync::broadcast;
 use super::Osc7CwdParser;
 use crate::location::read_or_create_dir_session;
 use crate::room::LivePtyRegistry;
-use crate::routing::RoutingStore;
-use crate::store::Select;
+use crate::store::{Dispatch, Select};
 
 const AGENT_RUN_GATE: Duration = Duration::from_millis(1000);
 const DETECTOR_POLL: Duration = Duration::from_millis(200);
@@ -80,7 +79,7 @@ pub fn spawn_agent_run_detector(
     terminal_id: String,
     mut output: broadcast::Receiver<Vec<u8>>,
     registry: Arc<LivePtyRegistry>,
-    routing: Arc<RoutingStore>,
+    dispatch: Dispatch,
     select: Select,
     hub: Arc<crate::hub::Hub>,
     store: Option<DetectorStore>,
@@ -112,16 +111,23 @@ pub fn spawn_agent_run_detector(
                         && let Ok(dir_session) =
                             read_or_create_dir_session(std::path::Path::new(&mint.cwd))
                     {
-                        routing.register_agent(
-                            &dir_session.id,
-                            &dir_session.name,
-                            &terminal_id,
-                            &mint.job_start_ts,
-                        );
+                        let actions = select.select(|s| {
+                            crate::store::routing::register_agent_actions(
+                                &s.routing,
+                                &dir_session.id,
+                                &dir_session.name,
+                                &terminal_id,
+                                &mint.job_start_ts,
+                            )
+                        });
+                        for action in actions {
+                            dispatch.dispatch(action.into());
+                        }
                         crate::room::drain_missed(
                             &hub,
                             &registry,
-                            &routing,
+                            &select,
+                            &dispatch,
                             &dir_session.id,
                             &terminal_id,
                             &dir_session.name,

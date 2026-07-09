@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::agent_detect::{AgentRunDetector, spawn_agent_run_detector};
+use crate::store::SeededStore;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -14,13 +15,10 @@ fn osc7(path: &str) -> Vec<u8> {
     format!("\x1b]7;file://host{path}\x07").into_bytes()
 }
 
-fn slice_select(
-    routing: &crate::routing::RoutingStore,
-) -> (crate::store::SeededStore, crate::store::Select) {
-    let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
-    routing.bind_dispatch(seeded.dispatcher());
-    let select = seeded.select();
-    (seeded, select)
+fn resolve(store: &SeededStore, display: &str) -> Vec<String> {
+    store
+        .select()
+        .select(|s| crate::store::routing::resolve(&s.routing, display))
 }
 
 const GATE: Duration = Duration::from_millis(1000);
@@ -156,12 +154,8 @@ fn after_the_agent_leaves_a_fresh_foreground_job_re_mints() {
 #[tokio::test]
 async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless() {
     use crate::room::{LivePtyRegistry, osc7_shell_integration, spawn_pty_retained};
-    use crate::routing::RoutingStore;
 
-    let store_dir = tempfile::TempDir::new().unwrap();
-    let routing = Arc::new(RoutingStore::new(crate::storage::sqlite_test_storage(
-        store_dir.path(),
-    )));
+    let store = SeededStore::new(Vec::new(), Vec::new(), Vec::new());
     let registry = Arc::new(LivePtyRegistry::new());
 
     let work = tempfile::TempDir::new().unwrap();
@@ -187,13 +181,12 @@ async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless()
     let terminal_id = "term-agnostic".to_string();
     registry.insert(terminal_id.clone(), live);
 
-    let (_seed, select) = slice_select(&routing);
     spawn_agent_run_detector(
         terminal_id.clone(),
         output,
         registry.clone(),
-        routing.clone(),
-        select,
+        store.dispatcher(),
+        store.select(),
         empty_message_hub(),
         None,
     );
@@ -204,7 +197,7 @@ async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless()
     let marker = work.path().join(".bpmux-session-id");
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
     while std::time::Instant::now() < deadline {
-        if marker.is_file() && !routing.resolve(&work_name).is_empty() {
+        if marker.is_file() && !resolve(&store, &work_name).is_empty() {
             break;
         }
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -216,7 +209,7 @@ async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless()
     );
     let session = crate::location::read_or_create_dir_session(work.path()).unwrap();
     assert_eq!(
-        routing.resolve(&work_name),
+        resolve(&store, &work_name),
         vec![session.id],
         "a sustained foreground-job in the work-dir auto-registered the agent (display defaults to the folder basename, no spawn-time role) HEADLESS — no viewer subscribed to the pane; the running IS the agnostic signal (falsifier-1)"
     );
@@ -225,12 +218,8 @@ async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless()
 #[tokio::test]
 async fn a_cd_through_a_dir_without_running_an_agent_mints_no_id() {
     use crate::room::{LivePtyRegistry, osc7_shell_integration, spawn_pty_retained};
-    use crate::routing::RoutingStore;
 
-    let store_dir = tempfile::TempDir::new().unwrap();
-    let routing = Arc::new(RoutingStore::new(crate::storage::sqlite_test_storage(
-        store_dir.path(),
-    )));
+    let store = SeededStore::new(Vec::new(), Vec::new(), Vec::new());
     let registry = Arc::new(LivePtyRegistry::new());
     let passed_through = tempfile::TempDir::new().unwrap();
     let passed_path = passed_through.path().to_string_lossy().to_string();
@@ -254,13 +243,12 @@ async fn a_cd_through_a_dir_without_running_an_agent_mints_no_id() {
     let output = live.subscribe();
     let terminal_id = "term-passthrough".to_string();
     registry.insert(terminal_id.clone(), live);
-    let (_seed, select) = slice_select(&routing);
     spawn_agent_run_detector(
         terminal_id.clone(),
         output,
         registry.clone(),
-        routing.clone(),
-        select,
+        store.dispatcher(),
+        store.select(),
         empty_message_hub(),
         None,
     );
@@ -274,7 +262,7 @@ async fn a_cd_through_a_dir_without_running_an_agent_mints_no_id() {
         "a bare cd-through (no foreground-child job) mints NO id in the passed-through dir — falsifier-3 litter-free by construction (cd is a shell builtin, no child → has_foreground_job stays false)"
     );
     assert!(
-        routing.resolve(&passed_name).is_empty(),
+        resolve(&store, &passed_name).is_empty(),
         "nothing registers without an agent actually running there — the passed-through dir's basename routes to nobody"
     );
 }
@@ -282,12 +270,8 @@ async fn a_cd_through_a_dir_without_running_an_agent_mints_no_id() {
 #[tokio::test]
 async fn an_agent_started_in_place_with_no_cd_registers_via_the_startup_emit() {
     use crate::room::{LivePtyRegistry, osc7_shell_integration, spawn_pty_retained};
-    use crate::routing::RoutingStore;
 
-    let store_dir = tempfile::TempDir::new().unwrap();
-    let routing = Arc::new(RoutingStore::new(crate::storage::sqlite_test_storage(
-        store_dir.path(),
-    )));
+    let store = SeededStore::new(Vec::new(), Vec::new(), Vec::new());
     let registry = Arc::new(LivePtyRegistry::new());
     let work = tempfile::TempDir::new().unwrap();
     let work_name = work
@@ -310,13 +294,12 @@ async fn an_agent_started_in_place_with_no_cd_registers_via_the_startup_emit() {
     let output = live.subscribe();
     let terminal_id = "term-inplace".to_string();
     registry.insert(terminal_id.clone(), live);
-    let (_seed, select) = slice_select(&routing);
     spawn_agent_run_detector(
         terminal_id.clone(),
         output,
         registry.clone(),
-        routing.clone(),
-        select,
+        store.dispatcher(),
+        store.select(),
         empty_message_hub(),
         None,
     );
@@ -326,7 +309,7 @@ async fn an_agent_started_in_place_with_no_cd_registers_via_the_startup_emit() {
     let marker = work.path().join(".bpmux-session-id");
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
     while std::time::Instant::now() < deadline {
-        if marker.is_file() && !routing.resolve(&work_name).is_empty() {
+        if marker.is_file() && !resolve(&store, &work_name).is_empty() {
             break;
         }
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -337,7 +320,7 @@ async fn an_agent_started_in_place_with_no_cd_registers_via_the_startup_emit() {
     );
     let session = crate::location::read_or_create_dir_session(work.path()).unwrap();
     assert_eq!(
-        routing.resolve(&work_name),
+        resolve(&store, &work_name),
         vec![session.id],
         "start-in-place + a sustained job registers off the startup-emit (display = folder basename)"
     );

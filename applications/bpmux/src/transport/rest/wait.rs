@@ -8,7 +8,8 @@ use serde::Deserialize;
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::hub;
-use crate::routing::{RoutingStore, short_name};
+use crate::routing::short_name;
+use crate::store::routing::RoutingAction;
 use crate::transport::ws::should_deliver;
 
 pub const DEFAULT_WAIT_TIMEOUT_MS: u64 = 30_000;
@@ -23,23 +24,23 @@ pub struct WaitParams {
 
 pub async fn wait_for_event(
     State(hub): State<Arc<hub::Hub>>,
-    Extension(routing): Extension<Arc<RoutingStore>>,
+    Extension(dispatch): Extension<crate::store::Dispatch>,
     Extension(select): Extension<crate::store::Select>,
     Query(params): Query<WaitParams>,
 ) -> impl IntoResponse {
     let role = params.as_peer.clone().unwrap_or_default();
-    drain_or_block(&hub, &routing, &select, &params, &role).await
+    drain_or_block(&hub, &dispatch, &select, &params, &role).await
 }
 
 async fn drain_or_block(
     hub: &hub::Hub,
-    routing: &RoutingStore,
+    dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
     params: &WaitParams,
     role: &str,
 ) -> (StatusCode, String) {
     let timeout = Duration::from_millis(params.timeout_ms.unwrap_or(DEFAULT_WAIT_TIMEOUT_MS));
-    let after_cursor = durable_drain_cursor(routing, select, role, params.after.as_deref())
+    let after_cursor = durable_drain_cursor(dispatch, select, role, params.after.as_deref())
         .as_deref()
         .and_then(|raw| raw.parse::<chrono::DateTime<chrono::Utc>>().ok());
 
@@ -72,7 +73,7 @@ async fn drain_or_block(
 }
 
 fn durable_drain_cursor(
-    routing: &RoutingStore,
+    dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
     role: &str,
     client_after: Option<&str>,
@@ -82,7 +83,21 @@ fn durable_drain_cursor(
         .into_iter()
         .next()
     {
-        Some(session_id) => routing.drain_floor(&session_id, client_after),
+        Some(session_id) => {
+            let floor = select.select(|s| {
+                crate::store::routing::drain_floor(&s.routing, &session_id, client_after)
+            });
+            if let Some(ref position) = floor {
+                dispatch.dispatch(
+                    RoutingAction::CursorAdvanced {
+                        session_id: session_id.clone(),
+                        cursor: position.clone(),
+                    }
+                    .into(),
+                );
+            }
+            floor
+        }
         None => client_after.map(str::to_string),
     }
 }

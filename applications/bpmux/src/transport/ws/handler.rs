@@ -16,7 +16,6 @@ pub async fn ws_handler(
     axum::Extension(store): axum::Extension<Arc<crate::store::Store>>,
     axum::Extension(dispatch): axum::Extension<crate::store::Dispatch>,
     axum::Extension(pty_registry): axum::Extension<Arc<crate::room::LivePtyRegistry>>,
-    axum::Extension(routing): axum::Extension<Arc<crate::routing::RoutingStore>>,
     axum::Extension(tracker): axum::Extension<crate::transport::rest::TrackerHandle>,
     axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
 ) -> Response {
@@ -25,7 +24,6 @@ pub async fn ws_handler(
         store,
         dispatch,
         pty_registry,
-        routing,
         tracker,
         orchestrator,
     };

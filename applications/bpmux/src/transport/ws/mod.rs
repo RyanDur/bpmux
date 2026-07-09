@@ -40,7 +40,6 @@ pub(super) struct WsDeps {
     store: Arc<crate::store::Store>,
     dispatch: crate::store::Dispatch,
     pty_registry: Arc<crate::room::LivePtyRegistry>,
-    routing: Arc<crate::routing::RoutingStore>,
     tracker: crate::transport::rest::TrackerHandle,
     orchestrator: crate::sync::OrchestratorHandle,
 }
@@ -55,7 +54,6 @@ pub(super) async fn run_ws_session(
         store,
         dispatch,
         pty_registry,
-        routing,
         tracker,
         orchestrator,
     } = deps;
@@ -125,7 +123,13 @@ pub(super) async fn run_ws_session(
                                 let _ = hub.broadcast(&system_announcement(&format!("{identity} left")));
                                 identity = new_identity;
                                 if let Some(ref session_id) = routing_session_id {
-                                    routing.rename(session_id, short_name(&identity));
+                                    dispatch.dispatch(
+                                        crate::store::routing::RoutingAction::Renamed {
+                                            session_id: session_id.clone(),
+                                            display: short_name(&identity).to_string(),
+                                        }
+                                        .into(),
+                                    );
                                 }
                                 let new_key = roster_key_for(&routing_session_id, &identity);
                                 if new_key != roster_key && let Some(ref old) = roster_key {

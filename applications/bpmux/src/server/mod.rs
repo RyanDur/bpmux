@@ -64,7 +64,6 @@ pub async fn run_server(
     let electron_capture_lock: std::sync::Arc<tokio::sync::Mutex<()>> =
         std::sync::Arc::new(tokio::sync::Mutex::new(()));
     let pty_registry = std::sync::Arc::new(crate::room::LivePtyRegistry::new());
-    let routing_store = std::sync::Arc::new(crate::routing::RoutingStore::new(hub.storage.clone()));
     let mut store_inner = crate::store::Store::with_initial_outbox(
         hub.clone(),
         tracker
@@ -83,11 +82,9 @@ pub async fn run_server(
         );
     }
     let store = std::sync::Arc::new(store_inner);
-    routing_store.bind_dispatch(store.dispatcher());
     crate::room::spawn_terminal_delivery_loop(
         hub.clone(),
         pty_registry.clone(),
-        routing_store.clone(),
         store.selector(),
         store.dispatcher(),
     );
@@ -115,7 +112,6 @@ pub async fn run_server(
         dispatch: store.dispatcher(),
         store,
         pty_registry,
-        routing_store,
         port,
     });
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;

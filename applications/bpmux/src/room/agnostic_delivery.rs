@@ -6,8 +6,8 @@ use tokio::sync::broadcast;
 use crate::hub::Hub;
 use crate::message::{BROADCAST_ALL, Message};
 use crate::room::LivePtyRegistry;
-use crate::routing::RoutingStore;
 use crate::routing::short_name;
+use crate::store::routing::RoutingAction;
 use crate::store::{Dispatch, Select};
 
 use super::terminal_inject::frame_team_message;
@@ -25,7 +25,6 @@ pub struct HeldInject {
 pub fn spawn_terminal_delivery_loop(
     hub: Arc<Hub>,
     registry: Arc<LivePtyRegistry>,
-    routing: Arc<RoutingStore>,
     select: Select,
     dispatch: Dispatch,
 ) {
@@ -34,13 +33,13 @@ pub fn spawn_terminal_delivery_loop(
         loop {
             match rx.recv().await {
                 Ok(msg) => {
-                    for inject in deliver_to_terminals(&msg, &registry, &routing, &select) {
-                        spawn_deferred_inject(registry.clone(), routing.clone(), inject);
+                    for inject in deliver_to_terminals(&msg, &registry, &select, &dispatch) {
+                        spawn_deferred_inject(registry.clone(), dispatch.clone(), inject);
                     }
                     for inject in super::wake_delivery::wake_committed_terminals(
                         &msg, &registry, &select, &dispatch,
                     ) {
-                        spawn_deferred_inject(registry.clone(), routing.clone(), inject);
+                        spawn_deferred_inject(registry.clone(), dispatch.clone(), inject);
                     }
                 }
                 Err(broadcast::error::RecvError::Lagged(_)) => continue,
@@ -48,6 +47,16 @@ pub fn spawn_terminal_delivery_loop(
             }
         }
     });
+}
+
+fn mark_delivered(dispatch: &Dispatch, session_id: &str, ts: &str) {
+    dispatch.dispatch(
+        RoutingAction::CursorAdvanced {
+            session_id: session_id.to_string(),
+            cursor: ts.to_string(),
+        }
+        .into(),
+    );
 }
 
 pub(crate) fn owner_mid_typing(registry: &LivePtyRegistry, terminal_id: &str) -> bool {
@@ -58,7 +67,7 @@ pub(crate) fn owner_mid_typing(registry: &LivePtyRegistry, terminal_id: &str) ->
 
 pub(crate) fn spawn_deferred_inject(
     registry: Arc<LivePtyRegistry>,
-    routing: Arc<RoutingStore>,
+    dispatch: Dispatch,
     inject: HeldInject,
 ) {
     tokio::spawn(async move {
@@ -70,7 +79,7 @@ pub(crate) fn spawn_deferred_inject(
                 .is_none_or(|age| age >= HOLD_DEBOUNCE);
             if owner_paused || start.elapsed() >= HOLD_MAX {
                 if registry.submit_to(&inject.terminal_id, inject.line.as_bytes()) {
-                    routing.mark_delivered(&inject.session_id, &inject.ts);
+                    mark_delivered(&dispatch, &inject.session_id, &inject.ts);
                 }
                 return;
             }
@@ -81,8 +90,8 @@ pub(crate) fn spawn_deferred_inject(
 pub fn deliver_to_terminals(
     msg: &Message,
     registry: &LivePtyRegistry,
-    routing: &RoutingStore,
     select: &Select,
+    dispatch: &Dispatch,
 ) -> Vec<HeldInject> {
     let mut held = Vec::new();
     if !msg.is_chat() {
@@ -93,7 +102,7 @@ pub fn deliver_to_terminals(
     for (session_id, terminal_id) in select.select(|s| {
         crate::store::routing::delivery_targets(&s.routing, msg.to.as_deref(), &msg.from)
     }) {
-        if !after_cursor(routing, &session_id, msg.ts) {
+        if !after_cursor(select, &session_id, msg.ts) {
             continue;
         }
         if owner_mid_typing(registry, &terminal_id) {
@@ -104,16 +113,18 @@ pub fn deliver_to_terminals(
                 ts: ts.clone(),
             });
         } else if registry.submit_to(&terminal_id, line.as_bytes()) {
-            routing.mark_delivered(&session_id, &ts);
+            mark_delivered(dispatch, &session_id, &ts);
         }
     }
     held
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn drain_missed(
     hub: &Hub,
     registry: &LivePtyRegistry,
-    routing: &RoutingStore,
+    select: &Select,
+    dispatch: &Dispatch,
     session_id: &str,
     terminal_id: &str,
     display: &str,
@@ -135,11 +146,11 @@ pub fn drain_missed(
         if join.is_some_and(|join| msg.ts <= join) {
             continue;
         }
-        if !after_cursor(routing, session_id, msg.ts) {
+        if !after_cursor(select, session_id, msg.ts) {
             continue;
         }
         if registry.submit_to(terminal_id, framed_line(&msg).as_bytes()) {
-            routing.mark_delivered(session_id, &msg.ts.to_rfc3339());
+            mark_delivered(dispatch, session_id, &msg.ts.to_rfc3339());
         }
     }
 }
@@ -149,13 +160,9 @@ fn framed_line(msg: &Message) -> String {
     frame_team_message(short_name(&msg.from), &scope, &msg.text)
 }
 
-fn after_cursor(
-    routing: &RoutingStore,
-    session_id: &str,
-    ts: chrono::DateTime<chrono::Utc>,
-) -> bool {
-    match routing
-        .cursor(session_id)
+fn after_cursor(select: &Select, session_id: &str, ts: chrono::DateTime<chrono::Utc>) -> bool {
+    match select
+        .select(|s| crate::store::routing::cursor(&s.routing, session_id))
         .as_deref()
         .and_then(|cursor| chrono::DateTime::parse_from_rfc3339(cursor).ok())
     {

@@ -1,16 +1,14 @@
 mod cursor_time;
 mod identity;
+mod naming;
 pub mod slice;
-mod store;
 mod user;
 
 pub use identity::*;
-pub(crate) use store::short_name;
-pub use store::*;
+pub use naming::bridge_agent_name;
+pub(crate) use naming::short_name;
 pub(crate) use user::default_kind;
 pub use user::*;
 
 #[cfg(test)]
 mod identity_tests;
-#[cfg(test)]
-mod store_tests;

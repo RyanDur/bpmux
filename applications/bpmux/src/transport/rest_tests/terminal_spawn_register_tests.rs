@@ -7,10 +7,10 @@ use tower::ServiceExt;
 
 use super::response_json;
 use crate::room::LivePtyRegistry;
-use crate::routing::RoutingStore;
+use crate::store::SeededStore;
 use crate::transport::rest::post_terminal_spawn;
 
-fn spawn_app(store_dir: &TempDir) -> (axum::Router, Arc<LivePtyRegistry>, Arc<RoutingStore>) {
+fn spawn_app(store_dir: &TempDir) -> (axum::Router, Arc<LivePtyRegistry>, SeededStore) {
     let registry = Arc::new(LivePtyRegistry::new());
     let (tx, _rx) = tokio::sync::broadcast::channel(16);
     let hub = Arc::new(crate::hub::Hub::new(
@@ -18,9 +18,7 @@ fn spawn_app(store_dir: &TempDir) -> (axum::Router, Arc<LivePtyRegistry>, Arc<Ro
         "owner".to_string(),
         tx,
     ));
-    let routing = Arc::new(RoutingStore::new(hub.storage.clone()));
-    let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
-    routing.bind_dispatch(seeded.dispatcher());
+    let seeded = SeededStore::new(Vec::new(), Vec::new(), Vec::new());
     let router = axum::Router::new()
         .route(
             "/api/terminals/spawn",
@@ -29,16 +27,20 @@ fn spawn_app(store_dir: &TempDir) -> (axum::Router, Arc<LivePtyRegistry>, Arc<Ro
         .layer(axum::Extension(registry.clone()))
         .layer(axum::Extension(0u16))
         .layer(axum::Extension(seeded.select()))
-        .layer(axum::Extension(routing.clone()))
+        .layer(axum::Extension(seeded.dispatcher()))
         .with_state(hub);
-    std::mem::forget(seeded);
-    (router, registry, routing)
+    (router, registry, seeded)
 }
 
 #[tokio::test]
 async fn the_plus_spawn_flow_auto_registers_an_agent_running_in_its_working_dir_headless() {
     let store_dir = TempDir::new().expect("store dir");
-    let (router, registry, routing) = spawn_app(&store_dir);
+    let (router, registry, store) = spawn_app(&store_dir);
+    let resolve = |display: &str| {
+        store
+            .select()
+            .select(|s| crate::store::routing::resolve(&s.routing, display))
+    };
 
     let work = TempDir::new().expect("work dir");
     let work_path = work.path().to_string_lossy().to_string();
@@ -68,7 +70,7 @@ async fn the_plus_spawn_flow_auto_registers_an_agent_running_in_its_working_dir_
     let marker = work.path().join(".bpmux-session-id");
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
     while std::time::Instant::now() < deadline {
-        if marker.is_file() && !routing.resolve(&work_name).is_empty() {
+        if marker.is_file() && !resolve(&work_name).is_empty() {
             break;
         }
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -80,7 +82,7 @@ async fn the_plus_spawn_flow_auto_registers_an_agent_running_in_its_working_dir_
     );
     let session = crate::location::read_or_create_dir_session(work.path()).expect("read marker");
     assert_eq!(
-        routing.resolve(&work_name),
+        resolve(&work_name),
         vec![session.id],
         "the agent auto-registered HEADLESS through the real spawn endpoint (no viewer subscribed) — routable by the folder basename, the agnostic-registration WALK-NODE end-to-end"
     );

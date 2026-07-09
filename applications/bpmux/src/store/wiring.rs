@@ -70,6 +70,7 @@ impl Store {
             rate_limit_observer.clone(),
         ));
         app_store.add_listener(ci_poll.clone());
+        app_store.add_listener(Arc::new(app::RoutingPersister::new(hub.storage.clone())));
         Self {
             hub,
             parent_ct,

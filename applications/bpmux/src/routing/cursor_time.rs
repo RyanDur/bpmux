@@ -39,3 +39,17 @@ pub(super) fn to_millis(value: &str) -> Option<i64> {
 pub(super) fn from_millis(ms: i64) -> Option<String> {
     chrono::DateTime::from_timestamp_millis(ms).map(|dt| dt.to_rfc3339())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::later_cursor;
+
+    #[test]
+    fn later_cursor_parses_rather_than_lexically_compares_so_subsecond_precision_is_correct() {
+        assert_eq!(
+            later_cursor(Some("2026-06-11T20:00:01Z"), Some("2026-06-11T20:00:01.5Z")).as_deref(),
+            Some("2026-06-11T20:00:01.5Z"),
+            "the later instant wins by PARSED time — a lexical string compare would wrongly pick the no-fraction form ('Z' > '.5') and lose half a second of events"
+        );
+    }
+}

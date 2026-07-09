@@ -24,6 +24,7 @@ mod listeners;
 mod owner_park;
 mod reactions;
 mod reduce;
+mod routing;
 pub use board_placement::{BoardPlacementPersister, BoardPlacementReconciler};
 pub use evidence::EvidencePersister;
 pub use history::{LocalHistoryPersister, SharedHistoryPersister};
@@ -32,6 +33,7 @@ pub use owner_park::OwnerParkListener;
 pub use reactions::ReactionsPersister;
 pub use reduce::app_reduce;
 pub(super) use reduce::validate_and_log;
+pub use routing::RoutingPersister;
 
 #[cfg(test)]
 mod board_placement_tests;
@@ -43,6 +45,8 @@ mod history_tests;
 mod owner_park_tests;
 #[cfg(test)]
 mod reactions_tests;
+#[cfg(test)]
+mod routing_tests;
 
 #[derive(Default, Clone)]
 pub struct AppState {

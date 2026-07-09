@@ -6,7 +6,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use crate::routing::RoutingStore;
+use crate::store::routing::RoutingAction;
 
 #[derive(Deserialize)]
 pub struct RegisterRequest {
@@ -17,7 +17,7 @@ pub struct RegisterRequest {
 }
 
 pub async fn post_register(
-    Extension(routing): Extension<Arc<RoutingStore>>,
+    Extension(dispatch): Extension<crate::store::Dispatch>,
     Extension(select): Extension<crate::store::Select>,
     Extension(store): Extension<Arc<crate::store::Store>>,
     Json(payload): Json<RegisterRequest>,
@@ -35,10 +35,27 @@ pub async fn post_register(
             select.select(|s| crate::store::routing::session_for_terminal(&s.routing, terminal_id))
         })
         .filter(|prior| *prior != payload.session_id);
-    routing.register(&payload.session_id, &payload.display);
+    dispatch.dispatch(
+        RoutingAction::Registered {
+            session_id: payload.session_id.clone(),
+            display: payload.display.clone(),
+        }
+        .into(),
+    );
     if let Some(terminal_id) = &payload.terminal_id {
-        routing.link_terminal(&payload.session_id, terminal_id);
-        routing.reap_unclaimed_duplicates_of(&payload.display);
+        dispatch.dispatch(
+            RoutingAction::TerminalLinked {
+                session_id: payload.session_id.clone(),
+                terminal_id: terminal_id.clone(),
+            }
+            .into(),
+        );
+        dispatch.dispatch(
+            RoutingAction::Reaped {
+                display: payload.display.clone(),
+            }
+            .into(),
+        );
     }
     if let Some(prior) = superseded {
         crate::transport::ws::dispatch_roster_leave(&store, &prior).await;

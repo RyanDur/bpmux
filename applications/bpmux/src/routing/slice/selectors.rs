@@ -1,10 +1,21 @@
 use crate::message::BROADCAST_ALL;
+use crate::routing::cursor_time::{is_future, later_cursor};
 use crate::routing::{bridge_agent_name, short_name};
 
 use super::RoutingState;
 
 pub fn resolve(state: &RoutingState, display: &str) -> Vec<String> {
     state.identity.resolve(display)
+}
+
+pub fn drain_floor(
+    state: &RoutingState,
+    session_id: &str,
+    client_ack: Option<&str>,
+) -> Option<String> {
+    let stored = state.identity.cursor(session_id);
+    let trusted_ack = client_ack.filter(|ack| !is_future(ack));
+    later_cursor(stored.as_deref(), trusted_ack)
 }
 
 pub fn terminal_for(state: &RoutingState, session_id: &str) -> Option<String> {

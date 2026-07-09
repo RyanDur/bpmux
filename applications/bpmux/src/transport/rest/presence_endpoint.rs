@@ -8,7 +8,6 @@ use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::IntoResponse;
 
 use super::presence::*;
-use crate::routing::RoutingStore;
 
 fn orchestrator() -> Arc<crate::store::Store> {
     let dir = tempfile::TempDir::new().expect("tempdir");
@@ -28,12 +27,14 @@ fn orchestrator() -> Arc<crate::store::Store> {
 }
 
 fn select_with_dev_session() -> crate::store::Select {
-    let dir = tempfile::TempDir::new().expect("tempdir");
-    let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
-    std::mem::forget(dir);
     let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
-    routing.bind_dispatch(seeded.dispatcher());
-    routing.register("sess-dev", "dev");
+    seeded.dispatch(
+        crate::store::routing::RoutingAction::Registered {
+            session_id: "sess-dev".to_string(),
+            display: "dev".to_string(),
+        }
+        .into(),
+    );
     let select = seeded.select();
     std::mem::forget(seeded);
     select

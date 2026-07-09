@@ -5,7 +5,7 @@ use super::wake_delivery::wake_committed_terminals;
 use crate::message::MessageType;
 use crate::message::{CiSnapshotWire, Message, StateDeltaPayload};
 use crate::room::{LivePtyRegistry, spawn_pty_retained};
-use crate::routing::RoutingStore;
+use crate::store::routing::{RoutingAction, drain_floor, register_agent_actions};
 use crate::store::{AppAction, CommitmentsAction, SeededStore};
 use std::sync::Arc;
 use tokio::sync::broadcast;
@@ -14,10 +14,36 @@ fn wired_store() -> SeededStore {
     SeededStore::new(Vec::new(), Vec::new(), Vec::new())
 }
 
-fn slice_of(routing: &RoutingStore) -> SeededStore {
-    let seeded = wired_store();
-    routing.bind_dispatch(seeded.dispatcher());
-    seeded
+fn register_agent(
+    store: &SeededStore,
+    session_id: &str,
+    display: &str,
+    terminal_id: &str,
+    job_start: &str,
+) {
+    let actions = store.select().select(|s| {
+        register_agent_actions(&s.routing, session_id, display, terminal_id, job_start)
+    });
+    for action in actions {
+        store.dispatch(action.into());
+    }
+}
+
+fn register_and_link(store: &SeededStore, session_id: &str, display: &str, terminal_id: &str) {
+    store.dispatch(
+        RoutingAction::Registered {
+            session_id: session_id.to_string(),
+            display: display.to_string(),
+        }
+        .into(),
+    );
+    store.dispatch(
+        RoutingAction::TerminalLinked {
+            session_id: session_id.to_string(),
+            terminal_id: terminal_id.to_string(),
+        }
+        .into(),
+    );
 }
 
 fn commit(
@@ -98,7 +124,7 @@ async fn drain_for(rx: &mut broadcast::Receiver<Vec<u8>>, needle: &str) -> Strin
 
 fn register_live_cat(
     registry: &LivePtyRegistry,
-    routing: &RoutingStore,
+    store: &SeededStore,
     session_id: &str,
     display: &str,
     terminal_id: &str,
@@ -106,23 +132,27 @@ fn register_live_cat(
     let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
     let rx = live.subscribe();
     registry.insert(terminal_id.to_string(), live);
-    routing.register_agent(session_id, display, terminal_id, "2026-06-12T10:00:00Z");
+    register_agent(
+        store,
+        session_id,
+        display,
+        terminal_id,
+        "2026-06-12T10:00:00Z",
+    );
     rx
 }
 
 #[tokio::test]
 async fn a_broadcast_chat_is_framed_and_written_into_a_live_agents_terminal() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
-    let store = slice_of(&routing);
+    let store = wired_store();
     let registry = LivePtyRegistry::new();
-    let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
+    let mut rx = register_live_cat(&registry, &store, "sess-dev", "dev", "term-dev");
 
     deliver_to_terminals(
         &chat("pm", "ship it", None),
         &registry,
-        &routing,
         &store.select(),
+        &store.dispatcher(),
     );
 
     let seen = drain_for(&mut rx, "ship it").await;
@@ -134,19 +164,17 @@ async fn a_broadcast_chat_is_framed_and_written_into_a_live_agents_terminal() {
 
 #[tokio::test]
 async fn an_inject_is_held_not_submitted_while_the_owner_is_mid_typing_into_the_agent() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
-    let store = slice_of(&routing);
+    let store = wired_store();
     let registry = LivePtyRegistry::new();
-    let _rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
+    let _rx = register_live_cat(&registry, &store, "sess-dev", "dev", "term-dev");
 
     registry.note_human_keystroke("term-dev");
 
     let held = deliver_to_terminals(
         &chat("pm", "ship it", None),
         &registry,
-        &routing,
         &store.select(),
+        &store.dispatcher(),
     );
 
     assert_eq!(
@@ -163,25 +191,21 @@ async fn an_inject_is_held_not_submitted_while_the_owner_is_mid_typing_into_the_
 
 #[tokio::test]
 async fn a_held_inject_delivers_once_the_owner_pauses_typing() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let routing = Arc::new(RoutingStore::new(crate::storage::sqlite_test_storage(
-        dir.path(),
-    )));
-    let store = slice_of(&routing);
+    let store = wired_store();
     let registry = Arc::new(LivePtyRegistry::new());
-    let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
+    let mut rx = register_live_cat(&registry, &store, "sess-dev", "dev", "term-dev");
 
     registry.note_human_keystroke("term-dev");
     let held = deliver_to_terminals(
         &chat("pm", "ship it", None),
         &registry,
-        &routing,
         &store.select(),
+        &store.dispatcher(),
     );
     assert_eq!(held.len(), 1, "held while the owner types");
 
     for inject in held {
-        spawn_deferred_inject(registry.clone(), routing.clone(), inject);
+        spawn_deferred_inject(registry.clone(), store.dispatcher(), inject);
     }
 
     let seen = drain_for(&mut rx, "ship it").await;
@@ -193,19 +217,17 @@ async fn a_held_inject_delivers_once_the_owner_pauses_typing() {
 
 #[tokio::test]
 async fn a_broadcast_to_an_idle_agent_submits_immediately_despite_a_server_cd_write() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
-    let store = slice_of(&routing);
+    let store = wired_store();
     let registry = LivePtyRegistry::new();
-    let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
+    let mut rx = register_live_cat(&registry, &store, "sess-dev", "dev", "term-dev");
 
     registry.write_to("term-dev", b"cd /work\n");
 
     let held = deliver_to_terminals(
         &chat("pm", "ship it", None),
         &registry,
-        &routing,
         &store.select(),
+        &store.dispatcher(),
     );
 
     assert!(
@@ -221,9 +243,7 @@ async fn a_broadcast_to_an_idle_agent_submits_immediately_despite_a_server_cd_wr
 
 #[tokio::test]
 async fn the_carriage_return_submits_the_line_so_a_bare_read_loop_processes_it_not_parks() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
-    let store = slice_of(&routing);
+    let store = wired_store();
     let registry = LivePtyRegistry::new();
     let live = spawn_pty_retained(
         "/bin/sh",
@@ -237,13 +257,19 @@ async fn the_carriage_return_submits_the_line_so_a_bare_read_loop_processes_it_n
     .unwrap();
     let mut rx = live.subscribe();
     registry.insert("term-dev".to_string(), live);
-    routing.register_agent("sess-dev", "dev", "term-dev", "2000-01-01T00:00:00Z");
+    register_agent(
+        &store,
+        "sess-dev",
+        "dev",
+        "term-dev",
+        "2000-01-01T00:00:00Z",
+    );
 
     deliver_to_terminals(
         &chat("pm", "reach-the-role", None),
         &registry,
-        &routing,
         &store.select(),
+        &store.dispatcher(),
     );
 
     let seen = drain_for(&mut rx, "PROCESSED[").await;
@@ -255,18 +281,16 @@ async fn the_carriage_return_submits_the_line_so_a_bare_read_loop_processes_it_n
 
 #[tokio::test]
 async fn a_scoped_message_reaches_only_the_matching_display_no_leak() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
-    let store = slice_of(&routing);
+    let store = wired_store();
     let registry = LivePtyRegistry::new();
-    let mut dev_rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
-    let mut pm_rx = register_live_cat(&registry, &routing, "sess-pm", "pm", "term-pm");
+    let mut dev_rx = register_live_cat(&registry, &store, "sess-dev", "dev", "term-dev");
+    let mut pm_rx = register_live_cat(&registry, &store, "sess-pm", "pm", "term-pm");
 
     deliver_to_terminals(
         &chat("designer", "for dev only", Some(vec!["dev".to_string()])),
         &registry,
-        &routing,
         &store.select(),
+        &store.dispatcher(),
     );
 
     let dev_seen = drain_for(&mut dev_rx, "for dev only").await;
@@ -285,17 +309,15 @@ async fn a_scoped_message_reaches_only_the_matching_display_no_leak() {
 
 #[tokio::test]
 async fn the_sender_does_not_receive_an_echo_of_its_own_message() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
-    let store = slice_of(&routing);
+    let store = wired_store();
     let registry = LivePtyRegistry::new();
-    let mut dev_rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
+    let mut dev_rx = register_live_cat(&registry, &store, "sess-dev", "dev", "term-dev");
 
     deliver_to_terminals(
         &chat("dev", "my own line", None),
         &registry,
-        &routing,
         &store.select(),
+        &store.dispatcher(),
     );
 
     registry.write_to("term-dev", b"OWN-SENTINEL\r");
@@ -309,20 +331,18 @@ async fn the_sender_does_not_receive_an_echo_of_its_own_message() {
 #[tokio::test]
 async fn an_agents_own_broadcast_under_its_bridge_name_is_not_reflected_back_into_its_own_terminal()
 {
-    let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
-    let store = slice_of(&routing);
+    let store = wired_store();
     let registry = LivePtyRegistry::new();
     let dev_terminal = "ccb4298d-1111-2222-3333-444455556666";
-    let mut dev_rx = register_live_cat(&registry, &routing, "sess-dev", "dev", dev_terminal);
-    let mut pm_rx = register_live_cat(&registry, &routing, "sess-pm", "pm", "term-pm");
+    let mut dev_rx = register_live_cat(&registry, &store, "sess-dev", "dev", dev_terminal);
+    let mut pm_rx = register_live_cat(&registry, &store, "sess-pm", "pm", "term-pm");
 
     let sender = crate::routing::bridge_agent_name(dev_terminal);
     deliver_to_terminals(
         &chat(&sender, "my own line", None),
         &registry,
-        &routing,
         &store.select(),
+        &store.dispatcher(),
     );
 
     let pm_seen = drain_for(&mut pm_rx, "my own line").await;
@@ -341,8 +361,7 @@ async fn an_agents_own_broadcast_under_its_bridge_name_is_not_reflected_back_int
 
 #[tokio::test]
 async fn a_register_in_a_dir_with_populated_history_starts_clean_no_backlog_dump() {
-    let store_dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::new(crate::storage::sqlite_test_storage(store_dir.path()));
+    let store = wired_store();
     let registry = LivePtyRegistry::new();
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
@@ -366,13 +385,13 @@ async fn a_register_in_a_dir_with_populated_history_starts_clean_no_backlog_dump
     let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
     let mut rx = live.subscribe();
     registry.insert("term-dev".to_string(), live);
-    routing.register("sess-dev", "dev");
-    routing.link_terminal("sess-dev", "term-dev");
+    register_and_link(&store, "sess-dev", "dev", "term-dev");
 
     drain_missed(
         &hub,
         &registry,
-        &routing,
+        &store.select(),
+        &store.dispatcher(),
         "sess-dev",
         "term-dev",
         "dev",
@@ -389,8 +408,7 @@ async fn a_register_in_a_dir_with_populated_history_starts_clean_no_backlog_dump
 
 #[tokio::test]
 async fn a_message_in_the_join_gate_window_is_drained_addressed_or_the_welcome_broadcast() {
-    let store_dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::new(crate::storage::sqlite_test_storage(store_dir.path()));
+    let store = wired_store();
     let registry = LivePtyRegistry::new();
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
@@ -414,13 +432,13 @@ async fn a_message_in_the_join_gate_window_is_drained_addressed_or_the_welcome_b
     let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
     let mut rx = live.subscribe();
     registry.insert("term-dev".to_string(), live);
-    routing.register("sess-dev", "dev");
-    routing.link_terminal("sess-dev", "term-dev");
+    register_and_link(&store, "sess-dev", "dev", "term-dev");
 
     drain_missed(
         &hub,
         &registry,
-        &routing,
+        &store.select(),
+        &store.dispatcher(),
         "sess-dev",
         "term-dev",
         "dev",
@@ -441,8 +459,7 @@ async fn a_message_in_the_join_gate_window_is_drained_addressed_or_the_welcome_b
 
 #[tokio::test]
 async fn offline_broadcasts_are_not_re_drained_on_reconnect_broadcasts_are_live_forward_only() {
-    let store_dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::new(crate::storage::sqlite_test_storage(store_dir.path()));
+    let store = wired_store();
     let registry = LivePtyRegistry::new();
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
@@ -451,12 +468,11 @@ async fn offline_broadcasts_are_not_re_drained_on_reconnect_broadcasts_are_live_
     let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
     let mut rx1 = live.subscribe();
     registry.insert("term1".to_string(), live);
-    let store = slice_of(&routing);
-    routing.register_agent("sess-dev", "dev", "term1", "2000-01-01T00:00:00Z");
+    register_agent(&store, "sess-dev", "dev", "term1", "2000-01-01T00:00:00Z");
 
     let m1 = chat_at("pm", "M1-delivered-live", None, "2026-06-13T10:00:00Z");
     hub.broadcast(&m1).unwrap();
-    deliver_to_terminals(&m1, &registry, &routing, &store.select());
+    deliver_to_terminals(&m1, &registry, &store.select(), &store.dispatcher());
     assert!(
         drain_for(&mut rx1, "M1-delivered-live")
             .await
@@ -468,16 +484,17 @@ async fn offline_broadcasts_are_not_re_drained_on_reconnect_broadcasts_are_live_
 
     let m2 = chat_at("designer", "M2-while-offline", None, "2026-06-13T10:05:00Z");
     hub.broadcast(&m2).unwrap();
-    deliver_to_terminals(&m2, &registry, &routing, &store.select());
+    deliver_to_terminals(&m2, &registry, &store.select(), &store.dispatcher());
 
     let live2 = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
     let mut rx2 = live2.subscribe();
     registry.insert("term2".to_string(), live2);
-    routing.register_agent("sess-dev", "dev", "term2", "2026-06-13T11:00:00Z");
+    register_agent(&store, "sess-dev", "dev", "term2", "2026-06-13T11:00:00Z");
     drain_missed(
         &hub,
         &registry,
-        &routing,
+        &store.select(),
+        &store.dispatcher(),
         "sess-dev",
         "term2",
         "dev",
@@ -494,20 +511,25 @@ async fn offline_broadcasts_are_not_re_drained_on_reconnect_broadcasts_are_live_
 
 #[tokio::test]
 async fn a_pty_loop_delivered_message_is_not_systematically_re_drained_by_the_dev_stop_hook() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
+    let store = wired_store();
     let registry = LivePtyRegistry::new();
     let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
     let _rx = live.subscribe();
     registry.insert("term-dev".to_string(), live);
-    let store = slice_of(&routing);
-    routing.register_agent("sess-dev", "dev", "term-dev", "2000-01-01T00:00:00Z");
+    register_agent(
+        &store,
+        "sess-dev",
+        "dev",
+        "term-dev",
+        "2000-01-01T00:00:00Z",
+    );
 
     let m = chat("pm", "single-delivery", None);
-    deliver_to_terminals(&m, &registry, &routing, &store.select());
+    deliver_to_terminals(&m, &registry, &store.select(), &store.dispatcher());
 
-    let floor = routing
-        .drain_floor("sess-dev", Some("2020-01-01T00:00:00Z"))
+    let floor = store
+        .select()
+        .select(|s| drain_floor(&s.routing, "sess-dev", Some("2020-01-01T00:00:00Z")))
         .expect("floor");
     let floor_ts = chrono::DateTime::parse_from_rfc3339(&floor)
         .unwrap()
@@ -521,10 +543,8 @@ async fn a_pty_loop_delivered_message_is_not_systematically_re_drained_by_the_de
 
 #[tokio::test]
 async fn a_committed_dormant_agent_is_woken_when_its_gate_event_fires() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
+    let store = wired_store();
     let registry = LivePtyRegistry::new();
-    let store = slice_of(&routing);
     let live = spawn_pty_retained(
         "/bin/sh",
         &[
@@ -537,7 +557,13 @@ async fn a_committed_dormant_agent_is_woken_when_its_gate_event_fires() {
     .unwrap();
     let mut rx = live.subscribe();
     registry.insert("term-dev".to_string(), live);
-    routing.register_agent("sess-dev", "dev", "term-dev", "2000-01-01T00:00:00Z");
+    register_agent(
+        &store,
+        "sess-dev",
+        "dev",
+        "term-dev",
+        "2000-01-01T00:00:00Z",
+    );
 
     store.dispatch(commit("dev", "ci_state_changed", None));
 
@@ -557,12 +583,8 @@ async fn a_committed_dormant_agent_is_woken_when_its_gate_event_fires() {
 
 #[tokio::test]
 async fn the_live_delivery_loop_wakes_a_committed_dormant_agent_on_a_broadcast_ci_event() {
-    let store_dir = tempfile::TempDir::new().unwrap();
-    let routing = Arc::new(RoutingStore::new(crate::storage::sqlite_test_storage(
-        store_dir.path(),
-    )));
+    let store = wired_store();
     let registry = Arc::new(LivePtyRegistry::new());
-    let store = slice_of(&routing);
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
     let hub = Arc::new(crate::hub::Hub::new(
@@ -583,13 +605,18 @@ async fn the_live_delivery_loop_wakes_a_committed_dormant_agent_on_a_broadcast_c
     .unwrap();
     let mut rx = live.subscribe();
     registry.insert("term-dev".to_string(), live);
-    routing.register_agent("sess-dev", "dev", "term-dev", "2000-01-01T00:00:00Z");
+    register_agent(
+        &store,
+        "sess-dev",
+        "dev",
+        "term-dev",
+        "2000-01-01T00:00:00Z",
+    );
     store.dispatch(commit("dev", "ci_state_changed", None));
 
     spawn_terminal_delivery_loop(
         hub.clone(),
         registry.clone(),
-        routing.clone(),
         store.select(),
         store.dispatcher(),
     );
@@ -606,12 +633,8 @@ async fn the_live_delivery_loop_wakes_a_committed_dormant_agent_on_a_broadcast_c
 
 #[tokio::test]
 async fn a_committed_wake_is_held_while_the_owner_types_then_delivers_on_pause() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let routing = Arc::new(RoutingStore::new(crate::storage::sqlite_test_storage(
-        dir.path(),
-    )));
+    let store = wired_store();
     let registry = Arc::new(LivePtyRegistry::new());
-    let store = slice_of(&routing);
     let live = spawn_pty_retained(
         "/bin/sh",
         &[
@@ -624,7 +647,13 @@ async fn a_committed_wake_is_held_while_the_owner_types_then_delivers_on_pause()
     .unwrap();
     let mut rx = live.subscribe();
     registry.insert("term-dev".to_string(), live);
-    routing.register_agent("sess-dev", "dev", "term-dev", "2000-01-01T00:00:00Z");
+    register_agent(
+        &store,
+        "sess-dev",
+        "dev",
+        "term-dev",
+        "2000-01-01T00:00:00Z",
+    );
     store.dispatch(commit("dev", "ci_state_changed", None));
 
     registry.note_human_keystroke("term-dev");
@@ -641,7 +670,7 @@ async fn a_committed_wake_is_held_while_the_owner_types_then_delivers_on_pause()
     );
 
     for inject in held {
-        spawn_deferred_inject(registry.clone(), routing.clone(), inject);
+        spawn_deferred_inject(registry.clone(), store.dispatcher(), inject);
     }
     let seen = drain_for(&mut rx, "PROCESSED[").await;
     assert!(
@@ -652,11 +681,9 @@ async fn a_committed_wake_is_held_while_the_owner_types_then_delivers_on_pause()
 
 #[tokio::test]
 async fn an_uncommitted_agent_is_not_woken_by_an_ambient_gate_event() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
+    let store = wired_store();
     let registry = LivePtyRegistry::new();
-    let store = slice_of(&routing);
-    let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
+    let mut rx = register_live_cat(&registry, &store, "sess-dev", "dev", "term-dev");
 
     wake_committed_terminals(
         &ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"),
@@ -675,11 +702,9 @@ async fn an_uncommitted_agent_is_not_woken_by_an_ambient_gate_event() {
 
 #[tokio::test]
 async fn a_filtered_commitment_is_not_woken_by_a_non_matching_event_at_the_delivery_seam() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
+    let store = wired_store();
     let registry = LivePtyRegistry::new();
-    let store = slice_of(&routing);
-    let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
+    let mut rx = register_live_cat(&registry, &store, "sess-dev", "dev", "term-dev");
 
     let mut filter = serde_json::Map::new();
     filter.insert("conclusion".to_string(), serde_json::json!("red"));
@@ -702,15 +727,13 @@ async fn a_filtered_commitment_is_not_woken_by_a_non_matching_event_at_the_deliv
 
 #[tokio::test]
 async fn a_non_chat_message_is_never_injected_into_a_terminal() {
-    let dir = tempfile::TempDir::new().unwrap();
-    let routing = RoutingStore::new(crate::storage::sqlite_test_storage(dir.path()));
-    let store = slice_of(&routing);
+    let store = wired_store();
     let registry = LivePtyRegistry::new();
-    let mut rx = register_live_cat(&registry, &routing, "sess-dev", "dev", "term-dev");
+    let mut rx = register_live_cat(&registry, &store, "sess-dev", "dev", "term-dev");
 
     let mut state = chat("bpmux", "STATE-BODY", None);
     state.message_type = MessageType::StateSnapshot;
-    deliver_to_terminals(&state, &registry, &routing, &store.select());
+    deliver_to_terminals(&state, &registry, &store.select(), &store.dispatcher());
 
     registry.write_to("term-dev", b"NONCHAT-SENTINEL\r");
     let seen = drain_for(&mut rx, "NONCHAT-SENTINEL").await;
