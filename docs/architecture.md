@@ -12,33 +12,43 @@ until evidence accrues, progressing stage-by-stage as friction demands.
   map, not a replacement for the source. Each agent forming their own
   read is the intent — divergence between reads is signal, not friction.
 
-## Current stage (verified 2026-04-18)
+## Current stage (verified 2026-07-09)
 
 **bpmux is at v3 (feature-grouped / bounded-contexts) single-crate.**
 
 Evidence:
 
-- Single-crate workspace — `Cargo.toml` declares one `bpmux` package;
-  no sub-crates.
-- Top-level modules align with business capabilities, not horizontal
-  layers: `board` (canonical store + adapters + RefreshDriver trait)
-  / `bridge` (MCP stdio integration) / `github` (GH API client) /
-  `mcp` (MCP server runtime) / `orchestrator` (action dispatch +
-  state-delta synthesis) / `session` (persistent storage, lessons,
-  identity, briefings, bookmarks, pins, reactions, tokens) /
-  `transport` (P2P networking, protocols, REST surface, WebRTC).
-  TUI lives in `applications/electron/` (TypeScript renderer +
-  Electron main), not in this crate; Epic #1247 retired the
-  in-crate `terminal/` module in favor of an Electron-owned UI
-  fed through the `transport` REST/WS surfaces.
-- Explicit module boundaries via `mod.rs` re-exports. Each feature
-  group exposes a curated public API; internals stay private.
-- No circular dependencies between feature groups. Dependency flows
-  downward: `bridge` depends on `board` + `session` + `transport`;
-  `orchestrator` depends on `board`; `board` + `transport` depend
-  on `session`; `session` is a leaf. The TypeScript renderer talks
-  to bpmux only over the REST + WS protocols exposed by `transport`
-  — no in-process coupling.
+- Single-crate workspace — `applications/bpmux/Cargo.toml` declares
+  one `bpmux` package; no sub-crates. The UI is a separate TypeScript
+  app (`applications/electron/`) that talks to bpmux only over the
+  WS/REST surfaces `transport` exposes — no in-process coupling.
+- ~27 feature-grouped modules aligned to business capabilities, not
+  horizontal layers. The load-bearing groups: `product_management`
+  (stories/epics/iterations/outcomes — the domain), `board`,
+  `workflow`, `store` (the one redux-shaped store), `kernel`
+  (dispatch + listener delivery modes), `sync` (ingest/drain/outbox
+  write-behind), `integrations` (GitHub gateway + mapper), `github`
+  (raw GH client), `bridge` (MCP tools), `mcp`, `transport`
+  (WS/REST/WebRTC), `message`, `storage` (data store engines behind
+  per-feature ports), `routing` (user identity), `roster`, `memory`,
+  `view`, `ci`, `cli`, `server`, plus leaf capabilities (`hub`,
+  `location`, `auth`, `awareness`, `reactions`, `room`, `telemetry`,
+  `log`, `comprehension`, `diag`, `persist`, `ci_link`). The
+  2026-04-18 reading's `session` and `orchestrator` modules are
+  DISSOLVED — bpmux has no sessions (that concept became `hub` +
+  `storage/` + user identity in `routing`), and the orchestrator
+  became the store/kernel/sync triad.
+- **One redux-shaped store.** Every state change flows
+  `dispatch(action) → pure reducers → listeners`; there is ONE
+  kernel-direct dispatcher (`store::Dispatch`); listeners declare a
+  delivery mode (latest-state coalescing / ordered-FIFO /
+  fire-and-forget); selectors are the only read path; persistence and
+  GitHub are eventually-consistent write-behind projections off the
+  store, never synchronous writes in the action path.
+- Ten seam-lock families (`boundary_tests.rs` in message, workflow,
+  board, product_management, view, sync, storage, integrations,
+  bridge, transport) substrate-enforce the boundaries; each is
+  proven-to-falsify and green on main.
 
 **Approaching v4 (components-within-app) but not there.** v4 requires
 independently-built-and-tested components with explicit declared
@@ -47,58 +57,38 @@ coupled (integration tests span features, spin up the full runtime).
 
 ## Current frictions
 
-Ranked by pressure toward next-stage progression:
+Measured 2026-07-09 — the friction datum for the next stage re-eval:
+warm incremental `cargo check` after touching the most-shared leaf
+(`message`) = 2.0s lib / 5.1s `--all-targets`, far under the ~30s
+feedback bar. No friction currently presses toward stage progression:
 
-1. **`bridge/` tool responders duplicated `session/` access logic** —
-   no shared query layer. Adding an identity field used to require
-   touching `session/identity.rs`, `bridge/tools/get_identity.rs`, and
-   bridge helpers; coordination cost grew with change frequency.
-   **Status (#1363):** wire-shape leak retired via `bridge::view_model`.
-   Identity / token-report / bookmark / velocity responses now flow
-   through bridge-owned view types (`IdentityIndexView`,
-   `TokenReportView`, `BookmarkView`, `VelocityMetricsView`); session
-   schema changes are absorbed at the `From<&session::Foo>` translation
-   step instead of cascading to the MCP wire shape. Service-utility
-   calls (`session::diag::log_diag`, `session::auth_token::*`) remain
-   direct — they're infrastructure, not domain types. The shared
-   query-layer goal (DRY across tools) is partially met by the view
-   module; full coordination-cost-reduction would require also
-   collapsing the per-tool repeat of `load_X → write_X` patterns,
-   which is downstream of the view-model substrate.
-2. **Integration tests require full runtime** — `tests/integration_main_modules/`
-   spin up the full bpmux server with session + board + orchestrator
-   + transport wired together; the in-process e2e tests under
-   `applications/electron/tests/` launch a real Electron instance + a
-   spawned bpmux binary in parallel. No component-level test isolation
-   in either tier. A v4 move would extract independently-testable
-   units (board operations testable without the orchestrator drain
-   loop; bridge tools testable against a stub `RefreshDriver` without
-   spinning up the canonical store from disk).
-3. **Renderer ↔ bpmux JSON-wire shape is the new boundary** — with
-   the TUI extracted to Electron + the Friction #2 view-model layer
-   landed, the new architectural seam is the REST/WS contract between
-   the TypeScript renderer and the Rust bpmux server. Wire-shape
-   drift here (e.g., a session::Foo schema change that the bridge
-   view_model absorbs into the wire JSON would not propagate to the
-   renderer's TypeScript types) is a coordination cost not yet
-   substrate-enforced; types are duplicated in `applications/electron/src/renderer/`.
-   v4-equivalent fix: codegen TypeScript types from the bridge view
-   models, or contract-test the wire shape at the boundary.
-   **Status (WS-only renderer, 2026-06-19, commit 7f14d95c):** the
-   renderer's DATA READS moved off REST onto the WebSocket (see
-   "Renderer data layer: WS-only" below). The boundary is now the WS
-   typed-frame contract; the REST surface persists for CLI / MCP /
-   main-process. The TypeScript-type-duplication coordination cost is
-   unchanged — still the open v4-fix.
+1. ~~`bridge/` duplicated storage-access logic~~ — RESOLVED by
+   dissolution: the view-model seam (#1363) plus the store re-homes
+   (everything reads selectors off the one store) retired the class.
+2. **Integration tests require full runtime** — unchanged in shape
+   (`tests/integration_main_modules/` spins up the wired server; the
+   e2e tier launches real Electron + a spawned bpmux), but carries no
+   live pressure: the kernel/store split gives pure unit seams
+   (reducers, selectors, delivery-mode listeners) below the
+   integration tier, and the suites are green and fast.
+3. **Renderer ↔ bpmux TypeScript type duplication** — still the open
+   v4-class coordination cost: the WS typed-frame contract is
+   hand-mirrored in `applications/electron/src/renderer/`. Codegen
+   from the Rust view/wire types, or boundary contract tests, remain
+   the fix for when the drift class actually bites.
+4. **Unresolved twin: `src/github/` (raw client) vs
+   `src/integrations/github/` (gateway + mapper)** — a split any
+   crate lift would freeze into an API; resolve it before a v4
+   station touches that seam.
 
 ## Where v3 is working
 
 The Continuum argues staying at a stage is often correct.
 
 - **Feature-grouping maps to team mental model** — "I'm working on
-  session awareness" translates directly to `src/session/awareness/`.
-  No search overhead. Code structure matches domain language (DDD
-  bounded contexts).
+  awareness" translates directly to `src/awareness/`. No search
+  overhead. Code structure matches domain language (DDD bounded
+  contexts).
 - **Transport decoupled from business logic** — WebRTC support added
   with zero changes to bridge or session. Transport is resilient to
   layer additions because boundaries were explicit.
@@ -109,126 +99,63 @@ The Continuum argues staying at a stage is often correct.
 
 ## Stage-progression recommendation
 
-Stay at v3 for the next 2-3 stories; begin v4 preparation work in
-parallel. The Continuum's guidance: progress when friction is urgent,
-not speculatively.
+**HOLD at v3.** The full derivation, seam map, and station order live
+in `docs/design/app-continuum-lift-derivation.md` (seam order:
+message → workflow → kernel → storage → view → integrations,
+write-path modules last; post-K-arc the kernel is a pure leaf and a
+co-first station candidate). Re-evaluated 2026-07-09 after the
+store/kernel/WR/SR/session-dissolution arcs all landed CI-green:
+three of the four HOLD-preconditions flipped mechanically; the fourth
+— a live, named friction the seam locks cannot hold — has no
+evidence. The Continuum's bar is lift-on-friction, never on
+completion-momentum or aesthetics.
 
-First v4 step landed (#1363): `bridge::view_model` boundary now
-translates session types into bridge-owned response types. Testable
-with mocked session; decouples bridge from session refactor; closed
-Friction #2's wire-shape leak class. Sister substrate-pivots in the
-same iteration window: #1353 (bridge/tools_stories.rs split into 9
-feature-cohered submodules), #1354 (transport/rest.rs split into 13
-feature-cohered submodules), #1360 (orchestrator.rs Mutex sites
-refactored to transactional-closure pattern), #1361 (snapshot_status
-immutable-derivation).
+Mechanical flip-triggers (any ONE re-opens the v4 question — first
+step is a single station, extract `message` or `kernel` alone, not a
+whole-crate split):
 
-Second v4 step landed: `board::view_model::StoryView` mirrors the bridge
-boundary at the canonical-store↔renderer seam. The board card was a
-hand-built 18-field `serde_json::json!` inside `story_to_board_json`;
-it is now a typed `Serialize` view (with `IterationMembershipView` /
-`OutcomeMembershipView` sub-views) and a single `project(codec, story)`
-translation over the `raw_labels` selectors. `story_to_board_json`
-collapses to a one-line delegation, so the REST board endpoint crosses
-the boundary through one typed point — the renderer board-card wire is
-now a Rust type, closing Friction #3's board-card drift class.
-Discovered in the extraction: of the `Story` / `BoardEvent` pair only
-`Story` crosses to the renderer wire (`BoardEvent` is outbox-internal),
-so the one view covers the whole board→renderer surface. Landed as a
-direct dev refactor (no story number; preceded by the board-fold that
-made every wire field a selector over `raw_labels`).
-
-Candidate next v4 step: the renderer-side TypeScript-codegen friction
-(#3 above) — now that both wire boundaries (bridge + board) are typed
-view structs, generating the renderer's wire types from those structs
-would close the last leg of the type-duplication coordination cost.
+1. Warm `cargo check --all-targets` after a leaf touch exceeds ~30s.
+2. A seam violation lands on main that a text-scan lock missed
+   (compiler enforcement then earns its cost).
+3. A second wire consumer needs `message` types without the crate.
+4. A deployable needs an independent build/release cadence.
 
 bpmux likely doesn't need v6+ (microservices) at any foreseeable point
 — it's a single coordination substrate, not a service mesh. The
 Continuum's v3-v5 range is the load-bearing window for this product.
 
-## Storage layer: Strategy-pattern DI (#1289)
+## Storage layer: per-feature ports over swappable engines
 
-bpmux's persistence is abstracted behind two traits, both at
-`applications/bpmux/src/session/storage/mod.rs`:
+Persistence lives at `applications/bpmux/src/storage/` — the INSTANCE
+data store (`data.db` + sibling json/jsonl files under the data dir;
+bpmux has no sessions, so there is no "session store"). The god
+`Storage` trait was split into five feature-owned ports (design:
+`docs/design/storage-repo-ports.md`): `SurfacedTopicsRepo`
+(awareness), `MessageLog` (log), `LessonRepo` (memory), `OutboxRepo`
+(sync), `UserRepo` (routing). Each feature states WHAT it needs in
+domain terms; storage's engines implement the ports behind a composite
+super-trait. `GlobalStore` was deleted outright (it had zero
+production wiring).
 
-- **`Storage`** — session-scoped persistence. Owns reads/writes for
-  state that lives under a session directory: messages
-  (`messages-current.jsonl`), lessons + peer lessons, generic
-  key-value state, board snapshot (`board-store.json`), outbox
-  (`board-outbox.json`), bookmarks, pins, reactions, iteration
-  markers.
-- **`GlobalStore`** — cross-session persistence. Owns reads/writes
-  for state at user-global paths under `~/.bpmux/` that survive
-  multiple sessions: priority (`~/.bpmux/priority.json`), per-role
-  identity (`~/.bpmux/identity/{role}.json`), per-role briefing
-  (`~/.bpmux/briefings/{role}.md`), token log
-  (`~/.bpmux/tokens/log.jsonl`), feature-usage counters
-  (`~/.bpmux/usage.json`), and per-run auth token
-  (`~/.bpmux/auth_token`).
-
-**Session `Storage`** — two impls; contract tests prove
-FileStore ↔ SqliteStore semantic-parity (#1799 cut message history
-to SQLite; `MemoryStorage` is retired):
-
-- `FileStorage` — disk-backed jsonl + json. Atomic-rename + fsync
-  semantics stay inside FileStorage; tests' knowledge of those
-  idiosyncrasies is zero. Retained for the legacy-jsonl read the
+- `FileStorage` — disk-backed jsonl/json; atomic-rename + fsync
+  semantics stay inside; retained for the legacy-jsonl read the
   `migrate-storage` cutover path needs.
 - `SqliteStorage` — SQLite-backed (`data.db`); schema defined by
   **refinery versioned migrations** (`migrations/V{N}__*.sql`,
-  embedded + run on connection-open), never inline DDL — forward-only,
-  guarded by `migrations_are_forward_only_versioned` (any `U`/down/
-  rollback file fails the build).
+  embedded + run idempotently on connection-open), never inline DDL —
+  forward-only, guarded by `migrations_are_forward_only_versioned`.
+- Backend **injected, not env-read in the data path**:
+  `StorageBackend::resolve()` reads `BPMUX_STORAGE_BACKEND` exactly
+  once at the composition root; tests construct with an explicit
+  backend and per-test tempdirs (`--data-base` / `BPMUX_DATA_BASE`).
+- FileStorage ↔ SqliteStorage behavior parity is pinned by the
+  behavior suites in `src/storage/` + `src/storage_tests/`; the
+  storage boundary lock keeps SQL mechanism (rusqlite, refinery) out
+  of port-owning feature modules.
 
-**`GlobalStore` is unchanged** — `FileGlobalStore` (disk, production) +
-`MemoryGlobalStore` (in-memory test double).
-
-The session backend is **injected, not env-read in the data path**:
-`StorageBackend::{File,Sqlite}` resolves `BPMUX_STORAGE_BACKEND` exactly
-once at the composition root (`StorageBackend::resolve()`);
-`Session::new` delegates to `Session::with_backend(…)`, which tests call
-with an explicit backend — no global-env mutation, no serializing Mutex,
-so the storage tests are independent.
-
-**Production behavior preserved by path-injection builders** —
-each FileStorage path is `Option<PathBuf>` with builder
-`with_<thing>_path(p)`. Default (None) resolves via the existing
-`default_<thing>_path()` helpers (env-overridable, e.g.,
-`BPMUX_BOARD_STORE_PATH` + `BPMUX_BOARD_OUTBOX_PATH`; home-default
-fallback). Production constructs with None; tests construct with
-explicit per-test tempdirs to avoid sharing `~/.bpmux/*` files.
-
-**Contract-test pattern at
-`applications/bpmux/src/session/storage_tests/`** — `contract!`
-macro runs the same assertion against both `FileStorage` and
-`MemoryStorage` (sister `global_contract!` for the GlobalStore
-pair). Behavioral parity is verified at test-write time; divergence
-is impossible to land. 94 contract tests covering 10 session-scoped
-types + 5 cross-session globals (priority / identity / briefing /
-tokens / usage). One global — `auth_token` — has a **divergent
-contract** by boundary-discipline: `FileGlobalStore` wraps mode-0600
-filesystem semantics; `MemoryGlobalStore` returns
-`ErrorKind::Unsupported` because a process-owned cryptographic
-secret has no in-memory equivalent. Tests requiring auth-token
-isolation use `FileGlobalStore` with per-test
-`BPMUX_AUTH_TOKEN_PATH` tempdir (established at
-`applications/electron/tests/helpers/launch.ts`).
-
-**Stage-fit**: this refactor strengthens v3 internal-bounded-context
-boundaries (session-storage capability has a clean DI seam) without
-forcing v4 components-within-app. Sister-pattern reference: the
-existing `BoardStore` + `InMemorySourceAdapter` at the SourceAdapter
-layer predates and validates this shape.
-
-**Test-substrate benefit + open follow-up**: tests injecting
-`MemoryStorage` skip per-test backend-startup-disk-I/O cost — the
-substrate-class that empirically falsified macOS self-hosted e2e
-migration on f9ebe47 / c8ba878 / 5bdb235. Phase-3 GlobalStore
-extension (identity / briefings / tokens / usage / auth_token) shipped
-under #1290 (sister-shape commits 2a91ccb / 1222506 / 9b2fc9d /
-e8e5aaf / 49e3f94). Full wall-clock measurement + launch-helper
-test-seed-API (Part A/B) complete #1290.
+Store-adjacent persistence (board placements, shared/placement
+history, the outbox) rides write-behind persister listeners off the
+one redux-shaped store — projections, never sources of truth.
 
 ## Iteration substrate: canonical-via-GH issue (Epic #1189)
 
@@ -279,14 +206,11 @@ sub-slice retired one feature end-to-end across all layers
 pattern matches the Storage-trait DI v3-strengthening shape: parallel
 paths during transition, atomic close-out at the retirement seam.
 
-**Chokepoint guarantee**: `BoardStore::apply` is the canonical
-mutation-chain chokepoint (#1282 fire-ordering invariant). All eight
-`BoardEvent::StateTransitioned` dispatch sites + all `TagAdded` /
-`TagRemoved` / `StoryClosed` / `StoryCreated` / `LabelsRefreshed`
-routes pass through it; the iteration-substrate inherits the
-fire-ordering + label-decoder + iteration_id-sync guarantees
-automatically. Sister to #1289 contract-test pattern that pins
-FileStorage / MemoryStorage parity at write-time.
+**Chokepoint guarantee** (originally `BoardStore::apply`, #1282; now
+carried by the one store): every story mutation dispatches a
+`StoryEvent` through the single kernel-direct dispatcher and reduces
+in one place, so the iteration-substrate inherits fire-ordering +
+label-decoder + iteration_id-sync guarantees automatically.
 
 **Test-seed-API gap-list (Epic #1247 audit-output)**: the parallel-
 RTL migration audit (#1305) surfaced 6 missing test-seed-APIs gating
