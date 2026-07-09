@@ -1,17 +1,14 @@
-use std::sync::atomic::Ordering;
-
 use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::sync::{SourceAdapter, SyncError};
 
-use super::{MutationId, QueuedWrite, SyncOrchestrator};
+use super::{PendingWrite, SyncOrchestrator};
 
 mod drain_pass;
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub fn mutate(&self, event: StoryEvent) -> Result<(), SyncError> {
-        let id = MutationId(self.next_mutation_id.fetch_add(1, Ordering::SeqCst));
         self.apply_story_event(&event);
-        let write = QueuedWrite::from_event(&*self.codec, id, event);
+        let write = PendingWrite::from_event(&*self.codec, event);
         self.dispatch_board(crate::store::AppAction::Sync(
             crate::store::SyncAction::WriteQueued { write },
         ));
@@ -25,10 +22,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self.apply_story_events(&events);
         let writes = events
             .into_iter()
-            .map(|event| {
-                let id = MutationId(self.next_mutation_id.fetch_add(1, Ordering::SeqCst));
-                QueuedWrite::from_event(&*self.codec, id, event)
-            })
+            .map(|event| PendingWrite::from_event(&*self.codec, event))
             .collect();
         self.dispatch_board(crate::store::AppAction::Sync(
             crate::store::SyncAction::WritesQueued(writes),

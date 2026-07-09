@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use crate::product_management::story::events::StoryEventKind;
-use crate::sync::QueuedWrite;
+use crate::sync::{MutationId, QueuedWrite};
 
 use super::{SyncAction, SyncState};
 
@@ -9,18 +9,30 @@ pub fn reduce(state: &SyncState, action: &SyncAction) -> Option<SyncState> {
     match action {
         SyncAction::WriteQueued { write } => {
             let mut queue = state.queue.clone();
-            absorb_or_push(&mut queue, write.clone());
-            Some(SyncState { queue })
+            let mut next_mutation_id = state.next_mutation_id;
+            let minted = QueuedWrite::minted(MutationId(next_mutation_id), write.clone());
+            next_mutation_id += 1;
+            absorb_or_push(&mut queue, minted);
+            Some(SyncState {
+                queue,
+                next_mutation_id,
+            })
         }
         SyncAction::WritesQueued(writes) => {
             if writes.is_empty() {
                 return None;
             }
             let mut queue = state.queue.clone();
+            let mut next_mutation_id = state.next_mutation_id;
             for write in writes {
-                absorb_or_push(&mut queue, write.clone());
+                let minted = QueuedWrite::minted(MutationId(next_mutation_id), write.clone());
+                next_mutation_id += 1;
+                absorb_or_push(&mut queue, minted);
             }
-            Some(SyncState { queue })
+            Some(SyncState {
+                queue,
+                next_mutation_id,
+            })
         }
         SyncAction::WritePushed { id } | SyncAction::WriteDropped { id } => {
             if !state.queue.iter().any(|write| write.id == *id) {
@@ -32,7 +44,10 @@ pub fn reduce(state: &SyncState, action: &SyncAction) -> Option<SyncState> {
                 .filter(|write| write.id != *id)
                 .cloned()
                 .collect();
-            Some(SyncState { queue })
+            Some(SyncState {
+                queue,
+                next_mutation_id: state.next_mutation_id,
+            })
         }
         SyncAction::StartIngestPolling
         | SyncAction::StopIngestPolling

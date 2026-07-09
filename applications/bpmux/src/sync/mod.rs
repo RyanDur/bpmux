@@ -1,6 +1,5 @@
 use std::collections::VecDeque;
 use std::sync::Arc;
-use std::sync::atomic::AtomicU64;
 
 use chrono::Utc;
 
@@ -43,7 +42,6 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     pub(super) dispatch: std::sync::OnceLock<crate::store::Dispatch>,
     pub(super) adapter: Arc<A>,
     pub(super) codec: Arc<dyn crate::product_management::label_codec::LabelCodec + Send + Sync>,
-    pub(super) next_mutation_id: AtomicU64,
     pub(super) select: std::sync::OnceLock<crate::store::Select>,
     pub(super) issue_locks:
         tokio::sync::Mutex<std::collections::HashMap<u64, Arc<tokio::sync::Mutex<()>>>>,

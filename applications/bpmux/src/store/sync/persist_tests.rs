@@ -9,7 +9,7 @@ use crate::product_management::story::StoryId;
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::store::app::{AppAction, AppState, app_reduce};
 use crate::store::test_support::eventually;
-use crate::sync::{MutationId, QueuedEvent, QueuedWrite};
+use crate::sync::{PendingWrite, QueuedEvent};
 
 use super::{OutboxPersister, OutboxSink, SyncAction};
 
@@ -20,10 +20,9 @@ fn meta() -> EventMeta {
     }
 }
 
-fn one_write() -> QueuedWrite {
-    QueuedWrite::from_event(
+fn one_write() -> PendingWrite {
+    PendingWrite::from_event(
         &GhLabelCodec,
-        MutationId(1),
         StoryEvent::new(
             meta(),
             StoryId::new(1),
@@ -43,8 +42,10 @@ async fn a_rapid_sync_burst_persists_only_the_latest_snapshot_never_the_stale_in
     ))));
 
     let write = one_write();
-    let id = write.id;
     store.dispatch(AppAction::Sync(SyncAction::WriteQueued { write }));
+    let id = store
+        .select(|state| state.sync.queue.back().map(|queued| queued.id))
+        .expect("the queued write is minted an id by the reducer");
     store.dispatch(AppAction::Sync(SyncAction::WritePushed { id }));
 
     eventually("the coalesced burst reaches the outbox sink", || {

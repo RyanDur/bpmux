@@ -39,16 +39,14 @@ impl QueuedEvent {
 }
 
 #[derive(Debug, Clone)]
-pub struct QueuedWrite {
-    pub id: MutationId,
+pub struct PendingWrite {
     pub event: StoryEvent,
     pub iteration_class: Option<String>,
 }
 
-impl QueuedWrite {
+impl PendingWrite {
     pub fn from_event(
         codec: &dyn crate::product_management::label_codec::LabelCodec,
-        id: MutationId,
         event: StoryEvent,
     ) -> Self {
         let iteration_class = match &event.kind {
@@ -58,9 +56,25 @@ impl QueuedWrite {
             _ => None,
         };
         Self {
-            id,
             event,
             iteration_class,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct QueuedWrite {
+    pub id: MutationId,
+    pub event: StoryEvent,
+    pub iteration_class: Option<String>,
+}
+
+impl QueuedWrite {
+    pub fn minted(id: MutationId, pending: PendingWrite) -> Self {
+        Self {
+            id,
+            event: pending.event,
+            iteration_class: pending.iteration_class,
         }
     }
 }

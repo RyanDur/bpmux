@@ -101,8 +101,10 @@ impl AppState {
     }
 
     pub fn with_outbox(mut self, writes: Vec<crate::sync::QueuedWrite>) -> Self {
+        let next_mutation_id = writes.iter().map(|write| write.id.0).max().unwrap_or(0) + 1;
         self.sync = Arc::new(SyncState {
             queue: writes.into_iter().collect(),
+            next_mutation_id,
         });
         self
     }

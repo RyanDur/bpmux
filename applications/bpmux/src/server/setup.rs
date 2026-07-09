@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
 use crate::hub;
-use crate::sync::{QueuedWrite, RefreshDriver, SyncOrchestrator};
+use crate::sync::{PendingWrite, QueuedWrite, RefreshDriver, SyncOrchestrator};
 
 fn hydrate_outbox(storage: &Arc<dyn crate::storage::Storage>) -> Vec<QueuedWrite> {
     let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
     match storage.load_outbox() {
         Ok(rows) => rows
             .into_iter()
-            .map(|row| QueuedWrite::from_event(&codec, row.id, row.event))
+            .map(|row| QueuedWrite::minted(row.id, PendingWrite::from_event(&codec, row.event)))
             .collect(),
         Err(e) => {
             crate::diag::log_diag(&format!(
@@ -17,10 +17,6 @@ fn hydrate_outbox(storage: &Arc<dyn crate::storage::Storage>) -> Vec<QueuedWrite
             Vec::new()
         }
     }
-}
-
-fn next_mutation_id_for(hydrated: &[QueuedWrite]) -> u64 {
-    hydrated.iter().map(|write| write.id.0).max().unwrap_or(0) + 1
 }
 
 pub(super) fn test_mode_enabled() -> bool {
@@ -67,8 +63,7 @@ pub(super) async fn build_test_orchestrator(
 ) -> (Arc<dyn RefreshDriver>, Vec<QueuedWrite>) {
     let adapter = Arc::new(crate::integrations::in_memory::InMemorySourceAdapter::new());
     let hydrated = hydrate_outbox(&hub.storage);
-    let orch_concrete =
-        SyncOrchestrator::new(adapter).with_next_mutation_id(next_mutation_id_for(&hydrated));
+    let orch_concrete = SyncOrchestrator::new(adapter);
     seed_ci_green_for_tests(&ci_state_store);
     let mut orch_concrete = orch_concrete.with_ci_state_store(ci_state_store);
     if let Some(barrier) = race_window_barrier {
@@ -88,8 +83,7 @@ pub(super) fn build_prod_orchestrator(
         "server: board-outbox hydrated via storage ({} pending events)",
         hydrated.len()
     ));
-    let orch_concrete =
-        SyncOrchestrator::new(adapter).with_next_mutation_id(next_mutation_id_for(&hydrated));
+    let orch_concrete = SyncOrchestrator::new(adapter);
     seed_ci_green_for_tests(&ci_state_store);
     let mut orch_concrete = orch_concrete.with_ci_state_store(ci_state_store);
     if let Some(barrier) = race_window_barrier {

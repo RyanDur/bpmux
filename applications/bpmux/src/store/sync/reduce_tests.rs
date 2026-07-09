@@ -5,7 +5,7 @@ use chrono::{TimeZone, Utc};
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::product_management::story::StoryId;
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::sync::{MutationId, QueuedWrite};
+use crate::sync::{MutationId, PendingWrite, QueuedWrite};
 
 use super::{SyncAction, SyncState, reduce};
 
@@ -16,10 +16,9 @@ fn meta() -> EventMeta {
     }
 }
 
-fn tag_added(story: u64, label: &str, id: u64) -> QueuedWrite {
-    QueuedWrite::from_event(
+fn tag_added(story: u64, label: &str) -> PendingWrite {
+    PendingWrite::from_event(
         &GhLabelCodec,
-        MutationId(id),
         StoryEvent::new(
             meta(),
             StoryId::new(story),
@@ -30,10 +29,9 @@ fn tag_added(story: u64, label: &str, id: u64) -> QueuedWrite {
     )
 }
 
-fn tag_removed(story: u64, label: &str, id: u64) -> QueuedWrite {
-    QueuedWrite::from_event(
+fn tag_removed(story: u64, label: &str) -> PendingWrite {
+    PendingWrite::from_event(
         &GhLabelCodec,
-        MutationId(id),
         StoryEvent::new(
             meta(),
             StoryId::new(story),
@@ -44,8 +42,24 @@ fn tag_removed(story: u64, label: &str, id: u64) -> QueuedWrite {
     )
 }
 
+fn hydrated_write(story: u64, label: &str, id: u64) -> QueuedWrite {
+    QueuedWrite::minted(MutationId(id), tag_added(story, label))
+}
+
 fn queued(state: &SyncState, action: SyncAction) -> SyncState {
     reduce(state, &action).expect("action changes the queue")
+}
+
+fn story_order(state: &SyncState) -> Vec<u64> {
+    state
+        .queue
+        .iter()
+        .map(|w| w.event.story_id().value())
+        .collect()
+}
+
+fn mutation_ids(state: &SyncState) -> Vec<u64> {
+    state.queue.iter().map(|w| w.id.0).collect()
 }
 
 fn labels(state: &SyncState) -> Vec<(&'static str, String)> {
@@ -66,17 +80,20 @@ fn write_queued_appends_in_fifo_order() {
     let state = queued(
         &state,
         SyncAction::WriteQueued {
-            write: tag_added(1, "a", 1),
+            write: tag_added(1, "a"),
         },
     );
     let state = queued(
         &state,
         SyncAction::WriteQueued {
-            write: tag_added(2, "b", 2),
+            write: tag_added(2, "b"),
         },
     );
-    let ids: Vec<u64> = state.queue.iter().map(|w| w.id.0).collect();
-    assert_eq!(ids, vec![1, 2], "writes append in dispatch order");
+    assert_eq!(
+        story_order(&state),
+        vec![1, 2],
+        "writes append in dispatch order"
+    );
 }
 
 #[test]
@@ -84,10 +101,107 @@ fn writes_queued_appends_the_whole_batch_in_order() {
     let state = SyncState::default();
     let state = queued(
         &state,
-        SyncAction::WritesQueued(vec![tag_added(1, "a", 1), tag_added(2, "b", 2)]),
+        SyncAction::WritesQueued(vec![tag_added(1, "a"), tag_added(2, "b")]),
     );
-    let ids: Vec<u64> = state.queue.iter().map(|w| w.id.0).collect();
-    assert_eq!(ids, vec![1, 2]);
+    assert_eq!(story_order(&state), vec![1, 2]);
+}
+
+#[test]
+fn two_write_queued_dispatches_mint_distinct_increasing_ids() {
+    let state = SyncState::default();
+    let state = queued(
+        &state,
+        SyncAction::WriteQueued {
+            write: tag_added(1, "a"),
+        },
+    );
+    let state = queued(
+        &state,
+        SyncAction::WriteQueued {
+            write: tag_added(2, "b"),
+        },
+    );
+    assert_eq!(
+        mutation_ids(&state),
+        vec![1, 2],
+        "the reducer mints a distinct, increasing id per queued write"
+    );
+}
+
+#[test]
+fn writes_queued_mints_sequential_ids_in_vec_order() {
+    let state = SyncState::default();
+    let state = queued(
+        &state,
+        SyncAction::WritesQueued(vec![
+            tag_added(1, "a"),
+            tag_added(2, "b"),
+            tag_added(3, "c"),
+        ]),
+    );
+    assert_eq!(
+        mutation_ids(&state),
+        vec![1, 2, 3],
+        "a batch mints sequential ids matching vec order"
+    );
+}
+
+#[test]
+fn hydrated_max_id_seeds_next_mint_so_a_fresh_write_never_collides() {
+    let hydrated =
+        crate::store::app::AppState::default().with_outbox(vec![hydrated_write(9, "ready", 7)]);
+    let state = (*hydrated.sync).clone();
+    let state = queued(
+        &state,
+        SyncAction::WriteQueued {
+            write: tag_added(1, "a"),
+        },
+    );
+    let fresh_id = state
+        .queue
+        .iter()
+        .find(|w| w.event.story_id().value() == 1)
+        .expect("the fresh write is queued")
+        .id
+        .0;
+    assert_eq!(
+        fresh_id, 8,
+        "the fresh mint is max-persisted-id + 1 — it never collides with a hydrated row's id"
+    );
+}
+
+#[test]
+fn an_absorbed_iteration_label_write_still_advances_the_counter() {
+    let state = SyncState::default();
+    let state = queued(
+        &state,
+        SyncAction::WriteQueued {
+            write: tag_added(1, "iteration-Pegasus.100"),
+        },
+    );
+    let state = queued(
+        &state,
+        SyncAction::WriteQueued {
+            write: tag_added(1, "iteration-Pegasus.200"),
+        },
+    );
+    let state = queued(
+        &state,
+        SyncAction::WriteQueued {
+            write: tag_added(2, "ready"),
+        },
+    );
+    let third_id = state
+        .queue
+        .iter()
+        .find(|w| w.event.story_id().value() == 2)
+        .expect("the third write is queued")
+        .id
+        .0;
+    assert_eq!(
+        third_id, 3,
+        "the coalesced second write still consumed its id — the counter advanced past the absorbed write, so the next id is 3 not 2"
+    );
 }
 
 #[test]
@@ -96,13 +210,13 @@ fn coalesce_add_then_add_keeps_the_last_add() {
     let state = queued(
         &state,
         SyncAction::WriteQueued {
-            write: tag_added(1, "iteration-Pegasus.100", 1),
+            write: tag_added(1, "iteration-Pegasus.100"),
         },
     );
     let state = queued(
         &state,
         SyncAction::WriteQueued {
-            write: tag_added(1, "iteration-Pegasus.200", 2),
+            write: tag_added(1, "iteration-Pegasus.200"),
         },
     );
     assert_eq!(
@@ -118,13 +232,13 @@ fn coalesce_remove_then_add_keeps_first_remove_and_last_add() {
     let state = queued(
         &state,
         SyncAction::WriteQueued {
-            write: tag_removed(1, "iteration-Pegasus.300", 1),
+            write: tag_removed(1, "iteration-Pegasus.300"),
         },
     );
     let state = queued(
         &state,
         SyncAction::WriteQueued {
-            write: tag_added(1, "iteration-Pegasus.50", 2),
+            write: tag_added(1, "iteration-Pegasus.50"),
         },
     );
     assert_eq!(
@@ -143,13 +257,13 @@ fn non_iteration_labels_do_not_coalesce() {
     let state = queued(
         &state,
         SyncAction::WriteQueued {
-            write: tag_added(1, "ready", 1),
+            write: tag_added(1, "ready"),
         },
     );
     let state = queued(
         &state,
         SyncAction::WriteQueued {
-            write: tag_added(1, "blocked", 2),
+            write: tag_added(1, "blocked"),
         },
     );
     assert_eq!(
@@ -165,18 +279,21 @@ fn write_pushed_removes_exactly_its_id() {
     let state = queued(
         &state,
         SyncAction::WriteQueued {
-            write: tag_added(1, "a", 1),
+            write: tag_added(1, "a"),
         },
     );
     let state = queued(
         &state,
         SyncAction::WriteQueued {
-            write: tag_added(2, "b", 2),
+            write: tag_added(2, "b"),
         },
     );
     let state = queued(&state, SyncAction::WritePushed { id: MutationId(1) });
-    let ids: Vec<u64> = state.queue.iter().map(|w| w.id.0).collect();
-    assert_eq!(ids, vec![2], "only the pushed id is removed");
+    assert_eq!(
+        mutation_ids(&state),
+        vec![2],
+        "only the pushed id is removed"
+    );
 }
 
 #[test]
@@ -185,18 +302,21 @@ fn write_dropped_removes_exactly_its_id() {
     let state = queued(
         &state,
         SyncAction::WriteQueued {
-            write: tag_added(1, "a", 1),
+            write: tag_added(1, "a"),
         },
     );
     let state = queued(
         &state,
         SyncAction::WriteQueued {
-            write: tag_added(2, "b", 2),
+            write: tag_added(2, "b"),
         },
     );
     let state = queued(&state, SyncAction::WriteDropped { id: MutationId(2) });
-    let ids: Vec<u64> = state.queue.iter().map(|w| w.id.0).collect();
-    assert_eq!(ids, vec![1], "only the dropped id is removed");
+    assert_eq!(
+        mutation_ids(&state),
+        vec![1],
+        "only the dropped id is removed"
+    );
 }
 
 #[test]
@@ -205,7 +325,7 @@ fn removing_an_absent_id_is_a_no_op() {
     let state = queued(
         &state,
         SyncAction::WriteQueued {
-            write: tag_added(1, "a", 1),
+            write: tag_added(1, "a"),
         },
     );
     assert!(

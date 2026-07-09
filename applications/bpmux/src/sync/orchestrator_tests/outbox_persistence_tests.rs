@@ -13,7 +13,9 @@ use crate::product_management::story::{Stage, Story, StoryId, Work};
 use crate::store::sync::OutboxSink;
 use crate::store::test_support::eventually;
 use crate::store::{AppAction, SeededStore};
-use crate::sync::{QueuedWrite, RefreshDriver, SyncOrchestrator, load_outbox_from_disk};
+use crate::sync::{
+    PendingWrite, QueuedWrite, RefreshDriver, SyncOrchestrator, load_outbox_from_disk,
+};
 
 mod outbox_persistence {
     use super::*;
@@ -25,12 +27,10 @@ mod outbox_persistence {
     fn wire(
         adapter: &Arc<InMemorySourceAdapter>,
         sink: OutboxSink,
-        next_id: u64,
         initial: Vec<QueuedWrite>,
         stories: Vec<Story>,
     ) -> (Arc<SyncOrchestrator<InMemorySourceAdapter>>, SeededStore) {
-        let orch =
-            Arc::new(SyncOrchestrator::new(Arc::clone(adapter)).with_next_mutation_id(next_id));
+        let orch = Arc::new(SyncOrchestrator::new(Arc::clone(adapter)));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new_wired_outbox(sink, initial);
         handle.bind_refresh(&orch_dyn);
@@ -71,7 +71,7 @@ mod outbox_persistence {
         let loaded = load_outbox_from_disk(&path).unwrap();
         assert!(loaded.is_empty(), "a missing outbox file hydrates empty");
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let (orch, _handle) = wire(&adapter, OutboxSink::Path(path), 1, Vec::new(), Vec::new());
+        let (orch, _handle) = wire(&adapter, OutboxSink::Path(path), Vec::new(), Vec::new());
         assert_eq!(orch.snapshot_status().pending_events, 0);
     }
 
@@ -83,7 +83,6 @@ mod outbox_persistence {
         let (orch, _handle) = wire(
             &adapter,
             OutboxSink::Path(path.clone()),
-            1,
             Vec::new(),
             vec![seed_story(10, Work::NotStarted)],
         );
@@ -100,7 +99,6 @@ mod outbox_persistence {
         let (orch, _handle) = wire(
             &adapter,
             OutboxSink::Path(path.clone()),
-            1,
             Vec::new(),
             vec![seed_story(20, Work::NotStarted)],
         );
@@ -122,7 +120,6 @@ mod outbox_persistence {
         let (orch, _handle) = wire(
             &adapter,
             OutboxSink::Storage(Arc::clone(&storage)),
-            1,
             Vec::new(),
             vec![seed_story(90, Work::NotStarted)],
         );
@@ -150,7 +147,6 @@ mod outbox_persistence {
         let (orch, _handle) = wire(
             &adapter,
             OutboxSink::Path(path.clone()),
-            1,
             Vec::new(),
             vec![seed_story(30, Work::NotStarted)],
         );
@@ -170,7 +166,6 @@ mod outbox_persistence {
         let (orch_a, handle_a) = wire(
             &adapter_a,
             OutboxSink::Path(path.clone()),
-            1,
             Vec::new(),
             vec![seed_story(40, Work::NotStarted)],
         );
@@ -188,20 +183,20 @@ mod outbox_persistence {
         let hydrated: Vec<QueuedWrite> = loaded
             .into_iter()
             .map(|row| {
-                QueuedWrite::from_event(
-                    &crate::integrations::github::gh_label_codec::GhLabelCodec,
+                QueuedWrite::minted(
                     row.id,
-                    row.event,
+                    PendingWrite::from_event(
+                        &crate::integrations::github::gh_label_codec::GhLabelCodec,
+                        row.event,
+                    ),
                 )
             })
             .collect();
-        let next = hydrated.iter().map(|w| w.id.0).max().unwrap_or(0) + 1;
 
         let adapter_b = Arc::new(InMemorySourceAdapter::new());
         let (orch_b, _handle_b) = wire(
             &adapter_b,
             OutboxSink::Path(path.clone()),
-            next,
             hydrated,
             Vec::new(),
         );
@@ -219,7 +214,6 @@ mod outbox_persistence {
         let (orch, _handle) = wire(
             &adapter,
             OutboxSink::Path(path.clone()),
-            1,
             Vec::new(),
             vec![seed_story(60, Work::NotStarted)],
         );
@@ -239,7 +233,6 @@ mod outbox_persistence {
         let (orch, _handle) = wire(
             &adapter,
             OutboxSink::Path(path.clone()),
-            1,
             Vec::new(),
             vec![seed_story(65, Work::NotStarted)],
         );
@@ -260,7 +253,6 @@ mod outbox_persistence {
         let (orch, _handle) = wire(
             &adapter,
             OutboxSink::Path(path.clone()),
-            1,
             Vec::new(),
             vec![seed_story(66, Work::NotStarted)],
         );
@@ -282,7 +274,6 @@ mod outbox_persistence {
         let (orch, _handle) = wire(
             &adapter,
             OutboxSink::Path(path.clone()),
-            1,
             Vec::new(),
             vec![
                 seed_story(70, Work::NotStarted),
@@ -305,7 +296,6 @@ mod outbox_persistence {
         let (orch, _handle) = wire(
             &adapter,
             OutboxSink::Path(path.clone()),
-            1,
             Vec::new(),
             vec![seed_story(80, Work::NotStarted)],
         );
@@ -328,7 +318,6 @@ mod outbox_persistence {
         let (orch_a, handle_a) = wire(
             &adapter_a,
             OutboxSink::Path(path.clone()),
-            1,
             Vec::new(),
             vec![
                 seed_story(50, Work::NotStarted),
@@ -347,20 +336,20 @@ mod outbox_persistence {
             .unwrap()
             .into_iter()
             .map(|row| {
-                QueuedWrite::from_event(
-                    &crate::integrations::github::gh_label_codec::GhLabelCodec,
+                QueuedWrite::minted(
                     row.id,
-                    row.event,
+                    PendingWrite::from_event(
+                        &crate::integrations::github::gh_label_codec::GhLabelCodec,
+                        row.event,
+                    ),
                 )
             })
             .collect();
-        let next = hydrated.iter().map(|w| w.id.0).max().unwrap_or(0) + 1;
 
         let adapter_b = Arc::new(InMemorySourceAdapter::new());
         let (orch_b, _handle_b) = wire(
             &adapter_b,
             OutboxSink::Path(path.clone()),
-            next,
             hydrated,
             Vec::new(),
         );
