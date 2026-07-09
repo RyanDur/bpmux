@@ -16,30 +16,30 @@ fn wired_store() -> SeededStore {
 
 fn register_agent(
     store: &SeededStore,
-    session_id: &str,
+    user_id: &str,
     display: &str,
     terminal_id: &str,
     job_start: &str,
 ) {
-    let actions = store.select().select(|s| {
-        register_agent_actions(&s.routing, session_id, display, terminal_id, job_start)
-    });
+    let actions = store
+        .select()
+        .select(|s| register_agent_actions(&s.routing, user_id, display, terminal_id, job_start));
     for action in actions {
         store.dispatch(action.into());
     }
 }
 
-fn register_and_link(store: &SeededStore, session_id: &str, display: &str, terminal_id: &str) {
+fn register_and_link(store: &SeededStore, user_id: &str, display: &str, terminal_id: &str) {
     store.dispatch(
         RoutingAction::Registered {
-            session_id: session_id.to_string(),
+            user_id: user_id.to_string(),
             display: display.to_string(),
         }
         .into(),
     );
     store.dispatch(
         RoutingAction::TerminalLinked {
-            session_id: session_id.to_string(),
+            user_id: user_id.to_string(),
             terminal_id: terminal_id.to_string(),
         }
         .into(),
@@ -125,20 +125,14 @@ async fn drain_for(rx: &mut broadcast::Receiver<Vec<u8>>, needle: &str) -> Strin
 fn register_live_cat(
     registry: &LivePtyRegistry,
     store: &SeededStore,
-    session_id: &str,
+    user_id: &str,
     display: &str,
     terminal_id: &str,
 ) -> broadcast::Receiver<Vec<u8>> {
     let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
     let rx = live.subscribe();
     registry.insert(terminal_id.to_string(), live);
-    register_agent(
-        store,
-        session_id,
-        display,
-        terminal_id,
-        "2026-06-12T10:00:00Z",
-    );
+    register_agent(store, user_id, display, terminal_id, "2026-06-12T10:00:00Z");
     rx
 }
 

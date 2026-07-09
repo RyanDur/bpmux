@@ -29,6 +29,8 @@ mod board_tests;
 #[cfg(test)]
 mod presence_endpoint;
 #[cfg(test)]
+mod register_tests;
+#[cfg(test)]
 mod shared_rest_helpers;
 #[cfg(test)]
 mod story_label_reorder;

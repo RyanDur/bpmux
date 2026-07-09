@@ -45,7 +45,7 @@ pub async fn post_presence(
     if routing_ids.is_empty() {
         return (
             StatusCode::NOT_FOUND,
-            format!("no connected session registered for agent '{agent}'"),
+            format!("no connected user registered for agent '{agent}'"),
         );
     }
     for routing_id in &routing_ids {

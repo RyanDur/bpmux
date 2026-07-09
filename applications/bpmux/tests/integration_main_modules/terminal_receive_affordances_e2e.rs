@@ -68,7 +68,7 @@ impl FakeAgentFarm {
              mkdir -p \"{work}/$role\"\n\
              cd \"{work}/$role\" || exit 1\n\
              export BPMUX_ROLE=\"$role\"\n\
-             export BPMUX_SESSION_ID=\"pinned-$role\"\n\
+             export BPMUX_USER_ID=\"pinned-$role\"\n\
              \"{bin}\" register >> \"{capture}/$role.reg\" 2>&1\n\
              cat >> \"{capture}/$role\"\n",
             claim = claim.display(),
@@ -100,7 +100,7 @@ impl FakeAgentFarm {
              mkdir -p \"{work}/$role\"\n\
              cd \"{work}/$role\" || exit 1\n\
              export BPMUX_ROLE=\"$role\"\n\
-             export BPMUX_SESSION_ID=\"pinned-$role\"\n\
+             export BPMUX_USER_ID=\"pinned-$role\"\n\
              printf '\\033]7;file://localhost%s\\007' \"$PWD\"\n\
              \"{bin}\" register >> \"{capture}/$role.reg\" 2>&1\n\
              cat >> \"{capture}/$role\"\n",
@@ -165,7 +165,7 @@ impl FakeAgentFarm {
              mkdir -p \"{work}/$role\"\n\
              cd \"{work}/$role\" || exit 1\n\
              export BPMUX_ROLE=\"$role\"\n\
-             export BPMUX_SESSION_ID=\"pinned-$role\"\n\
+             export BPMUX_USER_ID=\"pinned-$role\"\n\
              printf '\\033]7;file://localhost%s\\007' \"$PWD\"\n\
              \"{bin}\" register >> \"{capture}/$role.reg\" 2>&1\n\
              sh -c 'while [ ! -f \"$1\" ]; do sleep 0.1; done' _ \"{capture}/$role.die\"\n\
@@ -201,7 +201,7 @@ impl FakeAgentFarm {
              export BPMUX_ROLE=\"$role\"\n\
              printf '\\033]7;file://localhost%s\\007' \"$PWD\"\n\
              sleep 1.5\n\
-             export BPMUX_SESSION_ID=\"pinned-other-$role\"\n\
+             export BPMUX_USER_ID=\"pinned-other-$role\"\n\
              \"{bin}\" register >> \"{capture}/$role.reg\" 2>&1\n\
              cat >> \"{capture}/$role\"\n",
             claim = claim.display(),

@@ -31,7 +31,8 @@ screen-shots
 # Transient gh issue dumps from scripts — not meant to be tracked
 issues.csv
 
-# Per-clone agent routing identity (#1712) — the session-id held in the start dir
+# Per-clone agent routing identity (#1712) — the user-id held in the start dir
+.bpmux-user-id
 .bpmux-session-id
 
 # Node deps + build/test artifacts (keep `git status` honest — real uncommitted work visible at a glance)

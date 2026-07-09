@@ -27,11 +27,11 @@ pub(crate) fn resolve_role(role_arg: &Option<String>) -> String {
         .unwrap_or_else(|| "dev".to_string())
 }
 
-pub(crate) fn resolve_session_id(cwd: &std::path::Path) -> anyhow::Result<String> {
-    session_id_from_pin_or_dir(std::env::var("BPMUX_SESSION_ID").ok(), cwd)
+pub(crate) fn resolve_user_id(cwd: &std::path::Path) -> anyhow::Result<String> {
+    user_id_from_pin_or_dir(std::env::var("BPMUX_USER_ID").ok(), cwd)
 }
 
-pub(crate) fn session_id_from_pin_or_dir(
+pub(crate) fn user_id_from_pin_or_dir(
     pinned: Option<String>,
     cwd: &std::path::Path,
 ) -> anyhow::Result<String> {
@@ -41,5 +41,5 @@ pub(crate) fn session_id_from_pin_or_dir(
             return Ok(pin.to_string());
         }
     }
-    Ok(location::read_or_create_dir_session(cwd)?.id)
+    Ok(location::read_or_create_dir_user(cwd)?.id)
 }

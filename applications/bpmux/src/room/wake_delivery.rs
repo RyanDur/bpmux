@@ -35,15 +35,15 @@ pub fn wake_committed_terminals(
         .into(),
     );
     for role in woken {
-        for session_id in select.select(|s| crate::store::routing::resolve(&s.routing, &role)) {
+        for user_id in select.select(|s| crate::store::routing::resolve(&s.routing, &role)) {
             let Some(terminal_id) =
-                select.select(|s| crate::store::routing::terminal_for(&s.routing, &session_id))
+                select.select(|s| crate::store::routing::terminal_for(&s.routing, &user_id))
             else {
                 continue;
             };
             if owner_mid_typing(registry, &terminal_id) {
                 held.push(HeldInject {
-                    session_id,
+                    user_id,
                     terminal_id,
                     line: line.clone(),
                     ts: ts.clone(),

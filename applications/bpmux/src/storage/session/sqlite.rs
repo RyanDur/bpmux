@@ -38,12 +38,12 @@ impl SqliteStorage {
     }
 
     fn resolve_sender(&self, conn: &Connection, msg: &Message) -> Option<String> {
-        let session = if crate::routing::short_name(&msg.from) == "bpmux" {
-            users::SYSTEM_SESSION_ID
+        let user_id = if crate::routing::short_name(&msg.from) == "bpmux" {
+            users::SYSTEM_USER_ID
         } else {
             msg.sender_id.as_deref()?
         };
-        users::id_for_session(conn, session).ok().flatten()
+        users::id_for_user(conn, user_id).ok().flatten()
     }
 }
 

@@ -36,25 +36,25 @@ fn resumes_existing_session() {
 }
 
 #[test]
-fn dir_session_id_is_held_in_the_dir_minted_once_then_reclaimed_via_a_lightweight_marker() {
+fn dir_user_id_is_held_in_the_dir_minted_once_then_reclaimed_via_a_lightweight_marker() {
     let parent = TempDir::new().expect("temp dir");
     let dir = parent.path().join("my-project");
     std::fs::create_dir_all(&dir).expect("mkdir");
-    let first = read_or_create_dir_session(&dir).expect("mint");
+    let first = read_or_create_dir_user(&dir).expect("mint");
     assert!(!first.id.is_empty());
     assert_eq!(
         first.name, "my-project",
         "the name defaults to the folder basename at mint — a self-describing label until renamed in the owner-conversation"
     );
 
-    let second = read_or_create_dir_session(&dir).expect("reclaim");
+    let second = read_or_create_dir_user(&dir).expect("reclaim");
     assert_eq!(
         first, second,
         "the {{id, name}} is HELD in the dir — a second derivation (restart in the same dir) reclaims the same identity, never mints a new one (owner's dir-anchor)"
     );
 
     assert!(
-        dir.join(DIR_SESSION_ID_MARKER).is_file(),
+        dir.join(DIR_USER_ID_MARKER).is_file(),
         "the identity lives in a lightweight hidden marker — not a full session dir, so registering an agent never pollutes its workspace"
     );
     assert!(
@@ -68,15 +68,34 @@ fn a_pre_id_name_marker_reads_back_compat_keeping_the_id_and_deriving_the_name()
     let parent = TempDir::new().expect("temp dir");
     let dir = parent.path().join("legacy-dir");
     std::fs::create_dir_all(&dir).expect("mkdir");
-    std::fs::write(dir.join(DIR_SESSION_ID_MARKER), "legacy-uuid-1234").expect("write old marker");
+    std::fs::write(dir.join(DIR_USER_ID_MARKER), "legacy-uuid-1234").expect("write old marker");
 
-    let session = read_or_create_dir_session(&dir).expect("read back-compat");
+    let user = read_or_create_dir_user(&dir).expect("read back-compat");
     assert_eq!(
-        session.id, "legacy-uuid-1234",
+        user.id, "legacy-uuid-1234",
         "a bare-id (pre-{{id,name}}) marker keeps its id — the durable route-key never changes across the format upgrade"
     );
     assert_eq!(
-        session.name, "legacy-dir",
+        user.name, "legacy-dir",
         "the missing name is derived from the folder basename — an old marker stays routable with no migration step"
+    );
+}
+
+#[test]
+fn an_old_bpmux_session_id_marker_file_is_read_as_a_fallback_when_the_new_marker_is_absent() {
+    let parent = TempDir::new().expect("temp dir");
+    let dir = parent.path().join("pinned-agent-dir");
+    std::fs::create_dir_all(&dir).expect("mkdir");
+    std::fs::write(dir.join(".bpmux-session-id"), "pinned-uuid-5678").expect("write old marker");
+
+    let user = read_or_create_dir_user(&dir).expect("read old marker");
+    assert_eq!(
+        user.id, "pinned-uuid-5678",
+        "Ryan's existing agent workspace dirs pin identity in the OLD .bpmux-session-id marker filename — read-old/write-new must keep resolving that same id, never mint a fresh one just because the new marker is absent"
+    );
+
+    assert!(
+        dir.join(DIR_USER_ID_MARKER).is_file(),
+        "having resolved via the old marker, the new marker is written so the dir migrates forward to the new filename"
     );
 }

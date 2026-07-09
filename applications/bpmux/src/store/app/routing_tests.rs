@@ -57,11 +57,11 @@ async fn a_register_then_cursor_advance_round_trips_through_the_users_table_into
         AppState::default(),
         &[
             RoutingAction::Registered {
-                session_id: "sess-dev".to_string(),
+                user_id: "sess-dev".to_string(),
                 display: "dev:claude-code".to_string(),
             },
             RoutingAction::CursorAdvanced {
-                session_id: "sess-dev".to_string(),
+                user_id: "sess-dev".to_string(),
                 cursor: "2026-06-11T20:00:05Z".to_string(),
             },
         ],
@@ -93,19 +93,19 @@ async fn a_burst_of_cursor_advances_coalesces_to_the_latest_monotonic_position()
         AppState::default(),
         &[
             RoutingAction::Registered {
-                session_id: "sess-dev".to_string(),
+                user_id: "sess-dev".to_string(),
                 display: "dev".to_string(),
             },
             RoutingAction::CursorAdvanced {
-                session_id: "sess-dev".to_string(),
+                user_id: "sess-dev".to_string(),
                 cursor: "2026-06-11T20:00:01Z".to_string(),
             },
             RoutingAction::CursorAdvanced {
-                session_id: "sess-dev".to_string(),
+                user_id: "sess-dev".to_string(),
                 cursor: "2026-06-11T20:00:09Z".to_string(),
             },
             RoutingAction::CursorAdvanced {
-                session_id: "sess-dev".to_string(),
+                user_id: "sess-dev".to_string(),
                 cursor: "2026-06-11T20:00:03Z".to_string(),
             },
         ],
@@ -113,7 +113,7 @@ async fn a_burst_of_cursor_advances_coalesces_to_the_latest_monotonic_position()
     .await;
 
     let users = repo.load_users().unwrap();
-    let user = users.iter().find(|u| u.session_id == "sess-dev").unwrap();
+    let user = users.iter().find(|u| u.user_id == "sess-dev").unwrap();
     assert_eq!(
         user.last_delivered_at,
         Some(instant("2026-06-11T20:00:09Z")),
@@ -131,11 +131,11 @@ async fn a_rename_persists_the_new_display_so_only_it_resolves_on_reload() {
         AppState::default(),
         &[
             RoutingAction::Registered {
-                session_id: "sess-1".to_string(),
+                user_id: "sess-1".to_string(),
                 display: "dev".to_string(),
             },
             RoutingAction::Renamed {
-                session_id: "sess-1".to_string(),
+                user_id: "sess-1".to_string(),
                 display: "dev-renamed".to_string(),
             },
         ],
@@ -164,15 +164,15 @@ async fn a_reap_deletes_the_unclaimed_duplicate_row_leaving_only_the_live_id() {
         AppState::default(),
         &[
             RoutingAction::Registered {
-                session_id: "dev-stale".to_string(),
+                user_id: "dev-stale".to_string(),
                 display: "dev".to_string(),
             },
             RoutingAction::Registered {
-                session_id: "dev-live".to_string(),
+                user_id: "dev-live".to_string(),
                 display: "dev".to_string(),
             },
             RoutingAction::TerminalLinked {
-                session_id: "dev-live".to_string(),
+                user_id: "dev-live".to_string(),
                 terminal_id: "term-live".to_string(),
             },
             RoutingAction::Reaped {
@@ -186,7 +186,7 @@ async fn a_reap_deletes_the_unclaimed_duplicate_row_leaving_only_the_live_id() {
         .load_users()
         .unwrap()
         .into_iter()
-        .map(|u| u.session_id)
+        .map(|u| u.user_id)
         .collect();
     assert!(
         ids.contains(&"dev-live".to_string()),

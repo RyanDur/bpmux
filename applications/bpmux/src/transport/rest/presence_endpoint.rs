@@ -30,7 +30,7 @@ fn select_with_dev_session() -> crate::store::Select {
     let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
     seeded.dispatch(
         crate::store::routing::RoutingAction::Registered {
-            session_id: "sess-dev".to_string(),
+            user_id: "sess-dev".to_string(),
             display: "dev".to_string(),
         }
         .into(),

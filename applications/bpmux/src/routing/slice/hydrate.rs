@@ -6,9 +6,9 @@ use super::RoutingState;
 pub fn from_users(records: &[UserRecord]) -> RoutingState {
     let mut identity = RoutingIdentity::new();
     for record in records {
-        identity.register(&record.session_id, &record.name);
+        identity.register(&record.user_id, &record.name);
         if let Some(cursor) = record.last_delivered_at.and_then(from_millis) {
-            identity.advance_cursor(&record.session_id, &cursor);
+            identity.advance_cursor(&record.user_id, &cursor);
         }
     }
     RoutingState { identity }

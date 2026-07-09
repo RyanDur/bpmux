@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use tokio::sync::broadcast;
 
 use super::Osc7CwdParser;
-use crate::location::read_or_create_dir_session;
+use crate::location::read_or_create_dir_user;
 use crate::room::LivePtyRegistry;
 use crate::store::{Dispatch, Select};
 
@@ -108,14 +108,14 @@ pub fn spawn_agent_run_detector(
                         && !select.select(|s| {
                             crate::store::routing::is_terminal_linked(&s.routing, &terminal_id)
                         })
-                        && let Ok(dir_session) =
-                            read_or_create_dir_session(std::path::Path::new(&mint.cwd))
+                        && let Ok(dir_user) =
+                            read_or_create_dir_user(std::path::Path::new(&mint.cwd))
                     {
                         let actions = select.select(|s| {
                             crate::store::routing::register_agent_actions(
                                 &s.routing,
-                                &dir_session.id,
-                                &dir_session.name,
+                                &dir_user.id,
+                                &dir_user.name,
                                 &terminal_id,
                                 &mint.job_start_ts,
                             )
@@ -128,16 +128,16 @@ pub fn spawn_agent_run_detector(
                             &registry,
                             &select,
                             &dispatch,
-                            &dir_session.id,
+                            &dir_user.id,
                             &terminal_id,
-                            &dir_session.name,
+                            &dir_user.name,
                             &mint.job_start_ts,
                         );
                         if let Some(store) = &store {
                             crate::transport::ws::dispatch_roster_join(
                                 store,
-                                &dir_session.id,
-                                &dir_session.name,
+                                &dir_user.id,
+                                &dir_user.name,
                             )
                             .await;
                         }
@@ -162,7 +162,7 @@ pub fn spawn_agent_run_detector(
 async fn leave_terminal(store: &Option<DetectorStore>, select: &Select, terminal_id: &str) {
     if let (Some(store), Some(routing_id)) = (
         store,
-        select.select(|s| crate::store::routing::session_for_terminal(&s.routing, terminal_id)),
+        select.select(|s| crate::store::routing::user_for_terminal(&s.routing, terminal_id)),
     ) {
         crate::transport::ws::dispatch_roster_leave(store, &routing_id).await;
     }

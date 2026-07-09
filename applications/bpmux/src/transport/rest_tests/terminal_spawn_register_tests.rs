@@ -67,7 +67,7 @@ async fn the_plus_spawn_flow_auto_registers_an_agent_running_in_its_working_dir_
     registry.write_to(&terminal_id, format!("cd {work_path}\n").as_bytes());
     registry.write_to(&terminal_id, b"sleep 4\n");
 
-    let marker = work.path().join(".bpmux-session-id");
+    let marker = work.path().join(".bpmux-user-id");
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
     while std::time::Instant::now() < deadline {
         if marker.is_file() && !resolve(&work_name).is_empty() {
@@ -80,10 +80,10 @@ async fn the_plus_spawn_flow_auto_registers_an_agent_running_in_its_working_dir_
         marker.is_file(),
         "the ＋-spawned terminal's detector minted the work-dir's marker on a sustained foreground-job — the handler wires detection for a bare shell, no BPMUX_ROOM_AGENT gate"
     );
-    let session = crate::location::read_or_create_dir_session(work.path()).expect("read marker");
+    let user = crate::location::read_or_create_dir_user(work.path()).expect("read marker");
     assert_eq!(
         resolve(&work_name),
-        vec![session.id],
+        vec![user.id],
         "the agent auto-registered HEADLESS through the real spawn endpoint (no viewer subscribed) — routable by the folder basename, the agnostic-registration WALK-NODE end-to-end"
     );
 

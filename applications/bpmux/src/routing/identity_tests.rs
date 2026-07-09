@@ -3,7 +3,7 @@
 use super::*;
 
 #[test]
-fn routing_survives_rename_session_id_is_the_key_display_is_a_mutable_attribute() {
+fn routing_survives_rename_user_id_is_the_key_display_is_a_mutable_attribute() {
     let mut identity = RoutingIdentity::new();
     identity.register("sess-uuid-1", "dev");
     assert_eq!(identity.resolve("dev"), vec!["sess-uuid-1".to_string()]);
@@ -22,7 +22,7 @@ fn routing_survives_rename_session_id_is_the_key_display_is_a_mutable_attribute(
 }
 
 #[test]
-fn reconnecting_same_session_id_reclaims_its_cursor_does_not_reset_it() {
+fn reconnecting_same_user_id_reclaims_its_cursor_does_not_reset_it() {
     let mut identity = RoutingIdentity::new();
     identity.register("sess-1", "dev");
     identity.advance_cursor("sess-1", "2026-06-11T20:00:00Z");

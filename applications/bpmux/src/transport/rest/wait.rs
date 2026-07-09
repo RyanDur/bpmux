@@ -83,14 +83,13 @@ fn durable_drain_cursor(
         .into_iter()
         .next()
     {
-        Some(session_id) => {
-            let floor = select.select(|s| {
-                crate::store::routing::drain_floor(&s.routing, &session_id, client_after)
-            });
+        Some(user_id) => {
+            let floor = select
+                .select(|s| crate::store::routing::drain_floor(&s.routing, &user_id, client_after));
             if let Some(ref position) = floor {
                 dispatch.dispatch(
                     RoutingAction::CursorAdvanced {
-                        session_id: session_id.clone(),
+                        user_id: user_id.clone(),
                         cursor: position.clone(),
                     }
                     .into(),

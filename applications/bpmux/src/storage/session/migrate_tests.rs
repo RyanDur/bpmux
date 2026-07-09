@@ -214,7 +214,7 @@ fn migrates_legacy_routing_json_display_and_durable_cursor_into_the_users_table(
         .unwrap()
         .load_users()
         .unwrap();
-    let dev = users.iter().find(|u| u.session_id == "sess-dev").unwrap();
+    let dev = users.iter().find(|u| u.user_id == "sess-dev").unwrap();
     assert_eq!(
         dev.name, "dev",
         "the opaque display migrates as the user name"
@@ -225,7 +225,7 @@ fn migrates_legacy_routing_json_display_and_durable_cursor_into_the_users_table(
         Some(ms("2026-06-20T10:00:00Z")),
         "the durable drain cursor is carried across the flip as an instant — so the agent resumes from where it left off and never re-floods already-seen history"
     );
-    let pm = users.iter().find(|u| u.session_id == "sess-pm").unwrap();
+    let pm = users.iter().find(|u| u.user_id == "sess-pm").unwrap();
     assert_eq!(
         pm.role, "pm",
         "the role-col is short(display) even for a full id:client display"
@@ -259,7 +259,7 @@ fn routing_migration_is_idempotent_and_never_reverts_a_post_flip_advanced_cursor
         .load_users()
         .unwrap()
         .into_iter()
-        .find(|u| u.session_id == "sess-dev")
+        .find(|u| u.user_id == "sess-dev")
         .unwrap();
     assert_eq!(
         dev.last_delivered_at,

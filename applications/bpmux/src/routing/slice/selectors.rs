@@ -10,28 +10,28 @@ pub fn resolve(state: &RoutingState, display: &str) -> Vec<String> {
 
 pub fn drain_floor(
     state: &RoutingState,
-    session_id: &str,
+    user_id: &str,
     client_ack: Option<&str>,
 ) -> Option<String> {
-    let stored = state.identity.cursor(session_id);
+    let stored = state.identity.cursor(user_id);
     let trusted_ack = client_ack.filter(|ack| !is_future(ack));
     later_cursor(stored.as_deref(), trusted_ack)
 }
 
-pub fn terminal_for(state: &RoutingState, session_id: &str) -> Option<String> {
-    state.identity.terminal_for(session_id)
+pub fn terminal_for(state: &RoutingState, user_id: &str) -> Option<String> {
+    state.identity.terminal_for(user_id)
 }
 
-pub fn display_for(state: &RoutingState, session_id: &str) -> Option<String> {
-    state.identity.display_for(session_id)
+pub fn display_for(state: &RoutingState, user_id: &str) -> Option<String> {
+    state.identity.display_for(user_id)
 }
 
-pub fn cursor(state: &RoutingState, session_id: &str) -> Option<String> {
-    state.identity.cursor(session_id)
+pub fn cursor(state: &RoutingState, user_id: &str) -> Option<String> {
+    state.identity.cursor(user_id)
 }
 
-pub fn session_for_terminal(state: &RoutingState, terminal_id: &str) -> Option<String> {
-    state.identity.session_for_terminal(terminal_id)
+pub fn user_for_terminal(state: &RoutingState, terminal_id: &str) -> Option<String> {
+    state.identity.user_for_terminal(terminal_id)
 }
 
 pub fn is_terminal_linked(state: &RoutingState, terminal_id: &str) -> bool {
@@ -48,12 +48,10 @@ pub fn display_for_terminal(state: &RoutingState, terminal_id: &str) -> Option<S
 
 pub fn missed_after_cursor(
     state: &RoutingState,
-    session_id: &str,
+    user_id: &str,
     event_cursors: &[String],
 ) -> Vec<String> {
-    state
-        .identity
-        .missed_after_cursor(session_id, event_cursors)
+    state.identity.missed_after_cursor(user_id, event_cursors)
 }
 
 pub fn resolve_recipients(state: &RoutingState, to: Option<&[String]>) -> Vec<String> {

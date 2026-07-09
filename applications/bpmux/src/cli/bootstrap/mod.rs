@@ -10,8 +10,8 @@ mod resolve;
 mod room;
 
 #[cfg(test)]
-pub(crate) use resolve::session_id_from_pin_or_dir;
-pub(crate) use resolve::{resolve_bpmux_port, resolve_role, resolve_session_id};
+pub(crate) use resolve::user_id_from_pin_or_dir;
+pub(crate) use resolve::{resolve_bpmux_port, resolve_role, resolve_user_id};
 
 use resolve::resolve_session_base;
 use room::{run_room_kill, run_room_list, run_room_read, run_room_spawn};
@@ -24,7 +24,7 @@ use room::{run_room_kill, run_room_list, run_room_read, run_room_spawn};
     disable_help_subcommand = true
 )]
 pub(crate) struct Cli {
-    #[arg(long, default_value = "dev", help = "Your name in the session")]
+    #[arg(long, default_value = "dev", help = "Your display name")]
     name: String,
 
     #[arg(

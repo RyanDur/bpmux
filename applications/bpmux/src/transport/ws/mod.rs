@@ -58,12 +58,12 @@ pub(super) async fn run_ws_session(
         orchestrator,
     } = deps;
     let (mut identity, replay_cursor) = wait_for_identify(&mut tx, &mut rx).await?;
-    let routing_session_id = store
+    let routing_user_id = store
         .selector()
         .select(|s| crate::store::routing::resolve(&s.routing, short_name(&identity)))
         .into_iter()
         .next();
-    let mut roster_key = roster_key_for(&routing_session_id, &identity);
+    let mut roster_key = roster_key_for(&routing_user_id, &identity);
     hub.peer_connected();
     if let Some(ref key) = roster_key {
         dispatch_roster_join(&store, key, &identity).await;
@@ -122,16 +122,16 @@ pub(super) async fn run_ws_session(
                             if let Some(new_identity) = handle_client_message(&text, &identity, &client_ctx, &mut tx, &mut pty_readers).await? {
                                 let _ = hub.broadcast(&system_announcement(&format!("{identity} left")));
                                 identity = new_identity;
-                                if let Some(ref session_id) = routing_session_id {
+                                if let Some(ref user_id) = routing_user_id {
                                     dispatch.dispatch(
                                         crate::store::routing::RoutingAction::Renamed {
-                                            session_id: session_id.clone(),
+                                            user_id: user_id.clone(),
                                             display: short_name(&identity).to_string(),
                                         }
                                         .into(),
                                     );
                                 }
-                                let new_key = roster_key_for(&routing_session_id, &identity);
+                                let new_key = roster_key_for(&routing_user_id, &identity);
                                 if new_key != roster_key && let Some(ref old) = roster_key {
                                     dispatch_roster_leave(&store, old).await;
                                 }
@@ -166,12 +166,12 @@ pub(super) async fn run_ws_session(
     result
 }
 
-fn roster_key_for(routing_session_id: &Option<String>, identity: &str) -> Option<String> {
+fn roster_key_for(routing_user_id: &Option<String>, identity: &str) -> Option<String> {
     if is_reserved_display(identity) {
         return None;
     }
     Some(
-        routing_session_id
+        routing_user_id
             .clone()
             .unwrap_or_else(|| identity.to_string()),
     )

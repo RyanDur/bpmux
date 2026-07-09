@@ -7,31 +7,31 @@ fn apply(state: &RoutingState, action: RoutingAction) -> RoutingState {
 
 fn register_agent(
     state: &RoutingState,
-    session_id: &str,
+    user_id: &str,
     display: &str,
     terminal_id: &str,
     job_start: &str,
 ) -> RoutingState {
-    register_agent_actions(state, session_id, display, terminal_id, job_start)
+    register_agent_actions(state, user_id, display, terminal_id, job_start)
         .into_iter()
         .fold(state.clone(), |acc, action| apply(&acc, action))
 }
 
-fn cursor_advanced(state: &RoutingState, session_id: &str, cursor: &str) -> RoutingState {
+fn cursor_advanced(state: &RoutingState, user_id: &str, cursor: &str) -> RoutingState {
     apply(
         state,
         RoutingAction::CursorAdvanced {
-            session_id: session_id.to_string(),
+            user_id: user_id.to_string(),
             cursor: cursor.to_string(),
         },
     )
 }
 
-fn registered(state: &RoutingState, session_id: &str, display: &str) -> RoutingState {
+fn registered(state: &RoutingState, user_id: &str, display: &str) -> RoutingState {
     apply(
         state,
         RoutingAction::Registered {
-            session_id: session_id.to_string(),
+            user_id: user_id.to_string(),
             display: display.to_string(),
         },
     )
@@ -125,7 +125,7 @@ fn a_reclaim_preserves_a_renamed_display_not_clobbered_by_the_default_name() {
     let state = apply(
         &state,
         RoutingAction::Renamed {
-            session_id: "sess-1".to_string(),
+            user_id: "sess-1".to_string(),
             display: "dev".to_string(),
         },
     );

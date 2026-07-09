@@ -12,3 +12,5 @@ pub use user::*;
 
 #[cfg(test)]
 mod identity_tests;
+#[cfg(test)]
+mod user_tests;

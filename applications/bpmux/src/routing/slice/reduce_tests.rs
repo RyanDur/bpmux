@@ -9,45 +9,45 @@ fn apply(state: &RoutingState, action: RoutingAction) -> RoutingState {
     reduce(state, &action).unwrap_or_else(|| state.clone())
 }
 
-fn registered(state: &RoutingState, session_id: &str, display: &str) -> RoutingState {
+fn registered(state: &RoutingState, user_id: &str, display: &str) -> RoutingState {
     apply(
         state,
         RoutingAction::Registered {
-            session_id: session_id.to_string(),
+            user_id: user_id.to_string(),
             display: display.to_string(),
         },
     )
 }
 
-fn linked(state: &RoutingState, session_id: &str, terminal_id: &str) -> RoutingState {
+fn linked(state: &RoutingState, user_id: &str, terminal_id: &str) -> RoutingState {
     apply(
         state,
         RoutingAction::TerminalLinked {
-            session_id: session_id.to_string(),
+            user_id: user_id.to_string(),
             terminal_id: terminal_id.to_string(),
         },
     )
 }
 
-fn cursor_advanced(state: &RoutingState, session_id: &str, cursor: &str) -> RoutingState {
+fn cursor_advanced(state: &RoutingState, user_id: &str, cursor: &str) -> RoutingState {
     apply(
         state,
         RoutingAction::CursorAdvanced {
-            session_id: session_id.to_string(),
+            user_id: user_id.to_string(),
             cursor: cursor.to_string(),
         },
     )
 }
 
 #[test]
-fn routing_survives_rename_session_id_is_the_key_display_is_a_mutable_attribute() {
+fn routing_survives_rename_user_id_is_the_key_display_is_a_mutable_attribute() {
     let state = registered(&RoutingState::default(), "sess-uuid-1", "dev");
     assert_eq!(resolve(&state, "dev"), vec!["sess-uuid-1".to_string()]);
 
     let renamed = apply(
         &state,
         RoutingAction::Renamed {
-            session_id: "sess-uuid-1".to_string(),
+            user_id: "sess-uuid-1".to_string(),
             display: "dev-renamed".to_string(),
         },
     );
@@ -63,7 +63,7 @@ fn routing_survives_rename_session_id_is_the_key_display_is_a_mutable_attribute(
 }
 
 #[test]
-fn reconnecting_same_session_id_reclaims_its_cursor_does_not_reset_it() {
+fn reconnecting_same_user_id_reclaims_its_cursor_does_not_reset_it() {
     let state = registered(&RoutingState::default(), "sess-1", "dev");
     let state = cursor_advanced(&state, "sess-1", "2026-06-11T20:00:00Z");
 
@@ -205,7 +205,7 @@ fn cursor_advance_is_monotonic_max_a_later_cursor_applies_an_earlier_one_is_a_no
     );
 
     let earlier = RoutingAction::CursorAdvanced {
-        session_id: "sess-1".to_string(),
+        user_id: "sess-1".to_string(),
         cursor: "2026-06-11T20:00:01Z".to_string(),
     };
     assert!(
@@ -237,7 +237,7 @@ fn cursor_anchor_sets_the_cursor_unconditionally_including_backward_unlike_the_m
     let anchored = apply(
         &state,
         RoutingAction::CursorAnchored {
-            session_id: "sess-1".to_string(),
+            user_id: "sess-1".to_string(),
             cursor: "2026-06-13T12:00:00Z".to_string(),
         },
     );

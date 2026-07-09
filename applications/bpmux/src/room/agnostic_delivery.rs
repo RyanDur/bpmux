@@ -16,7 +16,7 @@ const HOLD_DEBOUNCE: Duration = Duration::from_millis(600);
 const HOLD_MAX: Duration = Duration::from_secs(10);
 
 pub struct HeldInject {
-    pub session_id: String,
+    pub user_id: String,
     pub terminal_id: String,
     pub line: String,
     pub ts: String,
@@ -49,10 +49,10 @@ pub fn spawn_terminal_delivery_loop(
     });
 }
 
-fn mark_delivered(dispatch: &Dispatch, session_id: &str, ts: &str) {
+fn mark_delivered(dispatch: &Dispatch, user_id: &str, ts: &str) {
     dispatch.dispatch(
         RoutingAction::CursorAdvanced {
-            session_id: session_id.to_string(),
+            user_id: user_id.to_string(),
             cursor: ts.to_string(),
         }
         .into(),
@@ -79,7 +79,7 @@ pub(crate) fn spawn_deferred_inject(
                 .is_none_or(|age| age >= HOLD_DEBOUNCE);
             if owner_paused || start.elapsed() >= HOLD_MAX {
                 if registry.submit_to(&inject.terminal_id, inject.line.as_bytes()) {
-                    mark_delivered(&dispatch, &inject.session_id, &inject.ts);
+                    mark_delivered(&dispatch, &inject.user_id, &inject.ts);
                 }
                 return;
             }
@@ -99,21 +99,21 @@ pub fn deliver_to_terminals(
     }
     let line = framed_line(msg);
     let ts = msg.ts.to_rfc3339();
-    for (session_id, terminal_id) in select.select(|s| {
+    for (user_id, terminal_id) in select.select(|s| {
         crate::store::routing::delivery_targets(&s.routing, msg.to.as_deref(), &msg.from)
     }) {
-        if !after_cursor(select, &session_id, msg.ts) {
+        if !after_cursor(select, &user_id, msg.ts) {
             continue;
         }
         if owner_mid_typing(registry, &terminal_id) {
             held.push(HeldInject {
-                session_id,
+                user_id,
                 terminal_id,
                 line: line.clone(),
                 ts: ts.clone(),
             });
         } else if registry.submit_to(&terminal_id, line.as_bytes()) {
-            mark_delivered(dispatch, &session_id, &ts);
+            mark_delivered(dispatch, &user_id, &ts);
         }
     }
     held
@@ -125,7 +125,7 @@ pub fn drain_missed(
     registry: &LivePtyRegistry,
     select: &Select,
     dispatch: &Dispatch,
-    session_id: &str,
+    user_id: &str,
     terminal_id: &str,
     display: &str,
     join_ts: &str,
@@ -146,11 +146,11 @@ pub fn drain_missed(
         if join.is_some_and(|join| msg.ts <= join) {
             continue;
         }
-        if !after_cursor(select, session_id, msg.ts) {
+        if !after_cursor(select, user_id, msg.ts) {
             continue;
         }
         if registry.submit_to(terminal_id, framed_line(&msg).as_bytes()) {
-            mark_delivered(dispatch, session_id, &msg.ts.to_rfc3339());
+            mark_delivered(dispatch, user_id, &msg.ts.to_rfc3339());
         }
     }
 }
@@ -160,9 +160,9 @@ fn framed_line(msg: &Message) -> String {
     frame_team_message(short_name(&msg.from), &scope, &msg.text)
 }
 
-fn after_cursor(select: &Select, session_id: &str, ts: chrono::DateTime<chrono::Utc>) -> bool {
+fn after_cursor(select: &Select, user_id: &str, ts: chrono::DateTime<chrono::Utc>) -> bool {
     match select
-        .select(|s| crate::store::routing::cursor(&s.routing, session_id))
+        .select(|s| crate::store::routing::cursor(&s.routing, user_id))
         .as_deref()
         .and_then(|cursor| chrono::DateTime::parse_from_rfc3339(cursor).ok())
     {

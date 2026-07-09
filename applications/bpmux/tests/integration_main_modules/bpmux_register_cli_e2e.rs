@@ -10,7 +10,7 @@ async fn run_register(bin: &str, port: u16, cwd: &std::path::Path, role: &str) -
         .current_dir(cwd)
         .env("BPMUX_PORT", port.to_string())
         .env("BPMUX_ROLE", role)
-        .env_remove("BPMUX_SESSION_ID")
+        .env_remove("BPMUX_USER_ID")
         .env_remove("BPMUX_TERMINAL_ID")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -46,15 +46,15 @@ async fn register_cli_holds_the_id_in_a_dir_marker_and_makes_it_resolvable_serve
         "the CLI confirms the registration of this agent; stdout: {stdout}"
     );
 
-    let marker = workspace.path().join(".bpmux-session-id");
+    let marker = workspace.path().join(".bpmux-user-id");
     assert!(
         marker.is_file(),
-        "register holds the agent's identity in a lightweight .bpmux-session-id marker in the cwd (the dir-anchor), not a full session dir"
+        "register holds the agent's identity in a lightweight .bpmux-user-id marker in the cwd (the dir-anchor), not a full session dir"
     );
-    let session_id = marker_id(&marker);
+    let user_id = marker_id(&marker);
     assert!(
-        !session_id.is_empty(),
-        "the {{id, name}} marker holds the minted session-id"
+        !user_id.is_empty(),
+        "the {{id, name}} marker holds the minted user-id"
     );
 
     use bpmux::storage::StorageBackend;
@@ -65,18 +65,18 @@ async fn register_cli_holds_the_id_in_a_dir_marker_and_makes_it_resolvable_serve
         .expect("the server persists the routing-identity store after register");
     let user = users
         .iter()
-        .find(|u| u.session_id == session_id)
+        .find(|u| u.user_id == user_id)
         .unwrap_or_else(|| {
             panic!("the registered id is a durable row in the users table; got {users:?}")
         });
     assert_eq!(
         user.name, "dev",
-        "the registered id is RESOLVABLE server-side — the durable users table maps the cwd-derived session-id to display 'dev' (a real routing effect persisted across restarts, not just a 201)"
+        "the registered id is RESOLVABLE server-side — the durable users table maps the cwd-derived user-id to display 'dev' (a real routing effect persisted across restarts, not just a 201)"
     );
 }
 
 #[tokio::test]
-async fn register_in_a_different_dir_mints_a_distinct_session_id() {
+async fn register_in_a_different_dir_mints_a_distinct_user_id() {
     let bpmux = TestBpmux::start();
     let port = bpmux.port();
     let bin = env!("CARGO_BIN_EXE_bpmux");
@@ -87,11 +87,11 @@ async fn register_in_a_different_dir_mints_a_distinct_session_id() {
     let (ok_b, _) = run_register(bin, port, workspace_b.path(), "pm").await;
     assert!(ok_a && ok_b, "both registrations succeed");
 
-    let id_a = marker_id(&workspace_a.path().join(".bpmux-session-id"));
-    let id_b = marker_id(&workspace_b.path().join(".bpmux-session-id"));
+    let id_a = marker_id(&workspace_a.path().join(".bpmux-user-id"));
+    let id_b = marker_id(&workspace_b.path().join(".bpmux-user-id"));
     assert_ne!(
         id_a, id_b,
-        "a register from a different start-dir mints a DISTINCT session-id — the identity is anchored to the dir, so two agents started in different dirs are distinct instances"
+        "a register from a different start-dir mints a DISTINCT user-id — the identity is anchored to the dir, so two agents started in different dirs are distinct instances"
     );
 }
 
@@ -116,7 +116,7 @@ async fn register_with_a_terminal_reflects_the_routing_name_in_the_roster() {
         .authed_post(
             "/api/register",
             serde_json::json!({
-                "session_id": "sess-dev-roster",
+                "user_id": "sess-dev-roster",
                 "display": "dev",
                 "terminal_id": "abcd1234-5678-90ab-cdef-1234567890ab",
             }),

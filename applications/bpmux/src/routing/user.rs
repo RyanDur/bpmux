@@ -1,6 +1,7 @@
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct UserRecord {
-    pub session_id: String,
+    #[serde(alias = "session_id")]
+    pub user_id: String,
     pub name: String,
     pub role: String,
     #[serde(default = "default_kind")]

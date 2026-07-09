@@ -57,11 +57,11 @@ mod tests {
         reduce(state, &action).unwrap_or_else(|| state.clone())
     }
 
-    fn registered(state: &RoutingState, session_id: &str, display: &str) -> RoutingState {
+    fn registered(state: &RoutingState, user_id: &str, display: &str) -> RoutingState {
         apply(
             state,
             RoutingAction::Registered {
-                session_id: session_id.to_string(),
+                user_id: user_id.to_string(),
                 display: display.to_string(),
             },
         )
@@ -99,7 +99,7 @@ mod tests {
         let current = apply(
             &previous,
             RoutingAction::CursorAdvanced {
-                session_id: "sess-dev".to_string(),
+                user_id: "sess-dev".to_string(),
                 cursor: "2026-06-11T20:00:05Z".to_string(),
             },
         );
@@ -121,7 +121,7 @@ mod tests {
         let current = apply(
             &previous,
             RoutingAction::Renamed {
-                session_id: "sess-1".to_string(),
+                user_id: "sess-1".to_string(),
                 display: "dev-renamed".to_string(),
             },
         );
@@ -145,7 +145,7 @@ mod tests {
         let previous = apply(
             &previous,
             RoutingAction::TerminalLinked {
-                session_id: "dev-live".to_string(),
+                user_id: "dev-live".to_string(),
                 terminal_id: "term-live".to_string(),
             },
         );

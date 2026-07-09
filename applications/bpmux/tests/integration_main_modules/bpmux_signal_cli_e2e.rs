@@ -82,7 +82,7 @@ async fn an_agent_pushes_its_state_via_bpmux_signal_and_the_roster_dot_reflects_
     let registered = bpmux
         .authed_post(
             "/api/register",
-            serde_json::json!({ "session_id": "sess-dev-signal", "display": "dev" }),
+            serde_json::json!({ "user_id": "sess-dev-signal", "display": "dev" }),
         )
         .await;
     assert!(
@@ -132,7 +132,7 @@ async fn a_lingering_help_clears_on_the_next_signal_the_deny_resolve_is_next_act
     let registered = bpmux
         .authed_post(
             "/api/register",
-            serde_json::json!({ "session_id": "sess-dev-deny", "display": "dev" }),
+            serde_json::json!({ "user_id": "sess-dev-deny", "display": "dev" }),
         )
         .await;
     assert!(
