@@ -23,7 +23,7 @@ pub async fn post_register(
     Extension(store): Extension<Arc<crate::store::Store>>,
     Json(payload): Json<RegisterRequest>,
 ) -> impl IntoResponse {
-    if crate::transport::ws::is_reserved_display(&payload.display) {
+    if crate::roster::is_reserved_display(&payload.display) {
         return (
             StatusCode::FORBIDDEN,
             format!("'{}' is a reserved owner identity", payload.display),

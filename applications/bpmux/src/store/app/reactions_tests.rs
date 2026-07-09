@@ -10,9 +10,7 @@ use crate::hub::Hub;
 use crate::kernel::{Dispatch, Listener, Reaction};
 use crate::message::Message;
 use crate::store::reactions::{aggregated_for_channel, from_store, to_store};
-use crate::store::{
-    AppAction, AppState, Presence, ReactionsAction, RosterAction, RosterRole, app_reduce,
-};
+use crate::store::{AppAction, AppState, Presence, ReactionsAction, RosterAction, app_reduce};
 
 fn fresh_hub() -> (Arc<Hub>, TempDir) {
     let dir = TempDir::new().expect("tempdir");
@@ -38,9 +36,7 @@ fn toggle_action(user: &str) -> AppAction {
 fn roster_action() -> AppAction {
     AppAction::Roster(RosterAction::RosterMemberUpserted {
         routing_id: "sess-dev".to_string(),
-        name: "dev".to_string(),
         identity: "dev:claude-code".to_string(),
-        role: RosterRole::Dev,
         presence: Presence::Online,
     })
 }

@@ -188,16 +188,17 @@ async fn roster_member_upserted_fires_listener() {
 
     orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
         routing_id: "sess-owner".to_string(),
-        name: "owner".to_string(),
         identity: "owner:electron".to_string(),
-        role: RosterRole::Owner,
         presence: Presence::Online,
     }))
     .await;
 
     let members = orch.roster_members();
     assert_eq!(members.len(), 1);
-    assert_eq!(members[0].role, RosterRole::Owner);
+    assert_eq!(
+        crate::roster::role_of(&members[0].identity),
+        RosterRole::Owner
+    );
     assert_eq!(members[0].presence, Presence::Online);
 
     eventually("roster upsert fires listener once", || {
@@ -212,17 +213,13 @@ async fn roster_upsert_keys_by_routing_id_so_register_renames_the_default_in_pla
 
     orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
         routing_id: "sess-1".to_string(),
-        name: "bpmux-designer".to_string(),
         identity: "bpmux-designer".to_string(),
-        role: RosterRole::Other,
         presence: Presence::Online,
     }))
     .await;
     orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
         routing_id: "sess-1".to_string(),
-        name: "designer".to_string(),
         identity: "designer".to_string(),
-        role: RosterRole::Designer,
         presence: Presence::Online,
     }))
     .await;
@@ -234,10 +231,14 @@ async fn roster_upsert_keys_by_routing_id_so_register_renames_the_default_in_pla
         "the default and the set-display are ONE row (same routing-id), not two — the dup in owner's screenshot is structurally impossible; got {members:?}"
     );
     assert_eq!(
-        members[0].name, "designer",
+        crate::roster::display_name(&members[0].identity),
+        "designer",
         "register REPLACES the dir-name default with the set display name in place"
     );
-    assert_eq!(members[0].role, RosterRole::Designer);
+    assert_eq!(
+        crate::roster::role_of(&members[0].identity),
+        RosterRole::Designer
+    );
 }
 
 #[tokio::test]
@@ -246,9 +247,7 @@ async fn roster_two_agents_sharing_a_display_are_two_rows_keyed_by_routing_id() 
     for routing_id in ["sess-a", "sess-b"] {
         orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
             routing_id: routing_id.to_string(),
-            name: "dev".to_string(),
             identity: "dev".to_string(),
-            role: RosterRole::Dev,
             presence: Presence::Online,
         }))
         .await;
@@ -268,9 +267,7 @@ async fn roster_presence_change_targets_the_row_by_routing_id_not_a_shared_displ
     for routing_id in ["sess-a", "sess-b"] {
         orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
             routing_id: routing_id.to_string(),
-            name: "dev".to_string(),
             identity: "dev".to_string(),
-            role: RosterRole::Dev,
             presence: Presence::Online,
         }))
         .await;
@@ -309,9 +306,7 @@ async fn roster_presence_change_fires_only_when_actually_changed() {
 
     orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
         routing_id: "sess-dev".to_string(),
-        name: "dev".to_string(),
         identity: "dev:claude-code".to_string(),
-        role: RosterRole::Dev,
         presence: Presence::Online,
     }))
     .await;
@@ -528,9 +523,12 @@ async fn ws_dispatch_roster_join_populates_store_with_identity() {
     let members = orch.roster_members();
     assert_eq!(members.len(), 1);
     assert_eq!(members[0].routing_id, "sess-dev");
-    assert_eq!(members[0].name, "dev");
+    assert_eq!(crate::roster::display_name(&members[0].identity), "dev");
     assert_eq!(members[0].identity, "dev:claude-code");
-    assert_eq!(members[0].role, RosterRole::Dev);
+    assert_eq!(
+        crate::roster::role_of(&members[0].identity),
+        RosterRole::Dev
+    );
     assert_eq!(members[0].presence, Presence::Online);
 
     eventually("join dispatches -> listener fires", || {
@@ -576,8 +574,11 @@ async fn ws_dispatch_roster_join_role_mapping_covers_known_short_names() {
         crate::transport::ws::dispatch_roster_join(&orch, "sess-x", identity).await;
         let members = orch.roster_members();
         assert_eq!(members.len(), 1, "identity {identity}: 1 member");
-        assert_eq!(members[0].name, expected_name);
-        assert_eq!(members[0].role, expected_role);
+        assert_eq!(
+            crate::roster::display_name(&members[0].identity),
+            expected_name
+        );
+        assert_eq!(crate::roster::role_of(&members[0].identity), expected_role);
         assert_eq!(members[0].identity, identity);
     }
 }
@@ -590,9 +591,7 @@ async fn roster_remove_fires_listener_when_member_existed() {
 
     orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
         routing_id: "sess-designer".to_string(),
-        name: "designer".to_string(),
         identity: "designer:claude-code".to_string(),
-        role: RosterRole::Designer,
         presence: Presence::Online,
     }))
     .await;
@@ -621,9 +620,7 @@ async fn roster_presence_change_to_blocked_records_blocked_presence() {
 
     orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
         routing_id: "sess-dev".to_string(),
-        name: "dev".to_string(),
         identity: "dev:claude-code".to_string(),
-        role: RosterRole::Dev,
         presence: Presence::Online,
     }))
     .await;

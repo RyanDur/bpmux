@@ -50,7 +50,7 @@ fn a_renamed_peer_receives_a_message_addressed_to_its_new_name() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
-        let mut dev = WsPeer::connect(&bpmux, "dev").await;
+        let mut dev = WsPeer::connect_with_user_id(&bpmux, "dev", "sess-dev-rename").await;
         let mut sender = WsPeer::connect(&bpmux, "pm").await;
 
         dev.rename("dev-renamed").await;
@@ -86,7 +86,7 @@ fn after_a_rename_the_old_name_no_longer_routes_to_the_renamed_peer() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
-        let mut dev = WsPeer::connect(&bpmux, "dev").await;
+        let mut dev = WsPeer::connect_with_user_id(&bpmux, "dev", "sess-dev-rename").await;
         let mut sender = WsPeer::connect(&bpmux, "pm").await;
 
         dev.rename("dev-renamed").await;

@@ -1,12 +1,12 @@
-use super::role_from_short_name;
 use crate::message::MessageType;
+use crate::roster::roster_role_for_identity_prefix;
 use crate::routing::short_name;
 
 pub(crate) const MAX_MESSAGE_SIZE: usize = 65536;
 
 pub(crate) fn should_deliver(msg: &crate::message::Message, peer_identity: &str) -> bool {
     if matches!(
-        role_from_short_name(short_name(peer_identity)),
+        roster_role_for_identity_prefix(short_name(peer_identity)),
         crate::store::RosterRole::Owner
     ) {
         return msg.message_type != MessageType::Nudge;

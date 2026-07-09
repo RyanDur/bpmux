@@ -21,7 +21,7 @@ pub(crate) fn chat_class_reaches_live_stream(
 
 pub(crate) fn scope_reaches_live_stream(to: Option<&[String]>, recipient_short: &str) -> bool {
     if matches!(
-        crate::transport::ws::role_from_short_name(recipient_short),
+        crate::roster::roster_role_for_identity_prefix(recipient_short),
         crate::store::RosterRole::Owner
     ) {
         return true;

@@ -54,7 +54,7 @@ fn rename_reaps_prior_auto_identity_from_roster() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
-        let mut peer = WsPeer::connect(&bpmux, "agent-abcd").await;
+        let mut peer = WsPeer::connect_with_user_id(&bpmux, "agent-abcd", "sess-agent-abcd").await;
 
         let auto_present = poll_until(Duration::from_secs(5), || async {
             roster_identities(&bpmux)
@@ -91,7 +91,7 @@ fn rename_to_the_reserved_owner_identity_is_rejected_over_ws() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
     rt.block_on(async {
-        let mut peer = WsPeer::connect(&bpmux, "dev").await;
+        let mut peer = WsPeer::connect_with_user_id(&bpmux, "dev", "sess-dev-reserved").await;
 
         peer.rename("owner").await;
 

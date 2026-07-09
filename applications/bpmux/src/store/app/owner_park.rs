@@ -25,7 +25,7 @@ pub fn owner_park_presence(
     let mut changes = Vec::new();
     for member in roster {
         let should_block = parked
-            && (Some(member.name.as_str()) == delivering_role
+            && (Some(crate::roster::display_name(&member.identity)) == delivering_role
                 || member.presence == Presence::Blocked);
         let next = if should_block {
             Presence::Blocked

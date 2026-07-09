@@ -13,6 +13,7 @@ mod client_handlers;
 mod delivery;
 mod handler;
 mod hydrate;
+mod identify;
 mod loop_handlers;
 mod peer_lag;
 mod roadmap_write_handlers;
@@ -27,6 +28,7 @@ mod roster_projection;
 pub(crate) use client::*;
 pub(crate) use delivery::*;
 pub use handler::ws_handler;
+use identify::{resolve_routing_user_id, roster_key_for};
 pub use peer_lag::*;
 pub(crate) use roster::*;
 pub(crate) use session_io::send_json;
@@ -57,12 +59,9 @@ pub(super) async fn run_ws_session(
         tracker,
         orchestrator,
     } = deps;
-    let (mut identity, replay_cursor) = wait_for_identify(&mut tx, &mut rx).await?;
-    let routing_user_id = store
-        .selector()
-        .select(|s| crate::store::routing::resolve(&s.routing, short_name(&identity)))
-        .into_iter()
-        .next();
+    let (mut identity, replay_cursor, identify_user_id) =
+        wait_for_identify(&mut tx, &mut rx).await?;
+    let routing_user_id = resolve_routing_user_id(&store, &dispatch, &identity, identify_user_id);
     let mut roster_key = roster_key_for(&routing_user_id, &identity);
     hub.peer_connected();
     if let Some(ref key) = roster_key {
@@ -164,15 +163,4 @@ pub(super) async fn run_ws_session(
         dispatch_roster_leave(&store, key).await;
     }
     result
-}
-
-fn roster_key_for(routing_user_id: &Option<String>, identity: &str) -> Option<String> {
-    if is_reserved_display(identity) {
-        return None;
-    }
-    Some(
-        routing_user_id
-            .clone()
-            .unwrap_or_else(|| identity.to_string()),
-    )
 }

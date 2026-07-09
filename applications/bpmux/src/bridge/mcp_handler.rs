@@ -23,6 +23,7 @@ impl ServerHandler for BridgeServer {
     ) -> impl Future<Output = ()> + Send + '_ {
         let port = self.port;
         let name = self.name.clone();
+        let user_id = self.user_id.clone();
         let ws_tx_store = self.ws_tx.clone();
         let subscriptions = self.subscriptions.clone();
 
@@ -32,6 +33,7 @@ impl ServerHandler for BridgeServer {
                     run_ws_connection(
                         port,
                         name.clone(),
+                        user_id.clone(),
                         ws_tx_store.clone(),
                         subscriptions.clone(),
                     )

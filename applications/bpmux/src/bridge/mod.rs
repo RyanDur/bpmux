@@ -71,6 +71,7 @@ type WsSink = futures::stream::SplitSink<
 pub struct BridgeServer {
     port: u16,
     name: Arc<Mutex<String>>,
+    user_id: Option<String>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
     subscriptions: event_subscription::SubscriptionRegistry,
 }
@@ -86,12 +87,13 @@ pub(crate) fn resolve_bridge_name(raw: &str) -> String {
 }
 
 impl BridgeServer {
-    fn new(port: u16, name: String) -> Self {
+    fn new(port: u16, name: String, user_id: Option<String>) -> Self {
         let resolved = resolve_bridge_name(&name);
         let subscriptions = event_subscription::SubscriptionRegistry::with_persistence(&resolved);
         Self {
             port,
             name: Arc::new(Mutex::new(resolved)),
+            user_id,
             ws_tx: Arc::new(Mutex::new(None)),
             subscriptions,
         }
@@ -120,7 +122,10 @@ pub fn run_bridge(
         let restart_signal = restart_signal.clone();
         async move {
             crate::transport::self_update::spawn_binary_watcher(ct.clone(), restart_signal);
-            let server = BridgeServer::new(port, name.to_string());
+            let user_id = std::env::current_dir()
+                .ok()
+                .and_then(|cwd| crate::resolve_user_id(&cwd).ok());
+            let server = BridgeServer::new(port, name.to_string(), user_id);
             let (stdin, stdout) = rmcp::transport::io::stdio();
             let service = server.serve((stdin, stdout)).await?;
             tokio::select! {

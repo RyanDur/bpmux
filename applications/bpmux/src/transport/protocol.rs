@@ -14,6 +14,8 @@ pub enum ClientMessage {
         tool: Option<String>,
         #[serde(default)]
         cursor: Option<String>,
+        #[serde(default)]
+        user_id: Option<String>,
     },
     #[serde(rename = "send")]
     Send {

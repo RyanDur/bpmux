@@ -10,7 +10,6 @@ use super::app::{self, AppAction, AppState, RosterBroadcast};
 use super::{
     AggregatedReaction, CiHubBroadcaster, Presence, ReactionsBroadcastListener,
     ReactionsHubBroadcaster, RosterBroadcastListener, RosterHubBroadcaster, RosterMember,
-    RosterRole,
 };
 use crate::ci::CiState;
 use crate::hub::Hub;
@@ -35,9 +34,7 @@ fn seed_dev_online_kernel(store: &Arc<kernel::Store<AppState, AppAction>>) {
     store.dispatch(AppAction::Roster(
         crate::store::RosterAction::RosterMemberUpserted {
             routing_id: "sess-dev".to_string(),
-            name: "dev".to_string(),
             identity: "dev:claude-code".to_string(),
-            role: RosterRole::Dev,
             presence: Presence::Online,
         },
     ));
@@ -290,7 +287,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
 fn dev_presence(state: &AppState) -> Option<Presence> {
     crate::store::roster::members(&state.roster)
         .into_iter()
-        .find(|member| member.name == "dev")
+        .find(|member| crate::roster::display_name(&member.identity) == "dev")
         .map(|member| member.presence)
 }
 
@@ -375,9 +372,7 @@ async fn roster_listener_emits_typed_state_delta() {
     let listener = RosterHubBroadcaster::new(hub);
     let members = vec![RosterMember {
         routing_id: "sess-owner".to_string(),
-        name: "owner".to_string(),
         identity: "owner:electron".to_string(),
-        role: RosterRole::Owner,
         presence: Presence::Online,
     }];
     listener.on_changed(&members);

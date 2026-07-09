@@ -1,8 +1,41 @@
 use serde::Serialize;
 
+use crate::routing::short_name;
+
 mod listeners;
 
 pub use listeners::RosterHubBroadcaster;
+
+pub(crate) fn roster_role_for_identity_prefix(prefix: &str) -> RosterRole {
+    let workflow = crate::workflow::current_workflow();
+    let purpose = workflow
+        .role
+        .iter()
+        .find(|r| r.id == prefix)
+        .and_then(|r| r.purposes.first().map(String::as_str));
+    match purpose {
+        Some("designer") => RosterRole::Designer,
+        Some("dev") => RosterRole::Dev,
+        Some("pm") => RosterRole::Pm,
+        Some("owner") => RosterRole::Owner,
+        _ => RosterRole::Other,
+    }
+}
+
+pub(crate) fn is_reserved_display(identity: &str) -> bool {
+    matches!(
+        roster_role_for_identity_prefix(short_name(identity)),
+        RosterRole::Owner
+    )
+}
+
+pub(crate) fn display_name(identity: &str) -> &str {
+    short_name(identity)
+}
+
+pub(crate) fn role_of(identity: &str) -> RosterRole {
+    roster_role_for_identity_prefix(short_name(identity))
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, serde::Deserialize)]
 pub enum RosterRole {
@@ -53,9 +86,7 @@ impl From<Presence> for crate::message::PresenceWire {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct RosterMember {
     pub routing_id: String,
-    pub name: String,
     pub identity: String,
-    pub role: RosterRole,
     pub presence: Presence,
 }
 
@@ -63,9 +94,7 @@ pub struct RosterMember {
 pub enum RosterAction {
     RosterMemberUpserted {
         routing_id: String,
-        name: String,
         identity: String,
-        role: RosterRole,
         presence: Presence,
     },
     RosterMemberRemoved {
@@ -86,16 +115,12 @@ pub fn reduce(state: &RosterState, action: &RosterAction) -> Option<RosterState>
     match action {
         RosterAction::RosterMemberUpserted {
             routing_id,
-            name,
             identity,
-            role,
             presence,
         } => {
             let upserted = RosterMember {
                 routing_id: routing_id.clone(),
-                name: name.clone(),
                 identity: identity.clone(),
-                role: *role,
                 presence: *presence,
             };
             match state.members.iter().find(|m| &m.routing_id == routing_id) {

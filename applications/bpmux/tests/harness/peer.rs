@@ -34,6 +34,19 @@ impl WsPeer {
     /// peer-side tests raced and failed under the post-#534 pre-push
     /// gate where those env vars are mandatory.
     pub async fn connect(bpmux: &TestBpmux, name: &str) -> Self {
+        Self::connect_identifying(bpmux, serde_json::json!({"type": "identify", "name": name}))
+            .await
+    }
+
+    pub async fn connect_with_user_id(bpmux: &TestBpmux, name: &str, user_id: &str) -> Self {
+        Self::connect_identifying(
+            bpmux,
+            serde_json::json!({"type": "identify", "name": name, "user_id": user_id}),
+        )
+        .await
+    }
+
+    async fn connect_identifying(bpmux: &TestBpmux, identify: serde_json::Value) -> Self {
         let ws_url = format!("ws://127.0.0.1:{}/ws", bpmux.port());
         let ws_stream = tokio::time::timeout(Duration::from_secs(15), async {
             loop {
@@ -46,8 +59,7 @@ impl WsPeer {
         .await
         .expect("WebSocket should connect");
         let (mut tx, mut rx) = ws_stream.split();
-        let identify = serde_json::json!({"type": "identify", "name": name}).to_string();
-        tx.send(WsMessage::Text(identify.into()))
+        tx.send(WsMessage::Text(identify.to_string().into()))
             .await
             .expect("send identify");
         // consume welcome

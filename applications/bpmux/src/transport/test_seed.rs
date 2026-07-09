@@ -328,19 +328,11 @@ pub async fn post_seed_roster(
     Json(body): Json<SeedRosterBody>,
 ) -> impl IntoResponse {
     for identity in &body.identities {
-        let name = identity
-            .split(':')
-            .next()
-            .unwrap_or(identity.as_str())
-            .to_string();
-        let role = crate::transport::ws::role_from_short_name(&name);
         store
             .dispatch(crate::store::AppAction::Roster(
                 crate::store::RosterAction::RosterMemberUpserted {
                     routing_id: identity.clone(),
-                    name,
                     identity: identity.clone(),
-                    role,
                     presence: body.presence.unwrap_or(crate::store::Presence::Online),
                 },
             ))

@@ -11,6 +11,7 @@ use crate::transport::protocol::ServerMessage;
 pub(crate) async fn run_ws_connection(
     port: u16,
     name: Arc<Mutex<String>>,
+    user_id: Option<String>,
     ws_tx_store: Arc<Mutex<Option<WsSink>>>,
     subscriptions: event_subscription::SubscriptionRegistry,
 ) {
@@ -31,7 +32,7 @@ pub(crate) async fn run_ws_connection(
         let cursor = subscriptions.cursor().await;
         let mut tx = ws_tx_store.lock().await;
         if let Some(ref mut tx) = *tx {
-            let identify = json!({"type": "identify", "name": current_name, "tool": "claude-code", "cursor": cursor})
+            let identify = json!({"type": "identify", "name": current_name, "tool": "claude-code", "cursor": cursor, "user_id": user_id})
                 .to_string();
             if let Err(e) = tx.send(tungstenite::Message::Text(identify.into())).await {
                 eprintln!("Bridge: failed to identify: {e}");
@@ -153,7 +154,7 @@ pub(crate) async fn run_ws_connection(
                         .any(|r| r != crate::message::BROADCAST_ALL && r == current_name.as_str())
                 });
             drop(current_name);
-            let sender_is_owner = crate::transport::ws::role_from_short_name(from_short)
+            let sender_is_owner = crate::roster::roster_role_for_identity_prefix(from_short)
                 == crate::store::RosterRole::Owner;
             let declared = subscriptions.declared_chat_classes().await;
             if !crate::bridge::chat_relevance::chat_class_reaches_live_stream(

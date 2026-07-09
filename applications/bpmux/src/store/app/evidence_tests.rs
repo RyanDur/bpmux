@@ -13,7 +13,7 @@ use crate::product_management::evidence::{
     EvidenceAction, evidence_for_story, evidence_path, from_store, load, to_store,
 };
 use crate::product_management::story::StoryId;
-use crate::store::{AppAction, AppState, Presence, RosterAction, RosterRole, app_reduce};
+use crate::store::{AppAction, AppState, Presence, RosterAction, app_reduce};
 
 fn fresh_hub() -> (Arc<Hub>, TempDir) {
     let dir = TempDir::new().expect("tempdir");
@@ -40,9 +40,7 @@ fn verdict_action(story_id: u64, role: &str) -> AppAction {
 fn roster_action() -> AppAction {
     AppAction::Roster(RosterAction::RosterMemberUpserted {
         routing_id: "sess-dev".to_string(),
-        name: "dev".to_string(),
         identity: "dev:claude-code".to_string(),
-        role: RosterRole::Dev,
         presence: Presence::Online,
     })
 }

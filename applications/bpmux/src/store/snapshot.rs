@@ -39,9 +39,9 @@ impl Store {
             .into_iter()
             .map(|m| RosterMemberWire {
                 routing_id: m.routing_id,
-                name: m.name,
+                name: crate::roster::display_name(&m.identity).to_string(),
+                role: crate::roster::role_of(&m.identity).into(),
                 identity: m.identity,
-                role: m.role.into(),
                 presence: m.presence.into(),
             })
             .collect();

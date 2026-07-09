@@ -8,10 +8,19 @@ fn deserializes_identify_without_tool() {
     let json = r#"{"type": "identify", "name": "claude"}"#;
     let msg: ClientMessage = serde_json::from_str(json).expect("parse");
     match msg {
-        ClientMessage::Identify { name, tool, cursor } => {
+        ClientMessage::Identify {
+            name,
+            tool,
+            cursor,
+            user_id,
+        } => {
             assert_eq!(name, "claude");
             assert_eq!(tool, None);
             assert_eq!(cursor, None);
+            assert_eq!(
+                user_id, None,
+                "an old client that omits user_id parses with an absent id — the server falls back to name-resolution (back-compat pin)"
+            );
         }
         other => panic!("expected Identify, got {other:?}"),
     }
@@ -22,7 +31,9 @@ fn deserializes_identify_with_tool() {
     let json = r#"{"type": "identify", "name": "claude", "tool": "claude-code"}"#;
     let msg: ClientMessage = serde_json::from_str(json).expect("parse");
     match msg {
-        ClientMessage::Identify { name, tool, cursor } => {
+        ClientMessage::Identify {
+            name, tool, cursor, ..
+        } => {
             assert_eq!(name, "claude");
             assert_eq!(tool, Some("claude-code".to_string()));
             assert_eq!(cursor, None);
@@ -39,6 +50,24 @@ fn deserializes_identify_with_cursor() {
         ClientMessage::Identify { name, cursor, .. } => {
             assert_eq!(name, "claude");
             assert_eq!(cursor, Some("2026-06-04T06:00:00+00:00".to_string()));
+        }
+        other => panic!("expected Identify, got {other:?}"),
+    }
+}
+
+#[test]
+fn deserializes_identify_with_user_id() {
+    let json =
+        r#"{"type": "identify", "name": "dev", "tool": "claude-code", "user_id": "sess-dev-7f3a"}"#;
+    let msg: ClientMessage = serde_json::from_str(json).expect("parse");
+    match msg {
+        ClientMessage::Identify { name, user_id, .. } => {
+            assert_eq!(name, "dev");
+            assert_eq!(
+                user_id,
+                Some("sess-dev-7f3a".to_string()),
+                "a directory-held id arrives on the identify frame and becomes the roster key unconditionally (edge-registration pin)"
+            );
         }
         other => panic!("expected Identify, got {other:?}"),
     }

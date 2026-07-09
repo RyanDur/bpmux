@@ -7,14 +7,19 @@ use crate::transport::protocol::{ClientMessage, ServerMessage};
 pub(super) async fn wait_for_identify(
     tx: &mut SplitSink<WebSocket, WsMessage>,
     rx: &mut SplitStream<WebSocket>,
-) -> Result<(String, Option<String>), Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<(String, Option<String>, Option<String>), Box<dyn std::error::Error + Send + Sync>> {
     let timeout = tokio::time::timeout(std::time::Duration::from_secs(5), async {
         while let Some(Ok(msg)) = rx.next().await {
             if let WsMessage::Text(text) = msg {
                 match serde_json::from_str::<ClientMessage>(&text) {
-                    Ok(ClientMessage::Identify { name, tool, cursor }) => {
+                    Ok(ClientMessage::Identify {
+                        name,
+                        tool,
+                        cursor,
+                        user_id,
+                    }) => {
                         let tool_name = tool.unwrap_or_else(|| "ws".to_string());
-                        return Ok((format!("{name}:{tool_name}"), cursor));
+                        return Ok((format!("{name}:{tool_name}"), cursor, user_id));
                     }
                     Ok(_) => {
                         send_json(
