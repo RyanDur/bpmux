@@ -12,9 +12,11 @@ use crate::store::ci::{CiAction, CiState};
 use crate::store::commitments::{CommitmentsAction, CommitmentsState};
 use crate::store::reactions::{ReactionsAction, ReactionsState};
 use crate::store::roster::{RosterAction, RosterState};
+use crate::store::routing::{RoutingAction, RoutingState};
 use crate::store::sync::{SyncAction, SyncState};
 use crate::store::sync_health::{SyncHealthAction, SyncHealthState};
 
+mod action_conversions;
 mod board_placement;
 mod evidence;
 mod history;
@@ -58,6 +60,7 @@ pub struct AppState {
     pub sync: Arc<SyncState>,
     pub sync_health: Arc<SyncHealthState>,
     pub commitments: Arc<CommitmentsState>,
+    pub routing: Arc<RoutingState>,
 }
 
 impl AppState {
@@ -105,88 +108,11 @@ pub enum AppAction {
     Sync(SyncAction),
     SyncHealth(SyncHealthAction),
     Commitments(CommitmentsAction),
+    Routing(RoutingAction),
     Outcome(OutcomeAction),
     Iteration(IterationAction),
     Epic(EpicAction),
     Story(StoryAction),
     Board(BoardAction),
     SharedHistory(SharedHistoryAction),
-}
-
-impl From<RosterAction> for AppAction {
-    fn from(action: RosterAction) -> Self {
-        Self::Roster(action)
-    }
-}
-
-impl From<ReactionsAction> for AppAction {
-    fn from(action: ReactionsAction) -> Self {
-        Self::Reactions(action)
-    }
-}
-
-impl From<EvidenceAction> for AppAction {
-    fn from(action: EvidenceAction) -> Self {
-        Self::Evidence(action)
-    }
-}
-
-impl From<CiAction> for AppAction {
-    fn from(action: CiAction) -> Self {
-        Self::Ci(action)
-    }
-}
-
-impl From<SyncAction> for AppAction {
-    fn from(action: SyncAction) -> Self {
-        Self::Sync(action)
-    }
-}
-
-impl From<SyncHealthAction> for AppAction {
-    fn from(action: SyncHealthAction) -> Self {
-        Self::SyncHealth(action)
-    }
-}
-
-impl From<CommitmentsAction> for AppAction {
-    fn from(action: CommitmentsAction) -> Self {
-        Self::Commitments(action)
-    }
-}
-
-impl From<OutcomeAction> for AppAction {
-    fn from(action: OutcomeAction) -> Self {
-        Self::Outcome(action)
-    }
-}
-
-impl From<IterationAction> for AppAction {
-    fn from(action: IterationAction) -> Self {
-        Self::Iteration(action)
-    }
-}
-
-impl From<EpicAction> for AppAction {
-    fn from(action: EpicAction) -> Self {
-        Self::Epic(action)
-    }
-}
-
-impl From<StoryAction> for AppAction {
-    fn from(action: StoryAction) -> Self {
-        Self::Story(action)
-    }
-}
-
-impl From<BoardAction> for AppAction {
-    fn from(action: BoardAction) -> Self {
-        Self::Board(action)
-    }
-}
-
-impl From<SharedHistoryAction> for AppAction {
-    fn from(action: SharedHistoryAction) -> Self {
-        Self::SharedHistory(action)
-    }
 }

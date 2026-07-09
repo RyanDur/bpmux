@@ -9,6 +9,7 @@ pub use crate::board;
 pub use crate::ci::slice as ci;
 pub use crate::reactions::slice as reactions;
 pub use crate::roster;
+pub use crate::routing::slice as routing;
 pub mod commitments;
 pub mod sync;
 pub mod sync_health;

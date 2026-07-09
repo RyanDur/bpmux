@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct RoutingIdentity {
     display_by_id: HashMap<String, String>,
     cursor_by_id: HashMap<String, String>,

@@ -10,6 +10,7 @@ use crate::store::ci::{self, CiAction};
 use crate::store::commitments::CommitmentsAction;
 use crate::store::reactions;
 use crate::store::roster;
+use crate::store::routing::RoutingAction;
 use crate::store::sync::SyncAction;
 use crate::store::sync_health::SyncHealthAction;
 
@@ -70,6 +71,13 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
                 None => state.clone(),
             }
         }
+        AppAction::Routing(action) => match crate::store::routing::reduce(&state.routing, action) {
+            Some(routing) => AppState {
+                routing: Arc::new(routing),
+                ..state.clone()
+            },
+            None => state.clone(),
+        },
         AppAction::Outcome(action) => match outcome::reduce(&state.outcomes, action) {
             Some(outcomes) => AppState {
                 outcomes: Arc::new(outcomes),
@@ -156,6 +164,11 @@ pub fn validate_and_log(action: &AppAction) {
         AppAction::Commitments(CommitmentsAction::CommitmentsMatched { .. }) => {
             "Commitments.CommitmentsMatched"
         }
+        AppAction::Routing(RoutingAction::Registered { .. }) => "Routing.Registered",
+        AppAction::Routing(RoutingAction::TerminalLinked { .. }) => "Routing.TerminalLinked",
+        AppAction::Routing(RoutingAction::Renamed { .. }) => "Routing.Renamed",
+        AppAction::Routing(RoutingAction::CursorAdvanced { .. }) => "Routing.CursorAdvanced",
+        AppAction::Routing(RoutingAction::Reaped { .. }) => "Routing.Reaped",
         AppAction::Reactions(_) => "Reactions",
         AppAction::Evidence(_) => "Evidence",
         AppAction::Roster(_) => "Roster",

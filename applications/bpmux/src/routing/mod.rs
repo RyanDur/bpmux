@@ -1,5 +1,6 @@
 mod cursor_time;
 mod identity;
+pub mod slice;
 mod store;
 mod user;
 
