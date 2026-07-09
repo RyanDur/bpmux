@@ -36,7 +36,19 @@ pub fn reduce(state: &Stories, action: &StoryAction) -> Stories {
         }
         StoryAction::Seeded(incoming) => {
             for item in incoming {
-                stories.insert(item.key(), item.clone());
+                let key = item.key();
+                let mut seeded = item.clone();
+                if let Some(existing) = stories.get(&key) {
+                    seeded.verdicts = seeded.verdicts.or_else(|| existing.verdicts.clone());
+                    seeded.free_comments = seeded
+                        .free_comments
+                        .or_else(|| existing.free_comments.clone());
+                    if seeded.body.is_none() {
+                        seeded.body = existing.body.clone();
+                        seeded.body_etag = existing.body_etag.clone();
+                    }
+                }
+                stories.insert(key, seeded);
             }
         }
         StoryAction::Removed(id) => {

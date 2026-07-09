@@ -95,6 +95,38 @@ fn body_fetched_event_populates_lazy_body() {
 }
 
 #[test]
+fn a_metadata_reseed_preserves_the_store_only_optimistic_verdict() {
+    let store = seeded();
+    created(&store, 700, "reopened", Work::NotStarted);
+    apply(
+        &store,
+        StoryEvent::new(
+            meta("pm", 2026),
+            StoryId::new(700),
+            StoryEventKind::VerdictCast {
+                verdict: Verdict::Fail {
+                    step: "acceptance".into(),
+                },
+                payload: Some("accepted in error".to_string()),
+            },
+        ),
+    );
+    seed(&store, vec![minimal(700, "reopened", Work::NotStarted)]);
+    let gates = story_at(&store, 700)
+        .unwrap()
+        .verdicts
+        .expect("the optimistic reject survives a metadata re-seed — the tracker never round-trips gate history through metadata ingest, so ingest carries verdicts: None and must not clobber the store-only cast");
+    assert_eq!(gates.len(), 1, "the cast reject is the sole verdict");
+    assert_eq!(
+        gates[0].verdict,
+        Verdict::Fail {
+            step: "acceptance".into()
+        }
+    );
+    assert_eq!(gates[0].payload.as_deref(), Some("accepted in error"));
+}
+
+#[test]
 fn free_comments_fetched_event_replaces_lazy_field() {
     let store = seeded();
     seed(&store, vec![minimal(1, "t", Work::NotStarted)]);
