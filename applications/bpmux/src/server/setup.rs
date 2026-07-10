@@ -11,7 +11,7 @@ fn hydrate_outbox(storage: &Arc<dyn crate::storage::Storage>) -> Vec<QueuedWrite
             .map(|row| QueuedWrite::minted(row.id, PendingWrite::from_event(&codec, row.event)))
             .collect(),
         Err(e) => {
-            crate::diag::log_diag(&format!(
+            diag::log_diag(&format!(
                 "server: board-outbox storage-load failed ({e}); starting with empty outbox"
             ));
             Vec::new()
@@ -79,7 +79,7 @@ pub(super) fn build_prod_orchestrator(
     race_window_barrier: Option<Arc<crate::sync::RaceWindowBarrier>>,
 ) -> (Arc<dyn RefreshDriver>, Vec<QueuedWrite>) {
     let hydrated = hydrate_outbox(&hub.storage);
-    crate::diag::log_diag(&format!(
+    diag::log_diag(&format!(
         "server: board-outbox hydrated via storage ({} pending events)",
         hydrated.len()
     ));

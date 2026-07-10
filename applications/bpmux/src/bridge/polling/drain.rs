@@ -13,10 +13,10 @@ pub(crate) async fn run_drain_loop(
         match refresh.drain_pending().await {
             Ok(0) => {}
             Ok(n) => {
-                crate::diag::log_diag(&format!("bridge: background drain pushed {n} event(s)"));
+                diag::log_diag(&format!("bridge: background drain pushed {n} event(s)"));
             }
             Err(e) => {
-                crate::diag::log_diag(&format!("bridge: background drain: {e}"));
+                diag::log_diag(&format!("bridge: background drain: {e}"));
             }
         }
         let snapshot = refresh.snapshot_status();

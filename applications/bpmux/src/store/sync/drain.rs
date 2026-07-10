@@ -35,10 +35,10 @@ impl Listener<AppState, AppAction> for GithubDrain {
             match outcome {
                 Ok(0) => {}
                 Ok(n) => {
-                    crate::diag::log_diag(&format!("github drain: pushed {n} event(s)"));
+                    diag::log_diag(&format!("github drain: pushed {n} event(s)"));
                 }
                 Err(e) => {
-                    crate::diag::log_diag(&format!("github drain: {e}"));
+                    diag::log_diag(&format!("github drain: {e}"));
                 }
             }
         });

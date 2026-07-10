@@ -53,7 +53,7 @@ pub(crate) fn migrate_legacy_sessions_base(parent: &Path) -> Result<(), LogError
     if data.exists() {
         if sessions.exists() {
             LEGACY_LEFTOVER_DIAG_ONCE.call_once(|| {
-                crate::diag::log_diag(&format!(
+                diag::log_diag(&format!(
                     "legacy data base leftover at {} — data/ is authoritative; the leftover is never merged or deleted",
                     sessions.display()
                 ));

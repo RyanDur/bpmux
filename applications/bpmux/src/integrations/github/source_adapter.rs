@@ -33,7 +33,7 @@ impl SourceAdapter for GitHubSourceAdapter {
         let pre_filter = iterations.len();
         iterations.retain(|iteration| !(iteration.complete && iteration.stories.is_empty()));
         let filtered_out = pre_filter - iterations.len();
-        crate::diag::log_diag(&format!(
+        diag::log_diag(&format!(
             "github ingest_metadata_since(since={:?}): received {received} values, decoded {} stories + {} outcomes + {pre_filter} iterations + {} epics, dropped {dropped} (no number field), filtered {filtered_out} retired+0-member iterations",
             since.map(|s| s.to_rfc3339()),
             stories.len(),

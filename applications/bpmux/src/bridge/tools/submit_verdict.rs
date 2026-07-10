@@ -68,7 +68,7 @@ pub(in crate::bridge) async fn handle_submit_verdict(
         ..Message::default()
     };
     if let Err(e) = hub.broadcast(&notification) {
-        crate::diag::log_diag(&format!(
+        diag::log_diag(&format!(
             "submit_verdict: verdict-cast broadcast failed for #{story_id}: {e}"
         ));
     }

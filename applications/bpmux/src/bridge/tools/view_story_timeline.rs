@@ -62,7 +62,7 @@ pub(in crate::bridge) async fn handle_view_story_timeline(
                     .ok_or_else(|| format!("story #{id} not found in board after gate fetch"))?;
             }
             Err(e) => {
-                crate::diag::log_diag(&format!(
+                diag::log_diag(&format!(
                     "view_story_timeline #{id} read-through fetch_verdicts failed: {e}"
                 ));
             }

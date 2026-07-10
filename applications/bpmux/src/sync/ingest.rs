@@ -98,7 +98,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 let present_with_queued_local_write =
                     self.read_story(story.id).is_some() && self.read_queued_for_story(story.id) > 0;
                 if present_with_queued_local_write {
-                    crate::diag::log_diag(&format!(
+                    diag::log_diag(&format!(
                         "orchestrator: refresh seed for #{} deferred to a queued local write on the present story",
                         story.id.value()
                     ));

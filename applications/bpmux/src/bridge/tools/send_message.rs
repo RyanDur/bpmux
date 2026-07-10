@@ -2,8 +2,8 @@ use serde::Serialize;
 use tokio::sync::Mutex;
 
 use super::helpers::{WsSink, ws_send};
-use crate::diag::log_diag;
 use crate::transport::protocol::ClientMessage;
+use diag::log_diag;
 
 fn owner_role_name() -> String {
     crate::workflow::current_workflow()

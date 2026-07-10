@@ -34,7 +34,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                         if queued_for_story == 0 {
                             self.apply_story_event(&refresh_event);
                         } else {
-                            crate::diag::log_diag(&format!(
+                            diag::log_diag(&format!(
                                 "orchestrator: refresh echo for #{} deferred to {queued_for_story} queued local write(s)",
                                 story_id.value()
                             ));
@@ -48,7 +48,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                         self.dispatch_write_dropped(queued.id);
                         skip.insert(queued.id);
                         self.record_dropped(event.story_id().value(), format!("{e}"));
-                        crate::diag::log_diag(&format!(
+                        diag::log_diag(&format!(
                             "orchestrator: dropped event after permanent push failure ({e}); event #{}",
                             event.story_id().value()
                         ));

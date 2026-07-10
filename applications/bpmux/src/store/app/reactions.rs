@@ -22,7 +22,7 @@ impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for React
         let dir = self.hub.dir.clone();
         Box::pin(async move {
             if let Err(e) = crate::reactions::save(&dir, &store) {
-                crate::diag::log_diag(&format!("reactions: persist failed: {e}"));
+                diag::log_diag(&format!("reactions: persist failed: {e}"));
             }
         })
     }

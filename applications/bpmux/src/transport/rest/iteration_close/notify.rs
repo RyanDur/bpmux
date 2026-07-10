@@ -17,12 +17,12 @@ pub(super) fn broadcast_iteration_closed(hub: &hub::Hub) {
         ..message::Message::default()
     };
     if let Err(e) = hub.broadcast(&closed) {
-        crate::diag::log_diag(&format!(
+        diag::log_diag(&format!(
             "iteration-close: state-delta broadcast failed: {e}"
         ));
     }
     if let Err(e) = hub.broadcast(&iteration_close_flush_prompt()) {
-        crate::diag::log_diag(&format!(
+        diag::log_diag(&format!(
             "iteration-close: flush-prompt broadcast failed: {e}"
         ));
     }

@@ -33,6 +33,6 @@ pub async fn ws_handler(
 async fn handle_ws(socket: WebSocket, deps: WsDeps) {
     let (tx, rx) = socket.split();
     if let Err(e) = run_ws_session(tx, rx, deps).await {
-        crate::diag::log_diag(&format!("ws: session error: {e}"));
+        diag::log_diag(&format!("ws: session error: {e}"));
     }
 }

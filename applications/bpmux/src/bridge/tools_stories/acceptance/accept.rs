@@ -73,7 +73,7 @@ pub(crate) async fn handle_accept_story(
                         ..message::Message::default()
                     };
                     if let Err(err) = s.broadcast(&reprompt) {
-                        crate::diag::log_diag(&format!(
+                        diag::log_diag(&format!(
                             "bridge: verdict-reprompt broadcast failed: {err}"
                         ));
                     }

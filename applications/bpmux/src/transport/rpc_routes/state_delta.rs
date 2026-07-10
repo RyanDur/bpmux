@@ -16,7 +16,7 @@ pub(crate) fn fire_view_backlog_marker(hub: &Arc<hub::Hub>) {
         ..Default::default()
     };
     if let Err(e) = hub.broadcast(&msg) {
-        crate::diag::log_diag(&format!("rpc: VIEW_BACKLOG_MARKER broadcast failed: {e}"));
+        diag::log_diag(&format!("rpc: VIEW_BACKLOG_MARKER broadcast failed: {e}"));
     }
 }
 
@@ -32,7 +32,7 @@ pub(crate) fn fire_board_invalidate(hub: &Arc<hub::Hub>) {
         ..Default::default()
     };
     if let Err(e) = hub.broadcast(&delta) {
-        crate::diag::log_diag(&format!(
+        diag::log_diag(&format!(
             "rpc: board_invalidated state-delta broadcast failed: {e}"
         ));
     }
@@ -75,7 +75,7 @@ pub(crate) fn fire_story_transition(
         ..Default::default()
     };
     if let Err(e) = hub.broadcast(&delta) {
-        crate::diag::log_diag(&format!(
+        diag::log_diag(&format!(
             "rpc: story_state_transition state-delta broadcast failed: {e}"
         ));
     }

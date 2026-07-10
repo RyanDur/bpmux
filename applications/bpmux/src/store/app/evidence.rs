@@ -22,7 +22,7 @@ impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for Evide
         let dir = self.hub.dir.clone();
         Box::pin(async move {
             if let Err(e) = crate::product_management::evidence::save(&dir, &store) {
-                crate::diag::log_diag(&format!("evidence: persist failed: {e}"));
+                diag::log_diag(&format!("evidence: persist failed: {e}"));
             }
         })
     }

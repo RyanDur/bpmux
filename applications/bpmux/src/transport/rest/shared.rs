@@ -33,7 +33,7 @@ pub(crate) fn broadcast_board_invalidate(hub: &hub::Hub) {
         ..message::Message::default()
     };
     if let Err(e) = hub.broadcast(&delta) {
-        crate::diag::log_diag(&format!(
+        diag::log_diag(&format!(
             "rest: board-invalidated state-delta broadcast failed: {e}"
         ));
     }

@@ -121,7 +121,7 @@ pub fn record(source: Source, feature: &str) {
     let next = map.get(&key).map(|r| r.count + 1).unwrap_or(1);
     map.insert(key, Record::now(next));
     if let Err(e) = save_to(&path, &map) {
-        crate::diag::log_diag(&format!("usage::record save failed: {e}"));
+        diag::log_diag(&format!("usage::record save failed: {e}"));
     }
 }
 

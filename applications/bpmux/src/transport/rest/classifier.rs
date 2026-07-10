@@ -25,7 +25,7 @@ pub async fn post_classifier_misfire(
         .as_deref()
         .map(|r| format!(" reason={r:?}"))
         .unwrap_or_default();
-    crate::diag::log_diag(&format!(
+    diag::log_diag(&format!(
         "MISFIRE agent={:?} nudge_hash={:?}{reason_field}",
         payload.agent, payload.nudge_hash
     ));

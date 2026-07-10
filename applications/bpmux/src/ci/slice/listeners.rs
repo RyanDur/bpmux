@@ -67,11 +67,11 @@ impl CiBroadcastListener for CiHubBroadcaster {
             ..message::Message::default()
         };
         if let Err(e) = self.hub.broadcast(&activity_msg) {
-            crate::diag::log_diag(&format!("ci_listener: activity broadcast failed: {e}"));
+            diag::log_diag(&format!("ci_listener: activity broadcast failed: {e}"));
         }
         let dev_signal = crate::ci::build_dev_ci_signal(&text);
         if let Err(e) = self.hub.broadcast(&dev_signal) {
-            crate::diag::log_diag(&format!("ci_listener: dev signal failed: {e}"));
+            diag::log_diag(&format!("ci_listener: dev signal failed: {e}"));
         }
     }
 }

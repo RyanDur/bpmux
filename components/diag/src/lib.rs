@@ -87,3 +87,6 @@ pub fn log_diag(line: &str) {
         None => FileDiagSink.append(line),
     });
 }
+
+#[cfg(test)]
+mod diag_tests;

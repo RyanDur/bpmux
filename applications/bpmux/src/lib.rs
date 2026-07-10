@@ -20,9 +20,6 @@ pub(crate) mod ci_link;
 mod ci_tests;
 mod cli;
 pub mod comprehension;
-pub mod diag;
-#[cfg(test)]
-mod diag_tests;
 pub mod hub;
 #[cfg(test)]
 mod hub_tests;

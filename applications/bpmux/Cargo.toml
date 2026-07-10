@@ -6,6 +6,7 @@ description = "P2P group chat for AI pair programming sessions"
 license.workspace = true
 
 [dependencies]
+diag = { path = "../../components/diag" }
 kernel = { path = "../../components/kernel" }
 message = { path = "../../components/message" }
 tokio = { workspace = true, features = ["full"] }

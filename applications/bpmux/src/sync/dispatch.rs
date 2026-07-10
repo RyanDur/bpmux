@@ -14,7 +14,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     fn emit(&self, action: crate::store::AppAction) {
         match self.dispatch.get() {
             Some(dispatch) => dispatch.dispatch(action),
-            None => crate::diag::log_diag(
+            None => diag::log_diag(
                 "orchestrator: dispatch unbound; write dropped (bind_dispatch missing)",
             ),
         }

@@ -17,7 +17,7 @@ pub fn current_workflow() -> &'static WorkflowConfig {
     WORKFLOW.get_or_init(|| match load_workflow_from_process_env() {
         Ok(config) => config,
         Err(e) => {
-            crate::diag::log_diag(&format!(
+            diag::log_diag(&format!(
                 "workflow config load failed at lazy init; falling back to bundled default: {e}"
             ));
             bundled_default()

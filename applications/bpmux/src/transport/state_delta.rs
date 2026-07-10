@@ -14,6 +14,6 @@ pub(crate) fn broadcast_state_delta(
         ..message::Message::default()
     };
     if let Err(e) = hub.broadcast(&msg) {
-        crate::diag::log_diag(&format!("{label}: state-delta broadcast failed: {e}"));
+        diag::log_diag(&format!("{label}: state-delta broadcast failed: {e}"));
     }
 }

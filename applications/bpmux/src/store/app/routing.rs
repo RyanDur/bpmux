@@ -26,18 +26,18 @@ impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for Routi
         Box::pin(async move {
             for (id, name, role) in &plan.upserts {
                 if let Err(e) = repo.upsert_user(id, name, role) {
-                    crate::diag::log_diag(&format!("routing: upsert_user failed: {e}"));
+                    diag::log_diag(&format!("routing: upsert_user failed: {e}"));
                 }
             }
             for (id, at) in &plan.cursors {
                 if let Err(e) = repo.set_user_last_delivered(id, *at) {
-                    crate::diag::log_diag(&format!("routing: set_user_last_delivered failed: {e}"));
+                    diag::log_diag(&format!("routing: set_user_last_delivered failed: {e}"));
                 }
             }
             if !plan.deletes.is_empty()
                 && let Err(e) = repo.delete_users(&plan.deletes)
             {
-                crate::diag::log_diag(&format!("routing: delete_users failed: {e}"));
+                diag::log_diag(&format!("routing: delete_users failed: {e}"));
             }
         })
     }

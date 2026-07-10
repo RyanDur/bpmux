@@ -29,7 +29,7 @@ impl OutboxSink {
             }
         };
         if let Err(e) = result {
-            crate::diag::log_diag(&format!("sync: outbox persist failed: {e}"));
+            diag::log_diag(&format!("sync: outbox persist failed: {e}"));
         }
     }
 }

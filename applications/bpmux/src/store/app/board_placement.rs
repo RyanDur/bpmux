@@ -69,7 +69,7 @@ impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for Board
         let dir = self.hub.dir.clone();
         Box::pin(async move {
             if let Err(e) = crate::board::persistence::save(&dir, &placements) {
-                crate::diag::log_diag(&format!("board: placement persist failed: {e}"));
+                diag::log_diag(&format!("board: placement persist failed: {e}"));
             }
         })
     }

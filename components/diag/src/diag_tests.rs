@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use super::diag::{path_has_deps_segment, resolve_diag_path};
+use crate::{path_has_deps_segment, resolve_diag_path};
 use std::path::{Path, PathBuf};
 
 fn home_dir() -> PathBuf {

@@ -61,7 +61,7 @@ pub(super) fn broadcast_iteration_close_blocked(
         ..message::Message::default()
     };
     if let Err(e) = hub.broadcast(&msg) {
-        crate::diag::log_diag(&format!(
+        diag::log_diag(&format!(
             "post_close_iteration: iteration-close-blocked broadcast failed: {e}"
         ));
     }

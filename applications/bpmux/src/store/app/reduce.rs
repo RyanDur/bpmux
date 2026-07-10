@@ -190,5 +190,5 @@ pub fn validate_and_log(action: &AppAction) {
         AppAction::SharedHistory(_) => "SharedHistory",
         AppAction::OwnerSession(_) => "OwnerSession",
     };
-    crate::diag::log_diag(&format!("store: dispatch {label}"));
+    diag::log_diag(&format!("store: dispatch {label}"));
 }

@@ -26,7 +26,7 @@ pub fn warn_on_inconsistent_state_labels(labels: &[String]) {
         .filter(|needle| labels.iter().any(|l| l.eq_ignore_ascii_case(needle)))
         .collect();
     if present.len() >= 2 {
-        crate::diag::log_diag(&format!(
+        diag::log_diag(&format!(
             "decoder: inconsistent state-labels present {present:?} — priority decoder picks first per spec; expected: only one state-label per story"
         ));
     }

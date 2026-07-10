@@ -124,7 +124,7 @@ pub async fn run_server(
             ct.cancelled().await;
             tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
         } => {
-            crate::diag::log_diag(
+            diag::log_diag(
                 "server: graceful shutdown deadline (1500ms) elapsed; forcing exit",
             );
         }

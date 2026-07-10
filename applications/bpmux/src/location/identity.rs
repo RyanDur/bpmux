@@ -158,7 +158,7 @@ fn read_marker(marker: &Path, dir: &Path) -> Option<DirUser> {
 fn log_marker_divergence(dir: &Path) {
     static DIVERGENCE_ONCE: std::sync::Once = std::sync::Once::new();
     DIVERGENCE_ONCE.call_once(|| {
-        crate::diag::log_diag(&format!(
+        diag::log_diag(&format!(
             "divergent identity markers in {} — the new .bpmux-user-id is authoritative; the legacy .bpmux-session-id is discarded",
             dir.display()
         ));

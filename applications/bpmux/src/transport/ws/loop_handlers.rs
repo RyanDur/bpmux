@@ -27,14 +27,14 @@ pub(super) async fn handle_broadcast(
             }
         }
         Err(broadcast::error::RecvError::Lagged(n)) => {
-            crate::diag::log_diag(&format!("ws: client {identity} lagged by {n} messages"));
+            diag::log_diag(&format!("ws: client {identity} lagged by {n} messages"));
             let lag_notice = ServerMessage::Error {
                 reason: format!("lagged: {n} messages dropped"),
             };
             let _ = send_json(tx, &lag_notice).await;
             let lag_broadcast = build_peer_lag_message(identity, n, chrono::Utc::now());
             if let Err(e) = hub.broadcast(&lag_broadcast) {
-                crate::diag::log_diag(&format!(
+                diag::log_diag(&format!(
                     "ws: peer-lag broadcast failed for {identity}: {e}"
                 ));
             }

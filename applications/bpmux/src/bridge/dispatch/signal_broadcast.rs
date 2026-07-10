@@ -25,7 +25,7 @@ pub(super) fn broadcast_client_msg_via_hub(
             ..message::Message::default()
         };
         if let Err(e) = hub.broadcast(&hub_msg) {
-            crate::diag::log_diag(&format!("rpc: workflow-signal broadcast failed: {e}"));
+            diag::log_diag(&format!("rpc: workflow-signal broadcast failed: {e}"));
         }
     }
 }

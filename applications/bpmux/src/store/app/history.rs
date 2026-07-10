@@ -25,7 +25,7 @@ impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for Share
         let dir = self.hub.dir.clone();
         Box::pin(async move {
             if let Err(e) = crate::product_management::history_persistence::save(&dir, &history) {
-                crate::diag::log_diag(&format!("history: shared-history persist failed: {e}"));
+                diag::log_diag(&format!("history: shared-history persist failed: {e}"));
             }
         })
     }
@@ -60,7 +60,7 @@ impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for Local
         let dir = self.hub.dir.clone();
         Box::pin(async move {
             if let Err(e) = crate::board::history_persistence::save(&dir, &history) {
-                crate::diag::log_diag(&format!("history: placement-history persist failed: {e}"));
+                diag::log_diag(&format!("history: placement-history persist failed: {e}"));
             }
         })
     }

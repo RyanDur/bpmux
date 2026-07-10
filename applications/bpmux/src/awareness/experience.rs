@@ -3,8 +3,8 @@ use tokio::time::Instant;
 
 use crate::comprehension::bayes::BayesModel;
 use crate::comprehension::classifier;
-use crate::diag::log_diag;
 use crate::hub::Hub;
+use diag::log_diag;
 use message::{Message, MessageType};
 
 use super::agents::AgentTracker;

@@ -73,10 +73,10 @@ pub async fn run_hydration_loop_cancellable(
         let to_revalidate =
             select_stories_to_revalidate(&stories, HYDRATION_MAX_PER_TICK, &iterations);
         if to_hydrate.is_empty() && to_revalidate.is_empty() {
-            crate::diag::log_diag("bridge: hydration tick: nothing to hydrate or revalidate");
+            diag::log_diag("bridge: hydration tick: nothing to hydrate or revalidate");
             continue;
         }
-        crate::diag::log_diag(&format!(
+        diag::log_diag(&format!(
             "bridge: hydration tick: hydrate={:?} revalidate={:?}",
             to_hydrate,
             to_revalidate.iter().map(|(n, _)| *n).collect::<Vec<_>>()
@@ -99,12 +99,12 @@ pub async fn run_hydration_loop_cancellable(
                     }
                 }
                 Err(e) => {
-                    crate::diag::log_diag(&format!("bridge: hydrate body #{number} failed: {e}"));
+                    diag::log_diag(&format!("bridge: hydrate body #{number} failed: {e}"));
                     break;
                 }
             }
         }
-        crate::diag::log_diag(&format!(
+        diag::log_diag(&format!(
             "bridge: hydration tick complete: hydrated={hydrated_ok} revalidated={revalidated_ok}"
         ));
     }

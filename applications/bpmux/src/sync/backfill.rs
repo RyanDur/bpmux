@@ -20,7 +20,7 @@ pub(crate) async fn backfill_shared_history(
                 }));
             }
             Err(e) => {
-                crate::diag::log_diag(&format!(
+                diag::log_diag(&format!(
                     "backfill: fetch_verdicts(#{number}) failed: {e}; shared history stays thin for this story"
                 ));
             }

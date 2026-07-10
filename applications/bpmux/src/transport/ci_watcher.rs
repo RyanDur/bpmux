@@ -86,7 +86,7 @@ pub fn spawn<A>(
                         backoff,
                         std::time::SystemTime::now(),
                     ) {
-                        crate::diag::log_diag(&format!(
+                        diag::log_diag(&format!(
                             "ci_watcher: rate-limited; backoff signal={} wait={}s",
                             crate::rate_limit::signal_label(decision.signal),
                             decision.wait.as_secs()
@@ -97,7 +97,7 @@ pub fn spawn<A>(
                         }
                         backoff = (backoff * 2).min(max_backoff);
                     } else {
-                        crate::diag::log_diag(&format!("ci_watcher: fetch failed: {e}"));
+                        diag::log_diag(&format!("ci_watcher: fetch failed: {e}"));
                     }
                     continue;
                 }

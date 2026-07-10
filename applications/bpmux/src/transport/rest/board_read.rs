@@ -13,18 +13,18 @@ pub async fn get_board(
             match refresh.refresh_all().await {
                 Ok(()) => {
                     if refresh.all_stories().is_empty() {
-                        crate::diag::log_diag(
+                        diag::log_diag(
                             "rest get_board: empty store; refresh_all returned Ok with 0 stories — ingest succeeded but source-of-truth empty OR decode dropped all rows",
                         );
                     } else {
-                        crate::diag::log_diag(&format!(
+                        diag::log_diag(&format!(
                             "rest get_board: empty store; refresh_all recovered {} stories",
                             refresh.all_stories().len()
                         ));
                     }
                 }
                 Err(e) => {
-                    crate::diag::log_diag(&format!(
+                    diag::log_diag(&format!(
                         "rest get_board: empty store; refresh_all failed: {e}"
                     ));
                 }

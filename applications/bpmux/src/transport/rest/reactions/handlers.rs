@@ -85,6 +85,6 @@ fn broadcast_reaction_event(
         ..message::Message::default()
     };
     if let Err(e) = hub.broadcast(&msg) {
-        crate::diag::log_diag(&format!("rest: reaction-event broadcast failed: {e}"));
+        diag::log_diag(&format!("rest: reaction-event broadcast failed: {e}"));
     }
 }

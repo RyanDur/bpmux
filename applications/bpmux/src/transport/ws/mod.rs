@@ -156,7 +156,7 @@ pub(super) async fn run_ws_session(
                         }
                         Some(Ok(WsMessage::Close(_))) | None => break,
                         Some(Err(e)) => {
-                            crate::diag::log_diag(&format!(
+                            diag::log_diag(&format!(
                                 "ws: read error for {identity}: {e}"
                             ));
                             break;

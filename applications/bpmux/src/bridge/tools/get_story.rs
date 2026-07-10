@@ -82,7 +82,7 @@ pub(in crate::bridge) async fn handle_get_story(
                     .ok_or_else(|| format!("story #{id} not found in board after fetch"))?;
             }
             Err(e) => {
-                crate::diag::log_diag(&format!(
+                diag::log_diag(&format!(
                     "get_story #{id} read-through fetch_body failed: {e}"
                 ));
             }
@@ -102,7 +102,7 @@ pub(in crate::bridge) async fn handle_get_story(
                     .ok_or_else(|| format!("story #{id} not found in board after gate fetch"))?;
             }
             Err(e) => {
-                crate::diag::log_diag(&format!(
+                diag::log_diag(&format!(
                     "get_story #{id} read-through fetch_verdicts failed: {e}"
                 ));
             }

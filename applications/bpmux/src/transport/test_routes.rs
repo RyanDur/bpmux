@@ -25,7 +25,7 @@ fn fire_board_invalidate(hub: &Arc<hub::Hub>) {
         ..Default::default()
     };
     if let Err(e) = hub.broadcast(&delta) {
-        crate::diag::log_diag(&format!(
+        diag::log_diag(&format!(
             "test-route: board_invalidated state-delta broadcast failed: {e}"
         ));
     }
