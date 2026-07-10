@@ -5,7 +5,7 @@ pub const AGENT_HEADER: &str = "X-BPMUX-Agent";
 pub const ACTOR_ID_HEADER: &str = "X-BPMUX-Actor-Id";
 
 fn known_agents() -> Vec<String> {
-    crate::workflow::current_workflow()
+    workflow::current_workflow()
         .role
         .iter()
         .map(|r| r.name.to_ascii_lowercase())

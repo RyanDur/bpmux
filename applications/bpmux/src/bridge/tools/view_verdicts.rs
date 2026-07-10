@@ -26,8 +26,7 @@ fn resolve_accept_window_secs(
         story.story_type(),
     );
     let transition =
-        crate::workflow::resolve_transition(crate::workflow::current_workflow(), "accept", class)
-            .ok()?;
+        workflow::resolve_transition(workflow::current_workflow(), "accept", class).ok()?;
     Some(transition.evidence_window_seconds)
 }
 
@@ -51,7 +50,7 @@ pub(in crate::bridge) async fn handle_view_verdicts(
         .into_iter()
         .map(|verdict| {
             let state = window_secs.map(|w| {
-                crate::workflow::verdict_freshness(
+                workflow::verdict_freshness(
                     Some(verdict.ts),
                     w,
                     now,

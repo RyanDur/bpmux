@@ -1,5 +1,5 @@
 use crate::product_management::story::{Verdict, Work};
-use crate::workflow::{StageId, WorkflowConfig};
+use workflow::{StageId, WorkflowConfig};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Decision {
@@ -29,7 +29,7 @@ fn backward_target_id(from_id: &str, workflow: &WorkflowConfig) -> Option<String
 }
 
 fn default_fail_target_id(from_id: &str, workflow: &WorkflowConfig) -> Option<String> {
-    let middle = crate::workflow::board_middle_stage_ids(workflow);
+    let middle = workflow::board_middle_stage_ids(workflow);
     let stage_index = middle.iter().position(|stage| stage.as_str() == from_id)?;
     match stage_index {
         0 => Some(from_id.to_string()),
@@ -50,7 +50,7 @@ pub fn advance(verdict: &Verdict, workflow: &WorkflowConfig) -> Option<Decision>
         Verdict::Succeed { step } => next_state_id_in_order(step.as_str(), workflow)?,
         Verdict::Fail { step } => fail_target_id(step.as_str(), workflow)?,
     };
-    let middle = crate::workflow::board_middle_stage_ids(workflow);
+    let middle = workflow::board_middle_stage_ids(workflow);
     let coarse = if middle.iter().any(|stage| stage.as_str() == target_id) {
         Work::InProgress
     } else {

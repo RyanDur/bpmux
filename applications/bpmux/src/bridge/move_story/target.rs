@@ -32,7 +32,7 @@ impl TargetState {
         {
             return Ok(Self::Workflow(state));
         }
-        let middle = crate::workflow::board_middle_stage_ids(crate::workflow::current_workflow());
+        let middle = workflow::board_middle_stage_ids(workflow::current_workflow());
         if middle.iter().any(|stage| stage.as_str() == normalized) {
             return Ok(Self::Workflow(Work::InProgress));
         }

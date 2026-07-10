@@ -91,7 +91,7 @@ fn roadmap_cards(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeCard> {
     crate::product_management::roadmap::selectors::roadmap_cards(
         &refresh.outcomes(),
         &refresh.iterations(),
-        crate::workflow::current_workflow(),
+        workflow::current_workflow(),
     )
 }
 

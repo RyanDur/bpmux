@@ -5,7 +5,7 @@ use crate::product_management::iteration::readiness::{
 };
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::Outcome;
-use crate::workflow::config::WorkflowConfig;
+use workflow::config::WorkflowConfig;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]

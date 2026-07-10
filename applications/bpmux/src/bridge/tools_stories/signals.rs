@@ -1,7 +1,7 @@
 use crate::transport::protocol::ClientMessage;
 
 fn role_name_for_purpose(purpose: &str) -> String {
-    crate::workflow::current_workflow()
+    workflow::current_workflow()
         .role_name_for_purpose(purpose)
         .map(str::to_string)
         .unwrap_or_else(|| purpose.to_string())
@@ -81,7 +81,7 @@ pub(crate) fn addressee_for_pass_desk_check(
     story_type: crate::product_management::story::StoryKind,
     acceptor: Option<crate::product_management::story::Acceptor>,
 ) -> &'static str {
-    let workflow = crate::workflow::current_workflow();
+    let workflow = workflow::current_workflow();
     let owner = || workflow.owner_role_name().unwrap_or("owner");
     let team = || workflow.role_name_for_purpose("pm").unwrap_or("pm");
 
@@ -121,7 +121,7 @@ pub(crate) fn build_pass_desk_check_signals(
     acceptor: Option<crate::product_management::story::Acceptor>,
 ) -> Vec<ClientMessage> {
     let primary = addressee_for_pass_desk_check(story_type, acceptor);
-    let owner = crate::workflow::current_workflow()
+    let owner = workflow::current_workflow()
         .owner_role_name()
         .unwrap_or("owner");
     let mut signals = vec![build_pass_desk_check_signal(id, primary)];

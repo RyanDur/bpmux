@@ -5,8 +5,8 @@ use crate::board::{BoardAction, BoardPlacements, placement_edge, reduce};
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::slice::{Stories, StoryAction};
 use crate::product_management::story::{Stage, Story, StoryId, Work};
-use crate::workflow::StageId;
 use chrono::{TimeZone, Utc};
+use workflow::StageId;
 
 fn story(id: u64, state: Work) -> Story {
     Story::new_minimal(

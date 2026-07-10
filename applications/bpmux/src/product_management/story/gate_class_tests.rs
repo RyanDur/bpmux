@@ -3,7 +3,7 @@
 use super::{
     Acceptor, StoryKind, gate_class_from_acceptor, gate_class_from_acceptor_and_story_type,
 };
-use crate::workflow::GateClass;
+use workflow::GateClass;
 
 #[test]
 fn acceptor_owner_returns_owner_walk() {

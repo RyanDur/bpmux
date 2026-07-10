@@ -29,7 +29,7 @@ pub(crate) async fn handle_view_board(
             }
         }
     }
-    let middle = crate::workflow::board_middle_stage_ids(crate::workflow::current_workflow());
+    let middle = workflow::board_middle_stage_ids(workflow::current_workflow());
     let scope = BoardScope {
         state: match args.get("state").and_then(|v| v.as_str()) {
             Some(s) => Some(parse_state(s, &middle).ok_or_else(|| {
@@ -57,7 +57,7 @@ pub(crate) async fn handle_view_board(
     let iterations = r.iterations();
     let fine: std::collections::HashMap<
         crate::product_management::story::StoryId,
-        crate::workflow::StageId,
+        workflow::StageId,
     > = stories
         .iter()
         .filter_map(|s| r.story_fine_stage(s).map(|stage| (s.id, stage.id())))
@@ -72,7 +72,7 @@ pub(crate) async fn handle_view_board(
     ))
 }
 
-fn parse_state(s: &str, middle: &[crate::workflow::StageId]) -> Option<crate::board::Column> {
+fn parse_state(s: &str, middle: &[workflow::StageId]) -> Option<crate::board::Column> {
     use crate::board::Column;
     let lower = s.to_ascii_lowercase();
     match lower.as_str() {

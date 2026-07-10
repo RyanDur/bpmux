@@ -8,11 +8,11 @@ use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::Story;
 use crate::product_management::story::StoryId;
 use crate::product_management::story::Work;
-use crate::workflow::StageId;
 use chrono::{TimeZone, Utc};
+use workflow::StageId;
 
 fn bundled_middle() -> Vec<StageId> {
-    crate::workflow::board_middle_stage_ids(&crate::workflow::test_support::repo_workflow())
+    workflow::board_middle_stage_ids(&crate::workflow_test_support::repo_workflow())
 }
 
 fn story(num: u64, title: &str, state: Work) -> Story {

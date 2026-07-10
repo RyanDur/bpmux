@@ -5,7 +5,7 @@ use super::state_labels::resolve_state_and_placement;
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::events::LabelDerivedFields;
 use crate::product_management::story::{Story, StoryId, StoryKind, Tag, story_type_from_title};
-use crate::workflow::StageId;
+use workflow::StageId;
 
 pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryKind {
     story_type_from_labels(labels).unwrap_or_else(|| story_type_from_title(title))

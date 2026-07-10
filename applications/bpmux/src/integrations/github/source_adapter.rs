@@ -52,7 +52,7 @@ impl SourceAdapter for GitHubSourceAdapter {
     async fn fetch_story_metadata(
         &self,
         number: u64,
-    ) -> Result<Option<(Story, Option<crate::workflow::StageId>)>, SyncError> {
+    ) -> Result<Option<(Story, Option<workflow::StageId>)>, SyncError> {
         match self.inner.get_story(number).await {
             Ok(Some(v)) => Ok(decode_story_with_placement(&v)),
             Ok(None) => Ok(None),

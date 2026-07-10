@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::board::{Column, board_columns, group_by_column};
 use crate::product_management::story::StoryId;
 use crate::view::board::arrangement::column_header;
-use crate::workflow::StageId;
+use workflow::StageId;
 
 #[derive(Default)]
 pub(in crate::bridge) struct BoardScope {

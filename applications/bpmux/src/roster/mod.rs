@@ -9,7 +9,7 @@ pub use listeners::RosterHubBroadcaster;
 pub(crate) use wire::members_wire;
 
 pub(crate) fn roster_role_for_identity_prefix(prefix: &str) -> RosterRole {
-    let workflow = crate::workflow::current_workflow();
+    let workflow = workflow::current_workflow();
     let purpose = workflow
         .role
         .iter()

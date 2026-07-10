@@ -136,7 +136,7 @@ async fn drill_iteration_ids(
     adapter: &Arc<InMemorySourceAdapter>,
     id: u64,
 ) -> Vec<u64> {
-    let workflow = crate::workflow::current_workflow();
+    let workflow = workflow::current_workflow();
     let outcome = reingested_outcome(adapter, id).await;
     crate::product_management::roadmap::drill::derive_outcome_drill_in(
         &outcome,

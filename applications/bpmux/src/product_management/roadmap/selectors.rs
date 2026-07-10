@@ -6,7 +6,7 @@ use crate::product_management::iteration::readiness::{
 };
 use crate::product_management::outcome::{Outcome, OutcomeId};
 use crate::product_management::story::Horizon;
-use crate::workflow::config::WorkflowConfig;
+use workflow::config::WorkflowConfig;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct OutcomeWhy {

@@ -8,10 +8,10 @@ use crate::product_management::iteration::{Iteration, IterationAction, Iteration
 use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::{AppAction, Dispatch};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
-use crate::workflow::bundled_default::bundled_default;
 use chrono::{TimeZone, Utc};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;
+use workflow::bundled_default::bundled_default;
 
 fn dispatch_channel() -> (Dispatch, UnboundedReceiver<AppAction>) {
     Dispatch::recording()

@@ -67,9 +67,9 @@ fn run_recall(cli: &Cli, role_arg: &Option<String>) -> anyhow::Result<()> {
 }
 
 fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
-    let workflow = crate::workflow::load_workflow_from_process_env()
+    let workflow = workflow::load_workflow_from_process_env()
         .map_err(|e| anyhow::anyhow!("refusing to start on a broken workflow config: {e}"))?;
-    crate::workflow::install_workflow(workflow);
+    workflow::install_workflow(workflow);
     let base = resolve_data_base(&cli.data_base)?;
     std::fs::create_dir_all(&base)?;
     let data_dir = location::resume_or_create_data_dir(&base)?;

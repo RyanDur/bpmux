@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
-use crate::workflow::config::WorkflowConfig;
+use workflow::config::WorkflowConfig;
 
 pub const ITERATION_REVIEWER_PURPOSE: &str = "iteration-reviewer";
 pub const ITERATION_BUILDER_PURPOSE: &str = "iteration-builder";

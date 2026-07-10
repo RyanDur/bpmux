@@ -1,4 +1,4 @@
-use crate::workflow::StageId;
+use workflow::StageId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Stage {

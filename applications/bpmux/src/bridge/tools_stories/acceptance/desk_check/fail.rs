@@ -12,14 +12,11 @@ pub(crate) async fn handle_fail_desk_check(
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role;
-    let workflow = crate::workflow::current_workflow();
-    let transition = crate::workflow::resolve_transition(
-        workflow,
-        "fail-desk-check",
-        crate::workflow::GateClass::None,
-    )
-    .map_err(|e| e.as_json_string())?;
-    crate::workflow::enforce_role_allowed(
+    let workflow = workflow::current_workflow();
+    let transition =
+        workflow::resolve_transition(workflow, "fail-desk-check", workflow::GateClass::None)
+            .map_err(|e| e.as_json_string())?;
+    workflow::enforce_role_allowed(
         transition,
         actor_role,
         workflow.owner_role_name().unwrap_or(""),
@@ -42,7 +39,7 @@ pub(crate) async fn handle_fail_desk_check(
             ),
             None => story.state.as_str(),
         };
-        crate::workflow::check_target_state_valid(transition, current_state)
+        workflow::check_target_state_valid(transition, current_state)
             .map_err(|e| e.as_json_string())?;
     }
     let was_accepted = prior.as_ref().map(|s| s.is_concluded()).unwrap_or(false);

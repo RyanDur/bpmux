@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::workflow::StageId;
+use workflow::StageId;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Verdict {

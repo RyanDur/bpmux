@@ -2,7 +2,7 @@ use crate::product_management::epic::EpicId;
 use crate::product_management::story::{
     Acceptor, CastVerdict, FreeComment, Story, StoryKind, Tag, Verdict, Work,
 };
-use crate::workflow::StageId;
+use workflow::StageId;
 
 use super::LabelDerivedFields;
 

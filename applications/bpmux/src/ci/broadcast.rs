@@ -27,7 +27,7 @@ pub(crate) fn build_multi_depth_for_transition(event: &CiEvent) -> MultiDepthPay
         ),
     };
 
-    let workflow = crate::workflow::current_workflow();
+    let workflow = workflow::current_workflow();
     let role_name_for = |purpose: &str| {
         workflow
             .role_name_for_purpose(purpose)
@@ -57,7 +57,7 @@ pub(crate) fn build_multi_depth_for_transition(event: &CiEvent) -> MultiDepthPay
 }
 
 pub(crate) fn build_dev_ci_signal(text: &str) -> Message {
-    let dev = crate::workflow::current_workflow()
+    let dev = workflow::current_workflow()
         .role_name_for_purpose("dev")
         .map(str::to_string)
         .unwrap_or_else(|| "dev".to_string());

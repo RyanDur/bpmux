@@ -9,7 +9,7 @@ use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEvent
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Story, StoryId, StoryKind, Verdict, Work};
 use crate::store::{AppAction, SeededStore};
-use crate::workflow::StageId;
+use workflow::StageId;
 
 fn at(hour: u32) -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 7, 7, hour, 0, 0).unwrap()

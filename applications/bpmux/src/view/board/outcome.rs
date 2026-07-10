@@ -6,7 +6,7 @@ use crate::product_management::iteration::readiness::{
     outcome_readiness,
 };
 use crate::product_management::outcome::Outcome;
-use crate::workflow::config::WorkflowConfig;
+use workflow::config::WorkflowConfig;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct BuildingIterationView {

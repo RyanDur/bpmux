@@ -10,7 +10,7 @@ pub(crate) async fn handle_reject_story(
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role;
-    let workflow = crate::workflow::current_workflow();
+    let workflow = workflow::current_workflow();
     let id = args
         .get("id")
         .and_then(|v| v.as_u64())
@@ -21,10 +21,10 @@ pub(crate) async fn handle_reject_story(
         .map(str::trim)
         .filter(|s| !s.is_empty())
         .ok_or_else(|| {
-            crate::workflow::GateError::GateMismatch {
+            workflow::GateError::GateMismatch {
                 actor_role: actor_role.to_string(),
                 attempted_transition: "reject".to_string(),
-                class: crate::workflow::GateClass::None,
+                class: workflow::GateClass::None,
                 missing_evidence: vec!["reason-cite".to_string()],
                 verdict_state: None,
             }
@@ -43,17 +43,17 @@ pub(crate) async fn handle_reject_story(
                 s.story_type(),
             )
         })
-        .unwrap_or(crate::workflow::GateClass::TeamVerifiable);
-    let transition = crate::workflow::resolve_transition(workflow, "reject", class)
-        .map_err(|e| e.as_json_string())?;
-    crate::workflow::enforce_role_allowed(
+        .unwrap_or(workflow::GateClass::TeamVerifiable);
+    let transition =
+        workflow::resolve_transition(workflow, "reject", class).map_err(|e| e.as_json_string())?;
+    workflow::enforce_role_allowed(
         transition,
         actor_role,
         workflow.owner_role_name().unwrap_or(""),
     )
     .map_err(|e| e.as_json_string())?;
     if let Some(story) = story_opt.as_ref() {
-        crate::workflow::check_target_state_valid(transition, story.state.as_str())
+        workflow::check_target_state_valid(transition, story.state.as_str())
             .map_err(|e| e.as_json_string())?;
     }
     reject_via_canonical_store(r, id, agent_name, actor_id, reason.clone()).await?;
@@ -68,7 +68,7 @@ pub(crate) async fn reject_via_canonical_store(
     reason: String,
 ) -> Result<(), String> {
     let prior = ensure_story_in_canonical_store(refresh, id).await?;
-    let workflow = crate::workflow::current_workflow();
+    let workflow = workflow::current_workflow();
     let transition = workflow
         .transition_by_id("reject")
         .ok_or("workflow has no 'reject' transition")?;

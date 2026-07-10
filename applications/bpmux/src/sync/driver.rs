@@ -55,7 +55,7 @@ pub trait RefreshDriver: Send + Sync {
     fn story_fine_stage(&self, story: &Story) -> Option<Stage> {
         crate::board::fine_stage(story, &crate::board::BoardPlacements::default())
     }
-    fn story_held_stage(&self, story: &Story) -> Option<crate::workflow::StageId> {
+    fn story_held_stage(&self, story: &Story) -> Option<workflow::StageId> {
         crate::board::held_stage(story, &crate::board::BoardPlacements::default())
     }
     fn all_stories(&self) -> Vec<Story>;
@@ -91,7 +91,7 @@ pub trait RefreshDriver: Send + Sync {
 
     fn update_title(&self, id: u64, title: String) -> BoxedFuture<'_, Result<(), SyncError>>;
 
-    fn ci_state(&self) -> Option<crate::workflow::CiSnapshot> {
+    fn ci_state(&self) -> Option<workflow::CiSnapshot> {
         None
     }
 

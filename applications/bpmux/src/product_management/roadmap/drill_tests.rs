@@ -9,8 +9,8 @@ use crate::integrations::github::relationships::{
 use crate::product_management::iteration::IterationId;
 use crate::product_management::outcome::{Outcome, OutcomeId};
 use crate::product_management::story::{Story, StoryId, Work};
-use crate::workflow::bundled_default::bundled_default;
 use chrono::Utc;
+use workflow::bundled_default::bundled_default;
 
 fn iteration(id: u64, outcome_id: u64) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(

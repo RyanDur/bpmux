@@ -5,8 +5,8 @@ use super::{
     state_label,
 };
 use crate::product_management::story::{Stage, Story, StoryId, Work};
-use crate::workflow::StageId;
 use chrono::{TimeZone, Utc};
+use workflow::StageId;
 
 fn in_progress_story(id: u64) -> Story {
     Story::new_minimal(

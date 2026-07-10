@@ -11,7 +11,7 @@ pub(in crate::bridge) async fn handle_submit_verdict(
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
-    let workflow = crate::workflow::current_workflow();
+    let workflow = workflow::current_workflow();
     let dev_name = workflow.role_name_for_purpose("dev").unwrap_or("dev");
     let designer_name = workflow
         .role_name_for_purpose("designer")

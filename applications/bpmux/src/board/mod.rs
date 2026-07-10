@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::product_management::story::events::StoryEventKind;
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Stage, Story, StoryId, Work};
-use crate::workflow::StageId;
+use workflow::StageId;
 
 pub mod flow;
 pub mod history;
@@ -118,7 +118,7 @@ pub fn fine_stage(story: &Story, board: &BoardPlacements) -> Option<Stage> {
 pub fn held_stage(story: &Story, board: &BoardPlacements) -> Option<StageId> {
     match &story.state {
         Work::InProgress => Some(placement_of(board, story.id).unwrap_or_else(|| {
-            crate::workflow::board_middle_stage_ids(crate::workflow::current_workflow())
+            workflow::board_middle_stage_ids(workflow::current_workflow())
                 .first()
                 .cloned()
                 .unwrap_or_else(|| Stage::Dev.id())

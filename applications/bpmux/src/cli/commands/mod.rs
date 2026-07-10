@@ -8,6 +8,7 @@ mod workflow;
 
 use clap::Subcommand;
 
+use self::workflow::{WorkflowCommands, dispatch_workflow};
 use super::actions::RoomAction;
 use super::messaging::run_emit_activity;
 use identity::{IdentityCommands, dispatch_identity};
@@ -16,7 +17,6 @@ use planning::{PlanningCommands, dispatch_planning};
 use query::{QueryCommands, dispatch_query};
 use read::{ReadCommands, dispatch_read};
 use story::{StoryCommands, dispatch_story};
-use workflow::{WorkflowCommands, dispatch_workflow};
 
 #[derive(Subcommand)]
 pub(crate) enum Command {

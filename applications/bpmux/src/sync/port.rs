@@ -3,7 +3,7 @@ use crate::product_management::iteration::Iteration;
 use crate::product_management::outcome::Outcome;
 use crate::product_management::story::events::StoryEvent;
 use crate::product_management::story::{Story, StoryId};
-use crate::workflow::StageId;
+use workflow::StageId;
 
 #[derive(Debug, Clone, Default)]
 pub struct Ingested {

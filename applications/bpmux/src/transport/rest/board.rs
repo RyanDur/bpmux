@@ -55,8 +55,8 @@ pub(crate) fn board_stories(
 }
 
 pub(crate) fn board_columns_json() -> Vec<serde_json::Value> {
-    let workflow = crate::workflow::current_workflow();
-    let middle = crate::workflow::board_middle_stage_ids(workflow);
+    let workflow = workflow::current_workflow();
+    let middle = workflow::board_middle_stage_ids(workflow);
     crate::board::board_columns(&middle)
         .iter()
         .map(|column| {
@@ -121,7 +121,7 @@ pub(crate) fn board_iterations(
 ) -> Vec<serde_json::Value> {
     use crate::view::board::IterationView;
     let outcomes = refresh.outcomes();
-    let workflow = crate::workflow::current_workflow();
+    let workflow = workflow::current_workflow();
     refresh
         .iterations()
         .iter()
@@ -138,7 +138,7 @@ pub(crate) fn board_roadmap(
     crate::product_management::roadmap::selectors::roadmap_cards(
         &refresh.outcomes(),
         &refresh.iterations(),
-        crate::workflow::current_workflow(),
+        workflow::current_workflow(),
     )
     .iter()
     .filter_map(|card| serde_json::to_value(card).ok())
@@ -150,7 +150,7 @@ pub(crate) fn board_outcomes(
 ) -> Vec<serde_json::Value> {
     use crate::view::board::OutcomeView;
     let all_iterations = refresh.iterations();
-    let workflow = crate::workflow::current_workflow();
+    let workflow = workflow::current_workflow();
     refresh
         .outcomes()
         .iter()

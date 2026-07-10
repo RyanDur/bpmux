@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use super::{Decision, advance};
 use crate::product_management::story::{Stage, Verdict, Work};
-use crate::workflow::bundled_default::bundled_default;
-use crate::workflow::test_support::repo_workflow;
+use crate::workflow_test_support::repo_workflow;
+use workflow::bundled_default::bundled_default;
 
 fn succeed(step: &str) -> Verdict {
     Verdict::Succeed { step: step.into() }
@@ -108,8 +108,8 @@ fn fail_from_state_without_a_backward_transition_yields_none() {
     assert_eq!(advance(&fail("ready"), &wf), None);
 }
 
-fn three_stage_workflow(review_fail_to: Option<&str>) -> crate::workflow::WorkflowConfig {
-    use crate::workflow::{Section, State, WorkflowConfig};
+fn three_stage_workflow(review_fail_to: Option<&str>) -> workflow::WorkflowConfig {
+    use workflow::{Section, State, WorkflowConfig};
     let state = |id: &str, section: &str, fail_to: Option<&str>| State {
         id: id.into(),
         section: section.into(),
@@ -150,7 +150,7 @@ fn fail_at_an_unconfigured_middle_stage_defaults_to_the_previous_stage() {
         advance(&fail("harden"), &wf),
         Some(Decision {
             coarse: Work::InProgress,
-            placement: Some(crate::workflow::StageId::from("review"))
+            placement: Some(workflow::StageId::from("review"))
         }),
         "an unconfigured failed judgment sends the story back one stage"
     );

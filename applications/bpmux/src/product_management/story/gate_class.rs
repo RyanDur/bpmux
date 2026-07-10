@@ -1,4 +1,4 @@
-use crate::workflow::GateClass;
+use workflow::GateClass;
 
 use super::{Acceptor, StoryKind};
 

@@ -396,7 +396,7 @@ async fn board_placement_reconciler_worker_reentrant_dispatch_unplaces_a_departe
     let story = crate::product_management::story::StoryId::new(1);
     store.dispatch(AppAction::Board(crate::board::BoardAction::StoryPlaced {
         story,
-        stage: crate::workflow::StageId::from("desk-check"),
+        stage: workflow::StageId::from("desk-check"),
     }));
     store.dispatch(AppAction::Story(StoryAction::Seeded(vec![
         owner_parked_story(1),
@@ -418,7 +418,7 @@ async fn a_board_placement_burst_persists_the_final_board_with_no_placement_lost
     for id in [1u64, 2, 3] {
         store.dispatch(AppAction::Board(crate::board::BoardAction::StoryPlaced {
             story: crate::product_management::story::StoryId::new(id),
-            stage: crate::workflow::StageId::from("desk-check"),
+            stage: workflow::StageId::from("desk-check"),
         }));
     }
 

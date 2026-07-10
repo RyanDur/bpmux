@@ -473,7 +473,7 @@ fn bundled_default_is_the_three_state_single_middle_workflow() {
 
 #[test]
 fn the_repo_workflow_toml_is_the_team_two_stage_config() {
-    let workflow = crate::workflow::test_support::repo_workflow();
+    let workflow = crate::test_support::repo_workflow();
     let middle: Vec<&str> = workflow
         .state
         .iter()

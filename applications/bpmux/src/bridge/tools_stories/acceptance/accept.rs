@@ -16,7 +16,7 @@ pub(crate) async fn handle_accept_story(
     hub: Option<&std::sync::Arc<crate::hub::Hub>>,
 ) -> Result<String, String> {
     let actor_role = role;
-    let workflow = crate::workflow::current_workflow();
+    let workflow = workflow::current_workflow();
     let id = args
         .get("id")
         .and_then(|v| v.as_u64())
@@ -35,10 +35,10 @@ pub(crate) async fn handle_accept_story(
                 s.story_type(),
             )
         })
-        .unwrap_or(crate::workflow::GateClass::TeamVerifiable);
-    let transition = crate::workflow::resolve_transition(workflow, "accept", class)
-        .map_err(|e| e.as_json_string())?;
-    crate::workflow::enforce_role_allowed(
+        .unwrap_or(workflow::GateClass::TeamVerifiable);
+    let transition =
+        workflow::resolve_transition(workflow, "accept", class).map_err(|e| e.as_json_string())?;
+    workflow::enforce_role_allowed(
         transition,
         actor_role,
         workflow.owner_role_name().unwrap_or(""),
@@ -47,7 +47,7 @@ pub(crate) async fn handle_accept_story(
     if let Some(s) = hub {
         let evidence = recent_evidence_for_story(r, id);
         let current_head = crate::bridge::tools::git_repo::current_head_sha();
-        if let Err(e) = crate::workflow::check_evidence_present(
+        if let Err(e) = workflow::check_evidence_present(
             transition,
             actor_role,
             &evidence,
@@ -83,17 +83,17 @@ pub(crate) async fn handle_accept_story(
         }
     }
     if let Some(story) = story_opt.as_ref() {
-        crate::workflow::check_target_state_valid(transition, story.state.as_str())
+        workflow::check_target_state_valid(transition, story.state.as_str())
             .map_err(|e| e.as_json_string())?;
         if let Some(comments) = story.verdicts.as_deref() {
-            let prior_fires: Vec<crate::workflow::PriorFire> = comments
+            let prior_fires: Vec<workflow::PriorFire> = comments
                 .iter()
-                .map(|gc| crate::workflow::PriorFire {
+                .map(|gc| workflow::PriorFire {
                     gate_id: verdict_to_id(&gc.verdict).to_string(),
                     actor_role: gc.actor.clone(),
                 })
                 .collect();
-            crate::workflow::check_self_mutation_refused(
+            workflow::check_self_mutation_refused(
                 actor_role,
                 "accept",
                 &prior_fires,
@@ -115,7 +115,7 @@ pub(crate) async fn accept_via_canonical_store(
     bypass: Option<String>,
 ) -> Result<(), String> {
     ensure_story_in_canonical_store(refresh, id).await?;
-    let workflow = crate::workflow::current_workflow();
+    let workflow = workflow::current_workflow();
     let transition = workflow
         .transition_by_id("accept")
         .ok_or("workflow has no 'accept' transition")?;

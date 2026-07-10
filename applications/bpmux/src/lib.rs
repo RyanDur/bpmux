@@ -57,7 +57,8 @@ pub mod transport;
 #[cfg(test)]
 mod user_id_pin_tests;
 pub mod view;
-pub mod workflow;
+#[cfg(test)]
+mod workflow_test_support;
 
 pub use cli::bootstrap::run;
 pub(crate) use cli::bootstrap::{

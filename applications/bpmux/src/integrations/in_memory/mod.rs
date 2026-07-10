@@ -42,7 +42,7 @@ impl SourceAdapter for InMemorySourceAdapter {
     async fn fetch_story_metadata(
         &self,
         number: u64,
-    ) -> Result<Option<(Story, Option<crate::workflow::StageId>)>, SyncError> {
+    ) -> Result<Option<(Story, Option<workflow::StageId>)>, SyncError> {
         let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         if s.failures_on_ingest {
             return Err(SyncError::SourceUnreachable(

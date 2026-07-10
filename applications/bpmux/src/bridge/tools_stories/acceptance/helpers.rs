@@ -1,4 +1,4 @@
-use crate::workflow::EvidenceMessage;
+use workflow::EvidenceMessage;
 
 #[derive(Clone, Copy)]
 pub(crate) enum BugGate {

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::product_management::scheduling::ProjectedState;
 use crate::product_management::story::{CastVerdict, Stage, Verdict, most_recent_needs_work};
 use crate::sync::RefreshDriver;
-use crate::workflow::StageId;
+use workflow::StageId;
 
 use super::get_story_view::{
     NOT_HYDRATED_PLACEHOLDER, render_epic_detail, render_iteration_detail,

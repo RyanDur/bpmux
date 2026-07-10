@@ -9,10 +9,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     fn seed_and_place(
         &self,
         items: Vec<crate::product_management::story::Story>,
-        placements: Vec<(
-            crate::product_management::story::StoryId,
-            crate::workflow::StageId,
-        )>,
+        placements: Vec<(crate::product_management::story::StoryId, workflow::StageId)>,
     ) {
         let board_actions = crate::board::placements_for_ingest(&items, &placements);
         self.dispatch_story(crate::product_management::story::slice::StoryAction::Seeded(items));

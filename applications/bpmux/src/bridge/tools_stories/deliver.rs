@@ -13,11 +13,10 @@ pub(crate) async fn handle_deliver_story(
     refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role;
-    let workflow = crate::workflow::current_workflow();
-    let transition =
-        crate::workflow::resolve_transition(workflow, "deliver", crate::workflow::GateClass::None)
-            .map_err(|e| e.as_json_string())?;
-    crate::workflow::enforce_role_allowed(
+    let workflow = workflow::current_workflow();
+    let transition = workflow::resolve_transition(workflow, "deliver", workflow::GateClass::None)
+        .map_err(|e| e.as_json_string())?;
+    workflow::enforce_role_allowed(
         transition,
         actor_role,
         workflow.owner_role_name().unwrap_or(""),
@@ -36,7 +35,7 @@ pub(crate) async fn handle_deliver_story(
         None => None,
     };
     if let Some(story) = refreshed.as_ref().and_then(|s| s.as_ref()) {
-        crate::workflow::check_target_state_valid(transition, story.state.as_str())
+        workflow::check_target_state_valid(transition, story.state.as_str())
             .map_err(|e| e.as_json_string())?;
     }
     if let Some(r) = refresh {

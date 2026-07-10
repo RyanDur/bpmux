@@ -101,7 +101,7 @@ fn validate_actor_role_can_create(
     role: &str,
     story_type: crate::product_management::story::StoryKind,
 ) -> Result<(), String> {
-    let workflow = crate::workflow::current_workflow();
+    let workflow = workflow::current_workflow();
     let pm = workflow.role_name_for_purpose("pm").unwrap_or("pm");
     let dev = workflow.role_name_for_purpose("dev").unwrap_or("dev");
     let actor_role = role;

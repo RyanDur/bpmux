@@ -132,7 +132,7 @@ fn band_numbers(refresh: &Arc<dyn RefreshDriver>) -> Vec<u64> {
     crate::product_management::roadmap::selectors::roadmap_cards(
         &refresh.outcomes(),
         &refresh.iterations(),
-        crate::workflow::current_workflow(),
+        workflow::current_workflow(),
     )
     .into_iter()
     .map(|c| c.id.value())

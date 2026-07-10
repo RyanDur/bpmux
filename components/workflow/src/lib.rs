@@ -5,8 +5,6 @@ pub mod loader;
 pub mod stage_id;
 
 #[cfg(test)]
-mod boundary_tests;
-#[cfg(test)]
 mod config_tests;
 #[cfg(test)]
 mod gate_tests;

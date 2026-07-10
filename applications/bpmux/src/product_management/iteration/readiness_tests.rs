@@ -9,9 +9,9 @@ use crate::integrations::github::relationships::{
 use crate::product_management::iteration::IterationId;
 use crate::product_management::outcome::{Outcome, OutcomeId};
 use crate::product_management::story::{Story, StoryId, Work};
-use crate::workflow::bundled_default::bundled_default;
-use crate::workflow::config::WorkflowConfig;
 use chrono::Utc;
+use workflow::bundled_default::bundled_default;
+use workflow::config::WorkflowConfig;
 
 fn readiness(seed: &(Story, Vec<String>), workflow: &WorkflowConfig) -> IterationReadiness {
     let (story, labels) = seed;
@@ -186,11 +186,11 @@ fn workflow_with_reviewer_role(reviewer_id: &str) -> WorkflowConfig {
         state: vec![],
         transition: vec![],
         role: vec![
-            crate::workflow::config::Role {
+            workflow::config::Role {
                 name: "designer".into(),
                 purposes: vec!["designer".into()],
             },
-            crate::workflow::config::Role {
+            workflow::config::Role {
                 name: reviewer_id.into(),
                 purposes: vec![ITERATION_REVIEWER_PURPOSE.into()],
             },
@@ -204,11 +204,11 @@ fn workflow_with_builder_role(builder_id: &str) -> WorkflowConfig {
         state: vec![],
         transition: vec![],
         role: vec![
-            crate::workflow::config::Role {
+            workflow::config::Role {
                 name: "dev".into(),
                 purposes: vec!["dev".into()],
             },
-            crate::workflow::config::Role {
+            workflow::config::Role {
                 name: builder_id.into(),
                 purposes: vec![ITERATION_BUILDER_PURPOSE.into()],
             },

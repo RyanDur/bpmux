@@ -3,7 +3,7 @@ use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string};
 use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::{Story, StoryId, Verdict, Work};
 use crate::sync::RefreshDriver;
-use crate::workflow::StageId;
+use workflow::StageId;
 
 const REASON_CITE_MIN_CHARS: usize = 16;
 
@@ -21,7 +21,7 @@ pub(crate) async fn handle_pass_stage(
         "verified_observation",
         "verified_observation is required: articulate what you verified at this stage in the running app — it becomes the next stage's diff-point",
     )?;
-    let workflow = crate::workflow::current_workflow();
+    let workflow = workflow::current_workflow();
     let verdict = Verdict::Succeed {
         step: held.as_str().into(),
     };
@@ -67,7 +67,7 @@ pub(crate) async fn handle_fail_stage(
         });
         return Err(err.to_string());
     }
-    let workflow = crate::workflow::current_workflow();
+    let workflow = workflow::current_workflow();
     let verdict = Verdict::Fail {
         step: held.as_str().into(),
     };
@@ -105,19 +105,17 @@ async fn judged_stage_of<'r>(
             story.state.as_str()
         ));
     }
-    let workflow = crate::workflow::current_workflow();
-    let held = r.story_held_stage(&story).or_else(|| {
-        crate::workflow::board_middle_stage_ids(workflow)
-            .first()
-            .cloned()
-    });
+    let workflow = workflow::current_workflow();
+    let held = r
+        .story_held_stage(&story)
+        .or_else(|| workflow::board_middle_stage_ids(workflow).first().cloned());
     let held = held.ok_or_else(|| format!("#{id} the configured workflow has no middle stages"))?;
     Ok((id, r, story, held))
 }
 
 fn enforce_judge(held: &StageId, role: &str, agent_name: &str) -> Result<(), String> {
-    let workflow = crate::workflow::current_workflow();
-    crate::workflow::enforce_stage_judge(workflow, held.as_str(), role, agent_name)
+    let workflow = workflow::current_workflow();
+    workflow::enforce_stage_judge(workflow, held.as_str(), role, agent_name)
         .map_err(|e| e.as_json_string())
 }
 

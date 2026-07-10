@@ -6,7 +6,7 @@ use crate::transport::protocol::ClientMessage;
 use diag::log_diag;
 
 fn owner_role_name() -> String {
-    crate::workflow::current_workflow()
+    workflow::current_workflow()
         .owner_role_name()
         .map(str::to_string)
         .unwrap_or_else(|| "owner".to_string())

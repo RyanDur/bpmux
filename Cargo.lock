@@ -394,6 +394,7 @@ dependencies = [
  "url",
  "uuid",
  "webrtc",
+ "workflow",
 ]
 
 [[package]]
@@ -4870,6 +4871,19 @@ dependencies = [
  "serde_json",
  "unicode-xid",
  "wasmparser",
+]
+
+[[package]]
+name = "workflow"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "diag",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "toml",
 ]
 
 [[package]]

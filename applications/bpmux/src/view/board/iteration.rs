@@ -4,7 +4,7 @@ use crate::product_management::iteration::readiness::{IterationReadiness, iterat
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::{Outcome, OutcomeId};
 use crate::product_management::story::StoryId;
-use crate::workflow::config::WorkflowConfig;
+use workflow::config::WorkflowConfig;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct IterationView {

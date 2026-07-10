@@ -44,7 +44,7 @@ pub async fn post_rpc_tool(
             );
         }
     };
-    let agent = crate::workflow::current_workflow()
+    let agent = workflow::current_workflow()
         .role_name_for_purpose(&agent)
         .map(str::to_string)
         .unwrap_or(agent);

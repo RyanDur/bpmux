@@ -4,7 +4,7 @@ use super::{IterationView, OutcomeView};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::outcome::{Outcome, OutcomeId, OutcomeLifecycle};
 use crate::product_management::story::{Horizon, StoryId};
-use crate::workflow::bundled_default::bundled_default;
+use workflow::bundled_default::bundled_default;
 
 fn fixed_ts() -> chrono::DateTime<chrono::Utc> {
     chrono::DateTime::parse_from_rfc3339("2026-04-26T01:00:00Z")

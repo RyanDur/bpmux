@@ -109,7 +109,7 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.read_story_fine_stage(story)
     }
 
-    fn story_held_stage(&self, story: &Story) -> Option<crate::workflow::StageId> {
+    fn story_held_stage(&self, story: &Story) -> Option<workflow::StageId> {
         self.read_story_held_stage(story)
     }
 
@@ -149,10 +149,10 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         Box::pin(std::future::ready(self.update_title(number, title)))
     }
 
-    fn ci_state(&self) -> Option<crate::workflow::CiSnapshot> {
+    fn ci_state(&self) -> Option<workflow::CiSnapshot> {
         let store = self.ci_state_store.as_ref()?;
         let report = store.read()?;
-        Some(crate::workflow::CiSnapshot {
+        Some(workflow::CiSnapshot {
             conclusion: report.conclusion.to_string(),
             head_sha: report.head_sha.unwrap_or_default(),
         })

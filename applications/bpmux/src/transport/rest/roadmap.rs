@@ -40,7 +40,7 @@ pub async fn get_roadmap(
                     crate::product_management::roadmap::drill::derive_outcome_drill_in(
                         outcome,
                         &all_iterations,
-                        crate::workflow::current_workflow(),
+                        workflow::current_workflow(),
                     )
                 })
                 .unwrap_or(crate::product_management::roadmap::drill::OutcomeDrillIn {
@@ -69,7 +69,7 @@ pub async fn get_roadmap(
                 crate::product_management::roadmap::selectors::roadmap_cards(
                     &refresh.outcomes(),
                     &refresh.iterations(),
-                    crate::workflow::current_workflow(),
+                    workflow::current_workflow(),
                 ),
                 state,
                 order,

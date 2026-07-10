@@ -106,14 +106,14 @@ pub fn run_bridge(
     _fake_tracker: bool,
     _board_fixture: Option<String>,
 ) -> anyhow::Result<()> {
-    let project_root = crate::workflow::load_project_root_or_cwd();
-    let workflow = crate::workflow::load_workflow(&project_root).map_err(|e| {
+    let project_root = workflow::load_project_root_or_cwd();
+    let workflow = workflow::load_workflow(&project_root).map_err(|e| {
         anyhow::anyhow!(
             "{}",
             serde_json::to_string(&e).unwrap_or_else(|_| e.to_string())
         )
     })?;
-    crate::workflow::install_workflow(workflow);
+    workflow::install_workflow(workflow);
     let ct = tokio_util::sync::CancellationToken::new();
     let restart_signal = crate::transport::self_update::RestartSignal::new();
     let rt = tokio::runtime::Runtime::new()?;

@@ -6,7 +6,7 @@ use chrono::{DateTime, Utc};
 
 use crate::board::history::{PlacementHistory, PlacementRecord};
 use crate::product_management::story::{StoryId, Work};
-use crate::workflow::StageId;
+use workflow::StageId;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Position {

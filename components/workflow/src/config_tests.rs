@@ -1,7 +1,7 @@
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod role_resolver_tests {
-    use crate::workflow::config::*;
+    use crate::config::*;
 
     fn workflow_with_roles(roles: Vec<Role>) -> WorkflowConfig {
         WorkflowConfig {
@@ -101,7 +101,7 @@ mod role_resolver_tests {
 
     #[test]
     fn bundled_default_resolves_canonical_purposes_to_canonical_names() {
-        let workflow = crate::workflow::bundled_default::bundled_default();
+        let workflow = crate::bundled_default::bundled_default();
         assert_eq!(workflow.role_name_for_purpose("owner"), Some("owner"));
         assert_eq!(workflow.role_name_for_purpose("pm"), Some("pm"));
         assert_eq!(workflow.role_name_for_purpose("designer"), Some("designer"));
@@ -111,7 +111,7 @@ mod role_resolver_tests {
 
     #[test]
     fn bundled_default_designates_designer_as_iteration_reviewer() {
-        let workflow = crate::workflow::bundled_default::bundled_default();
+        let workflow = crate::bundled_default::bundled_default();
         assert_eq!(
             workflow.role_names_for_purpose("iteration-reviewer"),
             vec!["designer"]
@@ -122,7 +122,7 @@ mod role_resolver_tests {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod board_middle_stage_ids_tests {
-    use crate::workflow::{board_middle_stage_ids, bundled_default::bundled_default, test_support};
+    use crate::{board_middle_stage_ids, bundled_default::bundled_default, test_support};
 
     #[test]
     fn bundled_default_middle_is_a_single_undivided_in_progress_stage() {

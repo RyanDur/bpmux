@@ -38,7 +38,7 @@ pub(crate) async fn handle_pass_desk_check(
     hub: Option<&std::sync::Arc<crate::hub::Hub>>,
 ) -> Result<String, String> {
     let actor_role = role;
-    let workflow = crate::workflow::current_workflow();
+    let workflow = workflow::current_workflow();
     let id = args
         .get("id")
         .and_then(|v| v.as_u64())
@@ -50,10 +50,10 @@ pub(crate) async fn handle_pass_desk_check(
     let class = story_opt
         .as_ref()
         .map(|s| crate::product_management::story::gate_class_from_acceptor(s.acceptor()))
-        .unwrap_or(crate::workflow::GateClass::TeamVerifiable);
-    let transition = crate::workflow::resolve_transition(workflow, "pass-desk-check", class)
+        .unwrap_or(workflow::GateClass::TeamVerifiable);
+    let transition = workflow::resolve_transition(workflow, "pass-desk-check", class)
         .map_err(|e| e.as_json_string())?;
-    crate::workflow::enforce_role_allowed(
+    workflow::enforce_role_allowed(
         transition,
         actor_role,
         workflow.owner_role_name().unwrap_or(""),
@@ -63,7 +63,7 @@ pub(crate) async fn handle_pass_desk_check(
         && let Some(r) = refresh
     {
         let evidence = recent_evidence_for_story(r, id);
-        crate::workflow::check_evidence_present(
+        workflow::check_evidence_present(
             transition,
             actor_role,
             &evidence,
@@ -73,8 +73,7 @@ pub(crate) async fn handle_pass_desk_check(
         .map_err(|e| e.as_json_string())?;
     }
     let ci_snapshot = refresh.and_then(|r| r.ci_state());
-    crate::workflow::check_ci_green(transition, ci_snapshot.as_ref())
-        .map_err(|e| e.as_json_string())?;
+    workflow::check_ci_green(transition, ci_snapshot.as_ref()).map_err(|e| e.as_json_string())?;
     let was_closed = if let Some(r) = refresh {
         let prior = ensure_story_in_canonical_store(r, id).await?;
         if let Some(body) = prior.body.as_deref() {
