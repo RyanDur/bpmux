@@ -114,3 +114,42 @@ Remaining seam order after kernel: message (+ci_link) → workflow →
 storage → view → integrations; write-path modules (product_management,
 sync, store, bridge, transport) last. Re-derive nothing per station —
 survey the seam firsthand, spec, land CI-green.
+
+## Stations landed + the storage re-derivation (2026-07-10)
+
+Landed CI-green: kernel `1b0d4bdc` → message (+ci_link inversion)
+`d9ac4074`+`91fd0585` → diag+workflow `4c077138`+`a61382ff`. Five
+component crates; the workspace pattern (workspace.package /
+dependencies / lints, size-gate roots) holds.
+
+**The storage station as ordered above was wrong, and the survey that
+grounded it says why:** since the five-ports inversion, storage is an
+EDGE that implements five domain-owned port traits
+(awareness::SurfacedTopicsRepo, log::MessageLog, memory::LessonRepo,
+sync::OutboxRepo, routing::UserRepo) and consumes their DTOs. A
+storage crate would need those domains as dependencies — today that is
+a path-dependency back into bpmux, a cycle. A "ports crate" would be a
+menu-derived bucket that dismembers the domains. The honest order
+extracts the port-owning feature domains first, each a real
+feature-first component:
+
+1. `log` — zero unextracted imports (message only). Package name must
+   NOT be `log` (crates.io logging facade is in the lock, ~25 edges) —
+   ship as `message_log`.
+2. `persist` (28-LOC PersistError leaf, zero crate:: refs) then
+   `routing` — routing's only unextracted import is PersistError.
+3. `comprehension` (message-only leaf) then `memory` — memory's only
+   unextracted import is comprehension::classifier.
+4. `awareness` — WAITS: it threads crate::hub::Hub through all five
+   detectors; gated on the hub story, lands after memory.
+5. `storage` — after sync's port (OutboxRepo/QueuedEvent) is
+   extractable, i.e. rides the write-path phase. Its migrations/
+   refinery embedding travel cleanly with it (verified: no path arg,
+   CARGO_MANIFEST_DIR-relative). view and integrations re-derive the
+   same way when reached — both are projections/adapters OVER domains
+   and follow their dependencies, not the original menu order.
+
+The two storage boundary locks (super-trait-only composition;
+rusqlite/refinery confined to the edge) stay LIVE in bpmux until
+storage extracts — they read feature dirs by path and re-home with the
+moves that affect them.
