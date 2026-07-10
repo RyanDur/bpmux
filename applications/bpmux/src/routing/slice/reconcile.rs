@@ -20,11 +20,10 @@ pub fn reconcile(previous: &RoutingState, current: &RoutingState) -> RoutingReco
         if let Some(display) = cur.display_for(&id)
             && prev.display_for(&id).as_deref() != Some(display.as_str())
         {
-            upserts.push((
-                id.clone(),
-                display.clone(),
-                short_name(&display).to_string(),
-            ));
+            let role = cur
+                .role_for(&id)
+                .unwrap_or_else(|| short_name(&display).to_string());
+            upserts.push((id.clone(), display.clone(), role));
         }
         let current_cursor = cur.cursor(&id);
         if current_cursor != prev.cursor(&id)
@@ -57,12 +56,18 @@ mod tests {
         reduce(state, &action).unwrap_or_else(|| state.clone())
     }
 
-    fn registered(state: &RoutingState, user_id: &str, display: &str) -> RoutingState {
+    fn registered(
+        state: &RoutingState,
+        user_id: &str,
+        display: &str,
+        role: Option<&str>,
+    ) -> RoutingState {
         apply(
             state,
             RoutingAction::Registered {
                 user_id: user_id.to_string(),
                 display: display.to_string(),
+                role: role.map(str::to_string),
             },
         )
     }
@@ -74,17 +79,17 @@ mod tests {
     }
 
     #[test]
-    fn a_new_registration_upserts_the_display_and_role_but_writes_no_empty_cursor() {
-        let current = registered(&RoutingState::default(), "sess-dev", "dev:claude-code");
+    fn a_new_registration_upserts_the_display_and_the_assigned_role_never_laundered_from_it() {
+        let current = registered(&RoutingState::default(), "sess-dev", "aria", Some("dev"));
         let plan = reconcile(&RoutingState::default(), &current);
         assert_eq!(
             plan.upserts,
             vec![(
                 "sess-dev".to_string(),
-                "dev:claude-code".to_string(),
+                "aria".to_string(),
                 "dev".to_string()
             )],
-            "a new session upserts (id, opaque display, short-name role)"
+            "a new session upserts (id, opaque display, ASSIGNED role) — the display 'aria' carries no workflow-role prefix, so a short_name(display) laundering would have produced 'aria', not 'dev'"
         );
         assert!(
             plan.cursors.is_empty(),
@@ -94,8 +99,29 @@ mod tests {
     }
 
     #[test]
+    fn a_new_registration_with_no_role_falls_back_to_short_name_display_the_skew_only_compat_path()
+    {
+        let current = registered(
+            &RoutingState::default(),
+            "sess-dev",
+            "dev:claude-code",
+            None,
+        );
+        let plan = reconcile(&RoutingState::default(), &current);
+        assert_eq!(
+            plan.upserts,
+            vec![(
+                "sess-dev".to_string(),
+                "dev:claude-code".to_string(),
+                "dev".to_string()
+            )],
+            "an old-binary registration carrying no role falls back to short_name(display) — value-identical to pre-C3 behavior, retiring with B-5"
+        );
+    }
+
+    #[test]
     fn a_cursor_advance_writes_only_the_last_delivered_millis_for_the_changed_session() {
-        let previous = registered(&RoutingState::default(), "sess-dev", "dev");
+        let previous = registered(&RoutingState::default(), "sess-dev", "dev", None);
         let current = apply(
             &previous,
             RoutingAction::CursorAdvanced {
@@ -116,8 +142,8 @@ mod tests {
     }
 
     #[test]
-    fn a_rename_upserts_the_new_display_without_touching_the_cursor() {
-        let previous = registered(&RoutingState::default(), "sess-1", "dev");
+    fn a_rename_upserts_the_new_display_but_the_role_assignment_survives_untouched() {
+        let previous = registered(&RoutingState::default(), "sess-1", "dev", Some("dev"));
         let current = apply(
             &previous,
             RoutingAction::Renamed {
@@ -131,17 +157,17 @@ mod tests {
             vec![(
                 "sess-1".to_string(),
                 "dev-renamed".to_string(),
-                "dev-renamed".to_string()
+                "dev".to_string()
             )],
-            "a rename upserts the new display for the fixed id"
+            "a rename upserts the new DISPLAY but the persisted role stays the ASSIGNMENT ('dev') — a display-derivation would have relaundered it to 'dev-renamed', which is exactly the conflation C-3 retires"
         );
         assert!(plan.cursors.is_empty());
     }
 
     #[test]
     fn a_reap_deletes_the_removed_session_rows() {
-        let previous = registered(&RoutingState::default(), "dev-stale", "dev");
-        let previous = registered(&previous, "dev-live", "dev");
+        let previous = registered(&RoutingState::default(), "dev-stale", "dev", None);
+        let previous = registered(&previous, "dev-live", "dev", None);
         let previous = apply(
             &previous,
             RoutingAction::TerminalLinked {

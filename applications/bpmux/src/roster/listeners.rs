@@ -1,18 +1,20 @@
 use std::sync::Arc;
 
 use crate::hub;
-use crate::message::{RosterMemberWire, StateDeltaPayload};
+use crate::message::StateDeltaPayload;
+use crate::store::Select;
 use crate::transport::state_delta::broadcast_state_delta;
 
 use super::{RosterBroadcastListener, RosterMember};
 
 pub struct RosterHubBroadcaster {
     hub: Arc<hub::Hub>,
+    select: Select,
 }
 
 impl RosterHubBroadcaster {
-    pub fn new(hub: Arc<hub::Hub>) -> Self {
-        Self { hub }
+    pub fn new(hub: Arc<hub::Hub>, select: Select) -> Self {
+        Self { hub, select }
     }
 }
 
@@ -21,22 +23,9 @@ impl RosterBroadcastListener for RosterHubBroadcaster {
         broadcast_state_delta(
             &self.hub,
             StateDeltaPayload::Roster {
-                members: roster_to_wire(members),
+                members: super::members_wire(&self.select, members),
             },
             "roster_listener",
         );
     }
-}
-
-fn roster_to_wire(members: &[RosterMember]) -> Vec<RosterMemberWire> {
-    members
-        .iter()
-        .map(|m| RosterMemberWire {
-            routing_id: m.routing_id.clone(),
-            name: super::display_name(&m.identity).to_string(),
-            role: super::role_of(&m.identity).into(),
-            identity: m.identity.clone(),
-            presence: m.presence.into(),
-        })
-        .collect()
 }

@@ -18,6 +18,7 @@ pub(super) fn resolve_routing_user_id(
                     crate::store::routing::RoutingAction::Registered {
                         user_id: user_id.clone(),
                         display: short_name(identity).to_string(),
+                        role: None,
                     }
                     .into(),
                 );

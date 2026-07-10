@@ -15,6 +15,8 @@ pub struct RegisterRequest {
     pub display: String,
     #[serde(default)]
     pub terminal_id: Option<String>,
+    #[serde(default)]
+    pub role: Option<String>,
 }
 
 pub async fn post_register(
@@ -40,6 +42,7 @@ pub async fn post_register(
         RoutingAction::Registered {
             user_id: payload.user_id.clone(),
             display: payload.display.clone(),
+            role: payload.role.clone(),
         }
         .into(),
     );

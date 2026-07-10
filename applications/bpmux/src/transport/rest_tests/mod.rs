@@ -48,6 +48,7 @@ pub(super) fn test_app_with_routing(
             crate::store::routing::RoutingAction::Registered {
                 user_id: (*user_id).to_string(),
                 display: (*display).to_string(),
+                role: None,
             }
             .into(),
         );

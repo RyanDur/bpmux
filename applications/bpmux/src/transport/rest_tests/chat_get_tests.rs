@@ -158,6 +158,7 @@ fn routed_app(
             crate::store::routing::RoutingAction::Registered {
                 user_id: (*user_id).to_string(),
                 display: (*display).to_string(),
+                role: None,
             }
             .into(),
         );
@@ -279,6 +280,7 @@ async fn a_message_sent_before_its_recipient_registers_reaches_them_after_regist
         crate::store::routing::RoutingAction::Registered {
             user_id: "id-dev-1".to_string(),
             display: "dev".to_string(),
+            role: None,
         }
         .into(),
     );

@@ -15,6 +15,7 @@ fn registered(state: &RoutingState, user_id: &str, display: &str) -> RoutingStat
         RoutingAction::Registered {
             user_id: user_id.to_string(),
             display: display.to_string(),
+            role: None,
         },
     )
 }

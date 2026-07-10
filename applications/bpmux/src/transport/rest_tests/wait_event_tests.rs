@@ -32,6 +32,7 @@ fn wait_app_with_routing(
             crate::store::routing::RoutingAction::Registered {
                 user_id: (*user_id).to_string(),
                 display: (*display).to_string(),
+                role: None,
             }
             .into(),
         );
@@ -245,6 +246,7 @@ async fn wait_delivers_a_message_sent_before_its_recipient_registered() {
         crate::store::routing::RoutingAction::Registered {
             user_id: "id-dev-1".to_string(),
             display: "dev".to_string(),
+            role: None,
         }
         .into(),
     );

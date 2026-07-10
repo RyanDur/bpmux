@@ -99,6 +99,7 @@ pub(crate) fn run_register() -> anyhow::Result<()> {
     let mut payload = serde_json::Map::new();
     payload.insert("user_id".to_string(), serde_json::json!(user_id));
     payload.insert("display".to_string(), serde_json::json!(role));
+    payload.insert("role".to_string(), serde_json::json!(role));
     if let Some(terminal_id) = std::env::var("BPMUX_TERMINAL_ID")
         .ok()
         .filter(|id| !id.trim().is_empty())

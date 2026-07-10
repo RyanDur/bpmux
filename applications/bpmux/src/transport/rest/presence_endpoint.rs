@@ -32,6 +32,7 @@ fn select_with_dev_session() -> crate::store::Select {
         crate::store::routing::RoutingAction::Registered {
             user_id: "sess-dev".to_string(),
             display: "dev".to_string(),
+            role: None,
         }
         .into(),
     );

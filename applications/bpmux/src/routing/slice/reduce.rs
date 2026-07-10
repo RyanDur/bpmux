@@ -1,12 +1,20 @@
 use crate::routing::cursor_time::later_cursor;
+use crate::routing::short_name;
 
 use super::{RoutingAction, RoutingState};
 
 pub fn reduce(state: &RoutingState, action: &RoutingAction) -> Option<RoutingState> {
     match action {
-        RoutingAction::Registered { user_id, display } => {
+        RoutingAction::Registered {
+            user_id,
+            display,
+            role,
+        } => {
             let mut identity = state.identity.clone();
-            identity.register(user_id, display);
+            let assigned = role
+                .clone()
+                .unwrap_or_else(|| short_name(display).to_string());
+            identity.register(user_id, display, &assigned);
             Some(RoutingState { identity })
         }
         RoutingAction::TerminalLinked {

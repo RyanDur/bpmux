@@ -19,6 +19,7 @@ pub(super) fn wire_store_listeners(
     )));
     store.add_roster_listener(Arc::new(crate::store::RosterHubBroadcaster::new(
         hub.clone(),
+        store.selector(),
     )));
 }
 

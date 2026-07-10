@@ -59,6 +59,7 @@ async fn a_register_then_cursor_advance_round_trips_through_the_users_table_into
             RoutingAction::Registered {
                 user_id: "sess-dev".to_string(),
                 display: "dev:claude-code".to_string(),
+                role: None,
             },
             RoutingAction::CursorAdvanced {
                 user_id: "sess-dev".to_string(),
@@ -95,6 +96,7 @@ async fn a_burst_of_cursor_advances_coalesces_to_the_latest_monotonic_position()
             RoutingAction::Registered {
                 user_id: "sess-dev".to_string(),
                 display: "dev".to_string(),
+                role: None,
             },
             RoutingAction::CursorAdvanced {
                 user_id: "sess-dev".to_string(),
@@ -133,6 +135,7 @@ async fn a_rename_persists_the_new_display_so_only_it_resolves_on_reload() {
             RoutingAction::Registered {
                 user_id: "sess-1".to_string(),
                 display: "dev".to_string(),
+                role: None,
             },
             RoutingAction::Renamed {
                 user_id: "sess-1".to_string(),
@@ -166,10 +169,12 @@ async fn a_reap_deletes_the_unclaimed_duplicate_row_leaving_only_the_live_id() {
             RoutingAction::Registered {
                 user_id: "dev-stale".to_string(),
                 display: "dev".to_string(),
+                role: None,
             },
             RoutingAction::Registered {
                 user_id: "dev-live".to_string(),
                 display: "dev".to_string(),
+                role: None,
             },
             RoutingAction::TerminalLinked {
                 user_id: "dev-live".to_string(),

@@ -3,6 +3,7 @@ pub enum RoutingAction {
     Registered {
         user_id: String,
         display: String,
+        role: Option<String>,
     },
     TerminalLinked {
         user_id: String,

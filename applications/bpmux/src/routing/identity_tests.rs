@@ -3,9 +3,42 @@
 use super::*;
 
 #[test]
+fn role_for_returns_the_assigned_role_independent_of_the_display() {
+    let mut identity = RoutingIdentity::new();
+    identity.register("sess-aria", "aria", "dev");
+    assert_eq!(
+        identity.role_for("sess-aria"),
+        Some("dev".to_string()),
+        "the role assignment is a distinct fact from the display — 'aria' carries no role prefix at all"
+    );
+}
+
+#[test]
+fn role_for_is_none_for_an_id_never_registered() {
+    let identity = RoutingIdentity::new();
+    assert_eq!(
+        identity.role_for("sess-ghost"),
+        None,
+        "an id with no registration fact has no assignment — callers fall back to display-derivation"
+    );
+}
+
+#[test]
+fn rename_moves_the_display_but_never_touches_the_role_assignment() {
+    let mut identity = RoutingIdentity::new();
+    identity.register("sess-1", "dev", "dev");
+    identity.rename("sess-1", "dev-renamed");
+    assert_eq!(
+        identity.role_for("sess-1"),
+        Some("dev".to_string()),
+        "a rename is a presentation change — it must never relaunder the role assignment"
+    );
+}
+
+#[test]
 fn routing_survives_rename_user_id_is_the_key_display_is_a_mutable_attribute() {
     let mut identity = RoutingIdentity::new();
-    identity.register("sess-uuid-1", "dev");
+    identity.register("sess-uuid-1", "dev", "dev");
     assert_eq!(identity.resolve("dev"), vec!["sess-uuid-1".to_string()]);
 
     identity.rename("sess-uuid-1", "dev-renamed");
@@ -24,10 +57,10 @@ fn routing_survives_rename_user_id_is_the_key_display_is_a_mutable_attribute() {
 #[test]
 fn reconnecting_same_user_id_reclaims_its_cursor_does_not_reset_it() {
     let mut identity = RoutingIdentity::new();
-    identity.register("sess-1", "dev");
+    identity.register("sess-1", "dev", "dev");
     identity.advance_cursor("sess-1", "2026-06-11T20:00:00Z");
 
-    identity.register("sess-1", "dev-renamed");
+    identity.register("sess-1", "dev-renamed", "dev");
 
     assert_eq!(
         identity.cursor("sess-1"),
@@ -39,7 +72,7 @@ fn reconnecting_same_user_id_reclaims_its_cursor_does_not_reset_it() {
 #[test]
 fn drain_identification_returns_the_missed_set_strictly_after_the_reclaimed_cursor() {
     let mut identity = RoutingIdentity::new();
-    identity.register("sess-1", "dev");
+    identity.register("sess-1", "dev", "dev");
     identity.advance_cursor("sess-1", "2026-06-11T20:00:02Z");
     let events = vec![
         "2026-06-11T20:00:01Z".to_string(),
@@ -60,7 +93,7 @@ fn drain_identification_returns_the_missed_set_strictly_after_the_reclaimed_curs
 #[test]
 fn linking_a_terminal_lets_delivery_find_the_live_pty_and_relinks_on_reconnect() {
     let mut identity = RoutingIdentity::new();
-    identity.register("sess-1", "dev");
+    identity.register("sess-1", "dev", "dev");
     assert_eq!(
         identity.terminal_for("sess-1"),
         None,
@@ -81,8 +114,8 @@ fn linking_a_terminal_lets_delivery_find_the_live_pty_and_relinks_on_reconnect()
 #[test]
 fn unclaimed_is_the_registered_ids_with_no_live_terminal_the_reclaim_dropdown_set() {
     let mut identity = RoutingIdentity::new();
-    identity.register("sess-live", "dev");
-    identity.register("sess-orphan", "former-pm");
+    identity.register("sess-live", "dev", "dev");
+    identity.register("sess-orphan", "former-pm", "former-pm");
     identity.link_terminal("sess-live", "term-A");
 
     assert_eq!(
@@ -101,8 +134,8 @@ fn unclaimed_is_the_registered_ids_with_no_live_terminal_the_reclaim_dropdown_se
 #[test]
 fn resolve_recipients_broadcast_is_all_ids_scoped_is_resolved_ids_unknown_is_no_leak() {
     let mut identity = RoutingIdentity::new();
-    identity.register("sess-1", "dev");
-    identity.register("sess-2", "pm");
+    identity.register("sess-1", "dev", "dev");
+    identity.register("sess-2", "pm", "pm");
 
     let mut broadcast = identity.resolve_recipients(None);
     broadcast.sort();
@@ -129,7 +162,7 @@ fn resolve_recipients_broadcast_is_all_ids_scoped_is_resolved_ids_unknown_is_no_
 #[test]
 fn display_for_terminal_reverse_resolves_the_agent_bound_to_a_terminal() {
     let mut identity = RoutingIdentity::new();
-    identity.register("sess-dev", "dev");
+    identity.register("sess-dev", "dev", "dev");
     identity.link_terminal("sess-dev", "term-1");
     assert_eq!(
         identity.display_for_terminal("term-1"),
@@ -146,12 +179,12 @@ fn display_for_terminal_reverse_resolves_the_agent_bound_to_a_terminal() {
 #[test]
 fn reap_removes_unclaimed_duplicates_of_a_live_display_but_never_an_offline_other_display() {
     let mut identity = RoutingIdentity::new();
-    identity.register("dev-live", "dev");
+    identity.register("dev-live", "dev", "dev");
     identity.link_terminal("dev-live", "term-dev");
-    identity.register("dev-stale-a", "dev");
+    identity.register("dev-stale-a", "dev", "dev");
     identity.advance_cursor("dev-stale-a", "2026-06-13T00:00:00Z");
-    identity.register("dev-stale-b", "dev");
-    identity.register("pm-offline", "pm");
+    identity.register("dev-stale-b", "dev", "dev");
+    identity.register("pm-offline", "pm", "pm");
     identity.advance_cursor("pm-offline", "2026-06-13T00:00:00Z");
 
     let reaped = identity.reap_unclaimed_duplicates_of("dev");

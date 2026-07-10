@@ -3,8 +3,10 @@ use serde::Serialize;
 use crate::routing::short_name;
 
 mod listeners;
+mod wire;
 
 pub use listeners::RosterHubBroadcaster;
+pub(crate) use wire::members_wire;
 
 pub(crate) fn roster_role_for_identity_prefix(prefix: &str) -> RosterRole {
     let workflow = crate::workflow::current_workflow();

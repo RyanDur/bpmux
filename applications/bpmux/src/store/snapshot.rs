@@ -3,8 +3,7 @@ use super::Store;
 impl Store {
     pub fn build_snapshot(&self) -> crate::message::StateSnapshotPayload {
         use crate::message::{
-            CiSnapshotWire, ReactionAggregateWire, ReactionsChannelSnapshot, RosterMemberWire,
-            StateSnapshotPayload,
+            CiSnapshotWire, ReactionAggregateWire, ReactionsChannelSnapshot, StateSnapshotPayload,
         };
         let reactions = self
             .reactions_channel_keys()
@@ -34,17 +33,7 @@ impl Store {
             last_successful_poll_at: None,
             url: Some(crate::ci::github_actions_url()),
         });
-        let roster = self
-            .roster_members()
-            .into_iter()
-            .map(|m| RosterMemberWire {
-                routing_id: m.routing_id,
-                name: crate::roster::display_name(&m.identity).to_string(),
-                role: crate::roster::role_of(&m.identity).into(),
-                identity: m.identity,
-                presence: m.presence.into(),
-            })
-            .collect();
+        let roster = crate::roster::members_wire(&self.selector(), &self.roster_members());
         StateSnapshotPayload {
             reactions,
             ci,

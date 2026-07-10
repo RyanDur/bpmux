@@ -34,6 +34,7 @@ fn register_and_link(store: &SeededStore, user_id: &str, display: &str, terminal
         RoutingAction::Registered {
             user_id: user_id.to_string(),
             display: display.to_string(),
+            role: None,
         }
         .into(),
     );

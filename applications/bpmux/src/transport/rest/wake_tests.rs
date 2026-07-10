@@ -15,6 +15,7 @@ fn store_with_two_devs_sharing_the_display() -> SeededStore {
         crate::store::routing::RoutingAction::Registered {
             user_id: "id-dev-1".to_string(),
             display: "dev".to_string(),
+            role: None,
         }
         .into(),
     );
@@ -22,6 +23,7 @@ fn store_with_two_devs_sharing_the_display() -> SeededStore {
         crate::store::routing::RoutingAction::Registered {
             user_id: "id-dev-2".to_string(),
             display: "dev".to_string(),
+            role: None,
         }
         .into(),
     );

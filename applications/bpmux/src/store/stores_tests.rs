@@ -181,6 +181,63 @@ async fn reactions_aggregates_count_per_emoji_not_raw_events() {
 }
 
 #[tokio::test]
+async fn roster_wire_role_follows_the_registered_assignment_not_the_display() {
+    let orch = fresh_orch();
+    orch.dispatch(AppAction::Routing(
+        crate::store::routing::RoutingAction::Registered {
+            user_id: "sess-aria".to_string(),
+            display: "aria".to_string(),
+            role: Some("dev".to_string()),
+        },
+    ))
+    .await;
+    orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
+        routing_id: "sess-aria".to_string(),
+        identity: "aria".to_string(),
+        presence: Presence::Online,
+    }))
+    .await;
+
+    let snapshot = orch.build_snapshot();
+    let member = snapshot
+        .roster
+        .iter()
+        .find(|m| m.routing_id == "sess-aria")
+        .expect("aria in roster wire projection");
+    assert_eq!(
+        member.role,
+        crate::message::RosterRoleWire::Dev,
+        "the registered ASSIGNMENT (role=dev) drives the roster role even though the display \
+         ('aria') carries no workflow-role prefix — pre-C3 the role was laundered from \
+         short_name(display), which would derive Other here"
+    );
+}
+
+#[tokio::test]
+async fn roster_wire_role_falls_back_to_display_derivation_for_an_unassigned_member() {
+    let orch = fresh_orch();
+    orch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
+        routing_id: "sess-legacy".to_string(),
+        identity: "dev:claude-code".to_string(),
+        presence: Presence::Online,
+    }))
+    .await;
+
+    let snapshot = orch.build_snapshot();
+    let member = snapshot
+        .roster
+        .iter()
+        .find(|m| m.routing_id == "sess-legacy")
+        .expect("legacy member in roster wire projection");
+    assert_eq!(
+        member.role,
+        crate::message::RosterRoleWire::Dev,
+        "a member with NO recorded routing assignment (never registered) falls back to the \
+         display-prefix derivation, unchanged from pre-C3 behavior"
+    );
+}
+
+#[tokio::test]
 async fn roster_member_upserted_fires_listener() {
     let orch = fresh_orch();
     let rec = Arc::new(RecRoster::default());

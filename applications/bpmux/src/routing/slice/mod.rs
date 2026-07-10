@@ -18,7 +18,7 @@ pub use reduce::reduce;
 pub use register_agent::register_agent_actions;
 pub use selectors::{
     all_ids, cursor, delivery_targets, display_for, display_for_terminal, drain_floor,
-    is_terminal_linked, missed_after_cursor, resolve, resolve_many, resolve_recipients,
+    is_terminal_linked, missed_after_cursor, resolve, resolve_many, resolve_recipients, role_for,
     terminal_for, user_for_terminal,
 };
 pub use state::RoutingState;

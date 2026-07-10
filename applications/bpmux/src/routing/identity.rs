@@ -5,6 +5,7 @@ pub struct RoutingIdentity {
     display_by_id: HashMap<String, String>,
     cursor_by_id: HashMap<String, String>,
     terminal_by_id: HashMap<String, String>,
+    role_by_id: HashMap<String, String>,
 }
 
 impl RoutingIdentity {
@@ -12,10 +13,16 @@ impl RoutingIdentity {
         Self::default()
     }
 
-    pub fn register(&mut self, user_id: &str, display: &str) {
+    pub fn register(&mut self, user_id: &str, display: &str, role: &str) {
         self.display_by_id
             .insert(user_id.to_string(), display.to_string());
         self.cursor_by_id.entry(user_id.to_string()).or_default();
+        self.role_by_id
+            .insert(user_id.to_string(), role.to_string());
+    }
+
+    pub fn role_for(&self, user_id: &str) -> Option<String> {
+        self.role_by_id.get(user_id).cloned()
     }
 
     pub fn advance_cursor(&mut self, user_id: &str, cursor: &str) {
@@ -112,6 +119,7 @@ impl RoutingIdentity {
         for id in &reaped {
             self.display_by_id.remove(id);
             self.cursor_by_id.remove(id);
+            self.role_by_id.remove(id);
         }
         reaped
     }

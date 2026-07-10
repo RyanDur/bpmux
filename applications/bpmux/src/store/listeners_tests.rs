@@ -21,9 +21,10 @@ use crate::store::ci::CiSnapshot;
 
 fn owner_park_kernel(hub: Arc<Hub>) -> Arc<kernel::Store<AppState, AppAction>> {
     let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));
+    let select = crate::store::Select::new(Arc::downgrade(&store));
     let roster_listeners: app::RosterListeners =
         Arc::new(std::sync::Mutex::new(vec![
-            Arc::new(RosterHubBroadcaster::new(hub)) as Arc<dyn RosterBroadcastListener>,
+            Arc::new(RosterHubBroadcaster::new(hub, select)) as Arc<dyn RosterBroadcastListener>,
         ]));
     store.add_listener(Arc::new(RosterBroadcast::new(roster_listeners)));
     store.add_listener(Arc::new(OwnerParkListener));
@@ -442,7 +443,8 @@ async fn a_board_placement_burst_persists_the_final_board_with_no_placement_lost
 #[tokio::test]
 async fn roster_listener_emits_typed_state_delta() {
     let (hub, mut rx, _dir) = fresh_hub();
-    let listener = RosterHubBroadcaster::new(hub);
+    let select = crate::store::Select::new(std::sync::Weak::new());
+    let listener = RosterHubBroadcaster::new(hub, select);
     let members = vec![RosterMember {
         routing_id: "sess-owner".to_string(),
         identity: "owner:electron".to_string(),
@@ -456,6 +458,38 @@ async fn roster_listener_emits_typed_state_delta() {
             assert_eq!(members[0].name, "owner");
             assert_eq!(members[0].role, crate::message::RosterRoleWire::Owner);
             assert_eq!(members[0].presence, crate::message::PresenceWire::Online);
+        }
+        _ => panic!("expected Roster variant"),
+    }
+}
+
+#[tokio::test]
+async fn roster_listener_reports_the_registered_assignment_not_the_display() {
+    let (hub, mut rx, _dir) = fresh_hub();
+    let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));
+    let select = crate::store::Select::new(Arc::downgrade(&store));
+    let listener = RosterHubBroadcaster::new(hub, select);
+    store.dispatch(AppAction::Routing(
+        crate::store::routing::RoutingAction::Registered {
+            user_id: "sess-aria".to_string(),
+            display: "aria".to_string(),
+            role: Some("dev".to_string()),
+        },
+    ));
+    let members = vec![RosterMember {
+        routing_id: "sess-aria".to_string(),
+        identity: "aria".to_string(),
+        presence: Presence::Online,
+    }];
+    listener.on_changed(&members);
+    let payload = drain_state_delta(&mut rx);
+    match payload {
+        StateDeltaPayload::Roster { members } => {
+            assert_eq!(
+                members[0].role,
+                crate::message::RosterRoleWire::Dev,
+                "the broadcaster joins against the CURRENT routing assignment, not the display prefix"
+            );
         }
         _ => panic!("expected Roster variant"),
     }

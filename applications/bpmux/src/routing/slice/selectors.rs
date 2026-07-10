@@ -35,6 +35,10 @@ pub fn display_for(state: &RoutingState, user_id: &str) -> Option<String> {
     state.identity.display_for(user_id)
 }
 
+pub fn role_for(state: &RoutingState, user_id: &str) -> Option<String> {
+    state.identity.role_for(user_id)
+}
+
 pub fn cursor(state: &RoutingState, user_id: &str) -> Option<String> {
     state.identity.cursor(user_id)
 }
