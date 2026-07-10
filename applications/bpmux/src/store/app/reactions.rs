@@ -10,13 +10,11 @@ impl ReactionsPersister {
     }
 }
 
-impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
-    for ReactionsPersister
-{
+impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for ReactionsPersister {
     fn on_action(
         &self,
-        reaction: crate::kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
-    ) -> crate::kernel::ListenerFuture {
+        reaction: kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
+    ) -> kernel::ListenerFuture {
         if Arc::ptr_eq(&reaction.previous.reactions, &reaction.current.reactions) {
             return Box::pin(async {});
         }
@@ -29,7 +27,7 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
         })
     }
 
-    fn delivery_mode(&self) -> crate::kernel::DeliveryMode {
-        crate::kernel::DeliveryMode::LatestState
+    fn delivery_mode(&self) -> kernel::DeliveryMode {
+        kernel::DeliveryMode::LatestState
     }
 }

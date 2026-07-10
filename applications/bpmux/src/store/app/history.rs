@@ -10,13 +10,11 @@ impl SharedHistoryPersister {
     }
 }
 
-impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
-    for SharedHistoryPersister
-{
+impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for SharedHistoryPersister {
     fn on_action(
         &self,
-        reaction: crate::kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
-    ) -> crate::kernel::ListenerFuture {
+        reaction: kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
+    ) -> kernel::ListenerFuture {
         if Arc::ptr_eq(
             &reaction.previous.shared_history,
             &reaction.current.shared_history,
@@ -32,8 +30,8 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
         })
     }
 
-    fn delivery_mode(&self) -> crate::kernel::DeliveryMode {
-        crate::kernel::DeliveryMode::LatestState
+    fn delivery_mode(&self) -> kernel::DeliveryMode {
+        kernel::DeliveryMode::LatestState
     }
 }
 
@@ -47,13 +45,11 @@ impl LocalHistoryPersister {
     }
 }
 
-impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
-    for LocalHistoryPersister
-{
+impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for LocalHistoryPersister {
     fn on_action(
         &self,
-        reaction: crate::kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
-    ) -> crate::kernel::ListenerFuture {
+        reaction: kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
+    ) -> kernel::ListenerFuture {
         if Arc::ptr_eq(
             &reaction.previous.local_history,
             &reaction.current.local_history,
@@ -69,7 +65,7 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
         })
     }
 
-    fn delivery_mode(&self) -> crate::kernel::DeliveryMode {
-        crate::kernel::DeliveryMode::LatestState
+    fn delivery_mode(&self) -> kernel::DeliveryMode {
+        kernel::DeliveryMode::LatestState
     }
 }

@@ -2,4 +2,23 @@
 resolver = "2"
 members = [
     "applications/bpmux",
+    "components/kernel",
 ]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "BUSL-1.1"
+
+[workspace.dependencies]
+tokio = "1"
+
+[workspace.lints.rust]
+dead_code = "deny"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+dbg_macro = "deny"
+todo = "warn"

@@ -13,7 +13,6 @@ use super::{
 };
 use crate::ci::CiState;
 use crate::hub::Hub;
-use crate::kernel;
 use crate::message::{Message, MessageType, StateDeltaPayload};
 use crate::product_management::story::slice::StoryAction;
 use crate::store::CiBroadcastListener;

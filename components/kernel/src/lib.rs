@@ -162,3 +162,6 @@ where
         })
     }
 }
+
+#[cfg(test)]
+mod kernel_tests;

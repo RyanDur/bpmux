@@ -7,13 +7,13 @@ use tokio::sync::broadcast;
 
 use super::evidence::EvidencePersister;
 use crate::hub::Hub;
-use crate::kernel::{Dispatch, Listener, Reaction};
 use crate::message::Message;
 use crate::product_management::evidence::{
     EvidenceAction, evidence_for_story, evidence_path, from_store, load, to_store,
 };
 use crate::product_management::story::StoryId;
 use crate::store::{AppAction, AppState, Presence, RosterAction, app_reduce};
+use kernel::{Dispatch, Listener, Reaction};
 
 fn fresh_hub() -> (Arc<Hub>, TempDir) {
     let dir = TempDir::new().expect("tempdir");

@@ -367,6 +367,7 @@ dependencies = [
  "http",
  "http-body-util",
  "httpmock",
+ "kernel",
  "octocrab",
  "once_cell",
  "portable-pty",
@@ -1819,6 +1820,13 @@ dependencies = [
  "serde",
  "serde_json",
  "simple_asn1",
+]
+
+[[package]]
+name = "kernel"
+version = "0.1.0"
+dependencies = [
+ "tokio",
 ]
 
 [[package]]

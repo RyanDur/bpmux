@@ -20,13 +20,13 @@ pub(super) fn unplace_departed(stories: &Stories, board: &BoardPlacements) -> Ve
 
 pub struct BoardPlacementReconciler;
 
-impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
+impl kernel::Listener<crate::store::AppState, crate::store::AppAction>
     for BoardPlacementReconciler
 {
     fn on_action(
         &self,
-        reaction: crate::kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
-    ) -> crate::kernel::ListenerFuture {
+        reaction: kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
+    ) -> kernel::ListenerFuture {
         let crate::store::AppAction::Story(_) = &reaction.action else {
             return Box::pin(async {});
         };
@@ -42,8 +42,8 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
         })
     }
 
-    fn delivery_mode(&self) -> crate::kernel::DeliveryMode {
-        crate::kernel::DeliveryMode::Ordered
+    fn delivery_mode(&self) -> kernel::DeliveryMode {
+        kernel::DeliveryMode::Ordered
     }
 }
 
@@ -57,13 +57,11 @@ impl BoardPlacementPersister {
     }
 }
 
-impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
-    for BoardPlacementPersister
-{
+impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for BoardPlacementPersister {
     fn on_action(
         &self,
-        reaction: crate::kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
-    ) -> crate::kernel::ListenerFuture {
+        reaction: kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
+    ) -> kernel::ListenerFuture {
         if Arc::ptr_eq(&reaction.previous.board, &reaction.current.board) {
             return Box::pin(async {});
         }
@@ -76,7 +74,7 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
         })
     }
 
-    fn delivery_mode(&self) -> crate::kernel::DeliveryMode {
-        crate::kernel::DeliveryMode::LatestState
+    fn delivery_mode(&self) -> kernel::DeliveryMode {
+        kernel::DeliveryMode::LatestState
     }
 }

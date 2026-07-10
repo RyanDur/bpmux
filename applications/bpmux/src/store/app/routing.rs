@@ -12,11 +12,11 @@ impl RoutingPersister {
     }
 }
 
-impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction> for RoutingPersister {
+impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for RoutingPersister {
     fn on_action(
         &self,
-        reaction: crate::kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
-    ) -> crate::kernel::ListenerFuture {
+        reaction: kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
+    ) -> kernel::ListenerFuture {
         if Arc::ptr_eq(&reaction.previous.routing, &reaction.current.routing) {
             return Box::pin(async {});
         }
@@ -42,7 +42,7 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction> fo
         })
     }
 
-    fn delivery_mode(&self) -> crate::kernel::DeliveryMode {
-        crate::kernel::DeliveryMode::LatestState
+    fn delivery_mode(&self) -> kernel::DeliveryMode {
+        kernel::DeliveryMode::LatestState
     }
 }

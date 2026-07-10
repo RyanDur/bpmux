@@ -3,10 +3,10 @@ use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
 use crate::rate_limit::RateLimitObserver;
 use crate::store::app::{AppAction, AppState};
 use crate::sync::RefreshDriver;
+use kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
 
 use super::SyncAction;
 

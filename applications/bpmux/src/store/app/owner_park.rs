@@ -56,13 +56,11 @@ pub fn owner_park_presence(
 
 pub struct OwnerParkListener;
 
-impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
-    for OwnerParkListener
-{
+impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for OwnerParkListener {
     fn on_action(
         &self,
-        reaction: crate::kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
-    ) -> crate::kernel::ListenerFuture {
+        reaction: kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
+    ) -> kernel::ListenerFuture {
         let crate::store::AppAction::Story(story_action) = &reaction.action else {
             return Box::pin(async {});
         };
@@ -105,7 +103,7 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
         })
     }
 
-    fn delivery_mode(&self) -> crate::kernel::DeliveryMode {
-        crate::kernel::DeliveryMode::Ordered
+    fn delivery_mode(&self) -> kernel::DeliveryMode {
+        kernel::DeliveryMode::Ordered
     }
 }

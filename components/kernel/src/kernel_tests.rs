@@ -3,7 +3,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use crate::kernel::{DeliveryMode, Listener, ListenerFuture, Middleware, Reaction, Store};
+use crate::{DeliveryMode, Listener, ListenerFuture, Middleware, Reaction, Store};
 
 async fn eventually(label: &str, mut condition: impl FnMut() -> bool) {
     for _ in 0..400 {

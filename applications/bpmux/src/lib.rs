@@ -27,9 +27,6 @@ pub mod hub;
 #[cfg(test)]
 mod hub_tests;
 pub mod integrations;
-pub mod kernel;
-#[cfg(test)]
-mod kernel_tests;
 pub mod location;
 #[cfg(test)]
 mod location_migration_tests;

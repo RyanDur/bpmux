@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
 use crate::store::app::{AppAction, AppState};
 use crate::sync::RefreshDriver;
+use kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
 
 pub struct GithubDrain {
     refresh: Arc<dyn RefreshDriver>,

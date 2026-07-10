@@ -9,13 +9,13 @@ use tokio::sync::broadcast;
 use super::history::{LocalHistoryPersister, SharedHistoryPersister};
 use crate::board::history_persistence as local_persistence;
 use crate::hub::Hub;
-use crate::kernel::{Dispatch, Listener, Reaction};
 use crate::message::Message;
 use crate::product_management::history_persistence as shared_persistence;
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::slice::StoryAction;
 use crate::product_management::story::{Stage, Story, StoryId, Verdict, Work};
 use crate::store::{AppAction, AppState, app_reduce};
+use kernel::{Dispatch, Listener, Reaction};
 
 fn fresh_hub() -> (Arc<Hub>, TempDir) {
     let dir = TempDir::new().expect("tempdir");

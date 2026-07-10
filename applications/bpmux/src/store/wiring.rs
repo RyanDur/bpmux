@@ -6,7 +6,6 @@ use tokio_util::sync::CancellationToken;
 use super::{CiPollFetch, Store, app, ci, sync};
 use crate::ci::CiStateStore;
 use crate::hub;
-use crate::kernel;
 use crate::sync::RefreshDriver;
 use crate::transport::rest::broadcast_listeners::{
     EpicBroadcast, IterationBroadcast, OutcomeBroadcast, StoryBroadcast,

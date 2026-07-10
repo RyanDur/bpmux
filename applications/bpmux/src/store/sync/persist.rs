@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
 use crate::store::app::{AppAction, AppState};
 use crate::sync::QueuedEvent;
+use kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
 
 use super::queue_snapshot;
 

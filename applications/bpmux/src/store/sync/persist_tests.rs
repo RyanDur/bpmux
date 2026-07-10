@@ -37,7 +37,7 @@ fn one_write() -> PendingWrite {
 #[tokio::test]
 async fn a_rapid_sync_burst_persists_only_the_latest_snapshot_never_the_stale_intermediate() {
     let saves: Arc<Mutex<Vec<Vec<QueuedEvent>>>> = Arc::new(Mutex::new(Vec::new()));
-    let store = crate::kernel::Store::new(AppState::default(), Box::new(app_reduce));
+    let store = kernel::Store::new(AppState::default(), Box::new(app_reduce));
     store.add_listener(Arc::new(OutboxPersister::new(OutboxSink::Recording(
         Arc::clone(&saves),
     ))));

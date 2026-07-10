@@ -5,11 +5,11 @@ use crate::store::{PollKind, Store};
 
 #[derive(Clone)]
 pub struct Dispatch {
-    dispatch: crate::kernel::Dispatch<AppAction>,
+    dispatch: kernel::Dispatch<AppAction>,
 }
 
 impl Dispatch {
-    pub fn new(dispatch: crate::kernel::Dispatch<AppAction>) -> Self {
+    pub fn new(dispatch: kernel::Dispatch<AppAction>) -> Self {
         Self { dispatch }
     }
 

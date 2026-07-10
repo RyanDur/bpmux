@@ -3,7 +3,6 @@ use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 
 use crate::hub;
-use crate::kernel;
 
 pub use crate::board;
 pub use crate::ci::slice as ci;

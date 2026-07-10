@@ -125,7 +125,7 @@ fn product_management_production_imports_no_store_composition() {
 
     assert!(
         violations.is_empty(),
-        "product_management is a feature domain; crate::store is the redux composition that AGGREGATES the domain slices (AppState/AppAction name every domain). The domain must not depend on the composition that names it — that is the store<->pm cycle. A domain slice registers UP into the kernel (crate::kernel, a leaf) and owns its own actions/reducer/selectors; a cross-slice orchestration listener (e.g. owner_park) lives at the composition (store/app), not in the domain. Move the offending code to crate::store::app or express it via the kernel leaf. Production files reaching crate::store:\n{}",
+        "product_management is a feature domain; crate::store is the redux composition that AGGREGATES the domain slices (AppState/AppAction name every domain). The domain must not depend on the composition that names it — that is the store<->pm cycle. A domain slice registers UP into the kernel (the `kernel` component crate, a leaf) and owns its own actions/reducer/selectors; a cross-slice orchestration listener (e.g. owner_park) lives at the composition (store/app), not in the domain. Move the offending code to crate::store::app or express it via the kernel leaf. Production files reaching crate::store:\n{}",
         violations.join("\n")
     );
 }
