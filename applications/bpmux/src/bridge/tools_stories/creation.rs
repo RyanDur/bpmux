@@ -101,10 +101,10 @@ fn validate_actor_role_can_create(
     story_type: crate::product_management::story::StoryKind,
 ) -> Result<(), String> {
     let workflow = crate::workflow::current_workflow();
-    let pm = workflow.role_id_for_purpose("pm").unwrap_or("pm");
-    let dev = workflow.role_id_for_purpose("dev").unwrap_or("dev");
+    let pm = workflow.role_name_for_purpose("pm").unwrap_or("pm");
+    let dev = workflow.role_name_for_purpose("dev").unwrap_or("dev");
     let actor_role = role_from_name(agent_name);
-    if let Some(owner) = workflow.owner_role_id()
+    if let Some(owner) = workflow.owner_role_name()
         && !owner.is_empty()
         && actor_role == owner
     {

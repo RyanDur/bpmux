@@ -26,7 +26,7 @@ pub(crate) async fn handle_add_story_to_iteration(
     crate::workflow::enforce_role_allowed(
         transition,
         actor_role,
-        workflow.owner_role_id().unwrap_or(""),
+        workflow.owner_role_name().unwrap_or(""),
     )
     .map_err(|e| e.as_json_string())?;
     let story_id = args

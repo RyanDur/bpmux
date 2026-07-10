@@ -8,7 +8,7 @@ pub(crate) fn require_role(
     operation: &str,
 ) -> Result<(), String> {
     let role = role_from_name(agent_name);
-    if let Some(owner) = crate::workflow::current_workflow().owner_role_id()
+    if let Some(owner) = crate::workflow::current_workflow().owner_role_name()
         && !owner.is_empty()
         && role == owner
     {
@@ -35,7 +35,7 @@ pub(crate) fn require_purpose(
         .iter()
         .map(|p| {
             workflow
-                .role_id_for_purpose(p)
+                .role_name_for_purpose(p)
                 .map(str::to_string)
                 .unwrap_or_else(|| (*p).to_string())
         })
@@ -50,7 +50,7 @@ pub(crate) fn require_purpose_any(
     operation: &str,
 ) -> Result<(), String> {
     let workflow = crate::workflow::current_workflow();
-    let allowed = workflow.role_ids_for_purpose(purpose);
+    let allowed = workflow.role_names_for_purpose(purpose);
     if allowed.is_empty() {
         return Err(format!("{operation} has no configured {purpose} role"));
     }

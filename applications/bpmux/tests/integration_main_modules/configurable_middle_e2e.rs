@@ -9,19 +9,19 @@ use std::time::Duration;
 
 const THREE_STAGE_WORKFLOW: &str = r#"
 [[role]]
-id = "owner"
+name = "owner"
 purposes = ["owner"]
 
 [[role]]
-id = "pm"
+name = "pm"
 purposes = ["pm"]
 
 [[role]]
-id = "designer"
+name = "designer"
 purposes = ["designer", "iteration-reviewer"]
 
 [[role]]
-id = "dev"
+name = "dev"
 purposes = ["dev", "iteration-builder"]
 
 [[section]]

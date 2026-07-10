@@ -34,7 +34,7 @@ pub fn enforce_stage_judge(
     if judges.is_empty() {
         return Ok(());
     }
-    let owner_role = workflow.owner_role_id().unwrap_or("");
+    let owner_role = workflow.owner_role_name().unwrap_or("");
     if !owner_role.is_empty() && actor_role == owner_role {
         return Ok(());
     }

@@ -8,7 +8,7 @@ fn known_agents() -> Vec<String> {
     crate::workflow::current_workflow()
         .role
         .iter()
-        .map(|r| r.id.to_ascii_lowercase())
+        .map(|r| r.name.to_ascii_lowercase())
         .collect()
 }
 

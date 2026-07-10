@@ -187,11 +187,11 @@ fn workflow_with_reviewer_role(reviewer_id: &str) -> WorkflowConfig {
         transition: vec![],
         role: vec![
             crate::workflow::config::Role {
-                id: "designer".into(),
+                name: "designer".into(),
                 purposes: vec!["designer".into()],
             },
             crate::workflow::config::Role {
-                id: reviewer_id.into(),
+                name: reviewer_id.into(),
                 purposes: vec![ITERATION_REVIEWER_PURPOSE.into()],
             },
         ],
@@ -205,11 +205,11 @@ fn workflow_with_builder_role(builder_id: &str) -> WorkflowConfig {
         transition: vec![],
         role: vec![
             crate::workflow::config::Role {
-                id: "dev".into(),
+                name: "dev".into(),
                 purposes: vec!["dev".into()],
             },
             crate::workflow::config::Role {
-                id: builder_id.into(),
+                name: builder_id.into(),
                 purposes: vec![ITERATION_BUILDER_PURPOSE.into()],
             },
         ],

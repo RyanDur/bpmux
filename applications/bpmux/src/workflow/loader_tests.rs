@@ -490,6 +490,34 @@ fn the_repo_workflow_toml_is_the_team_two_stage_config() {
 }
 
 #[test]
+fn legacy_role_id_key_still_loads_via_alias() {
+    let tmp = TempDir::new().unwrap();
+    write_workflow(
+        &tmp,
+        r#"
+[[role]]
+id = "dev"
+purposes = ["dev"]
+
+[[state]]
+id = "ready"
+section = "pre-work"
+
+[[state]]
+id = "in-progress"
+section = "in-work"
+
+[[state]]
+id = "accepted"
+section = "post-work"
+"#,
+    );
+    let workflow = load_workflow(tmp.path())
+        .expect("a workflow.toml written before the rename (role id key) still loads");
+    assert_eq!(workflow.role_name_for_purpose("dev"), Some("dev"));
+}
+
+#[test]
 fn structured_error_serializes_with_kind_discriminator() {
     let err = WorkflowLoadError::ParseFailed {
         path: "/tmp/x/.bpmux/workflow.toml".into(),

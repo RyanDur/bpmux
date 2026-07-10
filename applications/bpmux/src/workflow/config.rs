@@ -14,7 +14,8 @@ pub struct WorkflowConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Role {
-    pub id: String,
+    #[serde(alias = "id")]
+    pub name: String,
     #[serde(default)]
     pub purposes: Vec<String>,
 }
@@ -101,22 +102,22 @@ impl WorkflowConfig {
             })
     }
 
-    pub fn role_id_for_purpose(&self, purpose: &str) -> Option<&str> {
+    pub fn role_name_for_purpose(&self, purpose: &str) -> Option<&str> {
         self.role
             .iter()
             .find(|r| r.purposes.iter().any(|p| p == purpose))
-            .map(|r| r.id.as_str())
+            .map(|r| r.name.as_str())
     }
 
-    pub fn role_ids_for_purpose(&self, purpose: &str) -> Vec<&str> {
+    pub fn role_names_for_purpose(&self, purpose: &str) -> Vec<&str> {
         self.role
             .iter()
             .filter(|r| r.purposes.iter().any(|p| p == purpose))
-            .map(|r| r.id.as_str())
+            .map(|r| r.name.as_str())
             .collect()
     }
 
-    pub fn owner_role_id(&self) -> Option<&str> {
-        self.role_id_for_purpose("owner")
+    pub fn owner_role_name(&self) -> Option<&str> {
+        self.role_name_for_purpose("owner")
     }
 }

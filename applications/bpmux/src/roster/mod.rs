@@ -11,7 +11,7 @@ pub(crate) fn roster_role_for_identity_prefix(prefix: &str) -> RosterRole {
     let purpose = workflow
         .role
         .iter()
-        .find(|r| r.id == prefix)
+        .find(|r| r.name == prefix)
         .and_then(|r| r.purposes.first().map(String::as_str));
     match purpose {
         Some("designer") => RosterRole::Designer,

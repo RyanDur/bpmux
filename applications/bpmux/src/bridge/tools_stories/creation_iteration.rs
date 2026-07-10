@@ -11,10 +11,10 @@ pub(crate) async fn handle_create_iteration(
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     let workflow = crate::workflow::current_workflow();
-    let pm = workflow.role_id_for_purpose("pm").unwrap_or("pm");
+    let pm = workflow.role_name_for_purpose("pm").unwrap_or("pm");
     let actor_role = role_from_name(agent_name);
     let is_owner = workflow
-        .owner_role_id()
+        .owner_role_name()
         .is_some_and(|o| !o.is_empty() && actor_role == o);
     if actor_role != pm && !is_owner {
         return Err(

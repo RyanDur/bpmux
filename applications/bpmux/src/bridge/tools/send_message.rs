@@ -5,9 +5,9 @@ use super::helpers::{WsSink, ws_send};
 use crate::diag::log_diag;
 use crate::transport::protocol::ClientMessage;
 
-fn owner_role_id() -> String {
+fn owner_role_name() -> String {
     crate::workflow::current_workflow()
-        .owner_role_id()
+        .owner_role_name()
         .map(str::to_string)
         .unwrap_or_else(|| "owner".to_string())
 }
@@ -30,7 +30,7 @@ pub fn ensure_owner_included(to: Option<Vec<String>>) -> Option<Vec<String>> {
     if list.is_empty() || list.iter().any(|r| r == "all") {
         return Some(list);
     }
-    let owner = owner_role_id();
+    let owner = owner_role_name();
     if !list.iter().any(|r| r == &owner) {
         list.push(owner);
     }

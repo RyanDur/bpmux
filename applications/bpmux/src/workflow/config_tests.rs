@@ -13,107 +13,107 @@ mod role_resolver_tests {
     }
 
     #[test]
-    fn role_id_for_purpose_returns_matching_role() {
+    fn role_name_for_purpose_returns_matching_role() {
         let workflow = workflow_with_roles(vec![Role {
-            id: "alice".into(),
+            name: "alice".into(),
             purposes: vec!["owner".into()],
         }]);
-        assert_eq!(workflow.role_id_for_purpose("owner"), Some("alice"));
+        assert_eq!(workflow.role_name_for_purpose("owner"), Some("alice"));
     }
 
     #[test]
-    fn role_id_for_purpose_returns_none_when_no_role_matches() {
+    fn role_name_for_purpose_returns_none_when_no_role_matches() {
         let workflow = workflow_with_roles(vec![Role {
-            id: "alice".into(),
+            name: "alice".into(),
             purposes: vec!["owner".into()],
         }]);
-        assert_eq!(workflow.role_id_for_purpose("pm"), None);
+        assert_eq!(workflow.role_name_for_purpose("pm"), None);
     }
 
     #[test]
     fn role_can_carry_multiple_purposes() {
         let workflow = workflow_with_roles(vec![Role {
-            id: "alice".into(),
+            name: "alice".into(),
             purposes: vec!["pm".into(), "lead".into()],
         }]);
-        assert_eq!(workflow.role_id_for_purpose("pm"), Some("alice"));
-        assert_eq!(workflow.role_id_for_purpose("lead"), Some("alice"));
+        assert_eq!(workflow.role_name_for_purpose("pm"), Some("alice"));
+        assert_eq!(workflow.role_name_for_purpose("lead"), Some("alice"));
     }
 
     #[test]
-    fn role_ids_for_purpose_collects_all_roles_carrying_it() {
+    fn role_names_for_purpose_collects_all_roles_carrying_it() {
         let workflow = workflow_with_roles(vec![
             Role {
-                id: "designer".into(),
+                name: "designer".into(),
                 purposes: vec!["designer".into(), "iteration-reviewer".into()],
             },
             Role {
-                id: "lead".into(),
+                name: "lead".into(),
                 purposes: vec!["dev".into(), "iteration-reviewer".into()],
             },
             Role {
-                id: "pm".into(),
+                name: "pm".into(),
                 purposes: vec!["pm".into()],
             },
         ]);
         assert_eq!(
-            workflow.role_ids_for_purpose("iteration-reviewer"),
+            workflow.role_names_for_purpose("iteration-reviewer"),
             vec!["designer", "lead"]
         );
     }
 
     #[test]
-    fn role_ids_for_purpose_empty_when_none_carry_it() {
+    fn role_names_for_purpose_empty_when_none_carry_it() {
         let workflow = workflow_with_roles(vec![Role {
-            id: "pm".into(),
+            name: "pm".into(),
             purposes: vec!["pm".into()],
         }]);
         assert!(
             workflow
-                .role_ids_for_purpose("iteration-reviewer")
+                .role_names_for_purpose("iteration-reviewer")
                 .is_empty()
         );
     }
 
     #[test]
-    fn owner_role_id_resolves_via_owner_purpose() {
+    fn owner_role_name_resolves_via_owner_purpose() {
         let workflow = workflow_with_roles(vec![
             Role {
-                id: "alice".into(),
+                name: "alice".into(),
                 purposes: vec!["owner".into()],
             },
             Role {
-                id: "bob".into(),
+                name: "bob".into(),
                 purposes: vec!["dev".into()],
             },
         ]);
-        assert_eq!(workflow.owner_role_id(), Some("alice"));
+        assert_eq!(workflow.owner_role_name(), Some("alice"));
     }
 
     #[test]
-    fn owner_role_id_returns_none_when_no_owner_purpose() {
+    fn owner_role_name_returns_none_when_no_owner_purpose() {
         let workflow = workflow_with_roles(vec![Role {
-            id: "bob".into(),
+            name: "bob".into(),
             purposes: vec!["dev".into()],
         }]);
-        assert_eq!(workflow.owner_role_id(), None);
+        assert_eq!(workflow.owner_role_name(), None);
     }
 
     #[test]
-    fn bundled_default_resolves_canonical_purposes_to_canonical_ids() {
+    fn bundled_default_resolves_canonical_purposes_to_canonical_names() {
         let workflow = crate::workflow::bundled_default::bundled_default();
-        assert_eq!(workflow.role_id_for_purpose("owner"), Some("owner"));
-        assert_eq!(workflow.role_id_for_purpose("pm"), Some("pm"));
-        assert_eq!(workflow.role_id_for_purpose("designer"), Some("designer"));
-        assert_eq!(workflow.role_id_for_purpose("dev"), Some("dev"));
-        assert_eq!(workflow.owner_role_id(), Some("owner"));
+        assert_eq!(workflow.role_name_for_purpose("owner"), Some("owner"));
+        assert_eq!(workflow.role_name_for_purpose("pm"), Some("pm"));
+        assert_eq!(workflow.role_name_for_purpose("designer"), Some("designer"));
+        assert_eq!(workflow.role_name_for_purpose("dev"), Some("dev"));
+        assert_eq!(workflow.owner_role_name(), Some("owner"));
     }
 
     #[test]
     fn bundled_default_designates_designer_as_iteration_reviewer() {
         let workflow = crate::workflow::bundled_default::bundled_default();
         assert_eq!(
-            workflow.role_ids_for_purpose("iteration-reviewer"),
+            workflow.role_names_for_purpose("iteration-reviewer"),
             vec!["designer"]
         );
     }

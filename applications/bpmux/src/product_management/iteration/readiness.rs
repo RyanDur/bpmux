@@ -87,7 +87,7 @@ fn stories_ordered(iteration: &Iteration) -> bool {
 }
 
 fn review_closed(iteration: &Iteration, workflow: &WorkflowConfig) -> bool {
-    let reviewers = workflow.role_ids_for_purpose(ITERATION_REVIEWER_PURPOSE);
+    let reviewers = workflow.role_names_for_purpose(ITERATION_REVIEWER_PURPOSE);
     iteration
         .review_closers
         .iter()
@@ -95,7 +95,7 @@ fn review_closed(iteration: &Iteration, workflow: &WorkflowConfig) -> bool {
 }
 
 fn dev_ok(iteration: &Iteration, workflow: &WorkflowConfig) -> bool {
-    let builders = workflow.role_ids_for_purpose(ITERATION_BUILDER_PURPOSE);
+    let builders = workflow.role_names_for_purpose(ITERATION_BUILDER_PURPOSE);
     iteration
         .dev_ok_by
         .iter()

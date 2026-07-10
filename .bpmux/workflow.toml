@@ -5,25 +5,25 @@
 # Without this file bpmux runs the bundled default: a single undivided
 # in-progress middle. The board renders whatever this file declares.
 #
-# judges: who may pass/fail a stage's judgment (role id or agent id).
+# judges: who may pass/fail a stage's judgment (role name or agent id).
 # Omit for "anyone". fail_to: where a failed judgment sends the story.
 # Omit for "previous stage" (a failure at the FIRST middle stage stays
 # in that stage).
 
 [[role]]
-id = "owner"
+name = "owner"
 purposes = ["owner"]
 
 [[role]]
-id = "pm"
+name = "pm"
 purposes = ["pm"]
 
 [[role]]
-id = "designer"
+name = "designer"
 purposes = ["designer", "iteration-reviewer"]
 
 [[role]]
-id = "dev"
+name = "dev"
 purposes = ["dev", "iteration-builder"]
 
 [[section]]

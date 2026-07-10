@@ -55,7 +55,7 @@ pub(crate) async fn handle_pass_desk_check(
     crate::workflow::enforce_role_allowed(
         transition,
         actor_role,
-        workflow.owner_role_id().unwrap_or(""),
+        workflow.owner_role_name().unwrap_or(""),
     )
     .map_err(|e| e.as_json_string())?;
     if hub.is_some()

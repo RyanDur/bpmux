@@ -12,13 +12,13 @@ pub(in crate::bridge) async fn handle_submit_verdict(
 ) -> Result<String, String> {
     let role = agent_name.split(':').next().unwrap_or(agent_name);
     let workflow = crate::workflow::current_workflow();
-    let dev_id = workflow.role_id_for_purpose("dev").unwrap_or("dev");
-    let designer_id = workflow
-        .role_id_for_purpose("designer")
+    let dev_name = workflow.role_name_for_purpose("dev").unwrap_or("dev");
+    let designer_name = workflow
+        .role_name_for_purpose("designer")
         .unwrap_or("designer");
-    if role != dev_id && role != designer_id {
+    if role != dev_name && role != designer_name {
         return Err(format!(
-            "submit_verdict is restricted to {dev_id} or {designer_id}; agent '{agent_name}' is role '{role}'"
+            "submit_verdict is restricted to {dev_name} or {designer_name}; agent '{agent_name}' is role '{role}'"
         ));
     }
     let story_id = args
@@ -58,13 +58,13 @@ pub(in crate::bridge) async fn handle_submit_verdict(
         },
     ));
 
-    let pm_id = workflow.role_id_for_purpose("pm").unwrap_or("pm");
+    let pm_name = workflow.role_name_for_purpose("pm").unwrap_or("pm");
     let notification = Message {
         from: "bpmux".to_string(),
         text: format!("verdict cast on #{story_id} from {role}: {verdict_value}"),
         ts,
         message_type: MessageType::System,
-        addressee: Some(pm_id.to_string()),
+        addressee: Some(pm_name.to_string()),
         ..Message::default()
     };
     if let Err(e) = hub.broadcast(&notification) {

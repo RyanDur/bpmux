@@ -400,17 +400,19 @@ value included finding what the mocks hid.
 
 ## Role identity: config-driven, not hardcoded (2026-06-19, commit 7f14d95c)
 
-Roles are no longer baked into source. The role SET — ids, count, the
+Roles are no longer baked into source. The role SET — names, count, the
 owner — comes from the workflow config (`WorkflowConfig.role`:
-`{ id, purposes }`; `workflow/bundled_default.rs` is the overridable
-default). Everything downstream derives from it:
+`{ name, purposes }`; `workflow/bundled_default.rs` is the overridable
+default). A role is workflow vocabulary, named not identified (2026-07-10
+rename, `#[serde(alias = "id")]` tolerates workflow.toml files written
+before the rename). Everything downstream derives from it:
 
-- The owner is a workflow role like any other (`owner_role_id()` =
-  `role_id_for_purpose("owner")`); its id is the generic `owner`, not a
-  personal name. This makes the owner symmetric with the other roles and
+- The owner is a workflow role like any other (`owner_role_name()` =
+  `role_name_for_purpose("owner")`); its name is the generic `owner`, not
+  a personal name. This makes the owner symmetric with the other roles and
   unblocked owner-walk acceptance over RPC — the owner-only `accept_story`
   gate is now drivable as agent `owner`, which the RPC allowlist accepts.
-- The RPC agent allowlist derives from `current_workflow().role` ids
+- The RPC agent allowlist derives from `current_workflow().role` names
   (`transport/rpc_routes/validation.rs`), not a hardcoded
   `["dev","pm","designer","owner"]`.
 - The renderer's identity / owner-detection / addressable set, and the
