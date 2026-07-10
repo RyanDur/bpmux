@@ -232,3 +232,53 @@ fn serializes_message_from_session_message() {
     assert!(json.contains(r#""type":"message"#));
     assert!(json.contains(r#""from":"dev:human"#));
 }
+
+#[test]
+fn message_frame_carries_the_delivery_id_fields_through_the_from_conversion() {
+    let session_msg = Message {
+        from: "dev:claude-code".to_string(),
+        sender_id: Some("id-dev".to_string()),
+        text: "hello".to_string(),
+        ts: chrono::Utc::now(),
+        to: Some(vec!["pm".to_string()]),
+        to_ids: Some(vec!["id-pm".to_string()]),
+        addressee: Some("pm".to_string()),
+        addressee_ids: Some(vec!["id-pm".to_string()]),
+        ..Message::default()
+    };
+    let server_msg: ServerMessage = session_msg.into();
+    let json = serde_json::to_string(&server_msg).expect("serialize");
+    assert!(
+        json.contains(r#""sender_id":"id-dev""#),
+        "the live ws chat frame must carry sender_id — the explicit-copy conversion drops it otherwise: {json}"
+    );
+    assert!(
+        json.contains(r#""to_ids":["id-pm"]"#),
+        "the live ws chat frame must carry to_ids: {json}"
+    );
+    assert!(
+        json.contains(r#""addressee_ids":["id-pm"]"#),
+        "the live ws chat frame must carry addressee_ids: {json}"
+    );
+}
+
+#[test]
+fn message_frame_without_delivery_id_fields_still_deserializes_bridge_side() {
+    let json = r#"{"type":"message","from":"pm:claude-code","text":"legacy frame","ts":"2026-06-01T12:00:00Z"}"#;
+    let msg: ServerMessage = serde_json::from_str(json).expect("parse");
+    match msg {
+        ServerMessage::Message {
+            from,
+            sender_id,
+            to_ids,
+            addressee_ids,
+            ..
+        } => {
+            assert_eq!(from, "pm:claude-code");
+            assert_eq!(sender_id, None);
+            assert_eq!(to_ids, None);
+            assert_eq!(addressee_ids, None);
+        }
+        other => panic!("expected Message, got {other:?}"),
+    }
+}

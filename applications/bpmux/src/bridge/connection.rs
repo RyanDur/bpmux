@@ -94,10 +94,13 @@ pub(crate) async fn run_ws_connection(
         }
         if let ServerMessage::Message {
             from,
+            sender_id: _,
             text,
             ts,
             to,
+            to_ids: _,
             addressee,
+            addressee_ids: _,
             message_type,
             multi_depth: _,
             state_delta,
@@ -166,7 +169,9 @@ pub(crate) async fn run_ws_connection(
                 continue;
             }
 
-            for class in chat_event_classes(&channel, addressee.as_deref()) {
+            for class in
+                crate::bridge::chat_relevance::chat_event_classes(&channel, addressee.as_deref())
+            {
                 let mut payload = json!({
                     "from": from_short,
                     "text": &text,
@@ -186,15 +191,4 @@ pub(crate) async fn run_ws_connection(
 
     *ws_tx_store.lock().await = None;
     eprintln!("Bridge: disconnected from bpmux");
-}
-
-pub(crate) fn chat_event_classes(channel: &str, addressee: Option<&str>) -> Vec<&'static str> {
-    let mut classes = Vec::new();
-    if channel == "broadcast" {
-        classes.push("broadcast_received");
-    }
-    if matches!(addressee, Some(a) if a != crate::message::BROADCAST_ALL) {
-        classes.push("addressed_to_me");
-    }
-    classes
 }

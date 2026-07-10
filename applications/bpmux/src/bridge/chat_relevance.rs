@@ -19,6 +19,17 @@ pub(crate) fn chat_class_reaches_live_stream(
     declared_chat_classes.iter().any(|c| c == message_class)
 }
 
+pub(crate) fn chat_event_classes(channel: &str, addressee: Option<&str>) -> Vec<&'static str> {
+    let mut classes = Vec::new();
+    if channel == "broadcast" {
+        classes.push("broadcast_received");
+    }
+    if matches!(addressee, Some(a) if a != crate::message::BROADCAST_ALL) {
+        classes.push("addressed_to_me");
+    }
+    classes
+}
+
 pub(crate) fn scope_reaches_live_stream(to: Option<&[String]>, recipient_short: &str) -> bool {
     if matches!(
         crate::roster::roster_role_for_identity_prefix(recipient_short),

@@ -1,4 +1,4 @@
-use super::connection::chat_event_classes;
+use super::chat_relevance::chat_event_classes;
 
 #[test]
 fn broadcast_chat_dispatches_broadcast_received() {
