@@ -2,8 +2,8 @@
 
 use super::sqlite::SqliteStorage;
 use crate::log::MessageLog;
-use crate::message::{Message, MessageType};
 use crate::routing::UserRepo;
+use message::{Message, MessageType};
 
 fn store() -> (tempfile::TempDir, SqliteStorage) {
     let dir = tempfile::TempDir::new().unwrap();

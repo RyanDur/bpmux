@@ -13,10 +13,10 @@ use super::sqlite_surfaced_topics as surfaced_topics;
 use super::sqlite_users as users;
 use crate::log::LogError;
 use crate::memory::lessons::LessonIndex;
-use crate::message::Message;
 use crate::persist::PersistError;
 use crate::routing::{UserRecord, UserRepo};
 use crate::sync::QueuedEvent;
+use message::Message;
 
 pub struct SqliteStorage {
     dir: PathBuf,

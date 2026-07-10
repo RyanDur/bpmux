@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use super::classifier::{ExperienceKind, MessageClass};
-use crate::message::Message;
+use message::Message;
 
 const SMOOTHING: f64 = 1.0;
 

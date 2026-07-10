@@ -37,9 +37,6 @@ pub mod log;
 mod log_tests;
 pub mod mcp;
 pub mod memory;
-pub mod message;
-#[cfg(test)]
-mod message_tests;
 pub mod owner_session;
 pub(crate) mod persist;
 pub mod product_management;

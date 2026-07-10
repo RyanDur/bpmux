@@ -74,7 +74,7 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
     std::fs::create_dir_all(&base)?;
     let data_dir = location::resume_or_create_data_dir(&base)?;
     let (wake_tx, _wake_rx) =
-        broadcast::channel::<crate::message::Message>(hub::BROADCAST_CHANNEL_CAPACITY);
+        broadcast::channel::<message::Message>(hub::BROADCAST_CHANNEL_CAPACITY);
     let hub = Arc::new(hub::Hub::new(data_dir, cli.name.clone(), wake_tx));
     let port = cli.mcp_port;
     let ct = CancellationToken::new();

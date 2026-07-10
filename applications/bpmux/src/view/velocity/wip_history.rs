@@ -4,7 +4,7 @@ use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use serde::Serialize;
 
 use super::{Lifecycle, WINDOW_DAYS, parse_lifecycle};
-use crate::message::{Message, MessageType};
+use message::{Message, MessageType};
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct WipPoint {

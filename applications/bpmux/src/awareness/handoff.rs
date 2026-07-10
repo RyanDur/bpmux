@@ -2,7 +2,7 @@ use std::time::Duration;
 use tokio::time::Instant;
 
 use crate::hub::Hub;
-use crate::message::{Message, MessageType};
+use message::{Message, MessageType};
 
 use super::agents::AgentTracker;
 

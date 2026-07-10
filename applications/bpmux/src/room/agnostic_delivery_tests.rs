@@ -2,11 +2,11 @@
 
 use super::agnostic_delivery::*;
 use super::wake_delivery::wake_committed_terminals;
-use crate::message::MessageType;
-use crate::message::{CiSnapshotWire, Message, StateDeltaPayload};
 use crate::room::{LivePtyRegistry, spawn_pty_retained};
 use crate::store::routing::{RoutingAction, drain_floor, register_agent_actions};
 use crate::store::{AppAction, CommitmentsAction, SeededStore};
+use message::MessageType;
+use message::{CiSnapshotWire, Message, StateDeltaPayload};
 use std::sync::Arc;
 use tokio::sync::broadcast;
 

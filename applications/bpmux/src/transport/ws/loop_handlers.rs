@@ -14,7 +14,7 @@ use super::{build_peer_lag_message, send_json, should_deliver};
 
 pub(super) async fn handle_broadcast(
     tx: &mut SplitSink<WebSocket, WsMessage>,
-    result: Result<crate::message::Message, broadcast::error::RecvError>,
+    result: Result<message::Message, broadcast::error::RecvError>,
     identity: &str,
     hub: &Arc<hub::Hub>,
     routing_user_id: Option<&str>,

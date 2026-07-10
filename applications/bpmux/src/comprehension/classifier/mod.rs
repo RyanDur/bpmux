@@ -1,5 +1,5 @@
-use crate::message::Message;
 use aho_corasick::AhoCorasick;
+use message::Message;
 use serde::{Deserialize, Serialize};
 
 mod patterns;

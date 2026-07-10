@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::ci::*;
-use crate::message::DeepDetail;
+use message::DeepDetail;
 
 fn run(status: &str, conclusion: Option<&str>) -> RunEntry {
     RunEntry {
@@ -357,7 +357,7 @@ fn build_dev_ci_signal_addresses_dev_only() {
 #[test]
 fn build_dev_ci_signal_uses_chat_message_type() {
     let signal = build_dev_ci_signal("anything");
-    assert_eq!(signal.message_type, crate::message::MessageType::Chat);
+    assert_eq!(signal.message_type, message::MessageType::Chat);
 }
 
 #[test]
@@ -415,13 +415,13 @@ fn ci_state_wire_mirror_serializes_identically_to_domain_ci_state() {
         CiState::QuotaExhausted,
     ] {
         let domain_json = serde_json::to_value(state).expect("CiState serializes");
-        let wire_json = serde_json::to_value(crate::message::CiStateWire::from(state))
+        let wire_json = serde_json::to_value(message::CiStateWire::from(state))
             .expect("CiStateWire serializes");
         assert_eq!(
             domain_json, wire_json,
             "the wire mirror must serialize byte-identically to the domain CiState — the renderer decodes these strings; a serde-attr edit on either side fails here"
         );
-        let back: crate::message::CiStateWire = serde_json::from_value(domain_json)
+        let back: message::CiStateWire = serde_json::from_value(domain_json)
             .expect("the domain wire string parses into the mirror");
         assert_eq!(
             back,

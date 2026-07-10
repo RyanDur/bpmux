@@ -2,16 +2,16 @@ use crate::hub;
 
 pub(crate) fn broadcast_state_delta(
     hub: &hub::Hub,
-    payload: crate::message::StateDeltaPayload,
+    payload: message::StateDeltaPayload,
     label: &str,
 ) {
-    let msg = crate::message::Message {
+    let msg = message::Message {
         from: "bpmux".to_string(),
         text: String::new(),
         ts: chrono::Utc::now(),
-        message_type: crate::message::MessageType::StateDelta,
+        message_type: message::MessageType::StateDelta,
         state_delta: Some(payload),
-        ..crate::message::Message::default()
+        ..message::Message::default()
     };
     if let Err(e) = hub.broadcast(&msg) {
         crate::diag::log_diag(&format!("{label}: state-delta broadcast failed: {e}"));

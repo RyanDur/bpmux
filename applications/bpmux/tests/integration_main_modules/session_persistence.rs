@@ -8,8 +8,8 @@
 fn messages_persist_across_session_resumes() {
     use bpmux::location::resume_or_create_data_dir;
     use bpmux::log::{append_message, read_messages};
-    use bpmux::message::Message;
     use chrono::Utc;
+    use message::Message;
     use tempfile::TempDir;
 
     let base = TempDir::new().expect("temp base");

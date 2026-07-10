@@ -58,9 +58,9 @@ pub enum Presence {
     Help,
 }
 
-impl From<RosterRole> for crate::message::RosterRoleWire {
+impl From<RosterRole> for message::RosterRoleWire {
     fn from(role: RosterRole) -> Self {
-        use crate::message::RosterRoleWire;
+        use message::RosterRoleWire;
         match role {
             RosterRole::Designer => RosterRoleWire::Designer,
             RosterRole::Dev => RosterRoleWire::Dev,
@@ -71,9 +71,9 @@ impl From<RosterRole> for crate::message::RosterRoleWire {
     }
 }
 
-impl From<Presence> for crate::message::PresenceWire {
+impl From<Presence> for message::PresenceWire {
     fn from(presence: Presence) -> Self {
-        use crate::message::PresenceWire;
+        use message::PresenceWire;
         match presence {
             Presence::Online => PresenceWire::Online,
             Presence::Busy => PresenceWire::Busy,

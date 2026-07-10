@@ -29,7 +29,7 @@ pub(crate) fn truncate_excerpt(text: &str, max_len: usize) -> String {
 }
 
 pub(crate) fn find_message_excerpt(
-    messages: &[crate::message::Message],
+    messages: &[message::Message],
     message_key: &str,
     max_len: usize,
 ) -> Option<String> {
@@ -53,7 +53,7 @@ pub(crate) fn find_message_excerpt(
 }
 
 pub(crate) fn message_scope_from_key(
-    messages: &[crate::message::Message],
+    messages: &[message::Message],
     message_key: &str,
 ) -> Option<Vec<String>> {
     let (ts_str, from) = message_key.split_once('|')?;
@@ -65,11 +65,7 @@ pub(crate) fn message_scope_from_key(
             continue;
         }
         let recipients = m.to.as_ref()?;
-        if recipients.is_empty()
-            || recipients
-                .iter()
-                .any(|r| r == crate::message::BROADCAST_ALL)
-        {
+        if recipients.is_empty() || recipients.iter().any(|r| r == message::BROADCAST_ALL) {
             return None;
         }
         let sender_short = from.split(':').next().unwrap_or(from);

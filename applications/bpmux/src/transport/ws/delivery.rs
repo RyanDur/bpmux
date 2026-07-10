@@ -1,9 +1,9 @@
-use crate::message::MessageType;
+use message::MessageType;
 
 pub(crate) const MAX_MESSAGE_SIZE: usize = 65536;
 
 pub(crate) fn should_deliver(
-    msg: &crate::message::Message,
+    msg: &message::Message,
     user_id: Option<&str>,
     peer_identity: &str,
     is_owner: bool,

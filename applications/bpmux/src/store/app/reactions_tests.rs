@@ -7,10 +7,10 @@ use tokio::sync::broadcast;
 
 use super::reactions::ReactionsPersister;
 use crate::hub::Hub;
-use crate::message::Message;
 use crate::store::reactions::{aggregated_for_channel, from_store, to_store};
 use crate::store::{AppAction, AppState, Presence, ReactionsAction, RosterAction, app_reduce};
 use kernel::{Dispatch, Listener, Reaction};
+use message::Message;
 
 fn fresh_hub() -> (Arc<Hub>, TempDir) {
     let dir = TempDir::new().expect("tempdir");

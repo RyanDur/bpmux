@@ -13,7 +13,7 @@ use crate::store::Store;
 
 fn fresh_store() -> (Arc<Store>, Arc<Hub>) {
     let dir = TempDir::new().expect("tempdir");
-    let (tx, _rx) = tokio::sync::broadcast::channel::<crate::message::Message>(64);
+    let (tx, _rx) = tokio::sync::broadcast::channel::<message::Message>(64);
     let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "local".to_string(), tx));
     std::mem::forget(dir);
     let store = Arc::new(Store::new(

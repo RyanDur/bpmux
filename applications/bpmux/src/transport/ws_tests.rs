@@ -182,24 +182,24 @@ fn history_page_loaded_reply_echoes_request_id_caller_only() {
     );
 }
 
-fn msg(from: &str, to: Option<Vec<&str>>) -> crate::message::Message {
-    crate::message::Message {
+fn msg(from: &str, to: Option<Vec<&str>>) -> message::Message {
+    message::Message {
         from: from.to_string(),
         text: "test".to_string(),
         ts: Utc::now(),
         to: to.map(|v| v.into_iter().map(String::from).collect()),
-        ..crate::message::Message::default()
+        ..message::Message::default()
     }
 }
 
-fn nudge(to: Option<Vec<&str>>) -> crate::message::Message {
-    crate::message::Message {
+fn nudge(to: Option<Vec<&str>>) -> message::Message {
+    message::Message {
         from: "bpmux".to_string(),
         text: "📝 candidate moment — save_lesson".to_string(),
         ts: Utc::now(),
-        message_type: crate::message::MessageType::Nudge,
+        message_type: message::MessageType::Nudge,
         to: to.map(|v| v.into_iter().map(String::from).collect()),
-        ..crate::message::Message::default()
+        ..message::Message::default()
     }
 }
 
@@ -285,7 +285,7 @@ fn owner_mark_receives_every_conversation_scoped_to_other_peers_regardless_of_na
 #[test]
 fn owner_mark_receives_activity_but_nudges_stay_substrate_excluded() {
     let mut activity = msg("dev:claude-code", None);
-    activity.message_type = crate::message::MessageType::Activity;
+    activity.message_type = message::MessageType::Activity;
     assert!(
         should_deliver(&activity, None, "owner:human", OWNER),
         "the owner's SESSION receives activity signals (they were already broadcast) — hiding plumbing is the RENDERER's job (events-class hidden from all-conversations by default, FilterPills-toggleable), not the substrate's"
@@ -427,7 +427,7 @@ fn peer_lag_message_shape_is_system_typed() {
     let ts = Utc::now();
     let msg = build_peer_lag_message("dev:claude-code", 42, ts);
     assert_eq!(msg.from, "bpmux");
-    assert_eq!(msg.message_type, crate::message::MessageType::System);
+    assert_eq!(msg.message_type, message::MessageType::System);
     assert!(msg.text.starts_with(PEER_LAG_MARKER));
 }
 

@@ -11,8 +11,8 @@ use tower::ServiceExt;
 
 use super::{init_session, seed_messages, seed_mixed_messages, test_app};
 use crate::hub;
-use crate::message::MessageType;
 use crate::transport::rest::*;
+use message::MessageType;
 
 fn leaked_select() -> crate::store::Select {
     let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
@@ -218,27 +218,27 @@ fn seed_to_arity_messages(dir: &TempDir) -> Arc<hub::Hub> {
         "test".to_string(),
         tx,
     ));
-    let broadcast_msg = crate::message::Message {
+    let broadcast_msg = message::Message {
         from: "owner".to_string(),
         text: "all-hands broadcast".to_string(),
         ts: chrono::Utc::now(),
-        ..crate::message::Message::default()
+        ..message::Message::default()
     };
-    let multi_recipient = crate::message::Message {
+    let multi_recipient = message::Message {
         from: "owner".to_string(),
         text: "multi-recipient pm+dev".to_string(),
         ts: chrono::Utc::now(),
         to: Some(vec!["pm".to_string(), "dev".to_string()]),
         explicit_privacy: true,
-        ..crate::message::Message::default()
+        ..message::Message::default()
     };
-    let single_dm = crate::message::Message {
+    let single_dm = message::Message {
         from: "owner".to_string(),
         text: "single dm to designer".to_string(),
         ts: chrono::Utc::now(),
         to: Some(vec!["designer".to_string()]),
         explicit_privacy: true,
-        ..crate::message::Message::default()
+        ..message::Message::default()
     };
     hub.broadcast(&broadcast_msg).expect("broadcast 1");
     hub.broadcast(&multi_recipient).expect("broadcast 2");
@@ -358,13 +358,13 @@ async fn issue_1568_full_identity_to_recipient_delivers_on_reload() {
         "test".to_string(),
         tx,
     ));
-    let full_identity_dm = crate::message::Message {
+    let full_identity_dm = message::Message {
         from: "dev:claude-code".to_string(),
         text: "full-identity recipient dm".to_string(),
         ts: chrono::Utc::now(),
         to: Some(vec!["pm:claude-code".to_string()]),
         explicit_privacy: true,
-        ..crate::message::Message::default()
+        ..message::Message::default()
     };
     hub.broadcast(&full_identity_dm).expect("broadcast");
     let router = axum::Router::new()

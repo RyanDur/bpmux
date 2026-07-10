@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use crate::hub::{BROADCAST_CHANNEL_CAPACITY, Hub};
-use crate::message::Message;
 use chrono::Utc;
+use message::Message;
 use tempfile::TempDir;
 use tokio::sync::broadcast;
 

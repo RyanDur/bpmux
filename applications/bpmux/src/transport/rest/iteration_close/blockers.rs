@@ -42,23 +42,23 @@ pub(super) fn broadcast_iteration_close_blocked(
     hub: &Arc<hub::Hub>,
     blockers: &[IterationCloseBlocker],
 ) {
-    let payload = crate::message::StateDeltaPayload::IterationCloseBlocked {
+    let payload = message::StateDeltaPayload::IterationCloseBlocked {
         blockers: blockers
             .iter()
-            .map(|b| crate::message::IterationCloseBlockerPayload {
+            .map(|b| message::IterationCloseBlockerPayload {
                 id: b.id,
                 title: b.title.clone(),
                 state: b.state.clone(),
             })
             .collect(),
     };
-    let msg = crate::message::Message {
+    let msg = message::Message {
         from: "bpmux".to_string(),
         text: String::new(),
         ts: chrono::Utc::now(),
-        message_type: crate::message::MessageType::StateDelta,
+        message_type: message::MessageType::StateDelta,
         state_delta: Some(payload),
-        ..crate::message::Message::default()
+        ..message::Message::default()
     };
     if let Err(e) = hub.broadcast(&msg) {
         crate::diag::log_diag(&format!(

@@ -1,5 +1,5 @@
 use super::notify::iteration_close_flush_prompt;
-use crate::message::MessageType;
+use message::MessageType;
 
 #[test]
 fn the_flush_prompt_broadcasts_to_all_agents_from_the_system() {

@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::hub::Hub;
 use crate::memory::lessons;
-use crate::message::Message;
+use message::Message;
 
 const MAX_RECALL_NUDGES: usize = 3;
 
@@ -69,7 +69,7 @@ impl RecallSystem {
                     lesson.topic, lesson.lesson, lesson.topic
                 ),
                 ts: chrono::Utc::now(),
-                message_type: crate::message::MessageType::Nudge,
+                message_type: message::MessageType::Nudge,
                 to: Some(vec![sender.to_string()]),
                 ..Message::default()
             };

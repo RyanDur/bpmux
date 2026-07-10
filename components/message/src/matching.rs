@@ -4,7 +4,7 @@ fn short_name(identity: &str) -> &str {
     identity.split(':').next().unwrap_or(identity)
 }
 
-pub(crate) fn to_reaches(
+pub fn to_reaches(
     to: Option<&[String]>,
     to_ids: Option<&[String]>,
     user_id: Option<&str>,
@@ -22,7 +22,7 @@ pub(crate) fn to_reaches(
     }
 }
 
-pub(crate) fn from_matches(
+pub fn from_matches(
     from: &str,
     sender_id: Option<&str>,
     user_id: Option<&str>,
@@ -34,7 +34,7 @@ pub(crate) fn from_matches(
     }
 }
 
-pub(crate) fn addressee_matches(
+pub fn addressee_matches(
     addressee: Option<&str>,
     addressee_ids: Option<&[String]>,
     user_id: Option<&str>,

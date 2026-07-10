@@ -29,13 +29,13 @@ pub(crate) fn broadcast_sync_status_heartbeat(
     snapshot: &crate::sync::SyncStatus,
 ) {
     let status = serde_json::to_value(snapshot).unwrap_or(serde_json::Value::Null);
-    let msg = crate::message::Message {
+    let msg = message::Message {
         from: "bpmux".to_string(),
         text: String::new(),
         ts: chrono::Utc::now(),
-        message_type: crate::message::MessageType::StateDelta,
-        state_delta: Some(crate::message::StateDeltaPayload::SyncPoll { status }),
-        ..crate::message::Message::default()
+        message_type: message::MessageType::StateDelta,
+        state_delta: Some(message::StateDeltaPayload::SyncPoll { status }),
+        ..message::Message::default()
     };
     hub.broadcast_ephemeral(&msg);
 }

@@ -1,4 +1,4 @@
-use crate::message::MessageType;
+use message::MessageType;
 
 pub const PEER_LAG_MARKER: &str = "__BPMUX_PEER_LAG__";
 
@@ -6,14 +6,14 @@ pub fn build_peer_lag_message(
     peer: &str,
     count: u64,
     ts: chrono::DateTime<chrono::Utc>,
-) -> crate::message::Message {
+) -> message::Message {
     let payload = serde_json::json!({ "peer": peer, "count": count });
-    crate::message::Message {
+    message::Message {
         from: "bpmux".to_string(),
         text: format!("{PEER_LAG_MARKER}:{payload}"),
         ts,
         message_type: MessageType::System,
-        ..crate::message::Message::default()
+        ..message::Message::default()
     }
 }
 

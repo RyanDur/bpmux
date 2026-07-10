@@ -39,7 +39,7 @@ pub(super) async fn handle_message_frame(
     }
     let from_short = from.split(':').next().unwrap_or(&from);
     let current_name = name.lock().await;
-    if crate::message::from_matches(&from, sender_id.as_deref(), user_id, &current_name) {
+    if message::from_matches(&from, sender_id.as_deref(), user_id, &current_name) {
         return;
     }
     drop(current_name);
@@ -57,11 +57,7 @@ pub(super) async fn handle_message_frame(
     );
     let channel = match &to {
         None => "broadcast".to_string(),
-        Some(recipients)
-            if recipients
-                .iter()
-                .any(|r| r == crate::message::BROADCAST_ALL) =>
-        {
+        Some(recipients) if recipients.iter().any(|r| r == message::BROADCAST_ALL) => {
             "broadcast".to_string()
         }
         Some(recipients) => recipients.join(","),

@@ -32,10 +32,7 @@ fn make_args(
 
 fn make_hub_with_rx(
     dir: PathBuf,
-) -> (
-    Arc<Hub>,
-    tokio::sync::broadcast::Receiver<crate::message::Message>,
-) {
+) -> (Arc<Hub>, tokio::sync::broadcast::Receiver<message::Message>) {
     let (tx, rx) = broadcast::channel(16);
     let hub = Arc::new(Hub::new(dir, "owner".to_string(), tx));
     (hub, rx)
@@ -71,7 +68,7 @@ async fn verdict_cast_broadcast_carries_message_type_system_not_chat() {
     assert_eq!(received.from, "bpmux");
     assert_eq!(
         received.message_type,
-        crate::message::MessageType::System,
+        message::MessageType::System,
         "verdict-cast notification must use MessageType::System so chat-filter bpmux pill catches it; default Chat lets the message leak past the consumer filter (sister to #1456 producer-axis bug)"
     );
     let wire = serde_json::to_value(&received).expect("serialize");

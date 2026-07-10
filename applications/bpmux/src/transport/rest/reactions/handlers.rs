@@ -76,13 +76,13 @@ fn broadcast_reaction_event(
     scope: Option<Vec<String>>,
 ) {
     let text = build_reaction_event_text_with_excerpt(body, present, excerpt);
-    let msg = crate::message::Message {
+    let msg = message::Message {
         from: "bpmux".to_string(),
         text,
         ts: chrono::Utc::now(),
-        message_type: crate::message::MessageType::Insight,
+        message_type: message::MessageType::Insight,
         to: scope,
-        ..crate::message::Message::default()
+        ..message::Message::default()
     };
     if let Err(e) = hub.broadcast(&msg) {
         crate::diag::log_diag(&format!("rest: reaction-event broadcast failed: {e}"));

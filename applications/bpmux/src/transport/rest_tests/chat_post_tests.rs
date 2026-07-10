@@ -11,8 +11,8 @@ use tower::ServiceExt;
 
 use super::{init_session, seed_messages, seed_mixed_messages, test_app, test_app_with_routing};
 use crate::hub;
-use crate::message::MessageType;
 use crate::transport::rest::*;
+use message::MessageType;
 
 #[tokio::test]
 async fn posts_message_and_broadcasts() {

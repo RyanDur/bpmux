@@ -18,8 +18,8 @@ use super::{
 
 use super::{init_session, seed_messages, seed_mixed_messages, test_app};
 use crate::hub;
-use crate::message::MessageType;
 use crate::transport::rest::*;
+use message::MessageType;
 
 #[test]
 fn build_reaction_event_text_names_sender_from_message_key() {

@@ -11,8 +11,8 @@ use tower::ServiceExt;
 
 use super::{init_session, seed_messages, seed_mixed_messages, test_app};
 use crate::hub;
-use crate::message::MessageType;
 use crate::transport::rest::*;
+use message::MessageType;
 
 fn bpmux_log_env_lock() -> std::sync::MutexGuard<'static, ()> {
     use std::sync::{Mutex, OnceLock};

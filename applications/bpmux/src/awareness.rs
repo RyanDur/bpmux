@@ -25,7 +25,7 @@ pub trait SurfacedTopicsRepo: Send + Sync {
 
 const TRAIN_WINDOW: usize = 2000;
 
-fn training_messages(hub: &Hub) -> Vec<crate::message::Message> {
+fn training_messages(hub: &Hub) -> Vec<message::Message> {
     hub.read_recent(TRAIN_WINDOW, 0, &|_| true)
         .unwrap_or_default()
 }

@@ -24,7 +24,7 @@ pub(crate) fn chat_event_classes(channel: &str, addressee: Option<&str>) -> Vec<
     if channel == "broadcast" {
         classes.push("broadcast_received");
     }
-    if matches!(addressee, Some(a) if a != crate::message::BROADCAST_ALL) {
+    if matches!(addressee, Some(a) if a != message::BROADCAST_ALL) {
         classes.push("addressed_to_me");
     }
     classes
@@ -42,7 +42,7 @@ pub(crate) fn scope_reaches_live_stream(
     ) {
         return true;
     }
-    crate::message::to_reaches(to, to_ids, user_id, recipient_short)
+    message::to_reaches(to, to_ids, user_id, recipient_short)
 }
 
 pub(crate) fn addressed_to_me(
@@ -53,7 +53,7 @@ pub(crate) fn addressed_to_me(
     user_id: Option<&str>,
     display: &str,
 ) -> bool {
-    crate::message::addressee_matches(addressee, addressee_ids, user_id, display)
+    message::addressee_matches(addressee, addressee_ids, user_id, display)
         || named_directly(to, to_ids, user_id, display)
 }
 
@@ -63,8 +63,8 @@ fn named_directly(
     user_id: Option<&str>,
     display: &str,
 ) -> bool {
-    if to.is_none_or(|names| names.iter().any(|r| r == crate::message::BROADCAST_ALL)) {
+    if to.is_none_or(|names| names.iter().any(|r| r == message::BROADCAST_ALL)) {
         return false;
     }
-    crate::message::to_reaches(to, to_ids, user_id, display)
+    message::to_reaches(to, to_ids, user_id, display)
 }

@@ -5,7 +5,7 @@ use base64::Engine;
 use futures::stream::SplitSink;
 
 use super::client::ClientCtx;
-use crate::message::MessageType;
+use message::MessageType;
 
 pub(super) fn handle_send(
     ctx: &ClientCtx<'_>,
@@ -16,7 +16,7 @@ pub(super) fn handle_send(
     message_type: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let explicit_privacy = to.is_some();
-    let mut msg = crate::message::Message {
+    let mut msg = message::Message {
         from: identity.to_string(),
         sender_id: ctx.routing_user_id.clone(),
         text: msg_text,
@@ -25,7 +25,7 @@ pub(super) fn handle_send(
         to,
         addressee,
         explicit_privacy,
-        ..crate::message::Message::default()
+        ..message::Message::default()
     };
     crate::transport::delivery_ids::stamp_delivery_ids(&ctx.store.selector(), &mut msg);
     ctx.hub.broadcast(&msg)?;

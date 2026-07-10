@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::{SPARSE_THRESHOLD, VelocityMetrics, WINDOW_DAYS, compute};
-use crate::message::{Message, MessageType};
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
+use message::{Message, MessageType};
 
 fn msg(text: &str, ts: DateTime<Utc>) -> Message {
     Message {

@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use super::message::*;
+use crate::*;
 use chrono::{DateTime, Utc};
 
 #[test]
@@ -414,22 +414,6 @@ fn message_with_known_state_delta_variant_still_parses_canonically() {
         m.state_delta,
         Some(StateDeltaPayload::Roster { members: _ })
     ));
-}
-
-#[test]
-fn read_messages_skips_zero_lines_with_legacy_state_delta_variant() {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("messages-current.jsonl");
-    let lines = [
-        r#"{"from":"a","text":"first","ts":"2026-05-01T00:00:00Z"}"#,
-        r#"{"from":"bpmux","text":"","ts":"2026-05-15T00:00:00Z","message_type":"state-delta","state_delta":{"domain":"icebox_migration","details":"retired"}}"#,
-        r#"{"from":"b","text":"third","ts":"2026-06-01T00:00:00Z"}"#,
-    ];
-    std::fs::write(&path, lines.join("\n")).unwrap();
-    let parsed = crate::log::read_messages(dir.path())
-        .expect("read_messages tolerates legacy state-delta variants");
-    assert_eq!(parsed.len(), 3, "all 3 lines parse — none dropped");
-    assert!(parsed[1].state_delta.is_none(), "legacy variant → None");
 }
 
 #[test]

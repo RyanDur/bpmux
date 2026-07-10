@@ -2,8 +2,8 @@
 
 use super::lessons::*;
 use crate::comprehension::classifier::{ExperienceKind, MessageClass};
-use crate::message::Message;
 use chrono::Utc;
+use message::Message;
 use tempfile::TempDir;
 
 fn msg(from: &str, text: &str) -> Message {

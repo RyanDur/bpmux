@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::hub;
-use crate::message::{ReactionAggregateWire, StateDeltaPayload};
 use crate::transport::state_delta::broadcast_state_delta;
+use message::{ReactionAggregateWire, StateDeltaPayload};
 
 use super::{AggregatedReaction, ReactionsBroadcastListener};
 

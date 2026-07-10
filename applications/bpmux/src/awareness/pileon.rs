@@ -3,7 +3,7 @@ use tokio::time::Instant;
 
 use crate::comprehension::classifier;
 use crate::hub::Hub;
-use crate::message::Message;
+use message::Message;
 
 use super::agents::AgentTracker;
 
@@ -53,7 +53,7 @@ impl PileonDetector {
                         self.responders.len()
                     ),
                     ts: chrono::Utc::now(),
-                    message_type: crate::message::MessageType::Nudge,
+                    message_type: message::MessageType::Nudge,
                     to: Some(self.responders.clone()),
                     ..Message::default()
                 };

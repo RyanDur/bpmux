@@ -1,6 +1,6 @@
 use super::FileStorage;
 use crate::log::LogError;
-use crate::message::Message;
+use message::Message;
 
 impl crate::log::MessageLog for FileStorage {
     fn append_message(&self, msg: &Message) -> Result<(), LogError> {

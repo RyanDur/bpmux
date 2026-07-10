@@ -1,9 +1,9 @@
 use crate::log::MessageLog;
 use crate::memory::lessons::LessonIndex;
-use crate::message::Message;
 use crate::storage::StorageBackend;
 use crate::storage::{FileStorage, SqliteStorage, Storage};
 use chrono::{TimeZone, Utc};
+use message::Message;
 use std::sync::Arc;
 
 fn fresh_message(text: &str) -> Message {

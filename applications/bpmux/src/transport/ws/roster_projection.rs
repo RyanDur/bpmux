@@ -24,7 +24,7 @@ fn is_reserved_display_blocks_the_owner_identity_but_allows_agent_roles() {
 
 fn fresh_orchestrator() -> Arc<crate::store::Store> {
     let dir = tempfile::TempDir::new().expect("tempdir");
-    let (tx, _rx) = tokio::sync::broadcast::channel::<crate::message::Message>(64);
+    let (tx, _rx) = tokio::sync::broadcast::channel::<message::Message>(64);
     let hub = Arc::new(crate::hub::Hub::new(
         dir.path().to_path_buf(),
         "local".to_string(),

@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::message::Message;
 use crate::product_management::iteration::IterationId;
 use crate::product_management::outcome::OutcomeId;
+use message::Message;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -117,11 +117,11 @@ pub enum ServerMessage {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         message_type: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        multi_depth: Box<Option<crate::message::MultiDepthPayload>>,
+        multi_depth: Box<Option<message::MultiDepthPayload>>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        state_delta: Option<Box<crate::message::StateDeltaPayload>>,
+        state_delta: Option<Box<message::StateDeltaPayload>>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        state_snapshot: Option<Box<crate::message::StateSnapshotPayload>>,
+        state_snapshot: Option<Box<message::StateSnapshotPayload>>,
     },
     #[serde(rename = "error")]
     Error { reason: String },

@@ -2,8 +2,8 @@
 
 use crate::location::*;
 use crate::log::{append_message, read_messages};
-use crate::message::Message;
 use chrono::Utc;
+use message::Message;
 use tempfile::TempDir;
 
 #[test]

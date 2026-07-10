@@ -3,8 +3,8 @@ use futures::stream::SplitSink;
 
 use super::client::ClientCtx;
 use super::send_json;
-use crate::message::MessageType;
 use crate::transport::protocol::ServerMessage;
+use message::MessageType;
 
 pub(super) async fn handle_comments_hydrate(
     ctx: &ClientCtx<'_>,
@@ -45,10 +45,10 @@ pub(super) async fn handle_history_hydrate(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let chat = ctx
         .hub
-        .read_recent(chat_limit, 0, &|m: &crate::message::Message| m.is_chat());
+        .read_recent(chat_limit, 0, &|m: &message::Message| m.is_chat());
     let activity = ctx
         .hub
-        .read_recent(activity_limit, 0, &|m: &crate::message::Message| {
+        .read_recent(activity_limit, 0, &|m: &message::Message| {
             m.message_type == MessageType::Activity
         });
     let reply = match (chat, activity) {
@@ -79,11 +79,9 @@ pub(super) async fn handle_history_page(
     limit: usize,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let messages: Vec<serde_json::Value> = match before.parse::<chrono::DateTime<chrono::Utc>>() {
-        Ok(before_ts) => match ctx
-            .hub
-            .read_recent(limit, 0, &|m: &crate::message::Message| {
-                m.is_chat() && m.ts < before_ts
-            }) {
+        Ok(before_ts) => match ctx.hub.read_recent(limit, 0, &|m: &message::Message| {
+            m.is_chat() && m.ts < before_ts
+        }) {
             Ok(mut newest_first) => {
                 newest_first.reverse();
                 newest_first

@@ -5,16 +5,16 @@ const ITERATION_CLOSE_FLUSH_PROMPT: &str = "[iteration-close] iteration closing 
      available.";
 
 pub(super) fn broadcast_iteration_closed(hub: &hub::Hub) {
-    let closed = crate::message::Message {
+    let closed = message::Message {
         from: "bpmux".to_string(),
         text: String::new(),
         ts: chrono::Utc::now(),
-        message_type: crate::message::MessageType::StateDelta,
-        state_delta: Some(crate::message::StateDeltaPayload::IterationClose {
+        message_type: message::MessageType::StateDelta,
+        state_delta: Some(message::StateDeltaPayload::IterationClose {
             promoted: Vec::new(),
             deleted_marker_id: None,
         }),
-        ..crate::message::Message::default()
+        ..message::Message::default()
     };
     if let Err(e) = hub.broadcast(&closed) {
         crate::diag::log_diag(&format!(
@@ -28,12 +28,12 @@ pub(super) fn broadcast_iteration_closed(hub: &hub::Hub) {
     }
 }
 
-pub(super) fn iteration_close_flush_prompt() -> crate::message::Message {
-    crate::message::Message {
+pub(super) fn iteration_close_flush_prompt() -> message::Message {
+    message::Message {
         from: "bpmux".to_string(),
         text: ITERATION_CLOSE_FLUSH_PROMPT.to_string(),
         ts: chrono::Utc::now(),
-        addressee: Some(crate::message::BROADCAST_ALL.to_string()),
-        ..crate::message::Message::default()
+        addressee: Some(message::BROADCAST_ALL.to_string()),
+        ..message::Message::default()
     }
 }

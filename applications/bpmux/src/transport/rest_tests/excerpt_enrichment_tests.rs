@@ -18,8 +18,8 @@ use super::{
 
 use super::{init_session, seed_messages, seed_mixed_messages, test_app};
 use crate::hub;
-use crate::message::MessageType;
 use crate::transport::rest::*;
+use message::MessageType;
 
 #[test]
 fn truncate_excerpt_returns_body_unchanged_when_short() {
@@ -65,17 +65,17 @@ fn find_message_excerpt_matches_by_ts_and_from() {
         .with_ymd_and_hms(2026, 4, 23, 11, 30, 0)
         .unwrap();
     let msgs = vec![
-        crate::message::Message {
+        message::Message {
             from: "dev:claude-code".to_string(),
             text: "merged #377".to_string(),
             ts,
-            ..crate::message::Message::default()
+            ..message::Message::default()
         },
-        crate::message::Message {
+        message::Message {
             from: "pm:claude-code".to_string(),
             text: "nice".to_string(),
             ts: ts + chrono::Duration::seconds(1),
-            ..crate::message::Message::default()
+            ..message::Message::default()
         },
     ];
     let key = format!("{}|dev:claude-code", ts.to_rfc3339());
@@ -96,12 +96,12 @@ fn message_scope_from_key_returns_the_reacted_messages_participants() {
     let ts = chrono::Utc
         .with_ymd_and_hms(2026, 4, 23, 11, 30, 0)
         .unwrap();
-    let msgs = vec![crate::message::Message {
+    let msgs = vec![message::Message {
         from: "dev:claude-code".to_string(),
         text: "scoped to dev+pm".to_string(),
         ts,
         to: Some(vec!["dev".to_string(), "pm".to_string()]),
-        ..crate::message::Message::default()
+        ..message::Message::default()
     }];
     let key = format!("{}|dev:claude-code", ts.to_rfc3339());
     let mut scope = message_scope_from_key(&msgs, &key).expect("a scoped message has a scope");
@@ -119,12 +119,12 @@ fn message_scope_from_key_adds_the_sender_so_reactions_reach_the_author() {
     let ts = chrono::Utc
         .with_ymd_and_hms(2026, 4, 23, 11, 30, 0)
         .unwrap();
-    let msgs = vec![crate::message::Message {
+    let msgs = vec![message::Message {
         from: "owner:electron".to_string(),
         text: "owner to dev+pm".to_string(),
         ts,
         to: Some(vec!["dev".to_string(), "pm".to_string()]),
-        ..crate::message::Message::default()
+        ..message::Message::default()
     }];
     let key = format!("{}|owner:electron", ts.to_rfc3339());
     let mut scope = message_scope_from_key(&msgs, &key).expect("scope");
@@ -141,12 +141,12 @@ fn message_scope_from_key_is_none_for_a_broadcast_so_its_reaction_stays_public()
     let ts = chrono::Utc
         .with_ymd_and_hms(2026, 4, 23, 11, 30, 0)
         .unwrap();
-    let msgs = vec![crate::message::Message {
+    let msgs = vec![message::Message {
         from: "dev:claude-code".to_string(),
         text: "public".to_string(),
         ts,
         to: None,
-        ..crate::message::Message::default()
+        ..message::Message::default()
     }];
     let key = format!("{}|dev:claude-code", ts.to_rfc3339());
     assert!(
@@ -189,11 +189,11 @@ async fn post_reaction_cascade_threads_excerpt_into_broadcast_event_text() {
     let target_ts = chrono::Utc
         .with_ymd_and_hms(2026, 4, 23, 11, 30, 0)
         .unwrap();
-    let target_msg = crate::message::Message {
+    let target_msg = message::Message {
         from: "dev:claude-code".to_string(),
         text: "merged #377 into main with the auth-cookie fix".to_string(),
         ts: target_ts,
-        ..crate::message::Message::default()
+        ..message::Message::default()
     };
     hub.broadcast(&target_msg).expect("seed target message");
 

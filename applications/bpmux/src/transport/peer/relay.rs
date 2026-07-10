@@ -3,7 +3,7 @@ use tokio::sync::{broadcast, mpsc};
 
 use super::{PeerMessage, RemotePeer};
 use crate::hub::Hub;
-use crate::message::Message;
+use message::Message;
 
 pub fn spawn_relay(
     hub: Arc<Hub>,
@@ -63,7 +63,7 @@ pub fn spawn_relay(
                         from: "bpmux".to_string(),
                         text: format!("{name} joined"),
                         ts: chrono::Utc::now(),
-                        message_type: crate::message::MessageType::System,
+                        message_type: message::MessageType::System,
                         ..Message::default()
                     };
                     let _ = hub_for_inbound.broadcast(&joined);
@@ -120,7 +120,7 @@ pub fn spawn_relay(
             from: "bpmux".to_string(),
             text: format!("{current_name} left"),
             ts: chrono::Utc::now(),
-            message_type: crate::message::MessageType::System,
+            message_type: message::MessageType::System,
             ..Message::default()
         };
         let _ = hub_for_inbound.broadcast(&left);

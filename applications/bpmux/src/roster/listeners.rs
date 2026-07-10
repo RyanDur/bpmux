@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use crate::hub;
-use crate::message::StateDeltaPayload;
 use crate::store::Select;
 use crate::transport::state_delta::broadcast_state_delta;
+use message::StateDeltaPayload;
 
 use super::{RosterBroadcastListener, RosterMember};
 

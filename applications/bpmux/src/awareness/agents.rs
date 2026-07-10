@@ -1,4 +1,4 @@
-use crate::message::{Message, MessageType};
+use message::{Message, MessageType};
 
 pub struct AgentTracker {
     owner_name: String,

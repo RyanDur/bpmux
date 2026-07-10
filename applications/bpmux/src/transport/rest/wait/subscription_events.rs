@@ -13,7 +13,7 @@ pub(super) fn matches_any_resolved(
 }
 
 pub(super) fn event_for_role(
-    message: &crate::message::Message,
+    message: &message::Message,
     role: &str,
     resolved_ids: &[String],
     is_owner: bool,
@@ -42,7 +42,7 @@ pub(super) fn event_for_role(
     Some(broadcast_event(message))
 }
 
-fn broadcast_event(message: &crate::message::Message) -> serde_json::Value {
+fn broadcast_event(message: &message::Message) -> serde_json::Value {
     let url_safe_ts = message
         .ts
         .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true);
@@ -64,7 +64,7 @@ fn channel_label(to: &Option<Vec<String>>) -> String {
         Some(recipients)
             if recipients
                 .iter()
-                .any(|recipient| recipient == crate::message::BROADCAST_ALL) =>
+                .any(|recipient| recipient == message::BROADCAST_ALL) =>
         {
             "broadcast".to_string()
         }

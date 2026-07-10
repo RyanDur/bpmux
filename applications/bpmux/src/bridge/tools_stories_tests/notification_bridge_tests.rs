@@ -8,8 +8,8 @@ use crate::transport::protocol::ClientMessage;
 mod notification_bridge_push_filter_integration_1432 {
     use crate::bridge::message_type_reaches_llm_stream;
     use crate::hub::Hub;
-    use crate::message::Message;
-    use crate::message::MessageType;
+    use message::Message;
+    use message::MessageType;
     use std::path::PathBuf;
     use std::sync::Arc;
     use tempfile::TempDir;

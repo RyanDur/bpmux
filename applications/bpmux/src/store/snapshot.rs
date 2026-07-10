@@ -1,8 +1,8 @@
 use super::Store;
 
 impl Store {
-    pub fn build_snapshot(&self) -> crate::message::StateSnapshotPayload {
-        use crate::message::{
+    pub fn build_snapshot(&self) -> message::StateSnapshotPayload {
+        use message::{
             CiSnapshotWire, ReactionAggregateWire, ReactionsChannelSnapshot, StateSnapshotPayload,
         };
         let reactions = self

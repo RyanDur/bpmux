@@ -10,13 +10,13 @@ fn roster_role_for_user(assigned: Option<&str>, identity: &str) -> RosterRole {
 pub(crate) fn members_wire(
     select: &crate::store::Select,
     members: &[RosterMember],
-) -> Vec<crate::message::RosterMemberWire> {
+) -> Vec<message::RosterMemberWire> {
     members
         .iter()
         .map(|m| {
             let assigned = select
                 .select(|state| crate::store::routing::role_for(&state.routing, &m.routing_id));
-            crate::message::RosterMemberWire {
+            message::RosterMemberWire {
                 routing_id: m.routing_id.clone(),
                 name: display_name(&m.identity).to_string(),
                 role: roster_role_for_user(assigned.as_deref(), &m.identity).into(),

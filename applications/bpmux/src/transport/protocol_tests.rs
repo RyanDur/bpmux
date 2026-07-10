@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::protocol::*;
-use crate::message::Message;
+use message::Message;
 
 #[test]
 fn deserializes_identify_without_tool() {

@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
 use super::classifier::{ExperienceKind, MIN_EXPERIENCE_LEN, MessageClass, classify};
-use crate::message::{Message, MessageType};
 use chrono::Utc;
+use message::{Message, MessageType};
 
 fn msg(from: &str, text: &str) -> Message {
     Message {

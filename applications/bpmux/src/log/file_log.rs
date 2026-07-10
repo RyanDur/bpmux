@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 use super::reverse_line_reader::ReverseLineReader;
-use crate::message::Message;
+use message::Message;
 
 #[derive(Error, Debug)]
 pub enum LogError {

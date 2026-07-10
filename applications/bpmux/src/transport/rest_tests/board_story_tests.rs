@@ -18,8 +18,8 @@ use super::{
 
 use super::{init_session, seed_messages, seed_mixed_messages, test_app};
 use crate::hub;
-use crate::message::MessageType;
 use crate::transport::rest::*;
+use message::MessageType;
 
 use crate::bridge::tracker::OctocrabStoryTracker;
 use crate::transport::rest::TrackerHandle;

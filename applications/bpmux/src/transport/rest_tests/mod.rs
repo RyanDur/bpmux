@@ -23,19 +23,17 @@ use tower::ServiceExt;
 
 use crate::bridge::tracker::OctocrabStoryTracker;
 use crate::hub;
-use crate::message::MessageType;
 use crate::transport::rest::{TrackerHandle, *};
+use message::MessageType;
 
-pub(super) fn test_app(
-    dir: &TempDir,
-) -> (axum::Router, broadcast::Sender<crate::message::Message>) {
+pub(super) fn test_app(dir: &TempDir) -> (axum::Router, broadcast::Sender<message::Message>) {
     test_app_with_routing(dir, &[])
 }
 
 pub(super) fn test_app_with_routing(
     dir: &TempDir,
     registrations: &[(&str, &str)],
-) -> (axum::Router, broadcast::Sender<crate::message::Message>) {
+) -> (axum::Router, broadcast::Sender<message::Message>) {
     let (tx, _rx) = broadcast::channel(16);
     let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),
@@ -78,11 +76,11 @@ pub(super) fn seed_messages(dir: &TempDir, count: usize) -> Arc<hub::Hub> {
         tx,
     ));
     for i in 0..count {
-        let msg = crate::message::Message {
+        let msg = message::Message {
             from: "user".to_string(),
             text: format!("msg {i}"),
             ts: chrono::Utc::now(),
-            ..crate::message::Message::default()
+            ..message::Message::default()
         };
         hub.broadcast(&msg).expect("broadcast");
     }
@@ -103,12 +101,12 @@ pub(super) fn seed_mixed_messages(dir: &TempDir) -> Arc<hub::Hub> {
         ("available", MessageType::Activity),
         ("goodbye", MessageType::Chat),
     ] {
-        let msg = crate::message::Message {
+        let msg = message::Message {
             from: "dev".to_string(),
             text: text.to_string(),
             ts: chrono::Utc::now(),
             message_type: msg_type,
-            ..crate::message::Message::default()
+            ..message::Message::default()
         };
         hub.broadcast(&msg).expect("broadcast");
     }
@@ -117,7 +115,7 @@ pub(super) fn seed_mixed_messages(dir: &TempDir) -> Arc<hub::Hub> {
 
 pub(super) fn board_test_session(
     dir: &TempDir,
-) -> (Arc<hub::Hub>, broadcast::Sender<crate::message::Message>) {
+) -> (Arc<hub::Hub>, broadcast::Sender<message::Message>) {
     let (tx, _rx) = broadcast::channel(16);
     let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),

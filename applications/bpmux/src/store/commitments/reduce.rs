@@ -1,4 +1,4 @@
-use crate::message::payload_matches_filter;
+use message::payload_matches_filter;
 
 use super::state::Commitment;
 use super::{CommitmentsAction, CommitmentsState};

@@ -1,5 +1,5 @@
-use crate::message::{Message, MessageType};
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
+use message::{Message, MessageType};
 use serde::Serialize;
 use std::collections::HashMap;
 

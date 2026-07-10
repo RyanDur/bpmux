@@ -5,10 +5,10 @@ use tokio_util::sync::CancellationToken;
 
 use crate::ci::CiStateStore;
 use crate::hub::Hub;
-use crate::message::{CiSnapshotWire, Message, MessageType, StateDeltaPayload};
 use crate::rate_limit::RateLimitObserver;
 use crate::store::{CiAction, CiPollFetch, CiSnapshot};
 use kernel::Dispatch;
+use message::{CiSnapshotWire, Message, MessageType, StateDeltaPayload};
 
 pub const POLL_INTERVAL: Duration = Duration::from_secs(10);
 pub const MAX_BACKOFF: Duration = Duration::from_secs(3600);

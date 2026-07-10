@@ -1,6 +1,6 @@
 use super::classifier::{MessageClass, classify};
-use crate::message::Message;
 use chrono::{DateTime, Utc};
+use message::Message;
 use serde::Serialize;
 
 const CONTEXT_WINDOW: usize = 5;

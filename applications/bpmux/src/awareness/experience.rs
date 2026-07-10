@@ -5,7 +5,7 @@ use crate::comprehension::bayes::BayesModel;
 use crate::comprehension::classifier;
 use crate::diag::log_diag;
 use crate::hub::Hub;
-use crate::message::{Message, MessageType};
+use message::{Message, MessageType};
 
 use super::agents::AgentTracker;
 

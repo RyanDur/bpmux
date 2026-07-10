@@ -11,8 +11,8 @@ use tower::ServiceExt;
 
 use super::{init_session, seed_messages, seed_mixed_messages, test_app};
 use crate::hub;
-use crate::message::MessageType;
 use crate::transport::rest::*;
+use message::MessageType;
 
 fn leaked_select() -> crate::store::Select {
     let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
@@ -58,11 +58,11 @@ async fn gets_messages_before_timestamp_returns_only_older() {
     ));
     let base = chrono::Utc::now() - chrono::Duration::seconds(60);
     for i in 0..5 {
-        let msg = crate::message::Message {
+        let msg = message::Message {
             from: "user".to_string(),
             text: format!("msg {i}"),
             ts: base + chrono::Duration::seconds(i as i64),
-            ..crate::message::Message::default()
+            ..message::Message::default()
         };
         hub.broadcast(&msg).expect("broadcast");
     }
@@ -205,13 +205,13 @@ async fn get_messages_reaches_by_frozen_to_ids_even_after_the_recipients_display
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (hub, router, dispatch) = routed_app(&dir, &[("dev", "id-dev-1")]);
-    let mut msg = crate::message::Message {
+    let mut msg = message::Message {
         from: "pm".to_string(),
         text: "for id-dev-1 before the rename".to_string(),
         ts: chrono::Utc::now(),
         to: Some(vec!["dev".to_string()]),
         to_ids: Some(vec!["id-dev-1".to_string()]),
-        ..crate::message::Message::default()
+        ..message::Message::default()
     };
     msg.ensure_id();
     hub.broadcast(&msg).expect("broadcast");
@@ -246,13 +246,13 @@ async fn get_messages_legacy_row_with_no_frozen_to_ids_falls_back_to_current_dis
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (hub, router, _dispatch) = routed_app(&dir, &[("dev", "id-dev-1")]);
-    let mut legacy = crate::message::Message {
+    let mut legacy = message::Message {
         from: "pm".to_string(),
         text: "legacy addressed to dev".to_string(),
         ts: chrono::Utc::now(),
         to: Some(vec!["dev".to_string()]),
         to_ids: None,
-        ..crate::message::Message::default()
+        ..message::Message::default()
     };
     legacy.ensure_id();
     hub.broadcast(&legacy).expect("broadcast");

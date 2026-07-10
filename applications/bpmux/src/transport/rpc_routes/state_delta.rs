@@ -3,9 +3,9 @@ use std::sync::Arc;
 use chrono::Utc;
 
 use crate::hub;
-use crate::message::{Message, MessageType};
-use crate::message::{StateDeltaPayload, StoryTransitionWire};
 use crate::sync::RefreshDriver;
+use message::{Message, MessageType};
+use message::{StateDeltaPayload, StoryTransitionWire};
 
 pub(crate) fn fire_view_backlog_marker(hub: &Arc<hub::Hub>) {
     let msg = Message {

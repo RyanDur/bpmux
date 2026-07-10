@@ -11,13 +11,13 @@ use tokio_util::sync::CancellationToken;
 use crate::ci::CiStateStore;
 use crate::hub::Hub;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::message::Message;
 use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::product_management::story::{Story, StoryId, Work};
 use crate::storage::StorageBackend;
 use crate::store::Store;
 use crate::store::test_support::eventually;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
+use message::Message;
 
 fn meta() -> EventMeta {
     EventMeta {

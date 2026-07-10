@@ -1,8 +1,8 @@
 use super::terminal_inject::frame_team_message;
-use crate::message::Message;
 use crate::room::LivePtyRegistry;
 use crate::store::commitments::matching_users;
 use crate::store::{CommitmentsAction, Dispatch, Select};
+use message::Message;
 
 use super::agnostic_delivery::{HeldInject, owner_mid_typing};
 

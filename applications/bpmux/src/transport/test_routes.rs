@@ -9,9 +9,9 @@ use serde::Deserialize;
 
 use crate::bridge;
 use crate::hub;
-use crate::message::{Message, MessageType};
 use crate::sync::OrchestratorHandle;
 use crate::sync::RefreshDriver;
+use message::{Message, MessageType};
 
 fn fire_board_invalidate(hub: &Arc<hub::Hub>) {
     let delta = Message {
@@ -19,7 +19,7 @@ fn fire_board_invalidate(hub: &Arc<hub::Hub>) {
         text: String::new(),
         ts: Utc::now(),
         message_type: MessageType::StateDelta,
-        state_delta: Some(crate::message::StateDeltaPayload::BoardInvalidated {
+        state_delta: Some(message::StateDeltaPayload::BoardInvalidated {
             reason: "board changed".to_string(),
         }),
         ..Default::default()

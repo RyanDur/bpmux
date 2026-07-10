@@ -3,7 +3,7 @@
 #![allow(clippy::panic)]
 
 use super::file_log::*;
-use crate::message::{Message, MessageType};
+use message::{Message, MessageType};
 
 fn chat(text: &str) -> Message {
     Message {

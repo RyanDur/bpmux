@@ -16,8 +16,8 @@ use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::CiState;
 use crate::ci::CiStateStore;
 use crate::hub::Hub;
-use crate::message::Message;
 use crate::rate_limit::RateLimitObserver;
+use message::Message;
 
 fn fresh_hub() -> (Arc<Hub>, TempDir) {
     let dir = TempDir::new().expect("tempdir");
@@ -370,7 +370,7 @@ async fn live_loop_marks_poll_succeeded_on_all_three_branches() {
 
 #[tokio::test]
 async fn live_loop_broadcasts_frozen_poll_time_on_failure() {
-    use crate::message::StateDeltaPayload;
+    use message::StateDeltaPayload;
 
     let (hub, _dir) = fresh_hub();
     let mut frames = hub.subscribe();

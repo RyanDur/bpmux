@@ -17,7 +17,7 @@ pub fn seed_api_enabled() -> bool {
 
 #[derive(Deserialize)]
 pub struct SeedMessagesBody {
-    pub messages: Vec<crate::message::Message>,
+    pub messages: Vec<message::Message>,
 }
 
 pub async fn post_seed_messages(
@@ -88,15 +88,15 @@ pub async fn post_reset_stories(
         );
     };
     refresh.clear_stories();
-    let invalidate_delta = crate::message::Message {
+    let invalidate_delta = message::Message {
         from: "bpmux".to_string(),
         text: String::new(),
         ts: chrono::Utc::now(),
-        message_type: crate::message::MessageType::StateDelta,
-        state_delta: Some(crate::message::StateDeltaPayload::BoardInvalidated {
+        message_type: message::MessageType::StateDelta,
+        state_delta: Some(message::StateDeltaPayload::BoardInvalidated {
             reason: "board reset".to_string(),
         }),
-        ..crate::message::Message::default()
+        ..message::Message::default()
     };
     if let Err(e) = hub.broadcast(&invalidate_delta) {
         crate::diag::log_diag(&format!(
@@ -305,15 +305,15 @@ pub async fn post_seed_stories(
             }
         }
     }
-    let invalidate_delta = crate::message::Message {
+    let invalidate_delta = message::Message {
         from: "bpmux".to_string(),
         text: String::new(),
         ts: chrono::Utc::now(),
-        message_type: crate::message::MessageType::StateDelta,
-        state_delta: Some(crate::message::StateDeltaPayload::BoardInvalidated {
+        message_type: message::MessageType::StateDelta,
+        state_delta: Some(message::StateDeltaPayload::BoardInvalidated {
             reason: "board changed".to_string(),
         }),
-        ..crate::message::Message::default()
+        ..message::Message::default()
     };
     if let Err(e) = hub.broadcast(&invalidate_delta) {
         crate::diag::log_diag(&format!(

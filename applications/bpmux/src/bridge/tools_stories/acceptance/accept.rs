@@ -62,15 +62,15 @@ pub(crate) async fn handle_accept_story(
                     message_type,
                 } = build_verdict_reprompt_signal(id, &role)
                 {
-                    let reprompt = crate::message::Message {
+                    let reprompt = message::Message {
                         from: "bpmux".to_string(),
                         text,
                         ts: chrono::Utc::now(),
-                        message_type: crate::message::MessageType::from(message_type.as_deref()),
+                        message_type: message::MessageType::from(message_type.as_deref()),
                         to,
                         addressee,
                         explicit_privacy: true,
-                        ..crate::message::Message::default()
+                        ..message::Message::default()
                     };
                     if let Err(err) = s.broadcast(&reprompt) {
                         crate::diag::log_diag(&format!(

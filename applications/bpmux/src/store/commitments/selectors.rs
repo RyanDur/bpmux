@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::message::payload_matches_filter;
+use message::payload_matches_filter;
 
 use super::CommitmentsState;
 

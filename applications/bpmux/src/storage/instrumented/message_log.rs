@@ -2,8 +2,8 @@ use std::time::Instant;
 
 use super::InstrumentedStorage;
 use crate::log::LogError;
-use crate::message::Message;
 use crate::storage::Storage;
+use message::Message;
 
 impl<S: Storage> crate::log::MessageLog for InstrumentedStorage<S> {
     fn append_message(&self, msg: &Message) -> Result<(), LogError> {

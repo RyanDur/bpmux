@@ -113,8 +113,8 @@ fn roster_snapshot_is_sorted() {
 
 #[test]
 fn roster_role_and_presence_wire_mirrors_serialize_identically_to_domain() {
-    use crate::message::{PresenceWire, RosterRoleWire};
     use crate::roster::{Presence, RosterRole};
+    use message::{PresenceWire, RosterRoleWire};
 
     for role in [
         RosterRole::Designer,

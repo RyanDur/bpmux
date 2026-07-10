@@ -13,10 +13,10 @@ use super::{
 };
 use crate::ci::CiState;
 use crate::hub::Hub;
-use crate::message::{Message, MessageType, StateDeltaPayload};
 use crate::product_management::story::slice::StoryAction;
 use crate::store::CiBroadcastListener;
 use crate::store::ci::CiSnapshot;
+use message::{Message, MessageType, StateDeltaPayload};
 
 fn owner_park_kernel(hub: Arc<Hub>) -> Arc<kernel::Store<AppState, AppAction>> {
     let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));
@@ -214,7 +214,7 @@ fn seed_dev_sibling_pair_online(store: &Arc<kernel::Store<AppState, AppAction>>)
 
 async fn drain_roster_presence(
     rx: &mut broadcast::Receiver<Message>,
-) -> Vec<crate::message::RosterMemberWire> {
+) -> Vec<message::RosterMemberWire> {
     loop {
         let msg = rx
             .recv()
@@ -257,7 +257,7 @@ async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
         .expect("dev in roster");
     assert_eq!(
         dev.presence,
-        crate::message::PresenceWire::Blocked,
+        message::PresenceWire::Blocked,
         "delivering role becomes Blocked when its story is owner-parked with empty ready queue"
     );
 }
@@ -330,7 +330,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
             .find(|m| m.name == "dev")
             .expect("dev")
             .presence,
-        crate::message::PresenceWire::Blocked
+        message::PresenceWire::Blocked
     );
     while rx.try_recv().is_ok() {}
 
@@ -352,7 +352,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
         .presence;
     assert_eq!(
         dev_presence,
-        crate::message::PresenceWire::Online,
+        message::PresenceWire::Online,
         "presence recomputes to Online from durable state: the delivered story STILL awaits owner-accept, but a ready story appeared so the agent can pull again — no longer parked, never decayed-stale"
     );
 }
@@ -455,8 +455,8 @@ async fn roster_listener_emits_typed_state_delta() {
         StateDeltaPayload::Roster { members } => {
             assert_eq!(members.len(), 1);
             assert_eq!(members[0].name, "owner");
-            assert_eq!(members[0].role, crate::message::RosterRoleWire::Owner);
-            assert_eq!(members[0].presence, crate::message::PresenceWire::Online);
+            assert_eq!(members[0].role, message::RosterRoleWire::Owner);
+            assert_eq!(members[0].presence, message::PresenceWire::Online);
         }
         _ => panic!("expected Roster variant"),
     }
@@ -486,7 +486,7 @@ async fn roster_listener_reports_the_registered_assignment_not_the_display() {
         StateDeltaPayload::Roster { members } => {
             assert_eq!(
                 members[0].role,
-                crate::message::RosterRoleWire::Dev,
+                message::RosterRoleWire::Dev,
                 "the broadcaster joins against the CURRENT routing assignment, not the display prefix"
             );
         }

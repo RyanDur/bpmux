@@ -328,7 +328,7 @@ mod verdict_substrate_integration_1407 {
         assert_eq!(msg.addressee.as_deref(), Some("pm"));
         assert_eq!(
             msg.message_type,
-            crate::message::MessageType::System,
+            message::MessageType::System,
             "#1494 producer-axis canon: bpmux verdict-cast must wire as MessageType::System so renderer classOf-remap classifies as bpmux-class; the prior Chat default leaked past the bpmux pill (sister to #1456 filter-canon)"
         );
         assert!(

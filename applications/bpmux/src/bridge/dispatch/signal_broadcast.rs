@@ -14,15 +14,15 @@ pub(super) fn broadcast_client_msg_via_hub(
     {
         let explicit_privacy = to.is_some();
         let from_short = crate::routing::short_name(agent_name);
-        let hub_msg = crate::message::Message {
+        let hub_msg = message::Message {
             from: format!("{from_short}:claude-code"),
             text,
             ts: chrono::Utc::now(),
-            message_type: crate::message::MessageType::from(message_type.as_deref()),
+            message_type: message::MessageType::from(message_type.as_deref()),
             to,
             addressee,
             explicit_privacy,
-            ..crate::message::Message::default()
+            ..message::Message::default()
         };
         if let Err(e) = hub.broadcast(&hub_msg) {
             crate::diag::log_diag(&format!("rpc: workflow-signal broadcast failed: {e}"));

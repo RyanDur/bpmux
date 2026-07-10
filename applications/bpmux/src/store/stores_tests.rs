@@ -14,7 +14,7 @@ use super::{
 };
 use crate::ci::CiStateStore;
 use crate::hub::Hub;
-use crate::message::Message;
+use message::Message;
 
 fn fresh_orch() -> Arc<Store> {
     let dir = TempDir::new().expect("tempdir");
@@ -206,7 +206,7 @@ async fn roster_wire_role_follows_the_registered_assignment_not_the_display() {
         .expect("aria in roster wire projection");
     assert_eq!(
         member.role,
-        crate::message::RosterRoleWire::Dev,
+        message::RosterRoleWire::Dev,
         "the registered ASSIGNMENT (role=dev) drives the roster role even though the display \
          ('aria') carries no workflow-role prefix — pre-C3 the role was laundered from \
          short_name(display), which would derive Other here"
@@ -231,7 +231,7 @@ async fn roster_wire_role_falls_back_to_display_derivation_for_an_unassigned_mem
         .expect("legacy member in roster wire projection");
     assert_eq!(
         member.role,
-        crate::message::RosterRoleWire::Dev,
+        message::RosterRoleWire::Dev,
         "a member with NO recorded routing assignment (never registered) falls back to the \
          display-prefix derivation, unchanged from pre-C3 behavior"
     );
@@ -705,7 +705,7 @@ async fn roster_presence_change_to_blocked_records_blocked_presence() {
 
 #[test]
 fn blocked_roster_member_wire_serializes_blocked_presence() {
-    use crate::message::{PresenceWire, RosterMemberWire, RosterRoleWire};
+    use message::{PresenceWire, RosterMemberWire, RosterRoleWire};
     let wire = RosterMemberWire {
         routing_id: "sess-dev".to_string(),
         name: "dev".to_string(),

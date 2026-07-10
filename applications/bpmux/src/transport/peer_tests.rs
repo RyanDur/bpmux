@@ -9,7 +9,7 @@ use tokio::time::timeout;
 
 use super::peer::{PeerMessage, spawn_relay};
 use crate::hub::Hub;
-use crate::message::{Message, MessageType};
+use message::{Message, MessageType};
 
 fn make_hub() -> (Arc<Hub>, broadcast::Receiver<Message>, TempDir) {
     let dir = TempDir::new().expect("tempdir");
