@@ -157,6 +157,7 @@ async fn retire_mutates_the_domain_and_the_outcome_drops_from_the_roadmap_view_1
     let result = handle_retire_outcome(
         &args(710, Some("superseded by #700")),
         "pm:claude-code",
+        "pm",
         None,
         Some(&refresh),
         &dispatch,
@@ -195,6 +196,7 @@ async fn retire_with_no_reason_is_rejected_1761() {
     let err = handle_retire_outcome(
         &args(700, None),
         "pm:claude-code",
+        "pm",
         None,
         Some(&refresh),
         &dispatch,
@@ -228,6 +230,7 @@ async fn retire_states_the_orphaned_iteration_mapping_count_1761() {
     let result = handle_retire_outcome(
         &args(700, Some("pivot")),
         "pm:claude-code",
+        "pm",
         None,
         Some(&refresh),
         &dispatch,
@@ -253,6 +256,7 @@ async fn retire_outcome_is_pm_lane_non_pm_refused_1761() {
     let err = handle_retire_outcome(
         &args(700, Some("r")),
         "dev:claude-code",
+        "dev",
         None,
         Some(&refresh),
         &dispatch,
@@ -275,6 +279,7 @@ async fn retire_aimed_at_a_non_outcome_teaches_the_boundary_1761() {
     let err = handle_retire_outcome(
         &args(700, Some("r")),
         "pm:claude-code",
+        "pm",
         None,
         Some(&refresh),
         &dispatch,

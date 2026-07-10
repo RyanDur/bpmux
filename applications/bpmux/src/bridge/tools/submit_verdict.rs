@@ -6,11 +6,11 @@ use std::sync::Arc;
 pub(in crate::bridge) async fn handle_submit_verdict(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    role: &str,
     hub: &Arc<crate::hub::Hub>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
-    let role = agent_name.split(':').next().unwrap_or(agent_name);
     let workflow = crate::workflow::current_workflow();
     let dev_name = workflow.role_name_for_purpose("dev").unwrap_or("dev");
     let designer_name = workflow

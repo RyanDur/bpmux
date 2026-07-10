@@ -10,7 +10,14 @@ async fn start_story_rejects_missing_pickup_paraphrase() {
         "id": 398,
         "falsifier_reframing": "I would reject if the pickup signal is invisible."
     });
-    let result = handle_start_story(args.as_object().unwrap(), "dev:claude-code", None, None).await;
+    let result = handle_start_story(
+        args.as_object().unwrap(),
+        "dev:claude-code",
+        "dev",
+        None,
+        None,
+    )
+    .await;
     assert!(
         result.is_err(),
         "missing pickup_paraphrase must fail: {result:?}"
@@ -33,7 +40,14 @@ async fn start_story_rejects_empty_pickup_paraphrase() {
         "pickup_paraphrase": "   \n  ",
         "falsifier_reframing": "I would reject if..."
     });
-    let result = handle_start_story(args.as_object().unwrap(), "dev:claude-code", None, None).await;
+    let result = handle_start_story(
+        args.as_object().unwrap(),
+        "dev:claude-code",
+        "dev",
+        None,
+        None,
+    )
+    .await;
     assert!(
         result.is_err(),
         "whitespace-only pickup_paraphrase must fail"
@@ -47,7 +61,14 @@ async fn start_story_rejects_missing_falsifier_reframing() {
         "id": 398,
         "pickup_paraphrase": "As a dev, I restate the user-job..."
     });
-    let result = handle_start_story(args.as_object().unwrap(), "dev:claude-code", None, None).await;
+    let result = handle_start_story(
+        args.as_object().unwrap(),
+        "dev:claude-code",
+        "dev",
+        None,
+        None,
+    )
+    .await;
     assert!(
         result.is_err(),
         "missing falsifier_reframing must fail: {result:?}"
@@ -66,7 +87,14 @@ async fn start_story_validation_passes_then_refresh_required_after_5n() {
         "pickup_paraphrase": "User-job: dev articulates their read of the story at pickup so the team knows work is in flight.",
         "falsifier_reframing": "I would reject if start_story without the new fields still succeeds."
     });
-    let result = handle_start_story(args.as_object().unwrap(), "dev:claude-code", None, None).await;
+    let result = handle_start_story(
+        args.as_object().unwrap(),
+        "dev:claude-code",
+        "dev",
+        None,
+        None,
+    )
+    .await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -99,9 +127,15 @@ async fn start_story_stamps_actor_id_from_the_threaded_identify_user_id() {
     args.insert("id".into(), serde_json::json!(886));
     args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
     args.insert("falsifier_reframing".into(), serde_json::json!("f"));
-    handle_start_story(&args, "dev:claude-code", Some("user-alpha-42"), Some(&orch))
-        .await
-        .expect("pickup succeeds");
+    handle_start_story(
+        &args,
+        "dev:claude-code",
+        "dev",
+        Some("user-alpha-42"),
+        Some(&orch),
+    )
+    .await
+    .expect("pickup succeeds");
 
     orch.drain_pending().await.unwrap();
     let pushed = adapter.pushed_events();
@@ -130,7 +164,14 @@ async fn start_story_still_dev_only_with_new_params() {
         "falsifier_reframing": "any text"
     });
     for caller in ["pm:claude-code", "designer:claude-code"] {
-        let result = handle_start_story(args.as_object().unwrap(), caller, None, None).await;
+        let result = handle_start_story(
+            args.as_object().unwrap(),
+            caller,
+            role_from_name(caller),
+            None,
+            None,
+        )
+        .await;
         assert!(
             result.is_err(),
             "{caller} (non-dev, non-owner) must be rejected by workflow-substrate role-gate"

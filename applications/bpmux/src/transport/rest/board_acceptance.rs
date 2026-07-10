@@ -6,8 +6,39 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use super::shared::{broadcast_board_invalidate, broadcast_stories, err_body, json_headers};
+use axum::http::HeaderMap;
+
+use super::shared::{
+    OWNER_NONCE_HEADER, broadcast_board_invalidate, broadcast_stories, err_body, json_headers,
+};
 use crate::hub;
+
+type JsonResponse = (
+    StatusCode,
+    [(axum::http::HeaderName, &'static str); 1],
+    String,
+);
+
+fn owner_walk_or_forbidden(
+    select: &crate::store::Select,
+    headers: &HeaderMap,
+) -> Result<(), JsonResponse> {
+    let claimed = select.select(|s| crate::store::owner_session::claimed_nonce(&s.owner_session));
+    let presented = headers
+        .get(OWNER_NONCE_HEADER)
+        .and_then(|value| value.to_str().ok());
+    if crate::store::owner_session::owner_walk_authorized(claimed.as_deref(), presented) {
+        Ok(())
+    } else {
+        Err((
+            StatusCode::FORBIDDEN,
+            json_headers(),
+            err_body(
+                "board acceptance requires the owner session — attach the current launch nonce",
+            ),
+        ))
+    }
+}
 
 #[derive(Deserialize)]
 pub struct AcceptPayload {
@@ -21,9 +52,14 @@ pub struct AcceptPayload {
 pub async fn post_accept_story(
     State(hub): State<Arc<hub::Hub>>,
     axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
+    axum::Extension(select): axum::Extension<crate::store::Select>,
+    headers: HeaderMap,
     axum::extract::Path(number): axum::extract::Path<u64>,
     Json(payload): Json<AcceptPayload>,
 ) -> impl IntoResponse {
+    if let Err(refusal) = owner_walk_or_forbidden(&select, &headers) {
+        return refusal;
+    }
     let mut args = serde_json::Map::new();
     args.insert(
         "would_file_bug".to_string(),
@@ -86,9 +122,14 @@ pub struct RejectPayload {
 pub async fn post_reject_story(
     State(hub): State<Arc<hub::Hub>>,
     axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
+    axum::Extension(select): axum::Extension<crate::store::Select>,
+    headers: HeaderMap,
     axum::extract::Path(number): axum::extract::Path<u64>,
     Json(payload): Json<RejectPayload>,
 ) -> impl IntoResponse {
+    if let Err(refusal) = owner_walk_or_forbidden(&select, &headers) {
+        return refusal;
+    }
     let note = payload.note.trim().to_string();
     if note.is_empty() {
         return (

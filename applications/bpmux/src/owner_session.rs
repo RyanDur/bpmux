@@ -34,6 +34,13 @@ pub fn resolve_owner_mark(claimed: Option<&str>, presented: Option<&str>, identi
     }
 }
 
+pub fn owner_walk_authorized(claimed: Option<&str>, presented: Option<&str>) -> bool {
+    match claimed {
+        Some(claim) => presented == Some(claim),
+        None => true,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
@@ -114,6 +121,34 @@ mod tests {
         assert!(
             !resolve_owner_mark(Some("n1"), Some("n2"), "owner:electron"),
             "a stale/foreign nonce grants nothing"
+        );
+    }
+
+    #[test]
+    fn owner_walk_before_any_claim_proceeds_as_the_bootstrap_fallback() {
+        assert!(
+            owner_walk_authorized(None, None),
+            "before any nonce is claimed this process, the board walk proceeds (bootstrap)"
+        );
+        assert!(
+            owner_walk_authorized(None, Some("stray")),
+            "a stray presented nonce is harmless before any claim exists"
+        );
+    }
+
+    #[test]
+    fn owner_walk_once_claimed_requires_the_launch_nonce_both_directions() {
+        assert!(
+            owner_walk_authorized(Some("n1"), Some("n1")),
+            "the owner session presenting its launch nonce is authorized to walk the board"
+        );
+        assert!(
+            !owner_walk_authorized(Some("n1"), None),
+            "once a nonce is claimed, a board walk WITHOUT it is refused — the session-authority fix"
+        );
+        assert!(
+            !owner_walk_authorized(Some("n1"), Some("n2")),
+            "a stale/foreign nonce is refused once a claim exists"
         );
     }
 }

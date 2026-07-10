@@ -53,9 +53,16 @@ async fn edit_story_title_only_updates_title_preserves_body() {
         "id": 1234,
         "title": "[Feature] corrected title"
     }));
-    let result = handle_edit_story(&args, "pm:claude-code", None, Some(&refresh), &dispatch())
-        .await
-        .expect("edit_story with title-only succeeds");
+    let result = handle_edit_story(
+        &args,
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&refresh),
+        &dispatch(),
+    )
+    .await
+    .expect("edit_story with title-only succeeds");
     assert!(result.contains("title"), "result mentions title: {result}");
     let story = refresh.story(1234).expect("story still exists");
     assert_eq!(story.title, "[Feature] corrected title", "title updated");
@@ -78,9 +85,16 @@ async fn edit_story_body_only_updates_body_preserves_title() {
         "id": 1234,
         "body": "## What\n\nnew body content"
     }));
-    let result = handle_edit_story(&args, "pm:claude-code", None, Some(&refresh), &dispatch())
-        .await
-        .expect("edit_story with body-only succeeds");
+    let result = handle_edit_story(
+        &args,
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&refresh),
+        &dispatch(),
+    )
+    .await
+    .expect("edit_story with body-only succeeds");
     assert!(result.contains("body"), "result mentions body: {result}");
     let story = refresh.story(1234).expect("story still exists");
     assert_eq!(story.title, "[Feature] original title", "title preserved");
@@ -99,9 +113,16 @@ async fn edit_story_with_both_title_and_body_updates_both() {
         "title": "new title",
         "body": "new body"
     }));
-    let result = handle_edit_story(&args, "pm:claude-code", None, Some(&refresh), &dispatch())
-        .await
-        .expect("edit_story with both succeeds");
+    let result = handle_edit_story(
+        &args,
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&refresh),
+        &dispatch(),
+    )
+    .await
+    .expect("edit_story with both succeeds");
     assert!(
         result.contains("title") && result.contains("body"),
         "result mentions both: {result}"
@@ -122,9 +143,16 @@ async fn edit_story_body_returns_optimistically_and_pushes_via_the_drain() {
     orch.refresh_all().await.unwrap();
 
     let args = args_obj(json!({ "id": 1234, "body": "## What\n\nnew body content" }));
-    handle_edit_story(&args, "pm:claude-code", None, Some(&orch), &dispatch())
-        .await
-        .expect("edit_story body succeeds");
+    handle_edit_story(
+        &args,
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&orch),
+        &dispatch(),
+    )
+    .await
+    .expect("edit_story body succeeds");
 
     assert_eq!(
         orch.story(1234).unwrap().body.as_deref(),
@@ -179,9 +207,16 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
     );
 
     let args = args_obj(json!({ "id": 1234, "acceptor": "owner" }));
-    handle_edit_story(&args, "pm:claude-code", None, Some(&refresh), &dispatch())
-        .await
-        .expect("edit_story with acceptor-only succeeds");
+    handle_edit_story(
+        &args,
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&refresh),
+        &dispatch(),
+    )
+    .await
+    .expect("edit_story with acceptor-only succeeds");
 
     assert_eq!(
         refresh.story(1234).unwrap().acceptor(),
@@ -194,9 +229,16 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
 async fn edit_story_with_neither_field_rejects() {
     let refresh = build_refresh(vec![seed_story(1234, "title", "body")]).await;
     let args = args_obj(json!({ "id": 1234 }));
-    let err = handle_edit_story(&args, "pm:claude-code", None, Some(&refresh), &dispatch())
-        .await
-        .expect_err("edit_story with neither body, title, nor acceptor rejected");
+    let err = handle_edit_story(
+        &args,
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&refresh),
+        &dispatch(),
+    )
+    .await
+    .expect_err("edit_story with neither body, title, nor acceptor rejected");
     assert!(
         err.contains("at least one of 'body', 'title', or 'acceptor'"),
         "error names the required-one-of constraint: {err}"
@@ -210,9 +252,16 @@ async fn edit_story_rejects_non_pm_role() {
         "id": 1234,
         "title": "new title"
     }));
-    let err = handle_edit_story(&args, "dev:claude-code", None, Some(&refresh), &dispatch())
-        .await
-        .expect_err("dev role rejected from PM-only tool");
+    let err = handle_edit_story(
+        &args,
+        "dev:claude-code",
+        "dev",
+        None,
+        Some(&refresh),
+        &dispatch(),
+    )
+    .await
+    .expect_err("dev role rejected from PM-only tool");
     assert!(
         err.to_lowercase().contains("pm") || err.to_lowercase().contains("role"),
         "error explains role-gating: {err}"

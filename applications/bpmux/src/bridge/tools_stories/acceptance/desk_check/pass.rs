@@ -2,7 +2,7 @@ use crate::bridge::tools_stories::acceptance::helpers::{
     BugGate, format_bypass_payload, recent_evidence_for_story, verify_bug_question_or_bypass,
 };
 use crate::bridge::tools_stories::event_meta::meta_for;
-use crate::bridge::tools_stories::helpers::{ensure_story_in_canonical_store, role_from_name};
+use crate::bridge::tools_stories::helpers::ensure_story_in_canonical_store;
 use crate::product_management::story::StoryId;
 
 fn parse_acceptor_arg(
@@ -32,11 +32,12 @@ fn parse_acceptor_arg(
 pub(crate) async fn handle_pass_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     hub: Option<&std::sync::Arc<crate::hub::Hub>>,
 ) -> Result<String, String> {
-    let actor_role = role_from_name(agent_name);
+    let actor_role = role;
     let workflow = crate::workflow::current_workflow();
     let id = args
         .get("id")

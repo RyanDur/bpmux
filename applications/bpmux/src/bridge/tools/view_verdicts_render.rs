@@ -53,6 +53,7 @@ async fn returns_record_after_write() {
     handle_submit_verdict(
         &submit_args(42, "verified", "src/foo.rs cite"),
         "designer:claude-code",
+        "designer",
         &hub,
         &store.dispatcher(),
         &store.select(),

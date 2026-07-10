@@ -4,6 +4,7 @@ import { failure, success, type Result } from '../lib/result'
 export interface ApiContext {
   apiBase: string
   authToken: string | null | undefined
+  ownerNonce?: string | null | undefined
 }
 
 export type HttpError =
@@ -21,6 +22,9 @@ const buildHeaders = (ctx: ApiContext, includeContentType: boolean): Record<stri
   }
   if (includeContentType) {
     headers['Content-Type'] = 'application/json'
+  }
+  if (ctx.ownerNonce) {
+    headers['X-BPMUX-Owner-Nonce'] = ctx.ownerNonce
   }
   return headers
 }

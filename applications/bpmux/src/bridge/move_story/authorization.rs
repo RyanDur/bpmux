@@ -1,5 +1,5 @@
-pub(super) fn enforce_move_authorization(agent_name: &str) -> Result<(), String> {
-    let actor_role = crate::routing::short_name(agent_name);
+pub(super) fn enforce_move_authorization(role: &str) -> Result<(), String> {
+    let actor_role = role;
     let workflow = crate::workflow::current_workflow();
     let transition = crate::workflow::resolve_transition(
         workflow,

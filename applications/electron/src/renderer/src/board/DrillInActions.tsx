@@ -12,6 +12,7 @@ interface Props {
   canAct: boolean
   apiBase: string | undefined
   authToken: string | undefined
+  ownerNonce?: string | undefined
   mode: ActionMode
   setMode: (m: ActionMode) => void
   onStoryMutated: (story: Story) => void
@@ -24,6 +25,7 @@ const DrillInActions = ({
   canAct,
   apiBase,
   authToken,
+  ownerNonce,
   mode,
   setMode,
   onStoryMutated,
@@ -65,7 +67,11 @@ const DrillInActions = ({
         onBack()
         return
       }
-      const proceed = await postStoryAccept({ apiBase, authToken }, story.id, payload).mapEither(
+      const proceed = await postStoryAccept(
+        { apiBase, authToken, ownerNonce },
+        story.id,
+        payload
+      ).mapEither(
         () => true,
         (error) => {
           rollback(describeHttpError(error))
@@ -77,7 +83,7 @@ const DrillInActions = ({
       setBusy(null)
       onBack()
     },
-    [apiBase, authToken, busy, onBack, onError, onStoryMutated, story]
+    [apiBase, authToken, ownerNonce, busy, onBack, onError, onStoryMutated, story]
   )
 
   const handleAccept = useCallback((): void => {
@@ -117,7 +123,7 @@ const DrillInActions = ({
       onBack()
       return
     }
-    const proceed = await postStoryReject({ apiBase, authToken }, story.id, {
+    const proceed = await postStoryReject({ apiBase, authToken, ownerNonce }, story.id, {
       note: trimmed
     }).mapEither(
       () => true,
@@ -132,7 +138,7 @@ const DrillInActions = ({
     setMode('idle')
     setNote('')
     onBack()
-  }, [apiBase, authToken, busy, note, onBack, onError, onStoryMutated, setMode, story])
+  }, [apiBase, authToken, ownerNonce, busy, note, onBack, onError, onStoryMutated, setMode, story])
 
   const handleTextareaKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {

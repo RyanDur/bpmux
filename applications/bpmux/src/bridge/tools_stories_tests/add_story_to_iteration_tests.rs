@@ -94,13 +94,8 @@ async fn pm_can_add_story_to_iteration_canonical_relation_recorded_1399() {
     ])
     .await;
     let (dispatch, mut rx) = dispatch_channel();
-    let result = handle_add_story_to_iteration(
-        &args(1397, 1500, 100),
-        "pm:claude-code",
-        Some(&orch),
-        &dispatch,
-    )
-    .await;
+    let result =
+        handle_add_story_to_iteration(&args(1397, 1500, 100), "pm", Some(&orch), &dispatch).await;
     assert!(
         result.is_ok(),
         "PM add_story_to_iteration must succeed: {result:?}"
@@ -125,9 +120,13 @@ async fn non_pm_non_owner_rejected_with_workflow_role_not_allowed_1399() {
         "intern:claude-code",
     ] {
         let (dispatch, _rx) = dispatch_channel();
-        let result =
-            handle_add_story_to_iteration(&args(1397, 1500, 100), caller, Some(&orch), &dispatch)
-                .await;
+        let result = handle_add_story_to_iteration(
+            &args(1397, 1500, 100),
+            role_from_name(caller),
+            Some(&orch),
+            &dispatch,
+        )
+        .await;
         let err = result.expect_err(&format!("{caller} must be substrate-refused"));
         assert!(
             err.contains("workflow-role-not-allowed"),
@@ -157,13 +156,9 @@ async fn owner_bypasses_add_story_to_iteration_via_superset_1548() {
     ])
     .await;
     let (dispatch, _rx) = dispatch_channel();
-    let result = handle_add_story_to_iteration(
-        &args(1397, 1500, 100),
-        "owner:human",
-        Some(&orch),
-        &dispatch,
-    )
-    .await;
+    let result =
+        handle_add_story_to_iteration(&args(1397, 1500, 100), "owner", Some(&orch), &dispatch)
+            .await;
     assert!(
         result.is_ok(),
         "owner (owner) bypasses the pm-only add-to-iteration role-guard via the #1548 superset: {result:?}"
@@ -178,13 +173,8 @@ async fn parent_must_be_iteration_storytype_rejects_non_iteration_1399() {
     ])
     .await;
     let (dispatch, _rx) = dispatch_channel();
-    let result = handle_add_story_to_iteration(
-        &args(2000, 1500, 100),
-        "pm:claude-code",
-        Some(&orch),
-        &dispatch,
-    )
-    .await;
+    let result =
+        handle_add_story_to_iteration(&args(2000, 1500, 100), "pm", Some(&orch), &dispatch).await;
     let err = result.expect_err("non-Iteration parent must be rejected");
     assert!(
         err.contains("not an Iteration"),
@@ -196,13 +186,8 @@ async fn parent_must_be_iteration_storytype_rejects_non_iteration_1399() {
 async fn self_add_rejected_1399() {
     let orch = build_orchestrator(vec![iteration_seed(1397, "Telescopium")]).await;
     let (dispatch, _rx) = dispatch_channel();
-    let result = handle_add_story_to_iteration(
-        &args(1397, 1397, 100),
-        "pm:claude-code",
-        Some(&orch),
-        &dispatch,
-    )
-    .await;
+    let result =
+        handle_add_story_to_iteration(&args(1397, 1397, 100), "pm", Some(&orch), &dispatch).await;
     let err = result.expect_err("self-add must be rejected");
     assert!(
         err.contains("cannot be added to itself"),
@@ -216,7 +201,7 @@ async fn missing_iteration_id_rejected_1399() {
     let mut m = serde_json::Map::new();
     m.insert("story_id".into(), serde_json::json!(1500));
     m.insert("position".into(), serde_json::json!(100));
-    let result = handle_add_story_to_iteration(&m, "pm:claude-code", None, &dispatch).await;
+    let result = handle_add_story_to_iteration(&m, "pm", None, &dispatch).await;
     let err = result.expect_err("missing iteration_id must be rejected");
     assert!(
         err.contains("iteration_id"),
@@ -230,7 +215,7 @@ async fn missing_story_id_rejected_1399() {
     let mut m = serde_json::Map::new();
     m.insert("iteration_id".into(), serde_json::json!(1397));
     m.insert("position".into(), serde_json::json!(100));
-    let result = handle_add_story_to_iteration(&m, "pm:claude-code", None, &dispatch).await;
+    let result = handle_add_story_to_iteration(&m, "pm", None, &dispatch).await;
     let err = result.expect_err("missing story_id must be rejected");
     assert!(
         err.contains("story_id"),
@@ -244,7 +229,7 @@ async fn missing_position_rejected_1399() {
     let mut m = serde_json::Map::new();
     m.insert("iteration_id".into(), serde_json::json!(1397));
     m.insert("story_id".into(), serde_json::json!(1500));
-    let result = handle_add_story_to_iteration(&m, "pm:claude-code", None, &dispatch).await;
+    let result = handle_add_story_to_iteration(&m, "pm", None, &dispatch).await;
     let err = result.expect_err("missing position must be rejected");
     assert!(
         err.contains("position"),
@@ -260,14 +245,9 @@ async fn add_records_the_member_in_the_iterations_ordered_stories_1399() {
     ])
     .await;
     let (dispatch, mut rx) = dispatch_channel();
-    handle_add_story_to_iteration(
-        &args(1397, 1500, 250),
-        "pm:claude-code",
-        Some(&orch),
-        &dispatch,
-    )
-    .await
-    .unwrap();
+    handle_add_story_to_iteration(&args(1397, 1500, 250), "pm", Some(&orch), &dispatch)
+        .await
+        .unwrap();
     assert_eq!(
         stories_of(&upserted_iterations(&mut rx), 1397),
         vec![StoryId::new(1500)],
@@ -289,14 +269,9 @@ async fn replace_semantic_overwrites_existing_membership_1399() {
     let member = member_seed(1500, "moving target");
     let orch = build_orchestrator(vec![(it1, it1_labels), it2, member]).await;
     let (dispatch, mut rx) = dispatch_channel();
-    handle_add_story_to_iteration(
-        &args(1396, 1500, 300),
-        "pm:claude-code",
-        Some(&orch),
-        &dispatch,
-    )
-    .await
-    .unwrap();
+    handle_add_story_to_iteration(&args(1396, 1500, 300), "pm", Some(&orch), &dispatch)
+        .await
+        .unwrap();
     let dispatched = upserted_iterations(&mut rx);
     assert_eq!(
         stories_of(&dispatched, 1396),

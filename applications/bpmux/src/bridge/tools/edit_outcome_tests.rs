@@ -95,7 +95,7 @@ async fn editing_an_outcome_title_reflects_as_its_roadmap_name_1760() {
     let (dispatch, mut rx) = dispatch_channel();
     handle_edit_outcome(
         &args(700, Some("Agents reason from the shared substrate"), None),
-        "pm:claude-code",
+        "pm",
         Some(&refresh),
         &dispatch,
     )
@@ -123,7 +123,7 @@ async fn editing_an_outcome_why_persists_for_the_bpmux_story_disclosure_read_176
     let (dispatch, mut rx) = dispatch_channel();
     handle_edit_outcome(
         &args(700, None, Some("**Benefit:** agents plan from one substrate, no drift")),
-        "pm:claude-code",
+        "pm",
         Some(&refresh),
         &dispatch,
     )
@@ -147,7 +147,7 @@ async fn edit_outcome_is_pm_lane_non_pm_refused_1760() {
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_edit_outcome(
         &args(700, Some("Y"), None),
-        "dev:claude-code",
+        "dev",
         Some(&refresh),
         &dispatch,
     )
@@ -166,14 +166,9 @@ async fn edit_outcome_aimed_at_a_non_outcome_teaches_the_boundary_1760() {
     )])
     .await;
     let (dispatch, _rx) = dispatch_channel();
-    let err = handle_edit_outcome(
-        &args(700, Some("Y"), None),
-        "pm:claude-code",
-        Some(&refresh),
-        &dispatch,
-    )
-    .await
-    .expect_err("outcome edit aimed at a non-outcome is refused");
+    let err = handle_edit_outcome(&args(700, Some("Y"), None), "pm", Some(&refresh), &dispatch)
+        .await
+        .expect_err("outcome edit aimed at a non-outcome is refused");
     assert!(
         err.contains("not an Outcome"),
         "the error teaches the boundary instead of editing a plain story: {err}"
@@ -184,14 +179,9 @@ async fn edit_outcome_aimed_at_a_non_outcome_teaches_the_boundary_1760() {
 async fn edit_outcome_with_no_change_is_rejected_1760() {
     let refresh = build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
     let (dispatch, _rx) = dispatch_channel();
-    let err = handle_edit_outcome(
-        &args(700, None, None),
-        "pm:claude-code",
-        Some(&refresh),
-        &dispatch,
-    )
-    .await
-    .expect_err("editing with neither --title nor --body is a no-op request");
+    let err = handle_edit_outcome(&args(700, None, None), "pm", Some(&refresh), &dispatch)
+        .await
+        .expect_err("editing with neither --title nor --body is a no-op request");
     assert!(
         err.contains("--title") && err.contains("--body"),
         "the error names the fix: {err}"

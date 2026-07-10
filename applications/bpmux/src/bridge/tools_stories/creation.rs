@@ -1,11 +1,12 @@
 use super::event_meta::meta_for;
-use super::helpers::{compose_story_body, require_nonempty_string, role_from_name};
+use super::helpers::{compose_story_body, require_nonempty_string};
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_create_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
@@ -15,7 +16,7 @@ pub(crate) async fn handle_create_story(
         .and_then(|v| v.as_str())
         .ok_or("missing 'title' argument")?;
     let story_type = crate::product_management::story::story_type_from_title(title);
-    validate_actor_role_can_create(agent_name, story_type)?;
+    validate_actor_role_can_create(role, story_type)?;
     let user_job = require_nonempty_string(
         args,
         "user_job",
@@ -97,13 +98,13 @@ pub(crate) async fn handle_create_story(
 }
 
 fn validate_actor_role_can_create(
-    agent_name: &str,
+    role: &str,
     story_type: crate::product_management::story::StoryKind,
 ) -> Result<(), String> {
     let workflow = crate::workflow::current_workflow();
     let pm = workflow.role_name_for_purpose("pm").unwrap_or("pm");
     let dev = workflow.role_name_for_purpose("dev").unwrap_or("dev");
-    let actor_role = role_from_name(agent_name);
+    let actor_role = role;
     if let Some(owner) = workflow.owner_role_name()
         && !owner.is_empty()
         && actor_role == owner

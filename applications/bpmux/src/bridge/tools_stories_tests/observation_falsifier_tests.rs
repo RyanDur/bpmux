@@ -16,7 +16,15 @@ async fn create_story_rejects_non_pm_non_owner_role() {
         "observation_falsifier": "reject if X"
     });
     for role in ["dev", "designer", "unknown"].iter() {
-        let result = handle_create_story(args.as_object().unwrap(), role, None, None, &td()).await;
+        let result = handle_create_story(
+            args.as_object().unwrap(),
+            role,
+            role_from_name(role),
+            None,
+            None,
+            &td(),
+        )
+        .await;
         assert!(
             result.is_err(),
             "create_story should reject {role} calls; got: {result:?}"
@@ -31,8 +39,15 @@ async fn create_story_rejects_non_pm_non_owner_role() {
             "error should redirect to broadcast. role={role}, err={err}"
         );
     }
-    let owner_result =
-        handle_create_story(args.as_object().unwrap(), "owner", None, None, &td()).await;
+    let owner_result = handle_create_story(
+        args.as_object().unwrap(),
+        "owner",
+        "owner",
+        None,
+        None,
+        &td(),
+    )
+    .await;
     assert!(
         !owner_result
             .as_ref()
@@ -50,7 +65,15 @@ async fn create_story_allows_dev_for_chore_class() {
         "observation_falsifier": "reject if div/span remain"
     });
     for role in ["dev", "dev:claude-code"].iter() {
-        let result = handle_create_story(args.as_object().unwrap(), role, None, None, &td()).await;
+        let result = handle_create_story(
+            args.as_object().unwrap(),
+            role,
+            role_from_name(role),
+            None,
+            None,
+            &td(),
+        )
+        .await;
         assert!(
             result.is_err(),
             "dev+chore passes role-gate then hits refresh-required; got: {result:?}"
@@ -74,7 +97,8 @@ async fn create_story_rejects_dev_for_non_chore_class() {
         "user_job": "as dev, I want X",
         "observation_falsifier": "reject if X"
     });
-    let result = handle_create_story(args.as_object().unwrap(), "dev", None, None, &td()).await;
+    let result =
+        handle_create_story(args.as_object().unwrap(), "dev", "dev", None, None, &td()).await;
     assert!(result.is_err(), "dev creating a Feature should be rejected");
     let err = result.unwrap_err();
     assert!(
@@ -90,8 +114,15 @@ async fn create_story_rejects_designer_even_for_chore_class() {
         "user_job": "as designer, I want X",
         "observation_falsifier": "reject if X"
     });
-    let result =
-        handle_create_story(args.as_object().unwrap(), "designer", None, None, &td()).await;
+    let result = handle_create_story(
+        args.as_object().unwrap(),
+        "designer",
+        "designer",
+        None,
+        None,
+        &td(),
+    )
+    .await;
     assert!(
         result.is_err(),
         "designer creating a chore should be rejected (chore-authorship is dev-only)"
@@ -109,7 +140,8 @@ async fn create_story_pm_role_passes_role_gate_then_hits_refresh_required() {
         "user_job": "as pm, I want X",
         "observation_falsifier": "reject if X"
     });
-    let result = handle_create_story(args.as_object().unwrap(), "pm", None, None, &td()).await;
+    let result =
+        handle_create_story(args.as_object().unwrap(), "pm", "pm", None, None, &td()).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -124,6 +156,7 @@ async fn create_story_pm_with_tool_suffix_role_gate_passes_then_refresh_required
     let result = handle_create_story(
         args.as_object().unwrap(),
         "pm:claude-code",
+        "pm",
         None,
         None,
         &td(),
@@ -140,7 +173,8 @@ async fn create_story_rejects_missing_user_job() {
         "body": "body text",
         "observation_falsifier": "I would reject if X"
     });
-    let result = handle_create_story(args.as_object().unwrap(), "pm", None, None, &td()).await;
+    let result =
+        handle_create_story(args.as_object().unwrap(), "pm", "pm", None, None, &td()).await;
     assert!(result.is_err(), "missing user_job should fail");
     let err = result.unwrap_err();
     assert!(
@@ -160,7 +194,8 @@ async fn create_story_rejects_empty_user_job() {
         "user_job": "   ",
         "observation_falsifier": "I would reject if X"
     });
-    let result = handle_create_story(args.as_object().unwrap(), "pm", None, None, &td()).await;
+    let result =
+        handle_create_story(args.as_object().unwrap(), "pm", "pm", None, None, &td()).await;
     assert!(result.is_err(), "whitespace-only user_job should fail");
     assert!(result.unwrap_err().contains("user_job"));
 }
@@ -171,7 +206,8 @@ async fn create_story_rejects_missing_observation_falsifier() {
         "title": "a story",
         "user_job": "When I X, I need Y because Z"
     });
-    let result = handle_create_story(args.as_object().unwrap(), "pm", None, None, &td()).await;
+    let result =
+        handle_create_story(args.as_object().unwrap(), "pm", "pm", None, None, &td()).await;
     assert!(result.is_err(), "missing observation_falsifier should fail");
     let err = result.unwrap_err();
     assert!(
@@ -188,7 +224,8 @@ async fn create_story_validation_passes_then_refresh_required_after_5n() {
         "user_job": "When I X, I need Y because Z",
         "observation_falsifier": "I would reject if I observed W"
     });
-    let result = handle_create_story(args.as_object().unwrap(), "pm", None, None, &td()).await;
+    let result =
+        handle_create_story(args.as_object().unwrap(), "pm", "pm", None, None, &td()).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -198,8 +235,14 @@ async fn deliver_story_rejects_missing_verified_observation() {
     let args = serde_json::json!({
         "id": 391
     });
-    let result =
-        handle_deliver_story(args.as_object().unwrap(), "dev:claude-code", None, None).await;
+    let result = handle_deliver_story(
+        args.as_object().unwrap(),
+        "dev:claude-code",
+        "dev",
+        None,
+        None,
+    )
+    .await;
     assert!(result.is_err(), "missing verified_observation should fail");
     let err = result.unwrap_err();
     assert!(
@@ -218,8 +261,14 @@ async fn deliver_story_rejects_empty_verified_observation() {
         "id": 391,
         "verified_observation": ""
     });
-    let result =
-        handle_deliver_story(args.as_object().unwrap(), "dev:claude-code", None, None).await;
+    let result = handle_deliver_story(
+        args.as_object().unwrap(),
+        "dev:claude-code",
+        "dev",
+        None,
+        None,
+    )
+    .await;
     assert!(result.is_err(), "empty verified_observation should fail");
     assert!(result.unwrap_err().contains("verified_observation"));
 }
@@ -230,7 +279,14 @@ async fn label_story_default_op_requires_refresh_after_5n() {
         "id": 42,
         "label": "ready"
     });
-    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None, None).await;
+    let result = handle_label_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        "pm",
+        None,
+        None,
+    )
+    .await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -242,7 +298,14 @@ async fn label_story_add_op_requires_refresh_after_5n() {
         "label": "blocked",
         "operation": "add"
     });
-    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None, None).await;
+    let result = handle_label_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        "pm",
+        None,
+        None,
+    )
+    .await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -254,7 +317,14 @@ async fn label_story_remove_op_requires_refresh_after_5n() {
         "label": "in progress",
         "operation": "remove"
     });
-    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None, None).await;
+    let result = handle_label_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        "pm",
+        None,
+        None,
+    )
+    .await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -266,7 +336,14 @@ async fn label_story_remove_idempotent_call_requires_refresh_after_5n() {
         "label": "never-attached-label",
         "operation": "remove"
     });
-    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None, None).await;
+    let result = handle_label_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        "pm",
+        None,
+        None,
+    )
+    .await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -302,6 +379,7 @@ async fn label_story_rejects_invalid_operation_in_migrated_path() {
     let result = handle_label_story(
         args.as_object().unwrap(),
         "pm:claude-code",
+        "pm",
         None,
         Some(&orchestrator),
     )
@@ -319,7 +397,14 @@ async fn label_story_add_propagates_tracker_error_without_broadcast() {
         "label": "ready",
         "operation": "add"
     });
-    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None, None).await;
+    let result = handle_label_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        "pm",
+        None,
+        None,
+    )
+    .await;
     assert!(
         result.is_err(),
         "add-with-API-error must surface error: {result:?}"
@@ -333,7 +418,14 @@ async fn label_story_remove_propagates_tracker_error_without_broadcast() {
         "label": "ready",
         "operation": "remove"
     });
-    let result = handle_label_story(args.as_object().unwrap(), "pm:claude-code", None, None).await;
+    let result = handle_label_story(
+        args.as_object().unwrap(),
+        "pm:claude-code",
+        "pm",
+        None,
+        None,
+    )
+    .await;
     assert!(
         result.is_err(),
         "remove-with-API-error must surface error: {result:?}"
@@ -348,7 +440,14 @@ async fn label_story_still_pm_gated_with_operation_param() {
         "operation": "remove"
     });
     for caller in ["dev:claude-code", "designer:claude-code"] {
-        let result = handle_label_story(args.as_object().unwrap(), caller, None, None).await;
+        let result = handle_label_story(
+            args.as_object().unwrap(),
+            caller,
+            role_from_name(caller),
+            None,
+            None,
+        )
+        .await;
         assert!(
             result.is_err(),
             "{caller} (non-pm, non-owner) must be rejected by PM-only gate"
@@ -358,8 +457,14 @@ async fn label_story_still_pm_gated_with_operation_param() {
             "{caller} rejection should cite role restriction"
         );
     }
-    let owner_result =
-        handle_label_story(args.as_object().unwrap(), "owner:human", None, None).await;
+    let owner_result = handle_label_story(
+        args.as_object().unwrap(),
+        "owner:human",
+        "owner",
+        None,
+        None,
+    )
+    .await;
     assert!(
         !owner_result
             .as_ref()

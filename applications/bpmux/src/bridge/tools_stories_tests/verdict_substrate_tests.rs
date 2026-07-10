@@ -9,6 +9,7 @@ use crate::transport::protocol::ClientMessage;
 mod verdict_substrate_integration_1407 {
     use crate::bridge::tools::handle_submit_verdict;
     use crate::bridge::tools_stories::handle_accept_story;
+    use crate::bridge::tools_stories::role_from_name;
     use crate::hub::Hub;
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::product_management::evidence::{EvidenceAction, evidence_for_story};
@@ -55,7 +56,15 @@ mod verdict_substrate_integration_1407 {
         args: &serde_json::Map<String, serde_json::Value>,
         role: &str,
     ) -> Result<String, String> {
-        handle_submit_verdict(args, role, hub, &store.dispatcher(), &store.select()).await
+        handle_submit_verdict(
+            args,
+            role,
+            role_from_name(role),
+            hub,
+            &store.dispatcher(),
+            &store.select(),
+        )
+        .await
     }
 
     fn delivered_story(id: u64) -> Story {
@@ -143,7 +152,7 @@ mod verdict_substrate_integration_1407 {
             .unwrap();
 
         let result =
-            handle_accept_story(&accept_args(42), "pm", None, Some(&orch), Some(&hub)).await;
+            handle_accept_story(&accept_args(42), "pm", "pm", None, Some(&orch), Some(&hub)).await;
         assert!(
             result.is_ok(),
             "accept_story must succeed when both verdicts present for target story; got {result:?}"
@@ -159,7 +168,7 @@ mod verdict_substrate_integration_1407 {
         seed_expired_verdict(&store, 42, "dev");
 
         let mut rx = hub.subscribe();
-        let err = handle_accept_story(&accept_args(42), "pm", None, Some(&orch), Some(&hub))
+        let err = handle_accept_story(&accept_args(42), "pm", "pm", None, Some(&orch), Some(&hub))
             .await
             .expect_err("expired verdicts must still block the accept");
         assert!(
@@ -232,7 +241,7 @@ mod verdict_substrate_integration_1407 {
         seed_verdict_grounded_on(&store, 42, "dev", "stale-sha-x");
 
         let mut rx = hub.subscribe();
-        let err = handle_accept_story(&accept_args(42), "pm", None, Some(&orch), Some(&hub))
+        let err = handle_accept_story(&accept_args(42), "pm", "pm", None, Some(&orch), Some(&hub))
             .await
             .expect_err(
                 "a moved grounded-head must block accept even though the verdicts are time-fresh",
@@ -267,7 +276,7 @@ mod verdict_substrate_integration_1407 {
             .await
             .unwrap();
 
-        let err = handle_accept_story(&accept_args(42), "pm", None, Some(&orch), Some(&hub))
+        let err = handle_accept_story(&accept_args(42), "pm", "pm", None, Some(&orch), Some(&hub))
             .await
             .expect_err("verdicts on #99 must not satisfy accept_story #42");
         assert!(
@@ -289,7 +298,7 @@ mod verdict_substrate_integration_1407 {
             .await
             .unwrap();
 
-        let err = handle_accept_story(&accept_args(42), "pm", None, Some(&orch), Some(&hub))
+        let err = handle_accept_story(&accept_args(42), "pm", "pm", None, Some(&orch), Some(&hub))
             .await
             .expect_err("missing dev-verdict must refuse");
         assert!(

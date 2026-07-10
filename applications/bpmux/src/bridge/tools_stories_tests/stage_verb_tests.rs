@@ -54,8 +54,14 @@ mod stage_verb_behavior {
     #[tokio::test]
     async fn pass_stage_at_the_first_stage_advances_to_the_next_configured_stage() {
         let orch = seeded(8100, Work::InProgress, &["chore"]).await;
-        let result =
-            handle_pass_stage(&pass_args(8100), "dev:claude-code", None, Some(&orch)).await;
+        let result = handle_pass_stage(
+            &pass_args(8100),
+            "dev:claude-code",
+            "dev",
+            None,
+            Some(&orch),
+        )
+        .await;
         assert!(result.is_ok(), "the dev judges the dev stage: {result:?}");
         let story = orch.story(8100).unwrap();
         assert_eq!(story.state, Work::InProgress);
@@ -69,9 +75,15 @@ mod stage_verb_behavior {
     #[tokio::test]
     async fn pass_stage_refuses_an_actor_who_is_not_the_configured_judge() {
         let orch = seeded(8101, Work::InProgress, &["chore", "desk-check"]).await;
-        let err = handle_pass_stage(&pass_args(8101), "dev:claude-code", None, Some(&orch))
-            .await
-            .expect_err("dev is not desk-check's judge");
+        let err = handle_pass_stage(
+            &pass_args(8101),
+            "dev:claude-code",
+            "dev",
+            None,
+            Some(&orch),
+        )
+        .await
+        .expect_err("dev is not desk-check's judge");
         assert!(
             err.contains("workflow-role-not-allowed") && err.contains("judge:desk-check"),
             "the refusal names the stage judgment: {err}"
@@ -81,8 +93,14 @@ mod stage_verb_behavior {
     #[tokio::test]
     async fn pass_stage_at_the_last_stage_crosses_to_acceptance() {
         let orch = seeded(8102, Work::InProgress, &["chore", "desk-check"]).await;
-        let result =
-            handle_pass_stage(&pass_args(8102), "designer:claude-code", None, Some(&orch)).await;
+        let result = handle_pass_stage(
+            &pass_args(8102),
+            "designer:claude-code",
+            "designer",
+            None,
+            Some(&orch),
+        )
+        .await;
         assert!(result.is_ok(), "designer judges desk-check: {result:?}");
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
@@ -100,6 +118,7 @@ mod stage_verb_behavior {
         let result = handle_fail_stage(
             &fail_args(8103, "the drill-in header overlaps the avatar at 320px"),
             "designer:claude-code",
+            "designer",
             None,
             Some(&orch),
         )
@@ -120,6 +139,7 @@ mod stage_verb_behavior {
         handle_fail_stage(
             &fail_args(8104, "the falsifier scenario reproduces the overlap"),
             "designer:claude-code",
+            "designer",
             None,
             Some(&orch),
         )
@@ -143,6 +163,7 @@ mod stage_verb_behavior {
         let err = handle_fail_stage(
             &fail_args(8105, "nope"),
             "designer:claude-code",
+            "designer",
             None,
             Some(&orch),
         )
@@ -157,9 +178,15 @@ mod stage_verb_behavior {
     #[tokio::test]
     async fn stage_verbs_require_the_story_in_the_middle() {
         let orch = seeded(8106, Work::NotStarted, &["chore"]).await;
-        let err = handle_pass_stage(&pass_args(8106), "dev:claude-code", None, Some(&orch))
-            .await
-            .expect_err("a ready story has no stage to judge");
+        let err = handle_pass_stage(
+            &pass_args(8106),
+            "dev:claude-code",
+            "dev",
+            None,
+            Some(&orch),
+        )
+        .await
+        .expect_err("a ready story has no stage to judge");
         assert!(
             err.contains("not in the board's middle"),
             "the refusal explains the story has no current stage: {err}"

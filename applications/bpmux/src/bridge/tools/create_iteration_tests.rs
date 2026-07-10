@@ -79,6 +79,7 @@ async fn create_iteration_creates_issue_with_iteration_type_and_named_title() {
     let result = handle_create_iteration(
         &args("Aquila"),
         "pm:claude-code",
+        "pm",
         None,
         Some(&refresh),
         &dispatch,
@@ -108,6 +109,7 @@ async fn create_iteration_rejects_duplicate_open_name() {
     let err = handle_create_iteration(
         &args("Aquila"),
         "pm:claude-code",
+        "pm",
         None,
         Some(&refresh),
         &dispatch,
@@ -132,6 +134,7 @@ async fn create_iteration_accepts_same_name_after_previous_closed() {
     let result = handle_create_iteration(
         &args("Aquila"),
         "pm:claude-code",
+        "pm",
         None,
         Some(&refresh),
         &dispatch,
@@ -151,6 +154,7 @@ async fn create_iteration_body_reserves_member_stories_section() {
     handle_create_iteration(
         &args("Pegasus"),
         "pm:claude-code",
+        "pm",
         None,
         Some(&refresh),
         &dispatch,
@@ -179,6 +183,7 @@ async fn create_iteration_attaches_iteration_label_atomically_at_source() {
     handle_create_iteration(
         &args("Aquila"),
         "pm:claude-code",
+        "pm",
         None,
         Some(&refresh),
         &dispatch,
@@ -210,6 +215,7 @@ async fn create_iteration_assigns_order_at_birth_1735() {
     handle_create_iteration(
         &args("Aquila"),
         "pm:claude-code",
+        "pm",
         None,
         Some(&refresh),
         &dispatch,
@@ -241,6 +247,7 @@ async fn create_iteration_appends_order_after_existing_1735() {
     handle_create_iteration(
         &args("Pegasus"),
         "pm:claude-code",
+        "pm",
         None,
         Some(&refresh),
         &dispatch,
@@ -261,6 +268,7 @@ async fn create_iteration_rejects_non_pm_role() {
     let err = handle_create_iteration(
         &args("Lyra"),
         "dev:claude-code",
+        "dev",
         None,
         Some(&refresh),
         &dispatch,
@@ -278,9 +286,16 @@ async fn create_iteration_requires_name_arg() {
     let (refresh, _adapter) = build_empty_refresh().await;
     let (dispatch, _rx) = dispatch_channel();
     let empty: Map<String, Value> = Map::new();
-    let err = handle_create_iteration(&empty, "pm:claude-code", None, Some(&refresh), &dispatch)
-        .await
-        .expect_err("missing name rejected");
+    let err = handle_create_iteration(
+        &empty,
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&refresh),
+        &dispatch,
+    )
+    .await
+    .expect_err("missing name rejected");
     assert!(
         err.contains("name is required"),
         "error names the required field: {err}"

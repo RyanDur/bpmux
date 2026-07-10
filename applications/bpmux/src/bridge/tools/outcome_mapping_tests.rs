@@ -163,14 +163,9 @@ async fn unmap_removes_the_relation_and_the_drill_drops_the_iteration_1763() {
         "both iterations build the outcome before unmap"
     );
 
-    handle_unmap_outcome_iteration(
-        &args(700, 710),
-        "pm:claude-code",
-        Some(&refresh),
-        &dispatch(),
-    )
-    .await
-    .expect("pm unmaps the iteration from the outcome");
+    handle_unmap_outcome_iteration(&args(700, 710), "pm", Some(&refresh), &dispatch())
+        .await
+        .expect("pm unmaps the iteration from the outcome");
 
     refresh.drain_pending().await.unwrap();
 
@@ -191,7 +186,7 @@ async fn unmap_leaves_the_iteration_itself_untouched_1763() {
     let (refresh, _adapter) =
         build_refresh(vec![outcome(700, vec![710]), iteration_for(710, 700)]).await;
     let (dispatch, mut rx) = dispatch_channel();
-    handle_unmap_outcome_iteration(&args(700, 710), "pm:claude-code", Some(&refresh), &dispatch)
+    handle_unmap_outcome_iteration(&args(700, 710), "pm", Some(&refresh), &dispatch)
         .await
         .expect("pm unmaps");
     let dispatched = iteration_upserted(&mut rx);
@@ -227,7 +222,7 @@ async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
         .as_object()
         .cloned()
         .unwrap();
-    handle_reorder_outcome_iteration(&reorder, "pm:claude-code", Some(&refresh), &dispatch())
+    handle_reorder_outcome_iteration(&reorder, "pm", Some(&refresh), &dispatch())
         .await
         .expect("pm reorders the iteration");
 
@@ -249,14 +244,9 @@ async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
 async fn unmap_is_pm_lane_non_pm_refused_1763() {
     let (refresh, _adapter) =
         build_refresh(vec![outcome(700, vec![710]), iteration_for(710, 700)]).await;
-    let err = handle_unmap_outcome_iteration(
-        &args(700, 710),
-        "dev:claude-code",
-        Some(&refresh),
-        &dispatch(),
-    )
-    .await
-    .expect_err("dev cannot unmap (pm-lane)");
+    let err = handle_unmap_outcome_iteration(&args(700, 710), "dev", Some(&refresh), &dispatch())
+        .await
+        .expect_err("dev cannot unmap (pm-lane)");
     assert!(err.contains("pm"), "the refusal names the pm-lane: {err}");
 }
 
@@ -264,14 +254,9 @@ async fn unmap_is_pm_lane_non_pm_refused_1763() {
 async fn unmap_rejects_an_unmapped_iteration_1763() {
     let (refresh, _adapter) =
         build_refresh(vec![outcome(700, vec![]), iteration_for(710, 999)]).await;
-    let err = handle_unmap_outcome_iteration(
-        &args(700, 710),
-        "pm:claude-code",
-        Some(&refresh),
-        &dispatch(),
-    )
-    .await
-    .expect_err("an iteration not mapped to the outcome cannot be unmapped from it");
+    let err = handle_unmap_outcome_iteration(&args(700, 710), "pm", Some(&refresh), &dispatch())
+        .await
+        .expect_err("an iteration not mapped to the outcome cannot be unmapped from it");
     assert!(
         err.contains("not mapped"),
         "the error explains it's not mapped: {err}"
@@ -292,14 +277,9 @@ async fn unmap_aimed_at_a_non_outcome_teaches_the_boundary_1763() {
         iteration_for(710, 700),
     ])
     .await;
-    let err = handle_unmap_outcome_iteration(
-        &args(700, 710),
-        "pm:claude-code",
-        Some(&refresh),
-        &dispatch(),
-    )
-    .await
-    .expect_err("a non-outcome target is refused");
+    let err = handle_unmap_outcome_iteration(&args(700, 710), "pm", Some(&refresh), &dispatch())
+        .await
+        .expect_err("a non-outcome target is refused");
     assert!(
         err.contains("not an Outcome"),
         "the error teaches the boundary: {err}"

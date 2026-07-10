@@ -2,12 +2,7 @@ pub(crate) fn role_from_name(name: &str) -> &str {
     name.split(':').next().unwrap_or(name)
 }
 
-pub(crate) fn require_role(
-    agent_name: &str,
-    allowed: &[&str],
-    operation: &str,
-) -> Result<(), String> {
-    let role = role_from_name(agent_name);
+pub(crate) fn require_role(role: &str, allowed: &[&str], operation: &str) -> Result<(), String> {
     if let Some(owner) = crate::workflow::current_workflow().owner_role_name()
         && !owner.is_empty()
         && role == owner
@@ -26,7 +21,7 @@ pub(crate) fn require_role(
 }
 
 pub(crate) fn require_purpose(
-    agent_name: &str,
+    role: &str,
     purposes: &[&str],
     operation: &str,
 ) -> Result<(), String> {
@@ -41,11 +36,11 @@ pub(crate) fn require_purpose(
         })
         .collect();
     let allowed_refs: Vec<&str> = allowed.iter().map(String::as_str).collect();
-    require_role(agent_name, &allowed_refs, operation)
+    require_role(role, &allowed_refs, operation)
 }
 
 pub(crate) fn require_purpose_any(
-    agent_name: &str,
+    role: &str,
     purpose: &str,
     operation: &str,
 ) -> Result<(), String> {
@@ -54,5 +49,5 @@ pub(crate) fn require_purpose_any(
     if allowed.is_empty() {
         return Err(format!("{operation} has no configured {purpose} role"));
     }
-    require_role(agent_name, &allowed, operation)
+    require_role(role, &allowed, operation)
 }

@@ -1,0 +1,31 @@
+use std::sync::Arc;
+
+pub(super) fn broadcast_client_msg_via_hub(
+    hub: &Arc<crate::hub::Hub>,
+    agent_name: &str,
+    msg: crate::transport::protocol::ClientMessage,
+) {
+    if let crate::transport::protocol::ClientMessage::Send {
+        text,
+        to,
+        addressee,
+        message_type,
+    } = msg
+    {
+        let explicit_privacy = to.is_some();
+        let from_short = crate::routing::short_name(agent_name);
+        let hub_msg = crate::message::Message {
+            from: format!("{from_short}:claude-code"),
+            text,
+            ts: chrono::Utc::now(),
+            message_type: crate::message::MessageType::from(message_type.as_deref()),
+            to,
+            addressee,
+            explicit_privacy,
+            ..crate::message::Message::default()
+        };
+        if let Err(e) = hub.broadcast(&hub_msg) {
+            crate::diag::log_diag(&format!("rpc: workflow-signal broadcast failed: {e}"));
+        }
+    }
+}

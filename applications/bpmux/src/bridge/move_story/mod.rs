@@ -19,6 +19,7 @@ use target::{
 pub(in crate::bridge) async fn handle_move_story(
     args: &Map<String, Value>,
     agent_name: &str,
+    role: &str,
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
@@ -39,7 +40,7 @@ pub(in crate::bridge) async fn handle_move_story(
         "rationale is required (#1188 falsifier-b — every move must surface an audit-trail reason)",
     )?;
 
-    authorization::enforce_move_authorization(agent_name)?;
+    authorization::enforce_move_authorization(role)?;
 
     if position.is_some() {
         match target {

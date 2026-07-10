@@ -60,6 +60,7 @@ async fn verdict_cast_broadcast_carries_message_type_system_not_chat() {
     handle_submit_verdict(
         &args,
         "dev:claude-code",
+        "dev",
         &hub,
         &store.dispatcher(),
         &store.select(),
@@ -90,6 +91,7 @@ async fn dev_writes_verdict_to_store_at_hub_dir() {
     let result = handle_submit_verdict(
         &args,
         "dev:claude-code",
+        "dev",
         &hub,
         &store.dispatcher(),
         &store.select(),
@@ -113,6 +115,7 @@ async fn designer_writes_verdict_to_store() {
     handle_submit_verdict(
         &args,
         "designer:claude-code",
+        "designer",
         &hub,
         &store.dispatcher(),
         &store.select(),
@@ -133,6 +136,7 @@ async fn pm_role_is_refused() {
     let err = handle_submit_verdict(
         &args,
         "pm:claude-code",
+        "pm",
         &hub,
         &store.dispatcher(),
         &store.select(),
@@ -151,9 +155,16 @@ async fn missing_substrate_grounding_is_refused() {
     let mut args = serde_json::Map::new();
     args.insert("story_id".into(), serde_json::json!(42));
     args.insert("verdict".into(), serde_json::json!("verified"));
-    let err = handle_submit_verdict(&args, "dev", &hub, &store.dispatcher(), &store.select())
-        .await
-        .expect_err("missing substrate_grounding should refuse");
+    let err = handle_submit_verdict(
+        &args,
+        "dev",
+        "dev",
+        &hub,
+        &store.dispatcher(),
+        &store.select(),
+    )
+    .await
+    .expect_err("missing substrate_grounding should refuse");
     assert!(err.contains("substrate_grounding"));
 }
 
@@ -163,9 +174,16 @@ async fn empty_substrate_grounding_is_refused() {
     let hub = make_hub(dir.path().to_path_buf());
     let store = SeededStore::new(vec![], vec![], vec![]);
     let args = make_args(42, "verified", "   ");
-    let err = handle_submit_verdict(&args, "dev", &hub, &store.dispatcher(), &store.select())
-        .await
-        .expect_err("whitespace-only substrate_grounding should refuse");
+    let err = handle_submit_verdict(
+        &args,
+        "dev",
+        "dev",
+        &hub,
+        &store.dispatcher(),
+        &store.select(),
+    )
+    .await
+    .expect_err("whitespace-only substrate_grounding should refuse");
     assert!(err.contains("substrate_grounding"));
 }
 
@@ -175,13 +193,27 @@ async fn replay_from_same_role_replaces_prior() {
     let hub = make_hub(dir.path().to_path_buf());
     let store = SeededStore::new(vec![], vec![], vec![]);
     let first = make_args(42, "verified", "initial cite");
-    handle_submit_verdict(&first, "dev", &hub, &store.dispatcher(), &store.select())
-        .await
-        .unwrap();
+    handle_submit_verdict(
+        &first,
+        "dev",
+        "dev",
+        &hub,
+        &store.dispatcher(),
+        &store.select(),
+    )
+    .await
+    .unwrap();
     let second = make_args(42, "rejected", "updated cite after second pass");
-    let result = handle_submit_verdict(&second, "dev", &hub, &store.dispatcher(), &store.select())
-        .await
-        .expect("replay should succeed");
+    let result = handle_submit_verdict(
+        &second,
+        "dev",
+        "dev",
+        &hub,
+        &store.dispatcher(),
+        &store.select(),
+    )
+    .await
+    .expect("replay should succeed");
     assert!(result.contains("replaced prior"));
     let recorded = stored(&store, 42);
     assert_eq!(recorded.len(), 1);

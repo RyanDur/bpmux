@@ -50,7 +50,7 @@ mod reopen_on_state_transition_tests {
         args.insert("id".into(), serde_json::json!(7110));
         args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
         args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
-        let result = handle_start_story(&args, "dev:claude-code", None, Some(&orch)).await;
+        let result = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
         assert!(result.is_ok(), "start_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         let pushed = adapter.pushed_events();
@@ -70,7 +70,7 @@ mod reopen_on_state_transition_tests {
         args.insert("id".into(), serde_json::json!(7111));
         args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
         args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
-        handle_start_story(&args, "dev:claude-code", None, Some(&orch))
+        handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch))
             .await
             .unwrap();
         orch.drain_pending().await.unwrap();
@@ -93,7 +93,7 @@ mod reopen_on_state_transition_tests {
             "verified_observation".into(),
             serde_json::json!("verified end-to-end"),
         );
-        let result = handle_deliver_story(&args, "dev:claude-code", None, Some(&orch)).await;
+        let result = handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
         assert!(result.is_ok(), "deliver_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         let pushed = adapter.pushed_events();
@@ -113,8 +113,15 @@ mod reopen_on_state_transition_tests {
         args.insert("id".into(), serde_json::json!(7130));
         args.insert("acceptor".into(), serde_json::json!("owner"));
         args.insert("would_file_bug".into(), serde_json::json!(false));
-        let result =
-            handle_pass_desk_check(&args, "designer:claude-code", None, Some(&orch), None).await;
+        let result = handle_pass_desk_check(
+            &args,
+            "designer:claude-code",
+            "designer",
+            None,
+            Some(&orch),
+            None,
+        )
+        .await;
         assert!(result.is_ok(), "pass_desk_check should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         let pushed = adapter.pushed_events();
@@ -141,7 +148,7 @@ mod reopen_on_state_transition_tests {
         args.insert("id".into(), serde_json::json!(7200));
         args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
         args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
-        let result = handle_start_story(&args, "dev:claude-code", None, Some(&orch)).await;
+        let result = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
         assert!(result.is_ok(), "start_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
@@ -154,7 +161,7 @@ mod reopen_on_state_transition_tests {
             "verified_observation".into(),
             serde_json::json!("drove the chore end-to-end"),
         );
-        let result = handle_deliver_story(&args, "dev:claude-code", None, Some(&orch)).await;
+        let result = handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
         assert!(result.is_ok(), "deliver_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         let story = orch.story(7200).unwrap();
@@ -167,7 +174,9 @@ mod reopen_on_state_transition_tests {
             "reason".into(),
             serde_json::json!("the drill-in header still overlaps the avatar at 320px"),
         );
-        let result = handle_fail_desk_check(&args, "designer:claude-code", None, Some(&orch)).await;
+        let result =
+            handle_fail_desk_check(&args, "designer:claude-code", "designer", None, Some(&orch))
+                .await;
         assert!(result.is_ok(), "fail_desk_check should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         let story = orch.story(7200).unwrap();
@@ -196,7 +205,7 @@ mod reopen_on_state_transition_tests {
             "verified_observation".into(),
             serde_json::json!("reworked the header overlap and drove it end-to-end"),
         );
-        let result = handle_deliver_story(&args, "dev:claude-code", None, Some(&orch)).await;
+        let result = handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
         assert!(
             result.is_ok(),
             "re-entry deliver_story should succeed: {result:?}"
@@ -210,8 +219,15 @@ mod reopen_on_state_transition_tests {
         args.insert("id".into(), serde_json::json!(7200));
         args.insert("acceptor".into(), serde_json::json!("owner"));
         args.insert("would_file_bug".into(), serde_json::json!(false));
-        let result =
-            handle_pass_desk_check(&args, "designer:claude-code", None, Some(&orch), None).await;
+        let result = handle_pass_desk_check(
+            &args,
+            "designer:claude-code",
+            "designer",
+            None,
+            Some(&orch),
+            None,
+        )
+        .await;
         assert!(result.is_ok(), "pass_desk_check should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
@@ -224,7 +240,7 @@ mod reopen_on_state_transition_tests {
             "reason".into(),
             serde_json::json!("scope drifted from the accepted falsifier"),
         );
-        let result = handle_reject_story(&args, "pm:claude-code", None, Some(&orch)).await;
+        let result = handle_reject_story(&args, "pm:claude-code", "pm", None, Some(&orch)).await;
         assert!(result.is_ok(), "reject_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
@@ -241,7 +257,7 @@ mod reopen_on_state_transition_tests {
             "falsifier_reframing".into(),
             serde_json::json!("reframing, take two"),
         );
-        let result = handle_start_story(&args, "dev:claude-code", None, Some(&orch)).await;
+        let result = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
         let ok = result.expect("re-entry start_story should succeed");
         assert!(
             ok.contains("REWORK") && ok.contains("scope drifted from the accepted falsifier"),
@@ -258,7 +274,7 @@ mod reopen_on_state_transition_tests {
             "verified_observation".into(),
             serde_json::json!("drove the accepted fix end-to-end after rework"),
         );
-        handle_deliver_story(&args, "dev:claude-code", None, Some(&orch))
+        handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch))
             .await
             .unwrap();
         orch.drain_pending().await.unwrap();
@@ -268,16 +284,24 @@ mod reopen_on_state_transition_tests {
         args.insert("id".into(), serde_json::json!(7200));
         args.insert("acceptor".into(), serde_json::json!("team"));
         args.insert("would_file_bug".into(), serde_json::json!(false));
-        handle_pass_desk_check(&args, "designer:claude-code", None, Some(&orch), None)
-            .await
-            .unwrap();
+        handle_pass_desk_check(
+            &args,
+            "designer:claude-code",
+            "designer",
+            None,
+            Some(&orch),
+            None,
+        )
+        .await
+        .unwrap();
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
 
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7200));
         args.insert("would_file_bug".into(), serde_json::json!(false));
-        let result = handle_accept_story(&args, "pm:claude-code", None, Some(&orch), None).await;
+        let result =
+            handle_accept_story(&args, "pm:claude-code", "pm", None, Some(&orch), None).await;
         assert!(result.is_ok(), "accept_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();

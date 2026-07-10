@@ -20,9 +20,11 @@ pub(super) async fn handle_set_outcome_horizon(
         serde_json::json!(outcome_id.value()),
     );
     args.insert("to".to_string(), serde_json::json!(horizon));
+    let role = crate::bridge::tools_stories::role_from_name(identity);
     if let Err(e) = crate::bridge::dispatch_reprioritize_outcome(
         args,
         identity,
+        role,
         ctx.routing_user_id.as_deref(),
         ctx.orchestrator.as_ref(),
         ctx.dispatch,
@@ -58,9 +60,10 @@ pub(super) async fn handle_reorder_outcome_iteration(
         serde_json::json!(iteration_id.value()),
     );
     args.insert("position".to_string(), serde_json::json!(position));
+    let role = crate::bridge::tools_stories::role_from_name(identity);
     if let Err(e) = crate::bridge::dispatch_reorder_outcome_iteration(
         args,
-        identity,
+        role,
         ctx.orchestrator.as_ref(),
         ctx.dispatch,
     )
@@ -90,9 +93,11 @@ pub(super) async fn handle_reorder_iteration(
         serde_json::json!(iteration_id.value()),
     );
     args.insert("position".to_string(), serde_json::json!(position));
+    let role = crate::bridge::tools_stories::role_from_name(identity);
     if let Err(e) = crate::bridge::dispatch_reorder_iteration(
         args,
         identity,
+        role,
         ctx.routing_user_id.as_deref(),
         ctx.orchestrator.as_ref(),
         ctx.dispatch,
@@ -125,9 +130,10 @@ pub(super) async fn handle_add_story_to_iteration(
     );
     args.insert("story_id".to_string(), serde_json::json!(story_id));
     args.insert("position".to_string(), serde_json::json!(position));
+    let role = crate::bridge::tools_stories::role_from_name(identity);
     if let Err(e) = crate::bridge::dispatch_add_story_to_iteration(
         args,
-        identity,
+        role,
         ctx.orchestrator.as_ref(),
         ctx.dispatch,
     )
@@ -157,9 +163,11 @@ pub(super) async fn handle_reprioritize_outcome(
         serde_json::json!(outcome_id.value()),
     );
     args.insert("position".to_string(), serde_json::json!(position));
+    let role = crate::bridge::tools_stories::role_from_name(identity);
     if let Err(e) = crate::bridge::dispatch_reprioritize_outcome(
         args,
         identity,
+        role,
         ctx.routing_user_id.as_deref(),
         ctx.orchestrator.as_ref(),
         ctx.dispatch,

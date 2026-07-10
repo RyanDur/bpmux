@@ -1,5 +1,5 @@
 use super::event_meta::meta_for;
-use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string, role_from_name};
+use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string};
 use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::{Story, StoryId, Verdict, Work};
 use crate::sync::RefreshDriver;
@@ -10,11 +10,12 @@ const REASON_CITE_MIN_CHARS: usize = 16;
 pub(crate) async fn handle_pass_stage(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     let (id, r, story, held) = judged_stage_of(args, refresh).await?;
-    enforce_judge(&held, agent_name)?;
+    enforce_judge(&held, role, agent_name)?;
     let observation = require_nonempty_string(
         args,
         "verified_observation",
@@ -45,11 +46,12 @@ pub(crate) async fn handle_pass_stage(
 pub(crate) async fn handle_fail_stage(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     let (id, r, story, held) = judged_stage_of(args, refresh).await?;
-    enforce_judge(&held, agent_name)?;
+    enforce_judge(&held, role, agent_name)?;
     let reason = args
         .get("reason")
         .and_then(|v| v.as_str())
@@ -113,15 +115,10 @@ async fn judged_stage_of<'r>(
     Ok((id, r, story, held))
 }
 
-fn enforce_judge(held: &StageId, agent_name: &str) -> Result<(), String> {
+fn enforce_judge(held: &StageId, role: &str, agent_name: &str) -> Result<(), String> {
     let workflow = crate::workflow::current_workflow();
-    crate::workflow::enforce_stage_judge(
-        workflow,
-        held.as_str(),
-        role_from_name(agent_name),
-        agent_name,
-    )
-    .map_err(|e| e.as_json_string())
+    crate::workflow::enforce_stage_judge(workflow, held.as_str(), role, agent_name)
+        .map_err(|e| e.as_json_string())
 }
 
 fn cast_and_transition(

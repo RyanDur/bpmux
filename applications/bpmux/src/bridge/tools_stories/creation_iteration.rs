@@ -1,18 +1,19 @@
 use super::event_meta::meta_for;
-use super::helpers::{compose_iteration_body, require_nonempty_string, role_from_name};
+use super::helpers::{compose_iteration_body, require_nonempty_string};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_create_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     let workflow = crate::workflow::current_workflow();
     let pm = workflow.role_name_for_purpose("pm").unwrap_or("pm");
-    let actor_role = role_from_name(agent_name);
+    let actor_role = role;
     let is_owner = workflow
         .owner_role_name()
         .is_some_and(|o| !o.is_empty() && actor_role == o);

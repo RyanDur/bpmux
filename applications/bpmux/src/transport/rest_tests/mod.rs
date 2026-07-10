@@ -189,6 +189,9 @@ pub(super) fn tracker_for(server: &MockServer) -> crate::integrations::github::G
 pub(super) fn board_router(hub: Arc<hub::Hub>, tracker: TrackerHandle) -> axum::Router {
     use axum::routing::{get, post};
     let none_refresh: crate::sync::OrchestratorHandle = None;
+    let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
+    let select = seeded.select();
+    std::mem::forget(seeded);
     axum::Router::new()
         .route("/api/board", get(crate::transport::rest::get_board))
         .route(
@@ -206,6 +209,7 @@ pub(super) fn board_router(hub: Arc<hub::Hub>, tracker: TrackerHandle) -> axum::
         .with_state(hub)
         .layer(axum::Extension(tracker))
         .layer(axum::Extension(none_refresh))
+        .layer(axum::Extension(select))
 }
 
 pub(super) async fn post_json(

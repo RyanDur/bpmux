@@ -18,79 +18,79 @@ fn role_from_name_extracts_short_role() {
 
 #[test]
 fn require_role_allows_matching_role() {
-    assert!(require_role("dev:claude-code", &["dev"], "start").is_ok());
+    assert!(require_role("dev", &["dev"], "start").is_ok());
     assert!(require_role("pm", &["pm"], "label").is_ok());
-    assert!(require_role("owner:human", &["owner"], "accept").is_ok());
+    assert!(require_role("owner", &["owner"], "accept").is_ok());
 }
 
 #[test]
 fn require_role_owner_superset_bypasses_any_gate_yet_non_owner_stays_gated() {
-    assert!(require_role("owner:human", &["pm"], "label").is_ok());
-    assert!(require_role("owner:human", &["designer"], "fail desk-check").is_ok());
-    assert!(require_role("dev:claude-code", &["pm"], "label").is_err());
+    assert!(require_role("owner", &["pm"], "label").is_ok());
+    assert!(require_role("owner", &["designer"], "fail desk-check").is_ok());
+    assert!(require_role("dev", &["pm"], "label").is_err());
 }
 
 #[test]
 fn require_role_rejects_non_matching_role() {
-    let result = require_role("designer:claude-code", &["dev"], "start");
+    let result = require_role("designer", &["dev"], "start");
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("restricted to dev"));
 }
 
 #[test]
 fn require_role_rejects_pm_from_dev_operations() {
-    let result = require_role("pm:claude-code", &["dev"], "deliver");
+    let result = require_role("pm", &["dev"], "deliver");
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("restricted to dev"));
 }
 
 #[test]
 fn require_role_rejects_dev_from_pm_operations() {
-    let result = require_role("dev:claude-code", &["pm"], "label");
+    let result = require_role("dev", &["pm"], "label");
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("restricted to pm"));
 }
 
 #[test]
 fn require_role_rejects_agents_from_owner_only_operations() {
-    let result = require_role("dev:claude-code", &["owner"], "reject");
+    let result = require_role("dev", &["owner"], "reject");
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("restricted to owner"));
 
-    let result = require_role("pm:claude-code", &["owner"], "reject");
+    let result = require_role("pm", &["owner"], "reject");
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("restricted to owner"));
 }
 
 #[test]
 fn require_role_allows_designer_for_desk_check_operations() {
-    assert!(require_role("designer:claude-code", &["designer"], "pass desk-check").is_ok());
+    assert!(require_role("designer", &["designer"], "pass desk-check").is_ok());
     assert!(require_role("designer", &["designer"], "fail desk-check").is_ok());
 }
 
 #[test]
 fn require_role_rejects_dev_from_close_iteration() {
-    let result = require_role("dev:claude-code", &["pm"], "close iteration");
+    let result = require_role("dev", &["pm"], "close iteration");
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("restricted to pm"));
 }
 
 #[test]
 fn require_role_rejects_designer_from_close_iteration() {
-    let result = require_role("designer:claude-code", &["pm"], "close iteration");
+    let result = require_role("designer", &["pm"], "close iteration");
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("restricted to pm"));
 }
 
 #[test]
 fn require_role_lets_owner_bypass_close_iteration_via_the_1548_superset() {
-    assert!(require_role("owner:human", &["pm"], "close iteration").is_ok());
+    assert!(require_role("owner", &["pm"], "close iteration").is_ok());
 }
 
 #[test]
 fn close_story_is_pm_only_gate_for_non_owner_roles() {
     for caller in ["dev:claude-code", "designer:claude-code"] {
-        let result = require_role(caller, &["pm"], "close");
+        let result = require_role(role_from_name(caller), &["pm"], "close");
         assert!(
             result.is_err(),
             "{caller} (non-pm, non-owner) should not pass close_story permission gate"
@@ -98,14 +98,14 @@ fn close_story_is_pm_only_gate_for_non_owner_roles() {
         assert!(result.unwrap_err().contains("restricted to pm"));
     }
     assert!(
-        require_role("owner:human", &["pm"], "close").is_ok(),
+        require_role("owner", &["pm"], "close").is_ok(),
         "the owner bypasses the pm-only close gate via the #1548 superset"
     );
 }
 
 #[test]
 fn close_story_allows_pm() {
-    assert!(require_role("pm:claude-code", &["pm"], "close").is_ok());
+    assert!(require_role("pm", &["pm"], "close").is_ok());
 }
 
 #[tokio::test]
@@ -151,7 +151,7 @@ async fn comment_on_story_rejects_when_refresh_absent() {
 #[test]
 fn require_role_rejects_non_designer_non_owner_from_desk_check_operations() {
     for caller in ["dev:claude-code", "pm:claude-code"] {
-        let result = require_role(caller, &["designer"], "pass desk-check");
+        let result = require_role(role_from_name(caller), &["designer"], "pass desk-check");
         assert!(
             result.is_err(),
             "{caller} should not pass desk-check; got: {result:?}"
@@ -159,7 +159,7 @@ fn require_role_rejects_non_designer_non_owner_from_desk_check_operations() {
         assert!(result.unwrap_err().contains("restricted to designer"));
     }
     assert!(
-        require_role("owner:human", &["designer"], "pass desk-check").is_ok(),
+        require_role("owner", &["designer"], "pass desk-check").is_ok(),
         "the owner bypasses the designer-only require_role gate via the #1548 superset"
     );
 }
@@ -194,10 +194,16 @@ fn move_args(
 async fn move_story_bare_column_move_is_pm_only_1548() {
     for caller in ["dev:claude-code", "designer:claude-code"] {
         let args = move_args(42, "ready", None);
-        let err =
-            crate::bridge::move_story::handle_move_story(&args, caller, None, None, &no_dispatch())
-                .await
-                .expect_err(&format!("{caller}: bare column-move must be role-rejected"));
+        let err = crate::bridge::move_story::handle_move_story(
+            &args,
+            caller,
+            role_from_name(caller),
+            None,
+            None,
+            &no_dispatch(),
+        )
+        .await
+        .expect_err(&format!("{caller}: bare column-move must be role-rejected"));
         assert!(
             err.contains("\"kind\":\"workflow-role-not-allowed\""),
             "{caller}: bare column-move must 409 workflow-role-not-allowed; got {err}"
@@ -209,10 +215,16 @@ async fn move_story_bare_column_move_is_pm_only_1548() {
 async fn move_story_positioned_move_is_pm_only_1548() {
     for caller in ["dev:claude-code", "designer:claude-code"] {
         let args = move_args(42, "ready", Some(1));
-        let err =
-            crate::bridge::move_story::handle_move_story(&args, caller, None, None, &no_dispatch())
-                .await
-                .expect_err(&format!("{caller}: positioned move must be role-rejected"));
+        let err = crate::bridge::move_story::handle_move_story(
+            &args,
+            caller,
+            role_from_name(caller),
+            None,
+            None,
+            &no_dispatch(),
+        )
+        .await
+        .expect_err(&format!("{caller}: positioned move must be role-rejected"));
         assert!(
             err.contains("\"kind\":\"workflow-role-not-allowed\""),
             "{caller}: positioned move must 409 workflow-role-not-allowed; got {err}"
@@ -227,6 +239,7 @@ async fn move_story_pm_passes_role_gate_on_both_paths_1548() {
         let err = crate::bridge::move_story::handle_move_story(
             &args,
             "pm:claude-code",
+            "pm",
             None,
             None,
             &no_dispatch(),

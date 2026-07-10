@@ -4,11 +4,12 @@ use super::helpers::{ensure_story_in_canonical_store, require_purpose};
 pub(crate) async fn handle_edit_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    require_purpose(agent_name, &["pm"], "edit story")?;
+    require_purpose(role, &["pm"], "edit story")?;
     let id = args
         .get("id")
         .and_then(|v| v.as_u64())

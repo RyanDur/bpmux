@@ -125,7 +125,7 @@ async fn remove_member_clears_membership_so_the_board_no_longer_shows_it_1762() 
     let (dispatch, mut rx) = dispatch_channel();
     let result = handle_remove_iteration_member(
         &remove_args(1700, 710, Some("descoped this iteration")),
-        "pm:claude-code",
+        "pm",
         Some(&refresh),
         &dispatch,
     )
@@ -153,7 +153,7 @@ async fn remove_member_flags_an_in_flight_story_state_not_a_silent_scope_cut_176
     let (dispatch, _rx) = dispatch_channel();
     let result = handle_remove_iteration_member(
         &remove_args(1700, 710, Some("pivot")),
-        "pm:claude-code",
+        "pm",
         Some(&refresh),
         &dispatch,
     )
@@ -175,7 +175,7 @@ async fn remove_member_with_no_reason_is_rejected_1762() {
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_remove_iteration_member(
         &remove_args(1700, 710, None),
-        "pm:claude-code",
+        "pm",
         Some(&refresh),
         &dispatch,
     )
@@ -205,7 +205,7 @@ async fn remove_member_is_pm_lane_non_pm_refused_1762() {
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_remove_iteration_member(
         &remove_args(1700, 710, Some("r")),
-        "dev:claude-code",
+        "dev",
         Some(&refresh),
         &dispatch,
     )
@@ -224,7 +224,7 @@ async fn remove_member_rejects_a_non_member_1762() {
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_remove_iteration_member(
         &remove_args(1700, 710, Some("r")),
-        "pm:claude-code",
+        "pm",
         Some(&refresh),
         &dispatch,
     )
@@ -249,7 +249,7 @@ async fn move_member_reorders_within_the_iteration_1762() {
         .as_object()
         .cloned()
         .unwrap();
-    handle_move_iteration_member(&args, "pm:claude-code", Some(&refresh), &dispatch)
+    handle_move_iteration_member(&args, "pm", Some(&refresh), &dispatch)
         .await
         .expect("pm reorders the member");
     assert_eq!(
@@ -272,9 +272,16 @@ async fn reorder_iteration_insert_shifts_the_planning_order_1762() {
         .as_object()
         .cloned()
         .unwrap();
-    handle_reorder_iteration(&args, "pm:claude-code", None, Some(&refresh), &dispatch)
-        .await
-        .expect("pm reorders the iteration to the front");
+    handle_reorder_iteration(
+        &args,
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&refresh),
+        &dispatch,
+    )
+    .await
+    .expect("pm reorders the iteration to the front");
     let dispatched = upserted_iterations(&mut rx);
     let order_of = |n: u64| {
         find_iteration(&dispatched, n)
@@ -298,6 +305,7 @@ async fn reorder_iteration_is_pm_lane_non_pm_refused_1762() {
             .cloned()
             .unwrap(),
         "dev:claude-code",
+        "dev",
         None,
         Some(&refresh),
         &dispatch,
@@ -315,7 +323,7 @@ async fn rename_updates_the_iteration_title_1762() {
         .as_object()
         .cloned()
         .unwrap();
-    handle_rename_iteration(&args, "pm:claude-code", Some(&refresh), &dispatch)
+    handle_rename_iteration(&args, "pm", Some(&refresh), &dispatch)
         .await
         .expect("pm renames the iteration");
     assert_eq!(
@@ -340,7 +348,7 @@ async fn renaming_a_current_iteration_preserves_its_current_designation() {
         .as_object()
         .cloned()
         .unwrap();
-    handle_rename_iteration(&rename, "pm:claude-code", Some(&refresh), &dispatch)
+    handle_rename_iteration(&rename, "pm", Some(&refresh), &dispatch)
         .await
         .expect("pm renames the iteration");
     let dispatched = upserted_iterations(&mut rx);
@@ -370,7 +378,7 @@ async fn iteration_reorg_verbs_teach_the_boundary_on_a_non_iteration_1762() {
         .as_object()
         .cloned()
         .unwrap();
-    let err = handle_rename_iteration(&args, "pm:claude-code", Some(&refresh), &dispatch)
+    let err = handle_rename_iteration(&args, "pm", Some(&refresh), &dispatch)
         .await
         .expect_err("a non-iteration is not name-editable");
     assert!(

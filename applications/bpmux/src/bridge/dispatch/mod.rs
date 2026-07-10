@@ -1,5 +1,6 @@
 mod iteration;
 mod outcome;
+mod signal_broadcast;
 mod story;
 mod transition;
 mod view;

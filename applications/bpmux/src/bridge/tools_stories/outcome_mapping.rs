@@ -27,11 +27,11 @@ async fn verify_iteration_mapped(
 
 pub(crate) async fn handle_unmap_outcome_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
-    agent_name: &str,
+    role: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    require_purpose(agent_name, &["pm"], "unmap an iteration from an outcome")?;
+    require_purpose(role, &["pm"], "unmap an iteration from an outcome")?;
     let outcome_id = args
         .get("outcome_id")
         .and_then(serde_json::Value::as_u64)
@@ -89,11 +89,11 @@ pub(crate) async fn handle_unmap_outcome_iteration(
 
 pub(crate) async fn handle_reorder_outcome_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
-    agent_name: &str,
+    role: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    require_purpose(agent_name, &["pm"], "reorder an outcome's iterations")?;
+    require_purpose(role, &["pm"], "reorder an outcome's iterations")?;
     let outcome_id = args
         .get("outcome_id")
         .and_then(serde_json::Value::as_u64)

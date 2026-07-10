@@ -38,6 +38,7 @@ async fn label_story_rejects_iteration_label_with_tool_retired_kind_1402() {
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "add"),
         "pm:claude-code",
+        "pm",
         None,
         Some(&orch),
     )
@@ -73,6 +74,7 @@ async fn label_story_rejects_iteration_label_for_different_names_1402() {
         let result = handle_label_story(
             &label_args(label, "add"),
             "pm:claude-code",
+            "pm",
             None,
             Some(&orch),
         )
@@ -100,6 +102,7 @@ async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
         let result = handle_label_story(
             &label_args(label, "add"),
             "pm:claude-code",
+            "pm",
             None,
             Some(&orch),
         )
@@ -131,6 +134,7 @@ async fn label_story_rejects_iteration_label_before_canonical_store_check_1402()
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "add"),
         "pm:claude-code",
+        "pm",
         None,
         None,
     )
@@ -155,6 +159,7 @@ async fn label_story_rejects_malformed_label_shapes_through_normal_path_1402() {
         let result = handle_label_story(
             &label_args(label, "add"),
             "pm:claude-code",
+            "pm",
             None,
             Some(&orch),
         )
@@ -172,6 +177,7 @@ async fn label_story_remove_iteration_label_still_works_for_migration_1402() {
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "remove"),
         "pm:claude-code",
+        "pm",
         None,
         Some(&orch),
     )
@@ -188,6 +194,7 @@ async fn non_pm_role_rejected_before_retire_gate_fires_1402() {
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "add"),
         "dev:claude-code",
+        "dev",
         None,
         Some(&orch),
     )

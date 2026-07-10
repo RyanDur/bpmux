@@ -26,6 +26,7 @@ interface Props {
   isOwner: boolean
   apiBase: string | undefined
   authToken: string | undefined
+  ownerNonce?: string | undefined
   visible: boolean
   focusTimeline?: boolean
   onBack: () => void
@@ -40,6 +41,7 @@ const DrillIn = ({
   isOwner,
   apiBase,
   authToken,
+  ownerNonce,
   visible,
   focusTimeline,
   onBack,
@@ -153,6 +155,7 @@ const DrillIn = ({
         canAct={canAct}
         apiBase={apiBase}
         authToken={authToken}
+        ownerNonce={ownerNonce}
         mode={mode}
         setMode={setMode}
         onStoryMutated={onStoryMutated}

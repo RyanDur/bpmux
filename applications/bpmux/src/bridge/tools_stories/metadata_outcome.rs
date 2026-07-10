@@ -10,11 +10,12 @@ use std::sync::Arc;
 pub(crate) async fn handle_reprioritize_outcome(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    role: &str,
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    require_purpose(agent_name, &["pm"], "reprioritize an outcome")?;
+    require_purpose(role, &["pm"], "reprioritize an outcome")?;
     let outcome_id = args
         .get("outcome_id")
         .and_then(serde_json::Value::as_u64)

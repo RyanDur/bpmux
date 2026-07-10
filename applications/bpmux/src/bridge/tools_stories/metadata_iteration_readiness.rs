@@ -1,18 +1,17 @@
 use super::event_meta::meta_for;
-use super::helpers::{
-    ensure_iteration_in_canonical_store, require_purpose, require_purpose_any, role_from_name,
-};
+use super::helpers::{ensure_iteration_in_canonical_store, require_purpose, require_purpose_any};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_designate_current_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    require_purpose(agent_name, &["pm"], "designate current iteration")?;
+    require_purpose(role, &["pm"], "designate current iteration")?;
     let iteration_id = args
         .get("iteration_id")
         .and_then(|v| v.as_u64())
@@ -69,12 +68,13 @@ pub(crate) async fn handle_designate_current_iteration(
 pub(crate) async fn handle_close_pre_pickup_review(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     require_purpose_any(
-        agent_name,
+        role,
         crate::product_management::iteration::readiness::ITERATION_REVIEWER_PURPOSE,
         "close the pre-pickup review",
     )?;
@@ -84,7 +84,7 @@ pub(crate) async fn handle_close_pre_pickup_review(
         .ok_or("missing 'iteration_id' argument")?;
     let r = refresh.ok_or("close_pre_pickup_review requires refresh (RefreshDriver)")?;
     let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
-    let role = role_from_name(agent_name).to_string();
+    let role = role.to_string();
     let label = crate::integrations::github::gh_label_codec::GhLabelCodec
         .encode_iteration_review_closed(&role);
     let meta = meta_for(agent_name, actor_id);
@@ -115,12 +115,13 @@ pub(crate) async fn handle_close_pre_pickup_review(
 pub(crate) async fn handle_dev_ok_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     require_purpose_any(
-        agent_name,
+        role,
         crate::product_management::iteration::readiness::ITERATION_BUILDER_PURPOSE,
         "record dev-OK for the iteration",
     )?;
@@ -130,7 +131,7 @@ pub(crate) async fn handle_dev_ok_iteration(
         .ok_or("missing 'iteration_id' argument")?;
     let r = refresh.ok_or("dev_ok_iteration requires refresh (RefreshDriver)")?;
     let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
-    let role = role_from_name(agent_name).to_string();
+    let role = role.to_string();
     let label =
         crate::integrations::github::gh_label_codec::GhLabelCodec.encode_iteration_dev_ok(&role);
     let meta = meta_for(agent_name, actor_id);

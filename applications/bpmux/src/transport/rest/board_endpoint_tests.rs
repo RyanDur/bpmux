@@ -233,9 +233,15 @@ async fn an_optimistic_reject_is_visible_on_the_board_snapshot_before_it_reaches
         "reason".into(),
         serde_json::json!("scope mismatch — rework"),
     );
-    crate::bridge::tools_stories::handle_reject_story(&args, "pm:human", None, Some(&refresh))
-        .await
-        .expect("pm rejects the story");
+    crate::bridge::tools_stories::handle_reject_story(
+        &args,
+        "pm:human",
+        "pm",
+        None,
+        Some(&refresh),
+    )
+    .await
+    .expect("pm rejects the story");
 
     let stories = ordered_board_stories(&refresh);
     assert_eq!(

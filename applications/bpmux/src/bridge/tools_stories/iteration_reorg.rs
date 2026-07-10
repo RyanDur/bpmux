@@ -10,11 +10,12 @@ use std::sync::Arc;
 pub(crate) async fn handle_reorder_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    role: &str,
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    require_purpose(agent_name, &["pm"], "reorder iterations")?;
+    require_purpose(role, &["pm"], "reorder iterations")?;
     let iteration_id = args
         .get("iteration_id")
         .and_then(serde_json::Value::as_u64)
@@ -105,11 +106,11 @@ fn renumber_iteration_order(
 
 pub(crate) async fn handle_rename_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
-    agent_name: &str,
+    role: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    require_purpose(agent_name, &["pm"], "edit an iteration name")?;
+    require_purpose(role, &["pm"], "edit an iteration name")?;
     let iteration_id = args
         .get("iteration_id")
         .and_then(serde_json::Value::as_u64)

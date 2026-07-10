@@ -81,9 +81,16 @@ fn args(iteration_id: u64) -> serde_json::Map<String, serde_json::Value> {
 async fn pm_designates_current_iteration_sets_is_current_1540() {
     let orch = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let (dispatch, mut rx) = dispatch_channel();
-    handle_designate_current_iteration(&args(1552), "pm:claude-code", None, Some(&orch), &dispatch)
-        .await
-        .expect("designate should succeed");
+    handle_designate_current_iteration(
+        &args(1552),
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&orch),
+        &dispatch,
+    )
+    .await
+    .expect("designate should succeed");
     let iterations = iteration_upserted(&mut rx);
     let designated = iterations
         .iter()
@@ -103,9 +110,16 @@ async fn designate_clears_prior_current_holder_replace_semantic_1540() {
     ])
     .await;
     let (dispatch, mut rx) = dispatch_channel();
-    handle_designate_current_iteration(&args(1552), "pm:claude-code", None, Some(&orch), &dispatch)
-        .await
-        .expect("designate");
+    handle_designate_current_iteration(
+        &args(1552),
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&orch),
+        &dispatch,
+    )
+    .await
+    .expect("designate");
     let iterations = iteration_upserted(&mut rx);
     let prior = iterations
         .iter()
@@ -132,6 +146,7 @@ async fn designate_rejects_non_iteration_story_1540() {
     let err = handle_designate_current_iteration(
         &args(1500),
         "pm:claude-code",
+        "pm",
         None,
         Some(&orch),
         &dispatch,
@@ -151,6 +166,7 @@ async fn designate_rejected_for_non_pm_1540() {
     handle_designate_current_iteration(
         &args(1552),
         "dev:claude-code",
+        "dev",
         None,
         Some(&orch),
         &dispatch,

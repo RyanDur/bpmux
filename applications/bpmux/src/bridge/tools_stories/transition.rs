@@ -1,6 +1,6 @@
 use super::acceptance_test_path::validate_acceptance_test_path_at_pickup;
 use super::event_meta::meta_for;
-use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string, role_from_name};
+use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string};
 use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::{StoryId, Verdict, Work};
 use crate::sync::RefreshDriver;
@@ -8,10 +8,11 @@ use crate::sync::RefreshDriver;
 pub(crate) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
-    let actor_role = role_from_name(agent_name);
+    let actor_role = role;
     let workflow = crate::workflow::current_workflow();
     let transition =
         crate::workflow::resolve_transition(workflow, "pickup", crate::workflow::GateClass::None)

@@ -79,6 +79,7 @@ async fn designer_close_records_act_and_flips_review_readiness_1703() {
     handle_close_pre_pickup_review(
         &args(1552),
         "designer:claude-code",
+        "designer",
         None,
         Some(&orch),
         &dispatch,
@@ -118,6 +119,7 @@ async fn non_reviewer_role_is_refused_1703() {
     let err = handle_close_pre_pickup_review(
         &args(1552),
         "dev:claude-code",
+        "dev",
         None,
         Some(&orch),
         &dispatch,
@@ -137,6 +139,7 @@ async fn non_iteration_story_is_refused_1703() {
     let err = handle_close_pre_pickup_review(
         &args(1552),
         "designer:claude-code",
+        "designer",
         None,
         Some(&orch),
         &dispatch,

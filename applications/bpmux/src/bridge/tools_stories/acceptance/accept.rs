@@ -4,17 +4,18 @@ use super::helpers::{
 };
 use crate::bridge::tools_stories::build_verdict_reprompt_signal;
 use crate::bridge::tools_stories::event_meta::meta_for;
-use crate::bridge::tools_stories::helpers::{ensure_story_in_canonical_store, role_from_name};
+use crate::bridge::tools_stories::helpers::ensure_story_in_canonical_store;
 use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_accept_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     hub: Option<&std::sync::Arc<crate::hub::Hub>>,
 ) -> Result<String, String> {
-    let actor_role = role_from_name(agent_name);
+    let actor_role = role;
     let workflow = crate::workflow::current_workflow();
     let id = args
         .get("id")

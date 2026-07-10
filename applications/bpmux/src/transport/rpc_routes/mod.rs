@@ -14,13 +14,15 @@ mod tool_dispatch;
 mod validation;
 
 #[cfg(test)]
+mod effective_role_tests;
+#[cfg(test)]
 mod rpc_dispatch_tests;
 
 use state_delta::{
     fire_board_invalidate, fire_stories, fire_story_transition, fire_view_backlog_marker,
     story_state_label,
 };
-use tool_dispatch::{ToolCaller, dispatch};
+use tool_dispatch::{ToolCaller, dispatch, effective_role};
 pub use validation::{ACTOR_ID_HEADER, AGENT_HEADER, actor_id_from_headers, agent_from_headers};
 use validation::{args_from_value, is_read_only_tool};
 
@@ -84,8 +86,10 @@ pub async fn post_rpc_tool(
     let prior_state = transition_id
         .filter(|_| !is_read_only_tool(&tool))
         .and_then(|id| story_state_label(&refresh, id));
+    let role = effective_role(&select, &agent, actor_id.as_deref());
     let caller = ToolCaller {
         agent: &agent,
+        role: &role,
         actor_id: actor_id.as_deref(),
     };
     match dispatch(&refresh, &tool, caller, args, &hub, &dispatcher, &select).await {

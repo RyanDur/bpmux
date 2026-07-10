@@ -28,10 +28,11 @@ pub(crate) fn retired_iteration_label_axis_error(label: &str) -> String {
 pub(crate) async fn handle_label_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
-    require_purpose(agent_name, &["pm"], "label")?;
+    require_purpose(role, &["pm"], "label")?;
     let id = args
         .get("id")
         .and_then(|v| v.as_u64())

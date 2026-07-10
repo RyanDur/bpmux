@@ -118,6 +118,7 @@ async fn pm_creates_a_first_class_outcome_distinct_from_epic_with_horizon_1738()
     let result = handle_create_outcome(
         &args("The team runs on its own infra", "next"),
         "pm:claude-code",
+        "pm",
         None,
         Some(&refresh),
         &dispatch,
@@ -153,6 +154,7 @@ async fn create_outcome_is_pm_lane_non_pm_refused_1738() {
     let err = handle_create_outcome(
         &args("X", "now"),
         "dev:claude-code",
+        "dev",
         None,
         Some(&refresh),
         &dispatch,
@@ -169,6 +171,7 @@ async fn create_outcome_rejects_invalid_horizon_1738() {
     let err = handle_create_outcome(
         &args("X", "someday"),
         "pm:claude-code",
+        "pm",
         None,
         Some(&refresh),
         &dispatch,
@@ -185,14 +188,9 @@ async fn create_outcome_rejects_invalid_horizon_1738() {
 async fn pm_maps_an_iteration_to_an_outcome_in_order_1738() {
     let refresh = build_refresh(vec![seed_outcome(700), seed_iteration(710)]).await;
     let (dispatch, mut rx) = dispatch_channel();
-    handle_map_iteration_to_outcome(
-        &map_args(700, 710, 1),
-        "pm:claude-code",
-        Some(&refresh),
-        &dispatch,
-    )
-    .await
-    .expect("pm maps the iteration to the outcome");
+    handle_map_iteration_to_outcome(&map_args(700, 710, 1), "pm", Some(&refresh), &dispatch)
+        .await
+        .expect("pm maps the iteration to the outcome");
     let mut outcomes = Vec::new();
     let mut iterations = Vec::new();
     while let Ok(action) = rx.try_recv() {
@@ -226,14 +224,10 @@ async fn pm_maps_an_iteration_to_an_outcome_in_order_1738() {
 async fn map_iteration_to_outcome_is_pm_lane_non_pm_refused_1738() {
     let refresh = build_refresh(vec![seed_outcome(700), seed_iteration(710)]).await;
     let (dispatch, _rx) = dispatch_channel();
-    let err = handle_map_iteration_to_outcome(
-        &map_args(700, 710, 1),
-        "dev:claude-code",
-        Some(&refresh),
-        &dispatch,
-    )
-    .await
-    .expect_err("dev cannot map (pm-lane)");
+    let err =
+        handle_map_iteration_to_outcome(&map_args(700, 710, 1), "dev", Some(&refresh), &dispatch)
+            .await
+            .expect_err("dev cannot map (pm-lane)");
     assert!(err.contains("pm"), "refusal names pm-lane: {err}");
 }
 
@@ -245,14 +239,10 @@ async fn map_rejects_non_outcome_target_1738() {
     ])
     .await;
     let (dispatch, _rx) = dispatch_channel();
-    let err = handle_map_iteration_to_outcome(
-        &map_args(700, 710, 1),
-        "pm:claude-code",
-        Some(&refresh),
-        &dispatch,
-    )
-    .await
-    .expect_err("a feature is not an outcome — iterations map only to outcomes");
+    let err =
+        handle_map_iteration_to_outcome(&map_args(700, 710, 1), "pm", Some(&refresh), &dispatch)
+            .await
+            .expect_err("a feature is not an outcome — iterations map only to outcomes");
     assert!(
         err.contains("not an Outcome"),
         "refusal explains the target must be an Outcome: {err}"

@@ -175,6 +175,7 @@ const Board = ({ hidden, width }: BoardProps): React.JSX.Element => {
               isOwner={isOwner}
               apiBase={bridge?.apiBase}
               authToken={bridge?.authToken}
+              ownerNonce={bridge?.ownerNonce}
               visible={drilledStory !== null}
               focusTimeline={focusTimelineFor === renderedDrill.id}
               onBack={handleBack}

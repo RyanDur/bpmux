@@ -92,11 +92,11 @@ pub(crate) async fn remove_member_everywhere(
 
 pub(crate) async fn handle_remove_iteration_member(
     args: &serde_json::Map<String, serde_json::Value>,
-    agent_name: &str,
+    role: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    require_purpose(agent_name, &["pm"], "remove an iteration member")?;
+    require_purpose(role, &["pm"], "remove an iteration member")?;
     let iteration_id = args
         .get("iteration_id")
         .and_then(serde_json::Value::as_u64)
@@ -129,11 +129,11 @@ pub(crate) async fn handle_remove_iteration_member(
 
 pub(crate) async fn handle_move_iteration_member(
     args: &serde_json::Map<String, serde_json::Value>,
-    agent_name: &str,
+    role: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    require_purpose(agent_name, &["pm"], "reorder an iteration member")?;
+    require_purpose(role, &["pm"], "reorder an iteration member")?;
     let iteration_id = args
         .get("iteration_id")
         .and_then(serde_json::Value::as_u64)

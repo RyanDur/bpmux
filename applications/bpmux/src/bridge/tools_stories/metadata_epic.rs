@@ -8,10 +8,11 @@ use crate::product_management::story::StoryId;
 pub(crate) async fn handle_set_parent_epic(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
-    require_purpose(agent_name, &["pm"], "set parent epic")?;
+    require_purpose(role, &["pm"], "set parent epic")?;
     let id = args
         .get("id")
         .and_then(|v| v.as_u64())
@@ -41,10 +42,11 @@ pub(crate) async fn handle_set_parent_epic(
 pub(crate) async fn handle_unset_parent_epic(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
-    require_purpose(agent_name, &["pm"], "unset parent epic")?;
+    require_purpose(role, &["pm"], "unset parent epic")?;
     let id = args
         .get("id")
         .and_then(|v| v.as_u64())

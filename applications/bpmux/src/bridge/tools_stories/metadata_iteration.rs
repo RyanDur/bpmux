@@ -1,6 +1,6 @@
 use super::helpers::{
     ensure_iteration_in_canonical_store, ensure_outcome_in_canonical_store,
-    ensure_story_in_canonical_store, require_purpose, role_from_name,
+    ensure_story_in_canonical_store, require_purpose,
 };
 use crate::integrations::github::mapper::outcome_with_body;
 use crate::integrations::github::relationships::{
@@ -11,11 +11,11 @@ use crate::product_management::outcome::OutcomeId;
 
 pub(crate) async fn handle_add_story_to_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
-    agent_name: &str,
+    role: &str,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    let actor_role = role_from_name(agent_name);
+    let actor_role = role;
     let workflow = crate::workflow::current_workflow();
     let transition = crate::workflow::resolve_transition(
         workflow,
@@ -57,11 +57,11 @@ pub(crate) async fn handle_add_story_to_iteration(
 
 pub(crate) async fn handle_map_iteration_to_outcome(
     args: &serde_json::Map<String, serde_json::Value>,
-    agent_name: &str,
+    role: &str,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    require_purpose(agent_name, &["pm"], "map an iteration to an outcome")?;
+    require_purpose(role, &["pm"], "map an iteration to an outcome")?;
     let outcome_id = args
         .get("outcome_id")
         .and_then(|v| v.as_u64())
