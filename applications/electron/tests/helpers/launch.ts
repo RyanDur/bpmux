@@ -159,11 +159,11 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
   // trait — works identically against FileStorage + MemoryStorage.
   const hasRoster = opts.seedRoster && opts.seedRoster.length > 0
   if (hasRoster) {
-    const sessionId = 'playwright-seed-' + Date.now().toString(36)
-    const sessionDir = join(dataBase, sessionId)
-    mkdirSync(sessionDir, { recursive: true })
-    writeFileSync(join(sessionDir, 'roster_seed.json'), JSON.stringify(opts.seedRoster))
-    symlinkSync(sessionDir, join(dataBase, 'current'))
+    const dataDirId = 'playwright-seed-' + Date.now().toString(36)
+    const dataDir = join(dataBase, dataDirId)
+    mkdirSync(dataDir, { recursive: true })
+    writeFileSync(join(dataDir, 'roster_seed.json'), JSON.stringify(opts.seedRoster))
+    symlinkSync(dataDir, join(dataBase, 'current'))
   }
   // Per-test auth-token isolation. Without this, parallel workers
   // collide on $HOME/.bpmux/auth_token — bpmux's default location —

@@ -40,27 +40,23 @@ BPMUX_API="http://127.0.0.1:${BPMUX_PORT}/api/messages"
 #      signaling "compaction happened; reconstruct from chat + lessons".
 # In both cases the existing chat broadcast still fires (additive
 # wiring per falsifier-(f)).
-SESSIONS_BASE="${BPMUX_DATA_BASE:-$HOME/.bpmux/sessions}"
-# Resolve the current session directory. location::resume_or_create_
-# data_dir writes a symlink `current` → the active data dir. If the
-# symlink resolves, use it; otherwise fall back to the bare sessions-
-# base (newer-startup may not yet have the symlink). Either way, the
-# bookmark lands at a path load_bookmark recognizes for this role.
-SESSION_DIR="$SESSIONS_BASE/current"
-if [ -L "$SESSION_DIR" ] || [ -d "$SESSION_DIR" ]; then
-  SESSION_DIR=$(cd "$SESSION_DIR" 2>/dev/null && pwd -P || echo "$SESSION_DIR")
+DATA_BASE="$HOME/.bpmux/data"
+if [ ! -d "$DATA_BASE" ]; then
+  DATA_BASE="$HOME/.bpmux/sessions"
 fi
-# Sanitize role to alphanumerics + dash + underscore so a role string
-# can't escape the session directory via traversal (mirrors the Rust
-# session::identity::sanitize_name discipline).
+DATA_BASE="${BPMUX_DATA_BASE:-$DATA_BASE}"
+DATA_DIR="$DATA_BASE/current"
+if [ -L "$DATA_DIR" ] || [ -d "$DATA_DIR" ]; then
+  DATA_DIR=$(cd "$DATA_DIR" 2>/dev/null && pwd -P || echo "$DATA_DIR")
+fi
 SAFE_ROLE=$(printf '%s' "$BPMUX_ROLE" | sed 's/[^A-Za-z0-9_-]//g')
 if [ -z "$SAFE_ROLE" ]; then
   SAFE_ROLE="unknown"
 fi
-BOOKMARK_PATH="$SESSION_DIR/bookmark-${SAFE_ROLE}.json"
+BOOKMARK_PATH="$DATA_DIR/bookmark-${SAFE_ROLE}.json"
 TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-mkdir -p "$SESSION_DIR" 2>/dev/null || true
+mkdir -p "$DATA_DIR" 2>/dev/null || true
 
 if [ -f "$BOOKMARK_PATH" ]; then
   # Existing bookmark — update last_updated only, preserve everything

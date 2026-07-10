@@ -3,22 +3,79 @@ use std::path::{Path, PathBuf};
 
 use crate::log::LogError;
 
-pub fn default_data_base() -> Result<PathBuf, LogError> {
-    if let Ok(override_path) = std::env::var("BPMUX_DATA_BASE")
-        && !override_path.is_empty()
-    {
-        return Ok(PathBuf::from(override_path));
+fn data_base_override() -> Option<PathBuf> {
+    let override_path = std::env::var("BPMUX_DATA_BASE").ok()?;
+    if override_path.is_empty() {
+        return None;
     }
-    let base = dirs::home_dir()
+    Some(PathBuf::from(override_path))
+}
+
+fn home_bpmux_dir() -> Result<PathBuf, LogError> {
+    dirs::home_dir()
         .ok_or_else(|| {
             LogError::Io(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
                 "home directory not found",
             ))
-        })?
-        .join(".bpmux")
-        .join("sessions");
-    Ok(base)
+        })
+        .map(|home| home.join(".bpmux"))
+}
+
+pub(crate) fn resolve_base_with_migration(
+    override_base: Option<PathBuf>,
+    parent: &Path,
+) -> Result<PathBuf, LogError> {
+    match override_base {
+        Some(path) => Ok(path),
+        None => {
+            migrate_legacy_sessions_base(parent)?;
+            Ok(parent.join("data"))
+        }
+    }
+}
+
+pub fn resolve_default_base() -> Result<PathBuf, LogError> {
+    resolve_base_with_migration(data_base_override(), &home_bpmux_dir()?)
+}
+
+static LEGACY_LEFTOVER_DIAG_ONCE: std::sync::Once = std::sync::Once::new();
+
+pub(crate) fn migrate_legacy_sessions_base(parent: &Path) -> Result<(), LogError> {
+    let data = parent.join("data");
+    let sessions = parent.join("sessions");
+    if data.exists() {
+        if sessions.exists() {
+            LEGACY_LEFTOVER_DIAG_ONCE.call_once(|| {
+                crate::diag::log_diag(&format!(
+                    "legacy data base leftover at {} — data/ is authoritative; the leftover is never merged or deleted",
+                    sessions.display()
+                ));
+            });
+        }
+        return Ok(());
+    }
+    if !sessions.exists() {
+        return Ok(());
+    }
+    std::fs::rename(&sessions, &data)?;
+    repoint_current_symlink(&data, &sessions)
+}
+
+fn repoint_current_symlink(data: &Path, old_base: &Path) -> Result<(), LogError> {
+    let current = data.join("current");
+    if !current.is_symlink() {
+        return Ok(());
+    }
+    let target = std::fs::read_link(&current)?;
+    let Ok(suffix) = target.strip_prefix(old_base) else {
+        return Ok(());
+    };
+    let new_target = data.join(suffix);
+    std::fs::remove_file(&current)?;
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&new_target, &current)?;
+    Ok(())
 }
 
 pub fn resume_or_create_data_dir(base: &Path) -> Result<PathBuf, LogError> {

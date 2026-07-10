@@ -3,7 +3,12 @@
 # Only outputs when NEW messages exist since last check.
 # Tracks last-seen line count per session.
 
-MESSAGES_FILE="$HOME/.bpmux/sessions/current/messages-current.jsonl"
+DATA_BASE="$HOME/.bpmux/data"
+if [ ! -d "$DATA_BASE" ]; then
+  DATA_BASE="$HOME/.bpmux/sessions"
+fi
+DATA_BASE="${BPMUX_DATA_BASE:-$DATA_BASE}"
+MESSAGES_FILE="$DATA_BASE/current/messages-current.jsonl"
 
 if [ ! -f "$MESSAGES_FILE" ]; then
   exit 0

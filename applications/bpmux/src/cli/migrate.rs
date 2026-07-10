@@ -1,5 +1,5 @@
 fn current_data_dir() -> anyhow::Result<std::path::PathBuf> {
-    let base = crate::location::default_data_base()?;
+    let base = crate::location::resolve_default_base()?;
     Ok(crate::location::resume_or_create_data_dir(&base)?)
 }
 

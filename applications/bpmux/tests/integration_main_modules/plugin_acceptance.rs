@@ -38,32 +38,33 @@ fn session_start_script() -> PathBuf {
     project_dir().join("claude-plugin/hooks/session-start.sh")
 }
 
-fn create_session_dir(tmp: &tempfile::TempDir) -> PathBuf {
-    let sessions_dir = tmp.path().join(".bpmux/sessions");
-    let session_dir = sessions_dir.join("test-session");
-    fs::create_dir_all(&session_dir).unwrap();
+fn create_data_home(tmp: &tempfile::TempDir) -> PathBuf {
+    let data_base = tmp.path().join(".bpmux/data");
+    let data_dir = data_base.join("test-data-dir");
+    fs::create_dir_all(&data_dir).unwrap();
 
-    let current_link = sessions_dir.join("current");
-    unix_fs::symlink(&session_dir, &current_link).unwrap();
+    let current_link = data_base.join("current");
+    unix_fs::symlink(&data_dir, &current_link).unwrap();
 
-    session_dir
+    data_dir
 }
 
 #[test]
 fn hook_reads_jsonl_and_outputs_formatted_messages() {
     let tmp = tempfile::tempdir().unwrap();
-    let session_dir = create_session_dir(&tmp);
+    let data_dir = create_data_home(&tmp);
 
     // Write JSONL messages (using "from" field matching session::Message)
     let jsonl = r#"{"from":"alice","text":"hello world","ts":"2026-04-03T12:00:00Z"}
 {"from":"bob","text":"how are you","ts":"2026-04-03T12:01:00Z"}
 {"from":"alice","text":"doing great","ts":"2026-04-03T12:02:00Z"}
 "#;
-    fs::write(session_dir.join("messages-current.jsonl"), jsonl).unwrap();
+    fs::write(data_dir.join("messages-current.jsonl"), jsonl).unwrap();
 
     let output = Command::new("bash")
         .arg(check_bpmux_script())
         .env("HOME", tmp.path())
+        .env_remove("BPMUX_DATA_BASE")
         .output()
         .unwrap();
 
@@ -85,6 +86,7 @@ fn hook_outputs_nothing_when_no_session_exists() {
     let output = Command::new("bash")
         .arg(check_bpmux_script())
         .env("HOME", tmp.path())
+        .env_remove("BPMUX_DATA_BASE")
         .output()
         .unwrap();
 

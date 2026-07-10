@@ -32,6 +32,8 @@ pub mod kernel;
 mod kernel_tests;
 pub mod location;
 #[cfg(test)]
+mod location_migration_tests;
+#[cfg(test)]
 mod location_tests;
 pub mod log;
 #[cfg(test)]

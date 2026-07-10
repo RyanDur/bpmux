@@ -3,7 +3,7 @@ use crate::{location, transport};
 pub(super) fn resolve_data_base(cli_base: &Option<String>) -> anyhow::Result<std::path::PathBuf> {
     match cli_base {
         Some(path) => Ok(std::path::PathBuf::from(path)),
-        None => Ok(location::default_data_base()?),
+        None => Ok(location::resolve_default_base()?),
     }
 }
 

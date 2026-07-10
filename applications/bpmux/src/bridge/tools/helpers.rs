@@ -38,8 +38,8 @@ pub(super) fn identity_error(e: &crate::memory::identity::IdentityError) -> Stri
 }
 
 pub(super) async fn get_data_dir() -> Result<std::path::PathBuf, String> {
-    use crate::location::default_data_base;
-    let base = default_data_base().map_err(|e| format!("data base: {e}"))?;
+    use crate::location::resolve_default_base;
+    let base = resolve_default_base().map_err(|e| format!("data base: {e}"))?;
     let current = base.join("current");
     if current.is_symlink() {
         std::fs::read_link(&current).map_err(|e| format!("read current: {e}"))

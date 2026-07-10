@@ -23,14 +23,14 @@ fn sanitize_name(name: &str) -> String {
 }
 
 pub(crate) fn subscriptions_path(name: &str) -> Option<PathBuf> {
-    let dir = crate::location::default_data_base()
+    let dir = crate::location::resolve_default_base()
         .ok()?
         .join("bridge-subscriptions");
     Some(dir.join(format!("{}.json", sanitize_name(name))))
 }
 
 pub(super) fn cursor_path(name: &str) -> Option<PathBuf> {
-    let dir = crate::location::default_data_base()
+    let dir = crate::location::resolve_default_base()
         .ok()?
         .join("bridge-subscriptions");
     Some(dir.join(format!("{}.cursor", sanitize_name(name))))

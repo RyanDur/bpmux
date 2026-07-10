@@ -40,7 +40,7 @@ These three flags / env vars are mandatory. Without them, the test instance coll
 | Knob | Value | Why |
 |------|-------|-----|
 | `--mcp-port` | `4118` (or any free port ≠ 4117) | Ryan's live bpmux binds 4117. Binding the same port from the test instance fails immediately |
-| `BPMUX_DATA_BASE` | `/tmp/...` (or any dir outside `~/.bpmux/sessions`) | The default data base is shared. Two instances writing to the same session dir corrupt each other's state |
+| `BPMUX_DATA_BASE` | `/tmp/...` (or any dir outside `~/.bpmux/data`) | The default data base is shared. Two instances writing to the same data dir corrupt each other's state |
 | `--name` | anything descriptive, e.g. `desk-check-peer` | Makes log entries and message attribution legible; defaults to `dev` which collides |
 
 ## What you can actually do

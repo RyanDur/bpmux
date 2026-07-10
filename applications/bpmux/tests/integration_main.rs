@@ -193,6 +193,8 @@ mod pass_desk_check_e2e;
 mod pass_desk_check_substrate_enforce_e2e;
 #[path = "integration_main_modules/plugin_acceptance.rs"]
 mod plugin_acceptance;
+#[path = "integration_main_modules/plugin_hook_legacy_base_fallback.rs"]
+mod plugin_hook_legacy_base_fallback;
 #[path = "integration_main_modules/precompact_save_bookmark_e2e.rs"]
 mod precompact_save_bookmark_e2e;
 #[path = "integration_main_modules/read_messages_e2e.rs"]

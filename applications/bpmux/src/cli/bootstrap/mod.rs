@@ -34,7 +34,7 @@ pub(crate) struct Cli {
     )]
     mcp_port: u16,
 
-    #[arg(long, help = "Data base directory (defaults to ~/.bpmux/sessions)")]
+    #[arg(long, help = "Data base directory (defaults to ~/.bpmux/data)")]
     data_base: Option<String>,
 
     #[command(subcommand)]
