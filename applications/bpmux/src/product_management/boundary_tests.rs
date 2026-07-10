@@ -96,7 +96,7 @@ fn product_management_domain_imports_no_infrastructure_edge() {
 
     assert!(
         violations.is_empty(),
-        "product_management is the domain: it does not reach the infrastructure edges (crate::storage persistence, crate::transport delivery) directly. State lives in the store; the synchronization engine (crate::sync) owns persistence and projects off the store; identity/name helpers live in crate::routing. Move the offending code into crate::sync, behind a store-owned port, or to a support module (crate::routing). Violations:\n{}",
+        "product_management is the domain: it does not reach the infrastructure edges (crate::storage persistence, crate::transport delivery) directly. State lives in the store; the synchronization engine (crate::sync) owns persistence and projects off the store; identity/name helpers live in user_routing. Move the offending code into crate::sync, behind a store-owned port, or to a support module (user_routing). Violations:\n{}",
         violations.join("\n")
     );
 }

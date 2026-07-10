@@ -6,8 +6,8 @@ mod user;
 
 pub use identity::*;
 pub use naming::bridge_agent_name;
-pub(crate) use naming::short_name;
-pub(crate) use user::default_kind;
+pub use naming::short_name;
+pub use user::default_kind;
 pub use user::*;
 
 #[cfg(test)]

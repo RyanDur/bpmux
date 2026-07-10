@@ -11,6 +11,7 @@ kernel = { path = "../../components/kernel" }
 message = { path = "../../components/message" }
 message_log = { path = "../../components/message_log" }
 persist = { path = "../../components/persist" }
+user_routing = { path = "../../components/user_routing" }
 workflow = { path = "../../components/workflow" }
 tokio = { workspace = true, features = ["full"] }
 clap = { version = "4", features = ["derive"] }

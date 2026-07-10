@@ -8,8 +8,8 @@ use serde::Deserialize;
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::hub;
-use crate::routing::short_name;
 use crate::store::routing::RoutingAction;
+use user_routing::short_name;
 
 use super::shared::OWNER_NONCE_HEADER;
 

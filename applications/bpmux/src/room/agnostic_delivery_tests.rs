@@ -332,7 +332,7 @@ async fn an_agents_own_broadcast_under_its_bridge_name_is_not_reflected_back_int
     let mut dev_rx = register_live_cat(&registry, &store, "sess-dev", "dev", dev_terminal);
     let mut pm_rx = register_live_cat(&registry, &store, "sess-pm", "pm", "term-pm");
 
-    let sender = crate::routing::bridge_agent_name(dev_terminal);
+    let sender = user_routing::bridge_agent_name(dev_terminal);
     deliver_to_terminals(
         &chat(&sender, "my own line", None),
         &registry,

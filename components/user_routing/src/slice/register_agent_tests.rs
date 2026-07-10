@@ -1,5 +1,5 @@
 use super::register_agent_actions;
-use crate::routing::slice::{RoutingAction, RoutingState, cursor, reduce, resolve, terminal_for};
+use crate::slice::{RoutingAction, RoutingState, cursor, reduce, resolve, terminal_for};
 
 fn apply(state: &RoutingState, action: RoutingAction) -> RoutingState {
     reduce(state, &action).unwrap_or_else(|| state.clone())

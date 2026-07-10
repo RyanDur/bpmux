@@ -310,7 +310,7 @@ fn delivery_targets_routes_by_id_excluding_the_sender_and_offline_ids() {
 
 #[test]
 fn delivery_targets_excludes_the_senders_own_terminal_even_under_the_unresolved_bridge_name() {
-    use crate::routing::bridge_agent_name;
+    use crate::bridge_agent_name;
 
     let dev_terminal = "ccb4298d-1111-2222-3333-444455556666";
     let state = registered(&RoutingState::default(), "sess-dev", "dev");

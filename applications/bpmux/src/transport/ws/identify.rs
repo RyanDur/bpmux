@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::routing::short_name;
+use user_routing::short_name;
 
 pub(super) fn resolve_routing_user_id(
     store: &Arc<crate::store::Store>,

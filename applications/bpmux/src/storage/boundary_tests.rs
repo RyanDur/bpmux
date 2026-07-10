@@ -11,7 +11,7 @@ const COMPOSED_FEATURE_PATHS: &[&str] = &[
     "message_log",
     "crate::memory",
     "crate::sync",
-    "crate::routing",
+    "user_routing::",
 ];
 
 #[test]
@@ -45,7 +45,7 @@ fn storage_composes_feature_ports_only_in_the_super_trait_bound() {
          bound list ONLY; its own body declares nothing but neutral key/value state \
          (load_state/save_state). A composed-feature path outside the bound means a domain \
          persistence method leaked back onto the edge trait — move it behind the owning \
-         feature's port (e.g. crate::routing::UserRepo). Leaked paths: {}",
+         feature's port (e.g. user_routing::UserRepo). Leaked paths: {}",
         leaked.join(", ")
     );
 }
@@ -57,7 +57,7 @@ const PORT_OWNING_FEATURE_MODULES: &[&str] = &[
     "../../../components/message_log/src",
     "memory",
     "sync",
-    "routing",
+    "../../../components/user_routing/src",
 ];
 
 fn collect_rs_files(path: &Path, out: &mut Vec<PathBuf>) {

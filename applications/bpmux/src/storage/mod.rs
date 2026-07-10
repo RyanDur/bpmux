@@ -10,7 +10,7 @@ pub trait Storage:
     + message_log::MessageLog
     + crate::memory::lessons::LessonRepo
     + crate::sync::OutboxRepo
-    + crate::routing::UserRepo
+    + user_routing::UserRepo
     + Send
     + Sync
 {

@@ -1,6 +1,6 @@
 use super::FileStorage;
-use crate::routing::{UserRecord, UserRepo, default_kind};
 use persist::PersistError;
+use user_routing::{UserRecord, UserRepo, default_kind};
 
 impl UserRepo for FileStorage {
     fn load_users(&self) -> Result<Vec<UserRecord>, PersistError> {

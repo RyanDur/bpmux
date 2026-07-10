@@ -1,7 +1,7 @@
-use crate::routing::short_name;
 use crate::store::Select;
 use crate::store::routing::RoutingState;
 use message::{BROADCAST_ALL, Message};
+use user_routing::short_name;
 
 pub(crate) fn stamp_delivery_ids(select: &Select, msg: &mut Message) {
     select.select(|state| {

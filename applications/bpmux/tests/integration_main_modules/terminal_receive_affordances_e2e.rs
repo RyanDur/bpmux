@@ -407,7 +407,7 @@ async fn the_terminal_receive_affordance_routes_group_and_direct_and_withholds_w
         "FILTERING: a group message to:[dev,pm] is WITHHELD from designer (outside the group)"
     );
 
-    let dev_bridge_name = bpmux::routing::bridge_agent_name(&dev_terminal);
+    let dev_bridge_name = user_routing::bridge_agent_name(&dev_terminal);
     post_message(
         &bpmux,
         json!({ "from": dev_bridge_name, "text": "DEVS-OWN-LINE" }),
@@ -562,8 +562,8 @@ async fn message_routing_runs_end_to_end_on_the_sqlite_backend_the_cutover_user_
         "SELF-ECHO on sqlite: dev's own broadcast is never reflected back into dev's terminal"
     );
 
-    use bpmux::routing::UserRepo;
     use bpmux::storage::SqliteStorage;
+    use user_routing::UserRepo;
     let storage = SqliteStorage::new(bpmux.sessions_base_path().join("current"))
         .expect("open the server's sqlite session store");
     let mut roles: Vec<String> = storage

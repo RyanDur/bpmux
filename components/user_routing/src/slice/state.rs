@@ -1,4 +1,4 @@
-use crate::routing::RoutingIdentity;
+use crate::RoutingIdentity;
 
 #[derive(Default, Clone)]
 pub struct RoutingState {

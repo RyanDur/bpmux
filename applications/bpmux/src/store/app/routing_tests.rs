@@ -5,10 +5,10 @@ use std::sync::Arc;
 use tempfile::TempDir;
 
 use super::routing::RoutingPersister;
-use crate::routing::UserRepo;
 use crate::store::routing::{RoutingAction, from_users};
 use crate::store::{AppAction, AppState, app_reduce};
 use kernel::{Dispatch, Listener, Reaction};
+use user_routing::UserRepo;
 
 fn no_op_dispatch() -> Dispatch<AppAction> {
     Arc::new(|_action: AppAction| {})

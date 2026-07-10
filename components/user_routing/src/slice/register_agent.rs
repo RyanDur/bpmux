@@ -1,4 +1,4 @@
-use crate::routing::cursor_time::cursor_after;
+use crate::cursor_time::cursor_after;
 
 use super::{RoutingAction, RoutingState};
 

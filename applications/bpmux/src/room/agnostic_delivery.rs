@@ -5,10 +5,10 @@ use tokio::sync::broadcast;
 
 use crate::hub::Hub;
 use crate::room::LivePtyRegistry;
-use crate::routing::short_name;
 use crate::store::routing::RoutingAction;
 use crate::store::{Dispatch, Select};
 use message::{BROADCAST_ALL, Message};
+use user_routing::short_name;
 
 use super::terminal_inject::frame_team_message;
 

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::routing::UserRepo;
+use user_routing::UserRepo;
 
 pub struct RoutingPersister {
     repo: Arc<dyn UserRepo>,

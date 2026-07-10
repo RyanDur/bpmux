@@ -13,7 +13,7 @@ pub(super) fn broadcast_client_msg_via_hub(
     } = msg
     {
         let explicit_privacy = to.is_some();
-        let from_short = crate::routing::short_name(agent_name);
+        let from_short = user_routing::short_name(agent_name);
         let hub_msg = message::Message {
             from: format!("{from_short}:claude-code"),
             text,

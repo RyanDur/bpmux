@@ -1,5 +1,5 @@
-use crate::routing::short_name;
 use crate::transport::ws::should_deliver;
+use user_routing::short_name;
 
 pub(super) fn matches_any_resolved(
     resolved_ids: &[String],

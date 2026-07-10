@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
-use crate::routing::cursor_time::to_millis;
-use crate::routing::short_name;
+use crate::cursor_time::to_millis;
+use crate::short_name;
 
 use super::RoutingState;
 
@@ -50,7 +50,7 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
     use super::reconcile;
-    use crate::routing::slice::{RoutingAction, RoutingState, reduce};
+    use crate::slice::{RoutingAction, RoutingState, reduce};
 
     fn apply(state: &RoutingState, action: RoutingAction) -> RoutingState {
         reduce(state, &action).unwrap_or_else(|| state.clone())

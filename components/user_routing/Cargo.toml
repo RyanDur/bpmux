@@ -1,0 +1,18 @@
+[package]
+name = "user_routing"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "User identity and routing: ids, records, the UserRepo port, the routing slice"
+
+[dependencies]
+message = { path = "../message" }
+persist = { path = "../persist" }
+serde = { workspace = true, features = ["derive"] }
+chrono = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

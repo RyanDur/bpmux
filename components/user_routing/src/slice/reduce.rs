@@ -1,5 +1,5 @@
-use crate::routing::cursor_time::later_cursor;
-use crate::routing::short_name;
+use crate::cursor_time::later_cursor;
+use crate::short_name;
 
 use super::{RoutingAction, RoutingState};
 

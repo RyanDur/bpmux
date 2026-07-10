@@ -71,7 +71,7 @@ pub(crate) async fn handle_create_outcome(
                 title: title.clone(),
                 body: Some(body),
                 filed_at: chrono::Utc::now(),
-                filed_by: crate::routing::short_name(agent_name).to_string(),
+                filed_by: user_routing::short_name(agent_name).to_string(),
                 lifecycle: crate::product_management::outcome::OutcomeLifecycle::Active {
                     horizon: Some(horizon),
                     horizon_order: None,

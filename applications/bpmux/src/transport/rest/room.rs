@@ -35,7 +35,7 @@ pub async fn post_terminal_spawn(
     let bridge = crate::room::BridgeWiring {
         binary,
         port,
-        agent_name: crate::routing::bridge_agent_name(&terminal_id),
+        agent_name: user_routing::bridge_agent_name(&terminal_id),
     };
     let integration =
         crate::room::terminal_provisioning(&command, Some(&bridge)).unwrap_or_default();

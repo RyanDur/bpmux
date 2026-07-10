@@ -1,5 +1,5 @@
-use crate::routing::cursor_time::from_millis;
-use crate::routing::{RoutingIdentity, UserRecord};
+use crate::cursor_time::from_millis;
+use crate::{RoutingIdentity, UserRecord};
 
 use super::RoutingState;
 
@@ -19,14 +19,14 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
     use super::from_users;
-    use crate::routing::UserRecord;
+    use crate::UserRecord;
 
     fn record(user_id: &str, name: &str, role: &str) -> UserRecord {
         UserRecord {
             user_id: user_id.to_string(),
             name: name.to_string(),
             role: role.to_string(),
-            kind: crate::routing::default_kind(),
+            kind: crate::default_kind(),
             last_delivered_at: None,
         }
     }

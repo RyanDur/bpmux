@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::routing::short_name;
+use user_routing::short_name;
 
 mod listeners;
 mod wire;

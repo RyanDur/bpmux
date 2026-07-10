@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::sqlite::SqliteStorage;
-use crate::routing::UserRepo;
 use message::{Message, MessageType};
 use message_log::MessageLog;
+use user_routing::UserRepo;
 
 fn store() -> (tempfile::TempDir, SqliteStorage) {
     let dir = tempfile::TempDir::new().unwrap();

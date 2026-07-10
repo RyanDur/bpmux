@@ -74,7 +74,7 @@ fn roster_join_is_idempotent() {
 
 #[test]
 fn reconcile_drops_a_ghost_agent_with_no_live_terminal_but_keeps_role_and_live_bare_agent() {
-    use crate::routing::bridge_agent_name;
+    use user_routing::bridge_agent_name;
 
     let live_terminal = "aaaaaaaa-1111-2222-3333-444455556666";
     let dead_terminal = "deadbeef-9999-8888-7777-666655554444";

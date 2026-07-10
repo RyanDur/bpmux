@@ -1,7 +1,7 @@
 use rusqlite::Connection;
 
 use super::sqlite_engine as engine;
-use crate::routing::UserRecord;
+use user_routing::UserRecord;
 
 pub const SYSTEM_USER_ID: &str = "bpmux-system";
 

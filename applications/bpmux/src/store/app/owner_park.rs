@@ -72,7 +72,7 @@ impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for Owner
                 } => Some(match &event.meta.actor_id {
                     Some(id) => Delivering::ById(id.clone()),
                     None => Delivering::ByDisplay(
-                        crate::routing::short_name(&event.meta.actor).to_string(),
+                        user_routing::short_name(&event.meta.actor).to_string(),
                     ),
                 }),
                 _ => None,

@@ -7,7 +7,7 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 
 use crate::hub;
-use crate::routing::short_name;
+use user_routing::short_name;
 
 use super::shared::OWNER_NONCE_HEADER;
 

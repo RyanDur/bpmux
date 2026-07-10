@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use persist::PersistError;
 
 use super::Storage;
-use crate::routing::UserRecord;
+use user_routing::UserRecord;
 
 pub struct FileStorage {
     dir: PathBuf,

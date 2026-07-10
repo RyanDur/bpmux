@@ -3,8 +3,8 @@ use std::time::Instant;
 use super::InstrumentedStorage;
 use crate::storage::Storage;
 
-impl<S: Storage> crate::routing::UserRepo for InstrumentedStorage<S> {
-    fn load_users(&self) -> Result<Vec<crate::routing::UserRecord>, persist::PersistError> {
+impl<S: Storage> user_routing::UserRepo for InstrumentedStorage<S> {
+    fn load_users(&self) -> Result<Vec<user_routing::UserRecord>, persist::PersistError> {
         let start = Instant::now();
         let result = self.inner.load_users();
         if let Ok(ref records) = result {

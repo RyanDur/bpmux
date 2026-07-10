@@ -1,5 +1,5 @@
-use crate::routing::cursor_time::{is_future, later_cursor};
-use crate::routing::{bridge_agent_name, short_name};
+use crate::cursor_time::{is_future, later_cursor};
+use crate::{bridge_agent_name, short_name};
 use message::BROADCAST_ALL;
 
 use super::RoutingState;

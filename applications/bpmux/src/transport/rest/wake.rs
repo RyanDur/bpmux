@@ -5,9 +5,9 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
-use crate::routing::short_name;
 use crate::store::CommitmentsAction;
 use crate::store::{Dispatch, Select};
+use user_routing::short_name;
 
 #[derive(Deserialize)]
 pub struct WakeOnEventRequest {

@@ -9,7 +9,7 @@ pub struct UserRecord {
     pub last_delivered_at: Option<i64>,
 }
 
-pub(crate) fn default_kind() -> String {
+pub fn default_kind() -> String {
     "agent".to_string()
 }
 

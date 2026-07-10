@@ -394,6 +394,7 @@ dependencies = [
  "tower",
  "tower-http",
  "url",
+ "user_routing",
  "uuid",
  "webrtc",
  "workflow",
@@ -3993,6 +3994,17 @@ dependencies = [
  "percent-encoding",
  "serde",
  "serde_derive",
+]
+
+[[package]]
+name = "user_routing"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "message",
+ "persist",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

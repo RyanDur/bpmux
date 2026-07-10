@@ -12,11 +12,11 @@ use super::sqlite_outbox as outbox;
 use super::sqlite_surfaced_topics as surfaced_topics;
 use super::sqlite_users as users;
 use crate::memory::lessons::LessonIndex;
-use crate::routing::{UserRecord, UserRepo};
 use crate::sync::QueuedEvent;
 use message::Message;
 use message_log::LogError;
 use persist::PersistError;
+use user_routing::{UserRecord, UserRepo};
 
 pub struct SqliteStorage {
     dir: PathBuf,
@@ -38,7 +38,7 @@ impl SqliteStorage {
     }
 
     fn resolve_sender(&self, conn: &Connection, msg: &Message) -> Option<String> {
-        let user_id = if crate::routing::short_name(&msg.from) == "bpmux" {
+        let user_id = if user_routing::short_name(&msg.from) == "bpmux" {
             users::SYSTEM_USER_ID
         } else {
             msg.sender_id.as_deref()?

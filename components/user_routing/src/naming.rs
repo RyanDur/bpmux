@@ -1,4 +1,4 @@
-pub(crate) fn short_name(identity: &str) -> &str {
+pub fn short_name(identity: &str) -> &str {
     identity.split(':').next().unwrap_or(identity)
 }
 
