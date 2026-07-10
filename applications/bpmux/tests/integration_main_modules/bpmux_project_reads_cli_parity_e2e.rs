@@ -1,13 +1,22 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use tempfile::TempDir;
+
 use crate::harness;
 
 use harness::pty::TestBpmux;
 
-async fn run_verb(args: &[&str], env: &[(&str, &str)]) -> std::process::Output {
+async fn run_verb(
+    bpmux: &TestBpmux,
+    workspace: &std::path::Path,
+    args: &[&str],
+    env: &[(&str, &str)],
+) -> std::process::Output {
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let mut cmd = tokio::process::Command::new(bin);
     cmd.args(args);
+    cmd.current_dir(workspace);
+    cmd.env("BPMUX_DATA_BASE", bpmux.sessions_base_path());
     for (key, value) in env {
         cmd.env(key, value);
     }
@@ -28,8 +37,11 @@ fn stderr(out: &std::process::Output) -> String {
 async fn bpmux_sync_status_reaches_the_authed_rest_read_off_mcp() {
     let bpmux = TestBpmux::start();
     bpmux.simulate_secret();
+    let workspace = TempDir::new().expect("temp workspace");
     let token_path = bpmux.auth_token_path();
     let out = run_verb(
+        &bpmux,
+        workspace.path(),
         &["sync-status"],
         &[
             ("BPMUX_PORT", &bpmux.port().to_string()),
@@ -59,6 +71,7 @@ async fn bpmux_sync_status_reaches_the_authed_rest_read_off_mcp() {
 async fn bpmux_search_finds_a_sent_message_off_mcp_end_to_end() {
     let bpmux = TestBpmux::start();
     bpmux.simulate_secret();
+    let workspace = TempDir::new().expect("temp workspace");
     let port = bpmux.port().to_string();
     let token = bpmux.auth_token_path();
     let token_str = token.to_str().expect("token path").to_string();
@@ -69,14 +82,14 @@ async fn bpmux_search_finds_a_sent_message_off_mcp_end_to_end() {
     ];
     let needle = "zzqueryneedle";
 
-    let sent = run_verb(&["send", needle], &env).await;
+    let sent = run_verb(&bpmux, workspace.path(), &["send", needle], &env).await;
     assert!(
         sent.status.success(),
         "bpmux send posts the message off MCP; stderr: {}",
         stderr(&sent)
     );
 
-    let out = run_verb(&["search", needle], &env).await;
+    let out = run_verb(&bpmux, workspace.path(), &["search", needle], &env).await;
     assert!(
         out.status.success(),
         "bpmux search reaches the same /api/search read the bridge uses off MCP; stderr: {}",

@@ -100,8 +100,13 @@ fn hook_outputs_nothing_when_no_session_exists() {
 
 #[test]
 fn session_start_outputs_context() {
+    let tmp = tempfile::tempdir().unwrap();
     let output = Command::new("bash")
         .arg(session_start_script())
+        .env("HOME", tmp.path())
+        .env_remove("BPMUX_DATA_BASE")
+        .env_remove("BPMUX_ROLE")
+        .env_remove("BPMUX_BIN_OVERRIDE")
         .output()
         .unwrap();
 
@@ -112,6 +117,46 @@ fn session_start_outputs_context() {
     assert!(
         stdout.contains("bpmux"),
         "output should mention bpmux: {stdout}"
+    );
+    assert!(
+        !tmp.path().join(".bpmux").exists(),
+        "with no role, session-start performs no register — nothing is written under the data home"
+    );
+}
+
+#[test]
+fn session_start_register_keeps_identity_io_inside_the_injected_data_base() {
+    let home = tempfile::tempdir().unwrap();
+    let data_base = tempfile::tempdir().unwrap();
+    let workspace = tempfile::tempdir().unwrap();
+
+    let output = Command::new("bash")
+        .arg(session_start_script())
+        .current_dir(workspace.path())
+        .env("HOME", home.path())
+        .env("BPMUX_ROLE", "dev")
+        .env("BPMUX_DATA_BASE", data_base.path())
+        .env("BPMUX_BIN_OVERRIDE", env!("CARGO_BIN_EXE_bpmux"))
+        .env_remove("BPMUX_USER_ID")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success(), "script exited non-zero");
+    assert!(
+        !home.path().join(".bpmux").exists(),
+        "the hook's register must NEVER fall through to the DEFAULT data home when a test runs it — identity I/O lands in the injected BPMUX_DATA_BASE (this is the leak class that minted a real ~/.bpmux/data/users/by-dir entry during a test run)"
+    );
+    let entries: Vec<_> = fs::read_dir(data_base.path().join("users").join("by-dir"))
+        .expect("register minted the workspace identity into the INJECTED base's registry")
+        .collect();
+    assert_eq!(
+        entries.len(),
+        1,
+        "exactly the one minted entry lives in the sandboxed registry"
+    );
+    assert!(
+        !workspace.path().join(".bpmux-user-id").exists(),
+        "no marker file is written into the workspace either"
     );
 }
 

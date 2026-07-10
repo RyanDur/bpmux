@@ -222,6 +222,9 @@ async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless()
 async fn a_cd_through_a_dir_without_running_an_agent_mints_no_id() {
     use crate::room::{LivePtyRegistry, osc7_shell_integration, spawn_pty_retained};
 
+    let data_base = tempfile::TempDir::new().unwrap();
+    let _base_guard = DataBaseGuard::set(data_base.path());
+
     let store = SeededStore::new(Vec::new(), Vec::new(), Vec::new());
     let registry = Arc::new(LivePtyRegistry::new());
     let passed_through = tempfile::TempDir::new().unwrap();
@@ -259,10 +262,9 @@ async fn a_cd_through_a_dir_without_running_an_agent_mints_no_id() {
     registry.write_to(&terminal_id, format!("cd {passed_path}\n").as_bytes());
     tokio::time::sleep(std::time::Duration::from_millis(2500)).await;
 
-    let marker = passed_through.path().join(".bpmux-session-id");
     assert!(
-        !marker.is_file(),
-        "a bare cd-through (no foreground-child job) mints NO id in the passed-through dir — falsifier-3 litter-free by construction (cd is a shell builtin, no child → has_foreground_job stays false)"
+        !data_base.path().join("users").join("by-dir").exists(),
+        "a bare cd-through (no foreground-child job) mints NO id for the passed-through dir — falsifier-3 litter-free by construction (cd is a shell builtin, no child → has_foreground_job stays false); were this to regress, the sandboxed base catches the mint instead of the real data home"
     );
     assert!(
         resolve(&store, &passed_name).is_empty(),

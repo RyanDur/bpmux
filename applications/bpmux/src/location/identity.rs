@@ -1,4 +1,3 @@
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -80,20 +79,27 @@ fn mint_entry(base: &Path, dir: &Path) -> Result<DirUser, LogError> {
         id: user.id.clone(),
         name: user.name.clone(),
     };
-    match std::fs::File::create_new(&path) {
-        Ok(mut file) => {
-            file.write_all(serde_json::to_string(&entry)?.as_bytes())?;
-            Ok(user)
-        }
+    let staged = staged_sibling(&path);
+    std::fs::write(&staged, serde_json::to_string(&entry)?)?;
+    let published = std::fs::hard_link(&staged, &path);
+    let _ = std::fs::remove_file(&staged);
+    match published {
+        Ok(()) => Ok(user),
         Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => read_entry(base, dir)
             .ok_or_else(|| {
                 LogError::Io(std::io::Error::new(
                     std::io::ErrorKind::NotFound,
-                    "registry entry vanished after a create_new race",
+                    "registry entry vanished after a mint race",
                 ))
             }),
         Err(err) => Err(LogError::Io(err)),
     }
+}
+
+fn staged_sibling(path: &Path) -> PathBuf {
+    let mut staged = path.as_os_str().to_owned();
+    staged.push(format!(".staged-{}", uuid::Uuid::new_v4()));
+    PathBuf::from(staged)
 }
 
 fn import_marker(base: &Path, dir: &Path) -> Option<DirUser> {
@@ -128,7 +134,9 @@ fn write_entry(base: &Path, dir: &Path, user: &DirUser) -> Result<(), LogError> 
         id: user.id.clone(),
         name: user.name.clone(),
     };
-    std::fs::write(&path, serde_json::to_string(&entry)?)?;
+    let staged = staged_sibling(&path);
+    std::fs::write(&staged, serde_json::to_string(&entry)?)?;
+    std::fs::rename(&staged, &path)?;
     Ok(())
 }
 

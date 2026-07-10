@@ -271,7 +271,13 @@ async fn probe_until_live(bpmux: &TestBpmux, farm: &FakeAgentFarm, role: &str) -
     false
 }
 
-async fn terminal_send(port: u16, farm: &FakeAgentFarm, role: &str, to: Option<&str>, text: &str) {
+async fn terminal_send(
+    bpmux: &TestBpmux,
+    farm: &FakeAgentFarm,
+    role: &str,
+    to: Option<&str>,
+    text: &str,
+) {
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let mut args = vec!["send".to_string()];
     if let Some(to) = to {
@@ -281,8 +287,9 @@ async fn terminal_send(port: u16, farm: &FakeAgentFarm, role: &str, to: Option<&
     args.push(text.to_string());
     let out = tokio::process::Command::new(bin)
         .args(&args)
-        .env("BPMUX_PORT", port.to_string())
+        .env("BPMUX_PORT", bpmux.port().to_string())
         .env("BPMUX_ROLE", role)
+        .env("BPMUX_DATA_BASE", bpmux.sessions_base_path())
         .current_dir(farm.work_path(role))
         .output()
         .await
@@ -435,7 +442,6 @@ async fn the_bpmux_send_terminal_command_routes_to_exactly_the_addressed_termina
         "owner",
         &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
     );
-    let port = bpmux.port();
 
     for role in ["dev", "pm", "designer"] {
         spawn_terminal(&bpmux).await;
@@ -445,7 +451,7 @@ async fn the_bpmux_send_terminal_command_routes_to_exactly_the_addressed_termina
         );
     }
 
-    terminal_send(port, &farm, "dev", Some("pm"), "DEV-SENDS-TO-PM").await;
+    terminal_send(&bpmux, &farm, "dev", Some("pm"), "DEV-SENDS-TO-PM").await;
     post_message(&bpmux, json!({ "from": "owner", "text": "BARRIER-1" })).await;
     assert!(
         wait_capture(&farm, "pm", "DEV-SENDS-TO-PM").await,
@@ -462,7 +468,7 @@ async fn the_bpmux_send_terminal_command_routes_to_exactly_the_addressed_termina
         "FILTERING: `bpmux send --to pm` is WITHHELD from designer (not addressed) AND from dev (the sender never receives its own)"
     );
 
-    terminal_send(port, &farm, "dev", Some("pm,designer"), "DEV-SENDS-GROUP").await;
+    terminal_send(&bpmux, &farm, "dev", Some("pm,designer"), "DEV-SENDS-GROUP").await;
     post_message(&bpmux, json!({ "from": "owner", "text": "BARRIER-2" })).await;
     assert!(
         wait_capture(&farm, "pm", "DEV-SENDS-GROUP").await
@@ -478,7 +484,7 @@ async fn the_bpmux_send_terminal_command_routes_to_exactly_the_addressed_termina
         "the sender (dev) never receives its own `bpmux send --to pm,designer`"
     );
 
-    terminal_send(port, &farm, "dev", None, "DEV-SENDS-BROADCAST").await;
+    terminal_send(&bpmux, &farm, "dev", None, "DEV-SENDS-BROADCAST").await;
     post_message(&bpmux, json!({ "from": "owner", "text": "BARRIER-3" })).await;
     assert!(
         wait_capture(&farm, "pm", "DEV-SENDS-BROADCAST").await
@@ -506,7 +512,6 @@ async fn message_routing_runs_end_to_end_on_the_sqlite_backend_the_cutover_user_
             ("BPMUX_STORAGE_BACKEND", "sqlite"),
         ],
     );
-    let port = bpmux.port();
 
     for role in ["dev", "pm", "designer"] {
         spawn_terminal(&bpmux).await;
@@ -516,7 +521,7 @@ async fn message_routing_runs_end_to_end_on_the_sqlite_backend_the_cutover_user_
         );
     }
 
-    terminal_send(port, &farm, "dev", Some("pm"), "SQLITE-DIRECT-DEV-TO-PM").await;
+    terminal_send(&bpmux, &farm, "dev", Some("pm"), "SQLITE-DIRECT-DEV-TO-PM").await;
     post_message(
         &bpmux,
         json!({ "from": "owner", "text": "SQLITE-BARRIER-1" }),
@@ -537,7 +542,7 @@ async fn message_routing_runs_end_to_end_on_the_sqlite_backend_the_cutover_user_
         "FILTERING on sqlite: the to:[pm] send is withheld from designer (unaddressed) AND from dev (the sender never receives its own)"
     );
 
-    terminal_send(port, &farm, "dev", None, "SQLITE-BROADCAST").await;
+    terminal_send(&bpmux, &farm, "dev", None, "SQLITE-BROADCAST").await;
     post_message(
         &bpmux,
         json!({ "from": "owner", "text": "SQLITE-BARRIER-2" }),

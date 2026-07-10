@@ -105,21 +105,33 @@ fn a_symlinked_path_to_the_same_dir_resolves_the_same_id_via_canonicalization() 
 }
 
 #[test]
-fn a_concurrent_register_race_lets_the_loser_reclaim_the_winners_id() {
+fn a_concurrent_register_race_lets_every_loser_reclaim_the_winners_id() {
     let base = TempDir::new().expect("registry base");
     let parent = TempDir::new().expect("workspace parent");
-    let dir = work_dir(&parent, "contended");
 
-    let (first, second) = std::thread::scope(|scope| {
-        let base_path = base.path();
-        let a = scope.spawn(|| register_dir_user_in_base(base_path, &dir).expect("thread a"));
-        let b = scope.spawn(|| register_dir_user_in_base(base_path, &dir).expect("thread b"));
-        (a.join().expect("join a"), b.join().expect("join b"))
-    });
-    assert_eq!(
-        first.id, second.id,
-        "File::create_new makes mint-once atomic — a concurrent register in the same dir loses the create and re-reads the winner's entry, never forks a second id"
-    );
+    for round in 0..50 {
+        let dir = work_dir(&parent, &format!("contended-{round}"));
+        let ids: Vec<String> = std::thread::scope(|scope| {
+            let base_path = base.path();
+            let racers: Vec<_> = (0..8)
+                .map(|_| {
+                    scope.spawn(|| {
+                        register_dir_user_in_base(base_path, &dir)
+                            .expect("every racer resolves an id")
+                            .id
+                    })
+                })
+                .collect();
+            racers
+                .into_iter()
+                .map(|racer| racer.join().expect("racer thread"))
+                .collect()
+        });
+        assert!(
+            ids.windows(2).all(|pair| pair[0] == pair[1]),
+            "the mint publishes atomically (staged write + hard_link) — every concurrent register in the same dir resolves the ONE winner's id, never a fork and never a partial read; got {ids:?}"
+        );
+    }
 }
 
 #[test]
