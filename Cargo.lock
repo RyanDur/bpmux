@@ -370,6 +370,7 @@ dependencies = [
  "httpmock",
  "kernel",
  "message",
+ "message_log",
  "octocrab",
  "once_cell",
  "portable-pty",
@@ -1949,6 +1950,17 @@ dependencies = [
  "serde",
  "serde_json",
  "uuid",
+]
+
+[[package]]
+name = "message_log"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "message",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

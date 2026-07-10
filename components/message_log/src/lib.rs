@@ -17,3 +17,6 @@ pub trait MessageLog: Send + Sync {
 
 #[cfg(test)]
 mod file_log_format;
+
+#[cfg(test)]
+mod log_tests;

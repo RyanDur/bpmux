@@ -29,9 +29,6 @@ pub mod location;
 mod location_migration_tests;
 #[cfg(test)]
 mod location_tests;
-pub mod log;
-#[cfg(test)]
-mod log_tests;
 pub mod mcp;
 pub mod memory;
 pub mod owner_session;

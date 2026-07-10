@@ -8,7 +8,7 @@ fn src_root() -> PathBuf {
 
 const COMPOSED_FEATURE_PATHS: &[&str] = &[
     "crate::awareness",
-    "crate::log",
+    "message_log",
     "crate::memory",
     "crate::sync",
     "crate::routing",
@@ -52,7 +52,13 @@ fn storage_composes_feature_ports_only_in_the_super_trait_bound() {
 
 const STORAGE_MECHANISM_TOKENS: &[&str] = &["rusqlite", "refinery"];
 
-const PORT_OWNING_FEATURE_MODULES: &[&str] = &["awareness.rs", "log", "memory", "sync", "routing"];
+const PORT_OWNING_FEATURE_MODULES: &[&str] = &[
+    "awareness.rs",
+    "../../../components/message_log/src",
+    "memory",
+    "sync",
+    "routing",
+];
 
 fn collect_rs_files(path: &Path, out: &mut Vec<PathBuf>) {
     if path.is_dir() {

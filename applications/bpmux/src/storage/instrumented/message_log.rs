@@ -1,11 +1,11 @@
 use std::time::Instant;
 
 use super::InstrumentedStorage;
-use crate::log::LogError;
 use crate::storage::Storage;
 use message::Message;
+use message_log::LogError;
 
-impl<S: Storage> crate::log::MessageLog for InstrumentedStorage<S> {
+impl<S: Storage> message_log::MessageLog for InstrumentedStorage<S> {
     fn append_message(&self, msg: &Message) -> Result<(), LogError> {
         let start = Instant::now();
         let result = self.inner.append_message(msg);

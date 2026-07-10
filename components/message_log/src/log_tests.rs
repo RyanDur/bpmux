@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use super::log::*;
+use crate::*;
 use chrono::Utc;
 use message::Message;
 use tempfile::TempDir;
@@ -57,7 +57,7 @@ fn read_messages_skips_zero_lines_with_legacy_state_delta_variant() {
         r#"{"from":"b","text":"third","ts":"2026-06-01T00:00:00Z"}"#,
     ];
     std::fs::write(&path, lines.join("\n")).unwrap();
-    let parsed = crate::log::read_messages(dir.path())
+    let parsed = crate::read_messages(dir.path())
         .expect("read_messages tolerates legacy state-delta variants");
     assert_eq!(parsed.len(), 3, "all 3 lines parse — none dropped");
     assert!(parsed[1].state_delta.is_none(), "legacy variant → None");

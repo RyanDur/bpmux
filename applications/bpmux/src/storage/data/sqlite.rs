@@ -11,12 +11,12 @@ use super::sqlite_meta as meta;
 use super::sqlite_outbox as outbox;
 use super::sqlite_surfaced_topics as surfaced_topics;
 use super::sqlite_users as users;
-use crate::log::LogError;
 use crate::memory::lessons::LessonIndex;
 use crate::persist::PersistError;
 use crate::routing::{UserRecord, UserRepo};
 use crate::sync::QueuedEvent;
 use message::Message;
+use message_log::LogError;
 
 pub struct SqliteStorage {
     dir: PathBuf,
@@ -47,7 +47,7 @@ impl SqliteStorage {
     }
 }
 
-impl crate::log::MessageLog for SqliteStorage {
+impl message_log::MessageLog for SqliteStorage {
     fn append_message(&self, msg: &Message) -> Result<(), LogError> {
         let payload = serde_json::to_string(msg)?;
         let created_at = msg.ts.timestamp();

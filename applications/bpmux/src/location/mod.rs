@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::log::LogError;
+use message_log::LogError;
 
 mod identity;
 #[cfg(test)]

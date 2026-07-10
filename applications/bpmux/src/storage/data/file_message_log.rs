@@ -1,14 +1,14 @@
 use super::FileStorage;
-use crate::log::LogError;
 use message::Message;
+use message_log::LogError;
 
-impl crate::log::MessageLog for FileStorage {
+impl message_log::MessageLog for FileStorage {
     fn append_message(&self, msg: &Message) -> Result<(), LogError> {
-        crate::log::append_message(&self.dir, msg)
+        message_log::append_message(&self.dir, msg)
     }
 
     fn read_messages(&self) -> Result<Vec<Message>, LogError> {
-        crate::log::read_messages(&self.dir)
+        message_log::read_messages(&self.dir)
     }
 
     fn read_recent(
@@ -17,7 +17,7 @@ impl crate::log::MessageLog for FileStorage {
         offset: usize,
         matches: &dyn Fn(&Message) -> bool,
     ) -> Result<Vec<Message>, LogError> {
-        crate::log::read_recent(&self.dir, limit, offset, matches)
+        message_log::read_recent(&self.dir, limit, offset, matches)
     }
 
     fn clear_messages(&self) -> Result<(), std::io::Error> {

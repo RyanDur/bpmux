@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::log::LogError;
+use message_log::LogError;
 
 pub const DIR_USER_ID_MARKER: &str = ".bpmux-user-id";
 const OLD_DIR_USER_ID_MARKER: &str = ".bpmux-session-id";

@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use super::{FileStorage, SqliteStorage, Storage};
-use crate::log::{LogError, MessageLog};
 use crate::routing::{UserRepo, short_name};
 use crate::sync::PersistError;
 use message::{Message, StateDeltaPayload};
+use message_log::{LogError, MessageLog};
 
 const MIGRATION_FLAG_KEY: &str = "migration:file_log_to_sqlite";
 const MIGRATION_DONE: &str = "done";

@@ -9,6 +9,7 @@ license.workspace = true
 diag = { path = "../../components/diag" }
 kernel = { path = "../../components/kernel" }
 message = { path = "../../components/message" }
+message_log = { path = "../../components/message_log" }
 workflow = { path = "../../components/workflow" }
 tokio = { workspace = true, features = ["full"] }
 clap = { version = "4", features = ["derive"] }

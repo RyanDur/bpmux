@@ -5,6 +5,7 @@ members = [
     "components/diag",
     "components/kernel",
     "components/message",
+    "components/message_log",
     "components/workflow",
 ]
 
