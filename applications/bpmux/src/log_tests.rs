@@ -34,3 +34,15 @@ fn reads_empty_when_no_log_exists() {
     let messages = read_messages(dir.path()).expect("read");
     assert!(messages.is_empty());
 }
+
+#[test]
+fn a_legacy_row_without_delivery_id_fields_decodes_with_none() {
+    let dir = TempDir::new().expect("temp dir");
+    let legacy_row = r#"{"from":"owner:human","text":"pre-B-1 row","ts":"2026-06-01T12:00:00Z"}"#;
+    std::fs::write(log_path(dir.path()), format!("{legacy_row}\n")).expect("write legacy row");
+    let messages = read_messages(dir.path()).expect("read");
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0].sender_id, None);
+    assert_eq!(messages[0].to_ids, None);
+    assert_eq!(messages[0].addressee_ids, None);
+}

@@ -3,6 +3,7 @@ pub mod ci_log_store;
 pub mod ci_watcher;
 pub mod crypto;
 
+pub(crate) mod delivery_ids;
 pub mod electron_capture;
 pub mod local_url;
 pub mod peer;

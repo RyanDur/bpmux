@@ -129,4 +129,37 @@ describe('messageDecoder', () => {
     expect(result.type).toBe('ok')
     if (result.type === 'ok') expect(result.data.state_snapshot).not.toBeNull()
   })
+
+  test('decodes the additive delivery id fields when present', () => {
+    const result = messageDecoder.validate({
+      type: 'message',
+      from: 'dev:claude-code',
+      text: 'hi',
+      ts: '2026-07-09T00:00:00Z',
+      sender_id: 'id-dev',
+      to_ids: ['id-pm'],
+      addressee_ids: ['id-pm']
+    })
+    expect(result.type).toBe('ok')
+    if (result.type === 'ok') {
+      expect(result.data.sender_id).toBe('id-dev')
+      expect(result.data.to_ids).toEqual(['id-pm'])
+      expect(result.data.addressee_ids).toEqual(['id-pm'])
+    }
+  })
+
+  test('decodes a legacy message with no delivery id fields to null', () => {
+    const result = messageDecoder.validate({
+      type: 'message',
+      from: 'pm',
+      text: 'hi',
+      ts: '2026-06-17T00:00:00Z'
+    })
+    expect(result.type).toBe('ok')
+    if (result.type === 'ok') {
+      expect(result.data.sender_id ?? null).toBeNull()
+      expect(result.data.to_ids ?? null).toBeNull()
+      expect(result.data.addressee_ids ?? null).toBeNull()
+    }
+  })
 })

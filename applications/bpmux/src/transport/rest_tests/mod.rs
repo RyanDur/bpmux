@@ -29,6 +29,13 @@ use crate::transport::rest::{TrackerHandle, *};
 pub(super) fn test_app(
     dir: &TempDir,
 ) -> (axum::Router, broadcast::Sender<crate::message::Message>) {
+    test_app_with_routing(dir, &[])
+}
+
+pub(super) fn test_app_with_routing(
+    dir: &TempDir,
+    registrations: &[(&str, &str)],
+) -> (axum::Router, broadcast::Sender<crate::message::Message>) {
     let (tx, _rx) = broadcast::channel(16);
     let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),
@@ -36,6 +43,15 @@ pub(super) fn test_app(
         tx.clone(),
     ));
     let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
+    for (display, user_id) in registrations {
+        seeded.dispatch(
+            crate::store::routing::RoutingAction::Registered {
+                user_id: (*user_id).to_string(),
+                display: (*display).to_string(),
+            }
+            .into(),
+        );
+    }
     let router = axum::Router::new()
         .route(
             "/api/messages",

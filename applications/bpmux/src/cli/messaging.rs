@@ -28,25 +28,41 @@ pub(crate) fn run_wait_for_event(after: &Option<String>, timeout_ms: u64) -> any
     Ok(())
 }
 
-pub(crate) fn run_send(
+pub(crate) fn send_payload(
+    role: &str,
     text: &str,
     to: &[String],
     addressee: &Option<String>,
-) -> anyhow::Result<()> {
-    let role = crate::resolve_role(&None);
+    sender_id: Option<String>,
+) -> serde_json::Value {
     let mut payload = serde_json::Map::new();
     payload.insert(
         "from".to_string(),
         serde_json::json!(format!("{role}:claude-code")),
     );
     payload.insert("text".to_string(), serde_json::json!(text));
+    if let Some(id) = sender_id {
+        payload.insert("sender_id".to_string(), serde_json::json!(id));
+    }
     if !to.is_empty() {
         payload.insert("to".to_string(), serde_json::json!(to));
     }
     if let Some(target) = addressee {
         payload.insert("addressee".to_string(), serde_json::json!(target));
     }
-    let body = serde_json::Value::Object(payload);
+    serde_json::Value::Object(payload)
+}
+
+pub(crate) fn run_send(
+    text: &str,
+    to: &[String],
+    addressee: &Option<String>,
+) -> anyhow::Result<()> {
+    let role = crate::resolve_role(&None);
+    let sender_id = std::env::current_dir()
+        .ok()
+        .and_then(|cwd| crate::resolve_user_id(&cwd).ok());
+    let body = send_payload(&role, text, to, addressee, sender_id);
     let port = crate::resolve_bpmux_port();
     let url = crate::transport::local_url::api_url(port, "/api/messages");
     let rt = tokio::runtime::Builder::new_current_thread()

@@ -26,6 +26,7 @@ pub(crate) struct ClientCtx<'a> {
     pub tracker: &'a crate::transport::rest::TrackerHandle,
     pub orchestrator: &'a crate::sync::OrchestratorHandle,
     pub reply_tx: &'a tokio::sync::mpsc::UnboundedSender<ServerMessage>,
+    pub routing_user_id: &'a Option<String>,
 }
 
 pub(crate) async fn handle_client_message(

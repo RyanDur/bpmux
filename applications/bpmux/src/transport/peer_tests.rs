@@ -95,6 +95,79 @@ async fn inbound_close_produces_left_system_message() {
 }
 
 #[tokio::test]
+async fn chat_relay_round_trips_delivery_id_fields_outbound_then_inbound() {
+    let (hub_a, _rx_a, _dir_a) = make_hub();
+    let (_inbound_tx_a, inbound_rx_a) = mpsc::channel::<String>(16);
+    let (outbound_tx_a, mut outbound_rx_a) = mpsc::channel::<String>(16);
+    let _peer_a = spawn_relay(
+        hub_a.clone(),
+        "remote".to_string(),
+        "session-a".to_string(),
+        inbound_rx_a,
+        outbound_tx_a,
+    );
+
+    let msg = Message {
+        from: "dev:claude-code".to_string(),
+        sender_id: Some("id-dev".to_string()),
+        text: "cross-peer ids".to_string(),
+        ts: chrono::Utc::now(),
+        to: Some(vec!["pm".to_string()]),
+        to_ids: Some(vec!["id-pm".to_string()]),
+        addressee: Some("pm".to_string()),
+        addressee_ids: Some(vec!["id-pm".to_string()]),
+        ..Message::default()
+    };
+    hub_a.broadcast(&msg).unwrap();
+
+    let outbound_json = timeout(Duration::from_secs(2), outbound_rx_a.recv())
+        .await
+        .expect("no outbound peer frame")
+        .expect("outbound channel closed");
+
+    let (hub_b, mut rx_b, _dir_b) = make_hub();
+    let (inbound_tx_b, inbound_rx_b) = mpsc::channel::<String>(16);
+    let (outbound_tx_b, _outbound_rx_b) = mpsc::channel::<String>(16);
+    let _peer_b = spawn_relay(
+        hub_b.clone(),
+        "remote-a".to_string(),
+        "session-b".to_string(),
+        inbound_rx_b,
+        outbound_tx_b,
+    );
+    inbound_tx_b
+        .send(outbound_json)
+        .await
+        .expect("feed outbound frame to a different peer session");
+
+    let received = loop {
+        match timeout(Duration::from_secs(2), rx_b.recv())
+            .await
+            .expect("no inbound broadcast")
+            .expect("broadcast channel closed")
+        {
+            m if m.text == "cross-peer ids" => break m,
+            _ => continue,
+        }
+    };
+    assert_eq!(
+        received.sender_id.as_deref(),
+        Some("id-dev"),
+        "sender_id must cross the relay's explicit field copy"
+    );
+    assert_eq!(
+        received.to_ids,
+        Some(vec!["id-pm".to_string()]),
+        "to_ids must cross the relay's explicit field copy"
+    );
+    assert_eq!(
+        received.addressee_ids,
+        Some(vec!["id-pm".to_string()]),
+        "addressee_ids must cross the relay's explicit field copy"
+    );
+}
+
+#[tokio::test]
 async fn left_uses_placeholder_name_when_no_hello_received() {
     let (hub, mut rx, _dir) = make_hub();
     let (inbound_tx, inbound_rx) = mpsc::channel::<String>(16);

@@ -16,8 +16,9 @@ pub(super) fn handle_send(
     message_type: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let explicit_privacy = to.is_some();
-    let msg = crate::message::Message {
+    let mut msg = crate::message::Message {
         from: identity.to_string(),
+        sender_id: ctx.routing_user_id.clone(),
         text: msg_text,
         ts: chrono::Utc::now(),
         message_type: MessageType::from(message_type.as_deref()),
@@ -26,6 +27,7 @@ pub(super) fn handle_send(
         explicit_privacy,
         ..crate::message::Message::default()
     };
+    crate::transport::delivery_ids::stamp_delivery_ids(&ctx.store.selector(), &mut msg);
     ctx.hub.broadcast(&msg)?;
     Ok(())
 }

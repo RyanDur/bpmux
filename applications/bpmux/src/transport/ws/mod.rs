@@ -23,6 +23,8 @@ mod snapshot;
 mod startup;
 
 #[cfg(test)]
+mod client_handlers_tests;
+#[cfg(test)]
 mod roster_projection;
 
 pub(crate) use client::*;
@@ -117,6 +119,7 @@ pub(super) async fn run_ws_session(
                                 tracker: &tracker,
                                 orchestrator: &orchestrator,
                                 reply_tx: &reply_tx,
+                                routing_user_id: &routing_user_id,
                             };
                             if let Some(new_identity) = handle_client_message(&text, &identity, &client_ctx, &mut tx, &mut pty_readers).await? {
                                 let _ = hub.broadcast(&system_announcement(&format!("{identity} left")));

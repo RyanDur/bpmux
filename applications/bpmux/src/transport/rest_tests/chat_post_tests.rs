@@ -9,7 +9,7 @@ use tempfile::TempDir;
 use tokio::sync::broadcast;
 use tower::ServiceExt;
 
-use super::{init_session, seed_messages, seed_mixed_messages, test_app};
+use super::{init_session, seed_messages, seed_mixed_messages, test_app, test_app_with_routing};
 use crate::hub;
 use crate::message::MessageType;
 use crate::transport::rest::*;
@@ -79,6 +79,168 @@ async fn post_message_without_to_leaves_explicit_privacy_false() {
         "broadcast must not set explicit_privacy"
     );
     assert!(msg.to.is_none(), "broadcast must have no `to` filter");
+}
+
+#[tokio::test]
+async fn post_with_sender_id_carries_it_verbatim_no_resolve_guess() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (app, tx) = test_app_with_routing(&dir, &[("dev", "id-dev-guess")]);
+    let mut rx = tx.subscribe();
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/messages")
+        .header("Content-Type", "application/json")
+        .body(Body::from(
+            r#"{"from":"dev:claude-code","text":"hi","sender_id":"id-dev-explicit"}"#,
+        ))
+        .expect("build request");
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let msg = rx.try_recv().expect("broadcast message");
+    assert_eq!(
+        msg.sender_id.as_deref(),
+        Some("id-dev-explicit"),
+        "an explicit payload sender_id rides verbatim, never overridden by the resolve guess"
+    );
+}
+
+#[tokio::test]
+async fn post_without_sender_id_falls_back_to_the_resolve_guess() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (app, tx) = test_app_with_routing(&dir, &[("dev", "id-dev-guess")]);
+    let mut rx = tx.subscribe();
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/messages")
+        .header("Content-Type", "application/json")
+        .body(Body::from(r#"{"from":"dev:claude-code","text":"hi"}"#))
+        .expect("build request");
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let msg = rx.try_recv().expect("broadcast message");
+    assert_eq!(
+        msg.sender_id.as_deref(),
+        Some("id-dev-guess"),
+        "a legacy sender with no payload sender_id keeps today's resolve-guess fallback"
+    );
+}
+
+#[tokio::test]
+async fn post_to_a_display_shared_by_two_users_carries_both_ids() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (app, tx) = test_app_with_routing(&dir, &[("dev", "id-dev-1"), ("dev", "id-dev-2")]);
+    let mut rx = tx.subscribe();
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/messages")
+        .header("Content-Type", "application/json")
+        .body(Body::from(r#"{"from":"owner","text":"hi","to":["dev"]}"#))
+        .expect("build request");
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let msg = rx.try_recv().expect("broadcast message");
+    let mut ids = msg.to_ids.expect("to_ids present for an explicit `to`");
+    ids.sort();
+    assert_eq!(
+        ids,
+        vec!["id-dev-1".to_string(), "id-dev-2".to_string()],
+        "a display shared by two users must address both ids"
+    );
+}
+
+#[tokio::test]
+async fn post_broadcast_leaves_to_ids_none() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (app, tx) = test_app_with_routing(&dir, &[("dev", "id-dev-1")]);
+    let mut rx = tx.subscribe();
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/messages")
+        .header("Content-Type", "application/json")
+        .body(Body::from(r#"{"from":"owner","text":"hi"}"#))
+        .expect("build request");
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let msg = rx.try_recv().expect("broadcast message");
+    assert!(
+        msg.to_ids.is_none(),
+        "a broadcast (`to: None`) must not gain a to_ids list"
+    );
+}
+
+#[tokio::test]
+async fn post_to_an_unknown_display_among_knowns_contributes_nothing() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (app, tx) = test_app_with_routing(&dir, &[("dev", "id-dev-1")]);
+    let mut rx = tx.subscribe();
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/messages")
+        .header("Content-Type", "application/json")
+        .body(Body::from(
+            r#"{"from":"owner","text":"hi","to":["dev","ghost"]}"#,
+        ))
+        .expect("build request");
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let msg = rx.try_recv().expect("broadcast message");
+    assert_eq!(
+        msg.to_ids,
+        Some(vec!["id-dev-1".to_string()]),
+        "an unresolvable display contributes nothing — the known id still carries, never Some(empty)"
+    );
+}
+
+#[tokio::test]
+async fn post_addressee_shared_by_two_users_carries_both_ids() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (app, tx) = test_app_with_routing(&dir, &[("dev", "id-dev-1"), ("dev", "id-dev-2")]);
+    let mut rx = tx.subscribe();
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/messages")
+        .header("Content-Type", "application/json")
+        .body(Body::from(
+            r#"{"from":"owner","text":"hi","addressee":"dev"}"#,
+        ))
+        .expect("build request");
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let msg = rx.try_recv().expect("broadcast message");
+    let mut ids = msg
+        .addressee_ids
+        .expect("addressee_ids present for an explicit addressee");
+    ids.sort();
+    assert_eq!(ids, vec!["id-dev-1".to_string(), "id-dev-2".to_string()]);
+}
+
+#[tokio::test]
+async fn post_addressee_all_leaves_addressee_ids_none() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (app, tx) = test_app_with_routing(&dir, &[("dev", "id-dev-1")]);
+    let mut rx = tx.subscribe();
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/messages")
+        .header("Content-Type", "application/json")
+        .body(Body::from(
+            r#"{"from":"owner","text":"hi","addressee":"all"}"#,
+        ))
+        .expect("build request");
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let msg = rx.try_recv().expect("broadcast message");
+    assert!(
+        msg.addressee_ids.is_none(),
+        "addressee \"all\" must not gain an addressee_ids list"
+    );
 }
 
 #[tokio::test]

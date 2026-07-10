@@ -36,7 +36,13 @@ pub struct Message {
     pub to: Option<Vec<String>>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub to_ids: Option<Vec<String>>,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub addressee: Option<String>,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub addressee_ids: Option<Vec<String>>,
 
     #[serde(default, skip_serializing_if = "is_false")]
     pub explicit_privacy: bool,

@@ -21,6 +21,8 @@ pub struct PostMessage {
     pub multi_depth: Option<crate::message::MultiDepthPayload>,
     #[serde(default)]
     pub to: Option<Vec<String>>,
+    #[serde(default)]
+    pub sender_id: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -109,26 +111,23 @@ pub async fn post_message(
         );
     }
     let explicit_privacy = payload.to.is_some();
-    let sender_id = select
-        .select(|s| {
-            crate::store::routing::resolve(&s.routing, crate::routing::short_name(&payload.from))
-        })
-        .into_iter()
-        .next();
-    let msg = crate::message::Message {
+    let mut msg = crate::message::Message {
         id: String::new(),
         from: payload.from,
-        sender_id,
+        sender_id: payload.sender_id,
         text: payload.text,
         ts: chrono::Utc::now(),
         message_type: crate::message::MessageType::from(payload.message_type.as_deref()),
         to: payload.to,
+        to_ids: None,
         addressee: payload.addressee,
+        addressee_ids: None,
         explicit_privacy,
         multi_depth: payload.multi_depth,
         state_delta: None,
         state_snapshot: None,
     };
+    crate::transport::delivery_ids::stamp_delivery_ids(&select, &mut msg);
     if let Err(e) = hub.broadcast(&msg) {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,

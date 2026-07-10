@@ -30,10 +30,13 @@ pub fn spawn_relay(
             match msg {
                 PeerMessage::Chat {
                     from,
+                    sender_id,
                     text,
                     ts,
                     to,
+                    to_ids,
                     addressee,
+                    addressee_ids,
                     message_type,
                     origin,
                 } => {
@@ -42,11 +45,14 @@ pub fn spawn_relay(
                     }
                     let message = Message {
                         from,
+                        sender_id,
                         text,
                         ts: ts.parse().unwrap_or_else(|_| chrono::Utc::now()),
                         message_type: message_type.as_deref().into(),
                         to,
+                        to_ids,
                         addressee,
+                        addressee_ids,
                         ..Message::default()
                     };
                     let _ = hub_for_inbound.broadcast(&message);
@@ -131,10 +137,13 @@ pub fn spawn_relay(
                 Ok(msg) => {
                     let peer_msg = PeerMessage::Chat {
                         from: msg.from,
+                        sender_id: msg.sender_id,
                         text: msg.text,
                         ts: msg.ts.to_rfc3339(),
                         to: msg.to,
+                        to_ids: msg.to_ids,
                         addressee: msg.addressee,
+                        addressee_ids: msg.addressee_ids,
                         message_type: msg.message_type.to_wire(),
                         origin: local_session_id.clone(),
                     };

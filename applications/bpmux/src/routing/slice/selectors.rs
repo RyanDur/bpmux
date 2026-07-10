@@ -8,6 +8,15 @@ pub fn resolve(state: &RoutingState, display: &str) -> Vec<String> {
     state.identity.resolve(display)
 }
 
+pub fn resolve_many(state: &RoutingState, displays: &[String]) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    displays
+        .iter()
+        .flat_map(|display| resolve(state, short_name(display)))
+        .filter(|id| seen.insert(id.clone()))
+        .collect()
+}
+
 pub fn drain_floor(
     state: &RoutingState,
     user_id: &str,

@@ -11,8 +11,11 @@ export interface ServerChatMessage {
   from: string
   text: string
   ts: string
+  sender_id?: string | null
   to?: string[] | null
+  to_ids?: string[] | null
   addressee?: string | null
+  addressee_ids?: string[] | null
   message_type?: string | null
   state_delta?: StateDeltaPayload | null
   state_snapshot?: StateSnapshotPayload | null

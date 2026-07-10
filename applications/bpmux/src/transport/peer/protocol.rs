@@ -36,12 +36,18 @@ pub enum PeerMessage {
     #[serde(rename = "chat")]
     Chat {
         from: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        sender_id: Option<String>,
         text: String,
         ts: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         to: Option<Vec<String>>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
+        to_ids: Option<Vec<String>>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         addressee: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        addressee_ids: Option<Vec<String>>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         message_type: Option<String>,
         origin: String,

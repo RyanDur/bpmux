@@ -111,8 +111,11 @@ export const historyPageLoadedDecoder: D.Decoder<ServerHistoryPageLoaded> = D.ob
 export const messageDecoder: D.Decoder<ServerChatMessage> = D.object({
   required: { type: D.literal('message'), from: D.string, text: D.string, ts: D.string },
   optional: {
+    sender_id: D.nullable(D.string),
     to: D.nullable(D.array(D.string)),
+    to_ids: D.nullable(D.array(D.string)),
     addressee: D.nullable(D.string),
+    addressee_ids: D.nullable(D.array(D.string)),
     message_type: D.nullable(D.string),
     state_delta: D.oneOf(stateDeltaDecoder, D.succeed(null)),
     state_snapshot: D.nullable(stateSnapshotDecoder)
