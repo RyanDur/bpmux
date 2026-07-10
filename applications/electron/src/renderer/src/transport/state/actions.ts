@@ -14,6 +14,7 @@ export interface ConnectionConfig {
   url: string | undefined
   apiBase?: string
   authToken?: string
+  ownerNonce?: string
 }
 
 export interface HistoryMessage {

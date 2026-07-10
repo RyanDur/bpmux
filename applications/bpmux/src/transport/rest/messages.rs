@@ -2,12 +2,14 @@ use std::sync::Arc;
 
 use axum::Json;
 use axum::extract::{Query, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
 use crate::hub;
 use crate::routing::short_name;
+
+use super::shared::OWNER_NONCE_HEADER;
 
 pub const DEFAULT_MESSAGE_LIMIT: usize = 20;
 
@@ -40,6 +42,7 @@ pub struct GetMessagesParams {
 pub async fn get_messages(
     State(hub): State<Arc<hub::Hub>>,
     axum::Extension(select): axum::Extension<crate::store::Select>,
+    headers: HeaderMap,
     Query(params): Query<GetMessagesParams>,
 ) -> impl IntoResponse {
     let chat_only = params.chat_only.unwrap_or(true);
@@ -58,6 +61,18 @@ pub async fn get_messages(
         .as_deref()
         .map(|peer| select.select(|s| crate::store::routing::resolve(&s.routing, short_name(peer))))
         .unwrap_or_default();
+    let claimed_owner_nonce =
+        select.select(|s| crate::store::owner_session::claimed_nonce(&s.owner_session));
+    let presented_owner_nonce = headers
+        .get(OWNER_NONCE_HEADER)
+        .and_then(|value| value.to_str().ok());
+    let is_owner = as_peer.as_deref().is_some_and(|peer| {
+        crate::store::owner_session::resolve_owner_mark(
+            claimed_owner_nonce.as_deref(),
+            presented_owner_nonce,
+            peer,
+        )
+    });
     let matches = |m: &crate::message::Message| -> bool {
         let type_ok = match &wanted_type {
             Some(t) => m.message_type == *t,
@@ -73,11 +88,11 @@ pub async fn get_messages(
         }
         if let Some(ref peer) = as_peer {
             let reaches = if resolved_ids.is_empty() {
-                crate::transport::ws::should_deliver(m, None, peer)
+                crate::transport::ws::should_deliver(m, None, peer, is_owner)
             } else {
                 resolved_ids
                     .iter()
-                    .any(|id| crate::transport::ws::should_deliver(m, Some(id), peer))
+                    .any(|id| crate::transport::ws::should_deliver(m, Some(id), peer, is_owner))
             };
             if !reaches {
                 return false;

@@ -11,6 +11,7 @@ use super::{send_json, should_deliver};
 
 const REPLAY_SCAN_WINDOW: usize = 500;
 
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn send_startup_frames(
     tx: &mut SplitSink<WebSocket, WsMessage>,
     hub: &Arc<hub::Hub>,
@@ -18,6 +19,7 @@ pub(super) async fn send_startup_frames(
     orchestrator: &crate::sync::OrchestratorHandle,
     identity: &str,
     routing_user_id: Option<&str>,
+    is_owner: bool,
     replay_cursor: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     send_json(tx, &ServerMessage::Welcome {}).await?;
@@ -68,7 +70,7 @@ pub(super) async fn send_startup_frames(
         for msg in messages {
             if msg.state_delta.is_some()
                 && msg.ts > cursor_ts
-                && should_deliver(&msg, routing_user_id, identity)
+                && should_deliver(&msg, routing_user_id, identity, is_owner)
             {
                 send_json(tx, &ServerMessage::from(msg)).await?;
             }

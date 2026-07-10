@@ -18,10 +18,11 @@ pub(super) async fn handle_broadcast(
     identity: &str,
     hub: &Arc<hub::Hub>,
     routing_user_id: Option<&str>,
+    is_owner: bool,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     match result {
         Ok(msg) => {
-            if should_deliver(&msg, routing_user_id, identity) {
+            if should_deliver(&msg, routing_user_id, identity, is_owner) {
                 send_json(tx, &ServerMessage::from(msg)).await?;
             }
         }

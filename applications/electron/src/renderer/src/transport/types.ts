@@ -177,6 +177,7 @@ export interface ClientIdentify {
   type: 'identify'
   name: string
   tool?: string
+  owner_nonce?: string
 }
 
 export interface ClientSend {

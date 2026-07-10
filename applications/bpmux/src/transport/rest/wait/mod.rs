@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::extract::{Extension, Query, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use serde::Deserialize;
 use tokio::sync::broadcast::error::RecvError;
@@ -10,7 +10,12 @@ use tokio::sync::broadcast::error::RecvError;
 use crate::hub;
 use crate::routing::short_name;
 use crate::store::routing::RoutingAction;
-use crate::transport::ws::should_deliver;
+
+use super::shared::OWNER_NONCE_HEADER;
+
+mod subscription_events;
+
+use subscription_events::event_for_role;
 
 pub const DEFAULT_WAIT_TIMEOUT_MS: u64 = 30_000;
 
@@ -26,12 +31,33 @@ pub async fn wait_for_event(
     State(hub): State<Arc<hub::Hub>>,
     Extension(dispatch): Extension<crate::store::Dispatch>,
     Extension(select): Extension<crate::store::Select>,
+    headers: HeaderMap,
     Query(params): Query<WaitParams>,
 ) -> impl IntoResponse {
     let role = params.as_peer.clone().unwrap_or_default();
     let resolved_ids =
         select.select(|s| crate::store::routing::resolve(&s.routing, short_name(&role)));
-    drain_or_block(&hub, &dispatch, &select, &params, &role, &resolved_ids).await
+    let claimed_owner_nonce =
+        select.select(|s| crate::store::owner_session::claimed_nonce(&s.owner_session));
+    let presented_owner_nonce = headers
+        .get(OWNER_NONCE_HEADER)
+        .and_then(|value| value.to_str().ok());
+    let is_owner = params.as_peer.is_some()
+        && crate::store::owner_session::resolve_owner_mark(
+            claimed_owner_nonce.as_deref(),
+            presented_owner_nonce,
+            &role,
+        );
+    drain_or_block(
+        &hub,
+        &dispatch,
+        &select,
+        &params,
+        &role,
+        &resolved_ids,
+        is_owner,
+    )
+    .await
 }
 
 async fn drain_or_block(
@@ -41,6 +67,7 @@ async fn drain_or_block(
     params: &WaitParams,
     role: &str,
     resolved_ids: &[String],
+    is_owner: bool,
 ) -> (StatusCode, String) {
     let timeout = Duration::from_millis(params.timeout_ms.unwrap_or(DEFAULT_WAIT_TIMEOUT_MS));
     let after_cursor = durable_drain_cursor(dispatch, select, role, params.after.as_deref())
@@ -49,7 +76,7 @@ async fn drain_or_block(
 
     let mut receiver = hub.subscribe();
 
-    if let Some(event) = first_pending_after(hub, after_cursor, role, resolved_ids) {
+    if let Some(event) = first_pending_after(hub, after_cursor, role, resolved_ids, is_owner) {
         return (StatusCode::OK, event.to_string());
     }
 
@@ -59,12 +86,12 @@ async fn drain_or_block(
         tokio::select! {
             received = receiver.recv() => match received {
                 Ok(message) => {
-                    if let Some(event) = event_for_role(&message, role, resolved_ids) {
+                    if let Some(event) = event_for_role(&message, role, resolved_ids, is_owner) {
                         return (StatusCode::OK, event.to_string());
                     }
                 }
                 Err(RecvError::Lagged(_)) => {
-                    if let Some(event) = first_pending_after(hub, after_cursor, role, resolved_ids) {
+                    if let Some(event) = first_pending_after(hub, after_cursor, role, resolved_ids, is_owner) {
                         return (StatusCode::OK, event.to_string());
                     }
                 }
@@ -116,6 +143,7 @@ fn first_pending_after(
     after_cursor: Option<chrono::DateTime<chrono::Utc>>,
     role: &str,
     resolved_ids: &[String],
+    is_owner: bool,
 ) -> Option<serde_json::Value> {
     const PENDING_SCAN_WINDOW: usize = 500;
     let mut messages = hub.read_recent(PENDING_SCAN_WINDOW, 0, &|_| true).ok()?;
@@ -126,69 +154,5 @@ fn first_pending_after(
             Some(cursor) => message.ts > cursor,
             None => true,
         })
-        .find_map(|message| event_for_role(&message, role, resolved_ids))
-}
-
-fn matches_any_resolved(resolved_ids: &[String], matches: impl Fn(Option<&str>) -> bool) -> bool {
-    if resolved_ids.is_empty() {
-        matches(None)
-    } else {
-        resolved_ids.iter().any(|id| matches(Some(id)))
-    }
-}
-
-fn event_for_role(
-    message: &crate::message::Message,
-    role: &str,
-    resolved_ids: &[String],
-) -> Option<serde_json::Value> {
-    if matches_any_resolved(resolved_ids, |id| message.is_from_user(id, role)) {
-        return None;
-    }
-    if let Some(delta) = &message.state_delta {
-        let ts = message
-            .ts
-            .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true);
-        let (event_class, payload) = delta.to_subscription_event(&ts)?;
-        return Some(serde_json::json!({
-            "event_class": event_class,
-            "payload": payload,
-            "cursor": ts,
-        }));
-    }
-    let reaches = matches_any_resolved(resolved_ids, |id| should_deliver(message, id, role));
-    if !message.is_chat() || !reaches {
-        return None;
-    }
-    Some(broadcast_event(message))
-}
-
-fn broadcast_event(message: &crate::message::Message) -> serde_json::Value {
-    let url_safe_ts = message
-        .ts
-        .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true);
-    serde_json::json!({
-        "event_class": "broadcast_received",
-        "payload": {
-            "from": short_name(&message.from),
-            "text": message.text,
-            "ts": url_safe_ts,
-            "channel": channel_label(&message.to),
-        },
-        "cursor": url_safe_ts,
-    })
-}
-
-fn channel_label(to: &Option<Vec<String>>) -> String {
-    match to {
-        None => "broadcast".to_string(),
-        Some(recipients)
-            if recipients
-                .iter()
-                .any(|recipient| recipient == crate::message::BROADCAST_ALL) =>
-        {
-            "broadcast".to_string()
-        }
-        Some(recipients) => recipients.join(","),
-    }
+        .find_map(|message| event_for_role(&message, role, resolved_ids, is_owner))
 }

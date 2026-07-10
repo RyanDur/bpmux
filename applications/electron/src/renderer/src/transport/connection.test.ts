@@ -79,6 +79,34 @@ describe('#1537 connection — lifecycle as a module singleton', () => {
     })
   })
 
+  test('identify carries owner_nonce when the config supplies the launch nonce (owner-anchor carriage)', async () => {
+    startConnection({
+      url: server.url,
+      apiBase: 'http://api',
+      authToken: 'tok',
+      ownerNonce: 'launch-nonce-xyz'
+    })
+    const conn = await server.waitForConnection()
+    await vi.waitFor(() => expect(getStateSnapshot().status).toBe('connected'))
+    await vi.waitFor(() => expect(conn.received.length).toBeGreaterThan(0))
+    expect(JSON.parse(conn.received[0])).toMatchObject({
+      type: 'identify',
+      name: 'owner',
+      tool: 'electron',
+      owner_nonce: 'launch-nonce-xyz'
+    })
+  })
+
+  test('identify omits owner_nonce entirely when the config has none (old-config / non-electron surface)', async () => {
+    startConnection({ url: server.url })
+    const conn = await server.waitForConnection()
+    await vi.waitFor(() => expect(getStateSnapshot().status).toBe('connected'))
+    await vi.waitFor(() => expect(conn.received.length).toBeGreaterThan(0))
+    const frame = JSON.parse(conn.received[0]) as Record<string, unknown>
+    expect(frame).toMatchObject({ type: 'identify', name: 'owner', tool: 'electron' })
+    expect('owner_nonce' in frame).toBe(false)
+  })
+
   test('startConnection is idempotent — a second call with the same url does NOT open a second socket', async () => {
     startConnection({ url: server.url })
     startConnection({ url: server.url })

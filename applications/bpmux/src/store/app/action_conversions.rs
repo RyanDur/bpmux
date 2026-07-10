@@ -8,6 +8,7 @@ use crate::product_management::story::slice::StoryAction;
 use crate::store::board::BoardAction;
 use crate::store::ci::CiAction;
 use crate::store::commitments::CommitmentsAction;
+use crate::store::owner_session::OwnerSessionAction;
 use crate::store::reactions::ReactionsAction;
 use crate::store::roster::RosterAction;
 use crate::store::routing::RoutingAction;
@@ -95,5 +96,11 @@ impl From<BoardAction> for AppAction {
 impl From<SharedHistoryAction> for AppAction {
     fn from(action: SharedHistoryAction) -> Self {
         Self::SharedHistory(action)
+    }
+}
+
+impl From<OwnerSessionAction> for AppAction {
+    fn from(action: OwnerSessionAction) -> Self {
+        Self::OwnerSession(action)
     }
 }

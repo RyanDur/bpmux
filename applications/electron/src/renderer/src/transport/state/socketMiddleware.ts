@@ -18,7 +18,11 @@ import { captureSentFrame } from './testCapture'
 import type { ClientMessage } from '../types'
 
 const sameConfig = (a: ConnectionConfig | null, b: ConnectionConfig): boolean =>
-  a !== null && a.url === b.url && a.apiBase === b.apiBase && a.authToken === b.authToken
+  a !== null &&
+  a.url === b.url &&
+  a.apiBase === b.apiBase &&
+  a.authToken === b.authToken &&
+  a.ownerNonce === b.ownerNonce
 
 export const socketMiddleware: Middleware<StateSnapshot, StateAction> = (api) => {
   let socket: WebSocket | null = null
@@ -65,7 +69,12 @@ export const socketMiddleware: Middleware<StateSnapshot, StateAction> = (api) =>
       } else {
         api.dispatch(connected())
       }
-      send({ type: 'identify', name: RENDERER_IDENTITY, tool: RENDERER_TOOL })
+      send({
+        type: 'identify',
+        name: RENDERER_IDENTITY,
+        tool: RENDERER_TOOL,
+        ...(config?.ownerNonce ? { owner_nonce: config.ownerNonce } : {})
+      })
     }
     sock.onmessage = (ev) => {
       if (socket !== sock) return

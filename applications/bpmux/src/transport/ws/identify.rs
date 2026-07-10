@@ -32,8 +32,8 @@ pub(super) fn resolve_routing_user_id(
     }
 }
 
-pub(super) fn roster_key_for(routing_user_id: &Option<String>, identity: &str) -> Option<String> {
-    if crate::roster::is_reserved_display(identity) {
+pub(super) fn roster_key_for(routing_user_id: &Option<String>, is_owner: bool) -> Option<String> {
+    if is_owner {
         return None;
     }
     routing_user_id.clone()

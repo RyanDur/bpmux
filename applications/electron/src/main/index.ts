@@ -11,6 +11,7 @@ import { join } from 'path'
 import { homedir } from 'os'
 import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'fs'
 import { spawn, ChildProcess } from 'child_process'
+import { randomBytes } from 'crypto'
 import * as http from 'http'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { applySelfUpdateRestartPolicy } from './selfUpdateRestartPolicy'
@@ -37,6 +38,7 @@ const RESTART_RESPAWN_DELAY_MS = 250
 
 let backendProcess: ChildProcess | null = null
 let authToken = ''
+const ownerNonce = randomBytes(32).toString('hex')
 let shuttingDown = false
 const recentRestartsAt: number[] = []
 
@@ -149,11 +151,44 @@ const readAuthToken = (): string => {
   return raw.trim()
 }
 
+const claimOwnerSession = (): Promise<void> => {
+  return new Promise((resolve) => {
+    const body = JSON.stringify({ nonce: ownerNonce })
+    const req = http.request(
+      {
+        host: BACKEND_HOST,
+        port: BACKEND_PORT,
+        path: '/api/owner-session',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(body),
+          Authorization: `Bearer ${authToken}`
+        }
+      },
+      (res) => {
+        res.resume()
+        if (res.statusCode !== 201) {
+          console.error(`[bpmux] owner-session claim returned ${res.statusCode}`)
+        }
+        resolve()
+      }
+    )
+    req.on('error', (err) => {
+      console.error('[bpmux] owner-session claim failed:', err)
+      resolve()
+    })
+    req.write(body)
+    req.end()
+  })
+}
+
 const spawnBackend = async (): Promise<void> => {
   console.log(`[bpmux] checking port ${BACKEND_PORT}...`)
   if (await checkPortInUse()) {
     console.log(`[bpmux] backend already running on ${BACKEND_PORT} — adopting`)
     authToken = readAuthToken()
+    await claimOwnerSession()
     return
   }
 
@@ -205,6 +240,7 @@ const spawnBackend = async (): Promise<void> => {
   }
 
   authToken = readAuthToken()
+  await claimOwnerSession()
   console.log(`[bpmux] backend ready on ${API_BASE}`)
 }
 
@@ -354,11 +390,13 @@ app.whenReady().then(async () => {
   const configPayload = (): {
     wsUrl: string
     authToken: string
+    ownerNonce: string
     apiBase: string
     e2e: boolean
   } => ({
     wsUrl: WS_URL,
     authToken,
+    ownerNonce,
     apiBase: API_BASE,
     e2e: process.env.BPMUX_E2E === '1'
   })

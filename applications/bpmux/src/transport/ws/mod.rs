@@ -61,10 +61,18 @@ pub(super) async fn run_ws_session(
         tracker,
         orchestrator,
     } = deps;
-    let (mut identity, replay_cursor, identify_user_id) =
+    let (mut identity, replay_cursor, identify_user_id, identify_owner_nonce) =
         wait_for_identify(&mut tx, &mut rx).await?;
     let routing_user_id = resolve_routing_user_id(&store, &dispatch, &identity, identify_user_id);
-    let mut roster_key = roster_key_for(&routing_user_id, &identity);
+    let claimed_owner_nonce = store
+        .selector()
+        .select(|s| crate::store::owner_session::claimed_nonce(&s.owner_session));
+    let is_owner = crate::store::owner_session::resolve_owner_mark(
+        claimed_owner_nonce.as_deref(),
+        identify_owner_nonce.as_deref(),
+        &identity,
+    );
+    let mut roster_key = roster_key_for(&routing_user_id, is_owner);
     hub.peer_connected();
     if let Some(ref key) = roster_key {
         dispatch_roster_join(&store, key, &identity).await;
@@ -79,6 +87,7 @@ pub(super) async fn run_ws_session(
         &orchestrator,
         &identity,
         routing_user_id.as_deref(),
+        is_owner,
         replay_cursor,
     )
     .await?;
@@ -91,7 +100,7 @@ pub(super) async fn run_ws_session(
         loop {
             tokio::select! {
                 broadcast_result = broadcast_rx.recv() => {
-                    if !loop_handlers::handle_broadcast(&mut tx, broadcast_result, &identity, &hub, routing_user_id.as_deref()).await? {
+                    if !loop_handlers::handle_broadcast(&mut tx, broadcast_result, &identity, &hub, routing_user_id.as_deref(), is_owner).await? {
                         break;
                     }
                 }
@@ -134,7 +143,7 @@ pub(super) async fn run_ws_session(
                                         .into(),
                                     );
                                 }
-                                let new_key = roster_key_for(&routing_user_id, &identity);
+                                let new_key = roster_key_for(&routing_user_id, is_owner);
                                 if new_key != roster_key && let Some(ref old) = roster_key {
                                     dispatch_roster_leave(&store, old).await;
                                 }

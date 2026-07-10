@@ -135,6 +135,15 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
                 None => state.clone(),
             }
         }
+        AppAction::OwnerSession(action) => {
+            match crate::store::owner_session::reduce(&state.owner_session, action) {
+                Some(owner_session) => AppState {
+                    owner_session: Arc::new(owner_session),
+                    ..state.clone()
+                },
+                None => state.clone(),
+            }
+        }
     }
 }
 
@@ -179,6 +188,7 @@ pub fn validate_and_log(action: &AppAction) {
         AppAction::Story(_) => "Story",
         AppAction::Board(_) => "Board",
         AppAction::SharedHistory(_) => "SharedHistory",
+        AppAction::OwnerSession(_) => "OwnerSession",
     };
     crate::diag::log_diag(&format!("store: dispatch {label}"));
 }

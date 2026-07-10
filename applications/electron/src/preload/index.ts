@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 interface BpmuxConfig {
   wsUrl: string
   authToken: string
+  ownerNonce: string
   apiBase: string
   e2e: boolean
 }
@@ -19,6 +20,7 @@ try {
   contextBridge.exposeInMainWorld('bpmux', {
     wsUrl: config.wsUrl,
     authToken: config.authToken,
+    ownerNonce: config.ownerNonce,
     apiBase: config.apiBase,
     e2e: config.e2e,
     onQuoteComment: (callback: (payload: QuoteCommentPayload) => void): (() => void) => {

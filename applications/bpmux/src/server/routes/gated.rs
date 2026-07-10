@@ -101,6 +101,10 @@ pub(in crate::server) fn gated_routes(
             "/api/presence",
             axum::routing::post(transport::rest::post_presence),
         )
+        .route(
+            "/api/owner-session",
+            axum::routing::post(transport::rest::post_owner_session),
+        )
         .layer(axum::middleware::from_fn_with_state(
             auth_state,
             transport::auth::gate,

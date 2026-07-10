@@ -3,6 +3,7 @@ declare global {
     bpmux: {
       wsUrl: string
       authToken: string
+      ownerNonce: string
       apiBase: string
       e2e: boolean
       onQuoteComment?: (

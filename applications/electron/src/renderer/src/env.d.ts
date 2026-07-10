@@ -9,6 +9,7 @@ declare global {
     bpmux?: {
       wsUrl: string
       authToken: string
+      ownerNonce?: string
       apiBase: string
       e2e?: boolean
       // #371: main-process-fired IPC for "Quote in reply" context-menu

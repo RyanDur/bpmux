@@ -11,6 +11,7 @@ mod labels;
 mod lessons;
 mod messages;
 mod metrics;
+mod owner_session;
 mod presence;
 mod reactions;
 mod register;
@@ -57,6 +58,7 @@ pub use messages::{
     DEFAULT_MESSAGE_LIMIT, GetMessagesParams, PostMessage, get_messages, post_message,
 };
 pub use metrics::get_metrics;
+pub use owner_session::{ClaimOwnerSessionRequest, post_owner_session};
 pub use presence::{PresenceRequest, post_presence};
 pub use reactions::{
     ReactionToggle, ReactionsChannelQuery, apply_reaction_toggle, get_reactions, post_reaction,

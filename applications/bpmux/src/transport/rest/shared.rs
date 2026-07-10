@@ -6,6 +6,8 @@ use crate::hub;
 
 pub type TrackerHandle = Option<Arc<crate::integrations::github::GitHubSourceAdapter>>;
 
+pub(crate) const OWNER_NONCE_HEADER: &str = "x-bpmux-owner-nonce";
+
 #[derive(Deserialize)]
 pub struct CommentPayload {
     pub body: String,

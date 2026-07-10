@@ -13,6 +13,7 @@ fn deserializes_identify_without_tool() {
             tool,
             cursor,
             user_id,
+            owner_nonce,
         } => {
             assert_eq!(name, "claude");
             assert_eq!(tool, None);
@@ -20,6 +21,29 @@ fn deserializes_identify_without_tool() {
             assert_eq!(
                 user_id, None,
                 "an old client that omits user_id parses with an absent id — the server falls back to name-resolution (back-compat pin)"
+            );
+            assert_eq!(
+                owner_nonce, None,
+                "an old client that omits owner_nonce parses with an absent nonce — the additive field defaults, and the bootstrap fallback keeps it working (back-compat pin)"
+            );
+        }
+        other => panic!("expected Identify, got {other:?}"),
+    }
+}
+
+#[test]
+fn deserializes_identify_with_owner_nonce() {
+    let json = r#"{"type": "identify", "name": "owner", "tool": "electron", "owner_nonce": "launch-abc123"}"#;
+    let msg: ClientMessage = serde_json::from_str(json).expect("parse");
+    match msg {
+        ClientMessage::Identify {
+            name, owner_nonce, ..
+        } => {
+            assert_eq!(name, "owner");
+            assert_eq!(
+                owner_nonce,
+                Some("launch-abc123".to_string()),
+                "the launcher's per-launch nonce rides the identify frame — the backend marks THIS session the owner when it matches the claimed nonce"
             );
         }
         other => panic!("expected Identify, got {other:?}"),
