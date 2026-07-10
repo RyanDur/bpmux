@@ -21,6 +21,7 @@ fn verdict_event(story: u64, hour: u32, verdict: Verdict) -> StoryEvent {
     StoryEvent::new(
         EventMeta {
             actor: "owner".to_string(),
+            actor_id: None,
             ts: at(hour),
         },
         StoryId::new(story),

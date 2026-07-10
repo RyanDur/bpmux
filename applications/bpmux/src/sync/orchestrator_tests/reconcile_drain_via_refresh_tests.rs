@@ -78,6 +78,11 @@ async fn reconcile_dual_state_labels_emits_tag_remove_for_stale_in_progress_labe
         &pushed[0].kind,
         StoryEventKind::TagRemoved { label } if pushed[0].id == StoryId::new(450) && label == "in progress"
     ));
+    assert_eq!(pushed[0].meta.actor, "bpmux:reconcile");
+    assert_eq!(
+        pushed[0].meta.actor_id, None,
+        "reconcile has no user-identity lane; actor_id stays explicitly None"
+    );
 }
 
 #[tokio::test]

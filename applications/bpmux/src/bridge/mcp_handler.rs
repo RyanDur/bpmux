@@ -63,7 +63,8 @@ impl ServerHandler for BridgeServer {
         let port = self.port;
         let ws_tx = self.ws_tx.clone();
         let name = self.name.clone();
+        let user_id = self.user_id.clone();
         let subscriptions = self.subscriptions.clone();
-        dispatch_tool_call(port, name, ws_tx, subscriptions, request)
+        dispatch_tool_call(port, name, user_id, ws_tx, subscriptions, request)
     }
 }

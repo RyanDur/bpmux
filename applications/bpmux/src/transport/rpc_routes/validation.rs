@@ -2,6 +2,7 @@ use axum::http::HeaderMap;
 use serde_json::Value;
 
 pub const AGENT_HEADER: &str = "X-BPMUX-Agent";
+pub const ACTOR_ID_HEADER: &str = "X-BPMUX-Actor-Id";
 
 fn known_agents() -> Vec<String> {
     crate::workflow::current_workflow()
@@ -97,6 +98,15 @@ pub fn agent_from_headers(headers: &HeaderMap) -> Result<String, String> {
         ));
     }
     Ok(raw)
+}
+
+pub fn actor_id_from_headers(headers: &HeaderMap) -> Option<String> {
+    headers
+        .get(ACTOR_ID_HEADER)
+        .and_then(|v| v.to_str().ok())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
 }
 
 pub(super) fn args_from_value(body: Value) -> Result<serde_json::Map<String, Value>, String> {

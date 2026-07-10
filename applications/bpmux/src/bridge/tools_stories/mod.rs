@@ -14,7 +14,7 @@ mod creation_iteration;
 mod creation_outcome;
 mod deliver;
 mod edit_outcome;
-mod event_meta;
+pub(crate) mod event_meta;
 pub(crate) mod helpers;
 pub(crate) mod iteration_members;
 mod iteration_reorg;

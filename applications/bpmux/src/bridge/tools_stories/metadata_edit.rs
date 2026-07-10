@@ -1,8 +1,10 @@
+use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, require_purpose};
 
 pub(crate) async fn handle_edit_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
@@ -54,10 +56,7 @@ pub(crate) async fn handle_edit_story(
     }
     if let Some(acceptor) = acceptor {
         ensure_story_in_canonical_store(r, id).await?;
-        let meta = crate::product_management::story::events::EventMeta {
-            actor: crate::routing::short_name(agent_name).to_string(),
-            ts: chrono::Utc::now(),
-        };
+        let meta = meta_for(agent_name, actor_id);
         r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
             meta,
             crate::product_management::story::StoryId::new(id),

@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::owner_park::owner_park_presence;
+use super::owner_park::{Delivering, owner_park_presence};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::{Acceptor, Story, StoryId, Work};
 use crate::store::{Presence, RosterMember};
@@ -58,7 +58,13 @@ fn member(routing_id: &str, identity: &str, presence: Presence) -> RosterMember 
 #[test]
 fn with_no_current_iteration_a_not_started_story_does_not_block_the_owner_park() {
     let stories = vec![owner_parked_delivery(100), story(200, Work::NotStarted)];
-    let changes = owner_park_presence(&stories, &[], &[dev_member(Presence::Online)], Some("dev"));
+    let delivering = Delivering::ByDisplay("dev".to_string());
+    let changes = owner_park_presence(
+        &stories,
+        &[],
+        &[dev_member(Presence::Online)],
+        Some(&delivering),
+    );
     assert_eq!(
         changes,
         vec![("dev-routing".to_string(), Presence::Blocked)],
@@ -69,11 +75,12 @@ fn with_no_current_iteration_a_not_started_story_does_not_block_the_owner_park()
 #[test]
 fn a_projected_ready_member_keeps_the_ready_queue_non_empty_and_lifts_the_park() {
     let stories = vec![owner_parked_delivery(100), story(200, Work::NotStarted)];
+    let delivering = Delivering::ByDisplay("dev".to_string());
     let changes = owner_park_presence(
         &stories,
         &current_iteration_of(&[200]),
         &[dev_member(Presence::Blocked)],
-        Some("dev"),
+        Some(&delivering),
     );
     assert_eq!(
         changes,
@@ -89,10 +96,27 @@ fn park_blocks_only_the_delivering_member_never_a_same_role_sibling() {
         member("routing-aaa", "agent-aaa:ws", Presence::Online),
         member("routing-bbb", "agent-bbb:ws", Presence::Online),
     ];
-    let changes = owner_park_presence(&stories, &[], &roster, Some("agent-aaa"));
+    let delivering = Delivering::ByDisplay("agent-aaa".to_string());
+    let changes = owner_park_presence(&stories, &[], &roster, Some(&delivering));
     assert_eq!(
         changes,
         vec![("routing-aaa".to_string(), Presence::Blocked)],
         "the park blocks exactly the delivering member; two peers that share a derived RosterRole (both Other) but hold distinct identities must not collapse into one match — matching on the derived role instead of the delivering identity would over-block routing-bbb, a reachable regression the roster's per-id keying makes possible"
+    );
+}
+
+#[test]
+fn park_blocks_only_the_delivering_id_never_a_same_display_sibling() {
+    let stories = vec![owner_parked_delivery(100)];
+    let roster = vec![
+        member("dev-routing-alpha", "dev:claude-code", Presence::Online),
+        member("dev-routing-beta", "dev:vscode", Presence::Online),
+    ];
+    let delivering = Delivering::ById("dev-routing-alpha".to_string());
+    let changes = owner_park_presence(&stories, &[], &roster, Some(&delivering));
+    assert_eq!(
+        changes,
+        vec![("dev-routing-alpha".to_string(), Presence::Blocked)],
+        "two roster members share the SAME display 'dev' but hold DIFFERENT ids; the delivering event's actor_id names dev-routing-alpha, so the id-match blocks exactly that member — matching on display_name instead would over-block dev-routing-beta too, the STOP-gated regression B-4 unblocks"
     );
 }

@@ -12,6 +12,7 @@ fn transition(story: u64, hour: u32, to: Work, placement: Option<Stage>) -> Stor
     StoryEvent::new(
         EventMeta {
             actor: "dev".to_string(),
+            actor_id: None,
             ts: Utc.with_ymd_and_hms(2026, 7, 7, hour, 0, 0).unwrap(),
         },
         StoryId::new(story),

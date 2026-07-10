@@ -55,7 +55,8 @@ pub async fn post_accept_story(
     match crate::bridge::tools_stories::accept_via_canonical_store(
         &refresh,
         number,
-        "ui-electron".to_string(),
+        "ui-electron",
+        None,
         bypass,
     )
     .await
@@ -106,7 +107,8 @@ pub async fn post_reject_story(
     match crate::bridge::tools_stories::reject_via_canonical_store(
         &refresh,
         number,
-        "ui-electron".to_string(),
+        "ui-electron",
+        None,
         note,
     )
     .await

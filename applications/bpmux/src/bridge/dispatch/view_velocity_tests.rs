@@ -18,6 +18,7 @@ fn at(hour: u32) -> DateTime<Utc> {
 fn meta(hour: u32) -> EventMeta {
     EventMeta {
         actor: "owner".to_string(),
+        actor_id: None,
         ts: at(hour),
     }
 }

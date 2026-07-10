@@ -1,5 +1,6 @@
+use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string, role_from_name};
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::{Story, StoryId, Verdict, Work};
 use crate::sync::RefreshDriver;
 use crate::workflow::StageId;
@@ -9,6 +10,7 @@ const REASON_CITE_MIN_CHARS: usize = 16;
 pub(crate) async fn handle_pass_stage(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     let (id, r, story, held) = judged_stage_of(args, refresh).await?;
@@ -30,7 +32,7 @@ pub(crate) async fn handle_pass_stage(
     cast_and_transition(
         r,
         id,
-        agent_name,
+        meta_for(agent_name, actor_id),
         verdict,
         Some(observation.to_string()),
         new_state,
@@ -43,6 +45,7 @@ pub(crate) async fn handle_pass_stage(
 pub(crate) async fn handle_fail_stage(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     let (id, r, story, held) = judged_stage_of(args, refresh).await?;
@@ -74,7 +77,7 @@ pub(crate) async fn handle_fail_stage(
     cast_and_transition(
         r,
         id,
-        agent_name,
+        meta_for(agent_name, actor_id),
         verdict,
         Some(reason.to_string()),
         new_state,
@@ -124,16 +127,12 @@ fn enforce_judge(held: &StageId, agent_name: &str) -> Result<(), String> {
 fn cast_and_transition(
     r: &std::sync::Arc<dyn RefreshDriver>,
     id: u64,
-    agent_name: &str,
+    meta: crate::product_management::story::events::EventMeta,
     verdict: Verdict,
     payload: Option<String>,
     new_state: Work,
     placement: Option<StageId>,
 ) -> Result<(), String> {
-    let meta = EventMeta {
-        actor: crate::routing::short_name(agent_name).to_string(),
-        ts: chrono::Utc::now(),
-    };
     r.mutate_batch_sync(vec![
         StoryEvent::new(
             meta.clone(),

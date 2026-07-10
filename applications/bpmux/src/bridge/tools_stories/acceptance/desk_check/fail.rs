@@ -1,3 +1,4 @@
+use crate::bridge::tools_stories::event_meta::meta_for;
 use crate::bridge::tools_stories::helpers::{ensure_story_in_canonical_store, role_from_name};
 use crate::product_management::story::StoryId;
 
@@ -6,6 +7,7 @@ const FALSIFIER_CITE_MIN_CHARS: usize = 16;
 pub(crate) async fn handle_fail_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
@@ -74,10 +76,7 @@ pub(crate) async fn handle_fail_desk_check(
         )
     })?;
     if let Some(r) = refresh {
-        let meta = crate::product_management::story::events::EventMeta {
-            actor: crate::routing::short_name(agent_name).to_string(),
-            ts: chrono::Utc::now(),
-        };
+        let meta = meta_for(agent_name, actor_id);
         let mut events = Vec::new();
         if was_accepted {
             events.push(crate::product_management::story::events::StoryEvent::new(

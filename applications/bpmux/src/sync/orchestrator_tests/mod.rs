@@ -18,6 +18,7 @@ use crate::product_management::story::{Story, StoryId, Work};
 pub(super) fn meta() -> EventMeta {
     EventMeta {
         actor: "dev".to_string(),
+        actor_id: None,
         ts: Utc.with_ymd_and_hms(2026, 4, 24, 16, 0, 0).unwrap(),
     }
 }

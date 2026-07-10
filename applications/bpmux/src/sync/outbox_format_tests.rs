@@ -11,22 +11,24 @@ use crate::product_management::story::{
 };
 use crate::sync::{QueuedEvent, load_outbox_from_disk};
 
-const FIX_QUEUED_TAG_ADDED: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"label":"ready"}}}"#;
-const FIX_QUEUED_TRANSITIONED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"new_state":"in-progress","placement":"desk-check"}}}"#;
-const FIX_QUEUED_VERDICT: &str = r#"{"id":0,"event":{"VerdictCast":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"verdict":{"Fail":{"step":"acceptance"}},"payload":"narrow viewport"}}}"#;
-const FIX_QUEUED_REFRESHED: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[]}}}}"#;
-const FIX_STORY_EVENT: &str =
-    r#"{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"label":"ready"}}"#;
+const FIX_QUEUED_TAG_ADDED: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"label":"ready"}}}"#;
+const FIX_QUEUED_TRANSITIONED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"new_state":"in-progress","placement":"desk-check"}}}"#;
+const FIX_QUEUED_VERDICT: &str = r#"{"id":0,"event":{"VerdictCast":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"verdict":{"Fail":{"step":"acceptance"}},"payload":"narrow viewport"}}}"#;
+const FIX_QUEUED_REFRESHED: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[]}}}}"#;
+const FIX_STORY_EVENT: &str = r#"{"TagAdded":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"label":"ready"}}"#;
 
 const FIX_ABSENT_PLACEMENT: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"new_state":"in-progress"}}}"#;
-const FIX_ABSENT_PLACEMENT_NORMALIZED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"new_state":"in-progress","placement":null}}}"#;
+const FIX_ABSENT_PLACEMENT_NORMALIZED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"new_state":"in-progress","placement":null}}}"#;
 const FIX_ABSENT_ETAG: &str = r#"{"id":0,"event":{"BodyFetched":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"body":"hydrated"}}}"#;
-const FIX_ABSENT_ETAG_NORMALIZED: &str = r#"{"id":0,"event":{"BodyFetched":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"body":"hydrated","etag":null}}}"#;
+const FIX_ABSENT_ETAG_NORMALIZED: &str = r#"{"id":0,"event":{"BodyFetched":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"body":"hydrated","etag":null}}}"#;
+const FIX_ABSENT_ACTOR_ID: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"label":"ready"}}}"#;
+const FIX_ABSENT_ACTOR_ID_NORMALIZED: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"label":"ready"}}}"#;
 const FIX_LEGACY_ROW_WITH_PEER_ID: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z","peer_id":"local"},"id":700,"label":"ready"}}}"#;
 
 fn fixture_meta() -> EventMeta {
     EventMeta {
         actor: "dev".to_string(),
+        actor_id: None,
         ts: Utc.with_ymd_and_hms(2026, 7, 7, 12, 0, 0).unwrap(),
     }
 }
@@ -132,6 +134,18 @@ fn a_row_missing_the_etag_key_defaults_and_normalizes_on_rewrite() {
         serde_json::to_string(&parsed).unwrap(),
         FIX_ABSENT_ETAG_NORMALIZED,
         "rewriting a pre-etag row lands the defaulted key explicitly — the documented normalization, not byte-preservation"
+    );
+}
+
+#[test]
+fn a_row_missing_the_actor_id_key_defaults_and_normalizes_on_rewrite() {
+    let parsed: QueuedEvent =
+        serde_json::from_str(FIX_ABSENT_ACTOR_ID).expect("pre-actor_id row deserializes");
+    assert_eq!(parsed.event.meta.actor_id, None);
+    assert_eq!(
+        serde_json::to_string(&parsed).unwrap(),
+        FIX_ABSENT_ACTOR_ID_NORMALIZED,
+        "rewriting a pre-actor_id row lands the defaulted key explicitly — the documented normalization, not byte-preservation"
     );
 }
 

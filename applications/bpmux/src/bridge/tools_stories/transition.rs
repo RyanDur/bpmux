@@ -1,12 +1,14 @@
 use super::acceptance_test_path::validate_acceptance_test_path_at_pickup;
+use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string, role_from_name};
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::{StoryId, Verdict, Work};
 use crate::sync::RefreshDriver;
 
 pub(crate) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
@@ -60,10 +62,7 @@ pub(crate) async fn handle_start_story(
     let pickup_payload =
         format!("{pickup_paraphrase}\n\n---\n\n**falsifier_reframing**:\n\n{falsifier_reframing}");
     if let Some(r) = refresh {
-        let meta = EventMeta {
-            actor: crate::routing::short_name(agent_name).to_string(),
-            ts: chrono::Utc::now(),
-        };
+        let meta = meta_for(agent_name, actor_id);
         let mut events = Vec::new();
         if was_closed {
             events.push(StoryEvent::new(

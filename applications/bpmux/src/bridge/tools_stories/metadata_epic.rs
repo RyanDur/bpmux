@@ -1,3 +1,4 @@
+use super::event_meta::meta_for;
 use super::helpers::{
     ensure_epic_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
 };
@@ -7,6 +8,7 @@ use crate::product_management::story::StoryId;
 pub(crate) async fn handle_set_parent_epic(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "set parent epic")?;
@@ -24,10 +26,7 @@ pub(crate) async fn handle_set_parent_epic(
     let r = refresh.ok_or("set_parent_epic requires refresh (RefreshDriver)")?;
     ensure_story_in_canonical_store(r, id).await?;
     ensure_epic_in_canonical_store(r, epic_id).await?;
-    let meta = crate::product_management::story::events::EventMeta {
-        actor: crate::routing::short_name(agent_name).to_string(),
-        ts: chrono::Utc::now(),
-    };
+    let meta = meta_for(agent_name, actor_id);
     r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
         meta,
         StoryId::new(id),
@@ -42,6 +41,7 @@ pub(crate) async fn handle_set_parent_epic(
 pub(crate) async fn handle_unset_parent_epic(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "unset parent epic")?;
@@ -51,10 +51,7 @@ pub(crate) async fn handle_unset_parent_epic(
         .ok_or("missing 'id' argument")?;
     let r = refresh.ok_or("unset_parent_epic requires refresh (RefreshDriver)")?;
     ensure_story_in_canonical_store(r, id).await?;
-    let meta = crate::product_management::story::events::EventMeta {
-        actor: crate::routing::short_name(agent_name).to_string(),
-        ts: chrono::Utc::now(),
-    };
+    let meta = meta_for(agent_name, actor_id);
     r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
         meta,
         StoryId::new(id),

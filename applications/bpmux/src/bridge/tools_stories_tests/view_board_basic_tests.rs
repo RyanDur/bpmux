@@ -281,7 +281,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
         serde_json::json!("superseded by #999 — won't ship"),
     );
     args.insert("disposition".into(), serde_json::json!("retire"));
-    let result = handle_close_story(&args, "pm:claude-code", Some(&orchestrator)).await;
+    let result = handle_close_story(&args, "pm:claude-code", None, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = orchestrator.story(301).expect("story exists");
@@ -366,7 +366,7 @@ async fn close_story_accept_disposition_transitions_state_to_accepted() {
         serde_json::json!("owner verified the outcome directly"),
     );
     args.insert("disposition".into(), serde_json::json!("accept"));
-    let result = handle_close_story(&args, "pm:claude-code", Some(&orchestrator)).await;
+    let result = handle_close_story(&args, "pm:claude-code", None, Some(&orchestrator)).await;
     assert!(
         result.is_ok(),
         "accept-disposition close should succeed: {result:?}"

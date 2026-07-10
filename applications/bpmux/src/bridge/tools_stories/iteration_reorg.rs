@@ -10,6 +10,7 @@ use std::sync::Arc;
 pub(crate) async fn handle_reorder_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
@@ -27,7 +28,8 @@ pub(crate) async fn handle_reorder_iteration(
     let r = refresh.ok_or("reorder_iteration requires refresh (RefreshDriver)")?;
     ensure_iteration_in_canonical_store(r, iteration_id).await?;
 
-    let band_size = renumber_iteration_order(r, dispatch, agent_name, iteration_id, position)?;
+    let band_size =
+        renumber_iteration_order(r, dispatch, agent_name, actor_id, iteration_id, position)?;
     Ok(format!(
         "iteration #{iteration_id} reordered to planning position {position} of {band_size}"
     ))
@@ -37,6 +39,7 @@ fn renumber_iteration_order(
     r: &Arc<dyn RefreshDriver>,
     dispatch: &crate::store::Dispatch,
     agent_name: &str,
+    actor_id: Option<&str>,
     moved: u64,
     requested_position: u32,
 ) -> Result<u32, String> {
@@ -71,7 +74,7 @@ fn renumber_iteration_order(
         }
         if let Some(old_position) = iteration.iteration_order {
             r.mutate_sync(StoryEvent::new(
-                meta_for(agent_name),
+                meta_for(agent_name, actor_id),
                 StoryId::new(*number),
                 StoryEventKind::TagRemoved {
                     label: GhLabelCodec.encode_iteration_order(old_position),
@@ -80,7 +83,7 @@ fn renumber_iteration_order(
             .map_err(|e| format!("#{number} iteration-order clear enqueue failed: {e}"))?;
         }
         r.mutate_sync(StoryEvent::new(
-            meta_for(agent_name),
+            meta_for(agent_name, actor_id),
             StoryId::new(*number),
             StoryEventKind::TagAdded {
                 label: GhLabelCodec.encode_iteration_order(new_position),

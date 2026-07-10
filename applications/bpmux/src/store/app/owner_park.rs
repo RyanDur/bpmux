@@ -15,17 +15,30 @@ fn any_owner_parked_delivery(stories: &[Story]) -> bool {
         .any(|s| s.state == Work::Acceptance && s.acceptor() == Some(Acceptor::Owner))
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Delivering {
+    ById(String),
+    ByDisplay(String),
+}
+
+fn delivering_matches(delivering: &Delivering, member: &RosterMember) -> bool {
+    match delivering {
+        Delivering::ById(id) => &member.routing_id == id,
+        Delivering::ByDisplay(display) => crate::roster::display_name(&member.identity) == display,
+    }
+}
+
 pub fn owner_park_presence(
     stories: &[Story],
     iterations: &[Iteration],
     roster: &[RosterMember],
-    delivering_role: Option<&str>,
+    delivering: Option<&Delivering>,
 ) -> Vec<(String, Presence)> {
     let parked = any_owner_parked_delivery(stories) && ready_queue_is_empty(stories, iterations);
     let mut changes = Vec::new();
     for member in roster {
         let should_block = parked
-            && (Some(crate::roster::display_name(&member.identity)) == delivering_role
+            && (delivering.is_some_and(|d| delivering_matches(d, member))
                 || member.presence == Presence::Blocked);
         let next = if should_block {
             Presence::Blocked
@@ -58,7 +71,12 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
                 crate::product_management::story::events::StoryEventKind::StateTransitioned {
                     new_state: Work::Acceptance,
                     ..
-                } => Some(crate::routing::short_name(&event.meta.actor).to_string()),
+                } => Some(match &event.meta.actor_id {
+                    Some(id) => Delivering::ById(id.clone()),
+                    None => Delivering::ByDisplay(
+                        crate::routing::short_name(&event.meta.actor).to_string(),
+                    ),
+                }),
                 _ => None,
             };
         let delivering = match story_action {
@@ -73,7 +91,7 @@ impl crate::kernel::Listener<crate::store::AppState, crate::store::AppAction>
         let stories: Vec<Story> = reaction.current.stories.values().cloned().collect();
         let iterations = crate::product_management::iteration::all(&reaction.current.iterations);
         let roster = crate::store::roster::members(&reaction.current.roster);
-        let changes = owner_park_presence(&stories, &iterations, &roster, delivering.as_deref());
+        let changes = owner_park_presence(&stories, &iterations, &roster, delivering.as_ref());
         let dispatch = std::sync::Arc::clone(&reaction.dispatch);
         Box::pin(async move {
             for (routing_id, presence) in changes {

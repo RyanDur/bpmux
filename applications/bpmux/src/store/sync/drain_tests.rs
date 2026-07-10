@@ -22,6 +22,7 @@ use crate::sync::{RefreshDriver, SyncOrchestrator};
 fn meta() -> EventMeta {
     EventMeta {
         actor: "test".to_string(),
+        actor_id: None,
         ts: Utc::now(),
     }
 }

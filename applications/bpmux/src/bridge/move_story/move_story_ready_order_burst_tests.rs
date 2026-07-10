@@ -79,7 +79,7 @@ async fn move_to_ready_position(
         serde_json::json!("burst-regression #1579: distinct positions under rapid reorder"),
     );
     let (dispatch, mut rx) = Dispatch::recording();
-    dispatch_move_story(args, "pm", Some(orch), &dispatch)
+    dispatch_move_story(args, "pm", None, Some(orch), &dispatch)
         .await
         .unwrap_or_else(|e| panic!("move_story(#{id}, pos {position}) must succeed: {e}"));
     merge_dispatched(seed, &mut rx);

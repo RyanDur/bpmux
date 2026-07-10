@@ -23,6 +23,7 @@ fn one_placement() -> PlacementHistory {
         &StoryAction::Event(StoryEvent::new(
             EventMeta {
                 actor: "dev".to_string(),
+                actor_id: None,
                 ts: Utc.with_ymd_and_hms(2026, 7, 7, 9, 0, 0).unwrap(),
             },
             StoryId::new(700),

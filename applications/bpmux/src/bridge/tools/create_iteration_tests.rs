@@ -76,10 +76,15 @@ fn args(name: &str) -> Map<String, Value> {
 async fn create_iteration_creates_issue_with_iteration_type_and_named_title() {
     let (refresh, _adapter) = build_empty_refresh().await;
     let (dispatch, mut rx) = dispatch_channel();
-    let result =
-        handle_create_iteration(&args("Aquila"), "pm:claude-code", Some(&refresh), &dispatch)
-            .await
-            .expect("create_iteration succeeds");
+    let result = handle_create_iteration(
+        &args("Aquila"),
+        "pm:claude-code",
+        None,
+        Some(&refresh),
+        &dispatch,
+    )
+    .await
+    .expect("create_iteration succeeds");
     assert!(
         result.contains("iteration created:"),
         "result message names iteration-creation: {result}"
@@ -100,9 +105,15 @@ async fn create_iteration_rejects_duplicate_open_name() {
     let (refresh, _adapter) =
         build_refresh_with_stories(vec![seed_iteration_story(42, "Aquila", false)]).await;
     let (dispatch, _rx) = dispatch_channel();
-    let err = handle_create_iteration(&args("Aquila"), "pm:claude-code", Some(&refresh), &dispatch)
-        .await
-        .expect_err("duplicate Aquila rejected");
+    let err = handle_create_iteration(
+        &args("Aquila"),
+        "pm:claude-code",
+        None,
+        Some(&refresh),
+        &dispatch,
+    )
+    .await
+    .expect_err("duplicate Aquila rejected");
     assert!(
         err.contains("'Aquila'"),
         "error names the conflicting name: {err}"
@@ -118,10 +129,15 @@ async fn create_iteration_accepts_same_name_after_previous_closed() {
     let (refresh, _adapter) =
         build_refresh_with_stories(vec![seed_iteration_story(42, "Aquila", true)]).await;
     let (dispatch, _rx) = dispatch_channel();
-    let result =
-        handle_create_iteration(&args("Aquila"), "pm:claude-code", Some(&refresh), &dispatch)
-            .await
-            .expect("re-using a closed name succeeds");
+    let result = handle_create_iteration(
+        &args("Aquila"),
+        "pm:claude-code",
+        None,
+        Some(&refresh),
+        &dispatch,
+    )
+    .await
+    .expect("re-using a closed name succeeds");
     assert!(
         result.contains("iteration created:"),
         "new iteration created after previous Aquila closed: {result}"
@@ -135,6 +151,7 @@ async fn create_iteration_body_reserves_member_stories_section() {
     handle_create_iteration(
         &args("Pegasus"),
         "pm:claude-code",
+        None,
         Some(&refresh),
         &dispatch,
     )
@@ -159,9 +176,15 @@ async fn create_iteration_body_reserves_member_stories_section() {
 async fn create_iteration_attaches_iteration_label_atomically_at_source() {
     let (refresh, adapter) = build_empty_refresh().await;
     let (dispatch, mut rx) = dispatch_channel();
-    handle_create_iteration(&args("Aquila"), "pm:claude-code", Some(&refresh), &dispatch)
-        .await
-        .expect("create_iteration succeeds");
+    handle_create_iteration(
+        &args("Aquila"),
+        "pm:claude-code",
+        None,
+        Some(&refresh),
+        &dispatch,
+    )
+    .await
+    .expect("create_iteration succeeds");
     let id = created(&mut rx).id.value();
     refresh
         .refresh_story(id)
@@ -184,9 +207,15 @@ async fn create_iteration_attaches_iteration_label_atomically_at_source() {
 async fn create_iteration_assigns_order_at_birth_1735() {
     let (refresh, _adapter) = build_empty_refresh().await;
     let (dispatch, mut rx) = dispatch_channel();
-    handle_create_iteration(&args("Aquila"), "pm:claude-code", Some(&refresh), &dispatch)
-        .await
-        .expect("create_iteration succeeds");
+    handle_create_iteration(
+        &args("Aquila"),
+        "pm:claude-code",
+        None,
+        Some(&refresh),
+        &dispatch,
+    )
+    .await
+    .expect("create_iteration succeeds");
     let iteration = created(&mut rx);
     assert!(
         iteration.iteration_order.is_some(),
@@ -212,6 +241,7 @@ async fn create_iteration_appends_order_after_existing_1735() {
     handle_create_iteration(
         &args("Pegasus"),
         "pm:claude-code",
+        None,
         Some(&refresh),
         &dispatch,
     )
@@ -228,9 +258,15 @@ async fn create_iteration_appends_order_after_existing_1735() {
 async fn create_iteration_rejects_non_pm_role() {
     let (refresh, _adapter) = build_empty_refresh().await;
     let (dispatch, _rx) = dispatch_channel();
-    let err = handle_create_iteration(&args("Lyra"), "dev:claude-code", Some(&refresh), &dispatch)
-        .await
-        .expect_err("dev role rejected from PM-only tool");
+    let err = handle_create_iteration(
+        &args("Lyra"),
+        "dev:claude-code",
+        None,
+        Some(&refresh),
+        &dispatch,
+    )
+    .await
+    .expect_err("dev role rejected from PM-only tool");
     assert!(
         err.contains("pm-lane"),
         "error explains PM-lane gating: {err}"
@@ -242,7 +278,7 @@ async fn create_iteration_requires_name_arg() {
     let (refresh, _adapter) = build_empty_refresh().await;
     let (dispatch, _rx) = dispatch_channel();
     let empty: Map<String, Value> = Map::new();
-    let err = handle_create_iteration(&empty, "pm:claude-code", Some(&refresh), &dispatch)
+    let err = handle_create_iteration(&empty, "pm:claude-code", None, Some(&refresh), &dispatch)
         .await
         .expect_err("missing name rejected");
     assert!(

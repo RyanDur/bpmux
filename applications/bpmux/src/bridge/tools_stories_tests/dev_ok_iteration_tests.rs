@@ -76,7 +76,7 @@ fn args(iteration_id: u64) -> serde_json::Map<String, serde_json::Value> {
 async fn dev_ok_records_act_and_flips_dev_ok_readiness_1736() {
     let orch = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let (dispatch, mut rx) = dispatch_channel();
-    handle_dev_ok_iteration(&args(1552), "dev:claude-code", Some(&orch), &dispatch)
+    handle_dev_ok_iteration(&args(1552), "dev:claude-code", None, Some(&orch), &dispatch)
         .await
         .expect("a configured iteration-builder can record dev-OK");
     let iterations = iteration_upserted(&mut rx);
@@ -109,7 +109,7 @@ async fn no_dev_ok_on_record_means_not_ready_1736() {
 async fn non_builder_role_is_refused_1736() {
     let orch = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let (dispatch, _rx) = dispatch_channel();
-    let err = handle_dev_ok_iteration(&args(1552), "pm:claude-code", Some(&orch), &dispatch)
+    let err = handle_dev_ok_iteration(&args(1552), "pm:claude-code", None, Some(&orch), &dispatch)
         .await
         .expect_err("pm is not a configured iteration-builder");
     assert!(
@@ -122,7 +122,7 @@ async fn non_builder_role_is_refused_1736() {
 async fn non_iteration_story_is_refused_1736() {
     let orch = build_orchestrator(vec![feature_seed(1552)]).await;
     let (dispatch, _rx) = dispatch_channel();
-    let err = handle_dev_ok_iteration(&args(1552), "dev:claude-code", Some(&orch), &dispatch)
+    let err = handle_dev_ok_iteration(&args(1552), "dev:claude-code", None, Some(&orch), &dispatch)
         .await
         .expect_err("only an Iteration can be dev-OK'd");
     assert!(

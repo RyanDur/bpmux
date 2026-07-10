@@ -38,6 +38,7 @@ async fn label_story_rejects_iteration_label_with_tool_retired_kind_1402() {
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "add"),
         "pm:claude-code",
+        None,
         Some(&orch),
     )
     .await;
@@ -69,8 +70,13 @@ async fn label_story_rejects_iteration_label_for_different_names_1402() {
         "iteration-Cassiopeia.50",
         "iteration-Carina.999",
     ] {
-        let result =
-            handle_label_story(&label_args(label, "add"), "pm:claude-code", Some(&orch)).await;
+        let result = handle_label_story(
+            &label_args(label, "add"),
+            "pm:claude-code",
+            None,
+            Some(&orch),
+        )
+        .await;
         let err = result.expect_err(&format!("{label} must be rejected"));
         assert!(
             err.contains("tool-retired"),
@@ -91,8 +97,13 @@ async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
         "parent-epic-#1384",
         "awaiting team",
     ] {
-        let result =
-            handle_label_story(&label_args(label, "add"), "pm:claude-code", Some(&orch)).await;
+        let result = handle_label_story(
+            &label_args(label, "add"),
+            "pm:claude-code",
+            None,
+            Some(&orch),
+        )
+        .await;
         assert!(
             result.is_ok(),
             "{label} should NOT be affected by #1402 retire: {result:?}"
@@ -121,6 +132,7 @@ async fn label_story_rejects_iteration_label_before_canonical_store_check_1402()
         &label_args("iteration-Telescopium.100", "add"),
         "pm:claude-code",
         None,
+        None,
     )
     .await;
     let err = result.expect_err("iteration-label rejection fires even without refresh-driver");
@@ -140,8 +152,13 @@ async fn label_story_rejects_malformed_label_shapes_through_normal_path_1402() {
         "iteration-Pegasus.foo",
         "iteration-#1400",
     ] {
-        let result =
-            handle_label_story(&label_args(label, "add"), "pm:claude-code", Some(&orch)).await;
+        let result = handle_label_story(
+            &label_args(label, "add"),
+            "pm:claude-code",
+            None,
+            Some(&orch),
+        )
+        .await;
         assert!(
             result.is_ok() || !result.as_ref().unwrap_err().contains("tool-retired"),
             "{label} should NOT match the canonical iteration-label-shape (so it doesn't trip the retire-gate): {result:?}"
@@ -155,6 +172,7 @@ async fn label_story_remove_iteration_label_still_works_for_migration_1402() {
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "remove"),
         "pm:claude-code",
+        None,
         Some(&orch),
     )
     .await;
@@ -170,6 +188,7 @@ async fn non_pm_role_rejected_before_retire_gate_fires_1402() {
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "add"),
         "dev:claude-code",
+        None,
         Some(&orch),
     )
     .await;

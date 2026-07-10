@@ -41,6 +41,7 @@ fn transition(id: u64, placement: Option<StageId>) -> StoryAction {
     StoryAction::Event(StoryEvent::new(
         EventMeta {
             actor: "dev".to_string(),
+            actor_id: None,
             ts: Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
         },
         StoryId::new(id),
@@ -58,6 +59,7 @@ fn batched_intent(id: u64, placement: Option<StageId>) -> StoryAction {
     let gate = StoryEvent::new(
         EventMeta {
             actor: "dev".to_string(),
+            actor_id: None,
             ts: Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
         },
         StoryId::new(id),

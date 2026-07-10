@@ -142,7 +142,8 @@ mod verdict_substrate_integration_1407 {
             .await
             .unwrap();
 
-        let result = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&hub)).await;
+        let result =
+            handle_accept_story(&accept_args(42), "pm", None, Some(&orch), Some(&hub)).await;
         assert!(
             result.is_ok(),
             "accept_story must succeed when both verdicts present for target story; got {result:?}"
@@ -158,7 +159,7 @@ mod verdict_substrate_integration_1407 {
         seed_expired_verdict(&store, 42, "dev");
 
         let mut rx = hub.subscribe();
-        let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&hub))
+        let err = handle_accept_story(&accept_args(42), "pm", None, Some(&orch), Some(&hub))
             .await
             .expect_err("expired verdicts must still block the accept");
         assert!(
@@ -231,7 +232,7 @@ mod verdict_substrate_integration_1407 {
         seed_verdict_grounded_on(&store, 42, "dev", "stale-sha-x");
 
         let mut rx = hub.subscribe();
-        let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&hub))
+        let err = handle_accept_story(&accept_args(42), "pm", None, Some(&orch), Some(&hub))
             .await
             .expect_err(
                 "a moved grounded-head must block accept even though the verdicts are time-fresh",
@@ -266,7 +267,7 @@ mod verdict_substrate_integration_1407 {
             .await
             .unwrap();
 
-        let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&hub))
+        let err = handle_accept_story(&accept_args(42), "pm", None, Some(&orch), Some(&hub))
             .await
             .expect_err("verdicts on #99 must not satisfy accept_story #42");
         assert!(
@@ -288,7 +289,7 @@ mod verdict_substrate_integration_1407 {
             .await
             .unwrap();
 
-        let err = handle_accept_story(&accept_args(42), "pm", Some(&orch), Some(&hub))
+        let err = handle_accept_story(&accept_args(42), "pm", None, Some(&orch), Some(&hub))
             .await
             .expect_err("missing dev-verdict must refuse");
         assert!(

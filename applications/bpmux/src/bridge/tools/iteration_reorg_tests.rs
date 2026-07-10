@@ -272,7 +272,7 @@ async fn reorder_iteration_insert_shifts_the_planning_order_1762() {
         .as_object()
         .cloned()
         .unwrap();
-    handle_reorder_iteration(&args, "pm:claude-code", Some(&refresh), &dispatch)
+    handle_reorder_iteration(&args, "pm:claude-code", None, Some(&refresh), &dispatch)
         .await
         .expect("pm reorders the iteration to the front");
     let dispatched = upserted_iterations(&mut rx);
@@ -298,6 +298,7 @@ async fn reorder_iteration_is_pm_lane_non_pm_refused_1762() {
             .cloned()
             .unwrap(),
         "dev:claude-code",
+        None,
         Some(&refresh),
         &dispatch,
     )

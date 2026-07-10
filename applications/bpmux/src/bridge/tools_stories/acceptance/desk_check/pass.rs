@@ -1,6 +1,7 @@
 use crate::bridge::tools_stories::acceptance::helpers::{
     BugGate, format_bypass_payload, recent_evidence_for_story, verify_bug_question_or_bypass,
 };
+use crate::bridge::tools_stories::event_meta::meta_for;
 use crate::bridge::tools_stories::helpers::{ensure_story_in_canonical_store, role_from_name};
 use crate::product_management::story::StoryId;
 
@@ -31,6 +32,7 @@ fn parse_acceptor_arg(
 pub(crate) async fn handle_pass_desk_check(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     hub: Option<&std::sync::Arc<crate::hub::Hub>>,
 ) -> Result<String, String> {
@@ -82,10 +84,7 @@ pub(crate) async fn handle_pass_desk_check(
         false
     };
     if let Some(r) = refresh {
-        let meta = crate::product_management::story::events::EventMeta {
-            actor: crate::routing::short_name(agent_name).to_string(),
-            ts: chrono::Utc::now(),
-        };
+        let meta = meta_for(agent_name, actor_id);
         let crate::board::Decision {
             coarse: new_state,
             placement,

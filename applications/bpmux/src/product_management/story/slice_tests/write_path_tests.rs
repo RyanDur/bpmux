@@ -13,6 +13,7 @@ use chrono::{TimeZone, Utc};
 fn meta() -> EventMeta {
     EventMeta {
         actor: "pm".to_string(),
+        actor_id: None,
         ts: Utc.with_ymd_and_hms(2026, 7, 3, 0, 0, 0).unwrap(),
     }
 }

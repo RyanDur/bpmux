@@ -111,6 +111,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             for stale_label in stale {
                 let meta = crate::product_management::story::events::EventMeta {
                     actor: "bpmux:reconcile".to_string(),
+                    actor_id: None,
                     ts: Utc::now(),
                 };
                 self.mutate(StoryEvent::new(

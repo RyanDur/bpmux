@@ -206,6 +206,7 @@ async fn local_body_mutate_invalidates_prior_etag() {
     handle.dispatch(AppAction::Story(StoryAction::Event(StoryEvent::new(
         EventMeta {
             actor: "test".to_string(),
+            actor_id: None,
             ts: Utc::now(),
         },
         StoryId::new(9100),
@@ -234,6 +235,7 @@ async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh(
     handle.dispatch(AppAction::Story(StoryAction::Event(StoryEvent::new(
         EventMeta {
             actor: "test".to_string(),
+            actor_id: None,
             ts: Utc::now(),
         },
         StoryId::new(9200),

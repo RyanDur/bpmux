@@ -64,6 +64,7 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
 
     let meta = EventMeta {
         actor: "dev".into(),
+        actor_id: None,
         ts: Utc::now(),
     };
 

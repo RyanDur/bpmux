@@ -62,7 +62,7 @@ async fn dispatch_carries_bearer_and_agent_header_to_endpoint() {
     });
     let port: u16 = server.port();
 
-    let result = dispatch_via_rpc(port, "start_story", "dev", &args(42)).await;
+    let result = dispatch_via_rpc(port, "start_story", "dev", None, &args(42)).await;
 
     m.assert();
     assert_eq!(result, Ok("#42 marked as in progress".to_string()));
@@ -71,7 +71,7 @@ async fn dispatch_carries_bearer_and_agent_header_to_endpoint() {
 #[tokio::test]
 async fn dispatch_surfaces_named_error_on_offline_server() {
     let _auth = AuthTokenGuard::with_token("tk");
-    let result = dispatch_via_rpc(1, "start_story", "dev", &args(42)).await;
+    let result = dispatch_via_rpc(1, "start_story", "dev", None, &args(42)).await;
     let err = result.expect_err("offline server must fail-loud");
     assert!(
         err.contains("electron-server unreachable"),
@@ -91,7 +91,7 @@ async fn dispatch_surfaces_server_error_body_on_4xx() {
     });
     let port: u16 = server.port();
 
-    let result = dispatch_via_rpc(port, "start_story", "pm", &args(42)).await;
+    let result = dispatch_via_rpc(port, "start_story", "pm", None, &args(42)).await;
 
     m.assert();
     let err = result.expect_err("4xx must surface as Err");
@@ -113,7 +113,7 @@ async fn dispatch_surfaces_missing_message_field_on_2xx() {
     });
     let port: u16 = server.port();
 
-    let result = dispatch_via_rpc(port, "start_story", "dev", &args(42)).await;
+    let result = dispatch_via_rpc(port, "start_story", "dev", None, &args(42)).await;
     m.assert();
     let err = result.expect_err("missing message field must surface");
     assert!(
@@ -134,7 +134,7 @@ async fn dispatch_routes_path_param_for_arbitrary_tools() {
     });
     let port: u16 = server.port();
 
-    let result = dispatch_via_rpc(port, "accept_story", "owner", &args(9)).await;
+    let result = dispatch_via_rpc(port, "accept_story", "owner", None, &args(9)).await;
     m.assert();
     assert_eq!(result, Ok("#9 accepted".to_string()));
 }

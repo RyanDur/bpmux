@@ -76,9 +76,15 @@ fn args(iteration_id: u64) -> serde_json::Map<String, serde_json::Value> {
 async fn designer_close_records_act_and_flips_review_readiness_1703() {
     let orch = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let (dispatch, mut rx) = dispatch_channel();
-    handle_close_pre_pickup_review(&args(1552), "designer:claude-code", Some(&orch), &dispatch)
-        .await
-        .expect("a configured iteration-reviewer can close the pre-pickup review");
+    handle_close_pre_pickup_review(
+        &args(1552),
+        "designer:claude-code",
+        None,
+        Some(&orch),
+        &dispatch,
+    )
+    .await
+    .expect("a configured iteration-reviewer can close the pre-pickup review");
     let iterations = iteration_upserted(&mut rx);
     let iteration = iterations
         .iter()
@@ -109,10 +115,15 @@ async fn no_close_on_record_means_review_not_ready_1703() {
 async fn non_reviewer_role_is_refused_1703() {
     let orch = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let (dispatch, _rx) = dispatch_channel();
-    let err =
-        handle_close_pre_pickup_review(&args(1552), "dev:claude-code", Some(&orch), &dispatch)
-            .await
-            .expect_err("dev is not a configured iteration-reviewer");
+    let err = handle_close_pre_pickup_review(
+        &args(1552),
+        "dev:claude-code",
+        None,
+        Some(&orch),
+        &dispatch,
+    )
+    .await
+    .expect_err("dev is not a configured iteration-reviewer");
     assert!(
         err.contains("close the pre-pickup review"),
         "the refusal names the role-gated operation; got: {err}"
@@ -123,10 +134,15 @@ async fn non_reviewer_role_is_refused_1703() {
 async fn non_iteration_story_is_refused_1703() {
     let orch = build_orchestrator(vec![feature_seed(1552)]).await;
     let (dispatch, _rx) = dispatch_channel();
-    let err =
-        handle_close_pre_pickup_review(&args(1552), "designer:claude-code", Some(&orch), &dispatch)
-            .await
-            .expect_err("only an Iteration's pre-pickup review can be closed");
+    let err = handle_close_pre_pickup_review(
+        &args(1552),
+        "designer:claude-code",
+        None,
+        Some(&orch),
+        &dispatch,
+    )
+    .await
+    .expect_err("only an Iteration's pre-pickup review can be closed");
     assert!(
         err.contains("not an Iteration"),
         "the refusal explains the story-type mismatch; got: {err}"

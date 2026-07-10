@@ -1,3 +1,4 @@
+use super::event_meta::meta_for;
 use super::helpers::{compose_story_body, require_nonempty_string, role_from_name};
 use crate::product_management::epic::EpicId;
 use crate::product_management::story::StoryId;
@@ -5,6 +6,7 @@ use crate::product_management::story::StoryId;
 pub(crate) async fn handle_create_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
@@ -60,9 +62,10 @@ pub(crate) async fn handle_create_story(
         None => super::acceptor_axis::derive_acceptor(user_job),
     };
     let epic_body = composed_body.clone();
+    let meta = meta_for(agent_name, actor_id);
     let id = create_and_broadcast_story_events(
         r,
-        agent_name,
+        meta,
         title,
         composed_body,
         story_type,
@@ -142,7 +145,7 @@ fn validate_parent_epic(
 
 async fn create_and_broadcast_story_events(
     r: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
-    agent_name: &str,
+    meta: crate::product_management::story::events::EventMeta,
     title: &str,
     composed_body: String,
     story_type: crate::product_management::story::StoryKind,
@@ -153,10 +156,6 @@ async fn create_and_broadcast_story_events(
         .create_story(title.to_string(), composed_body.clone(), Vec::new())
         .await
         .map_err(|e| format!("create_story failed: {e}"))?;
-    let meta = crate::product_management::story::events::EventMeta {
-        actor: crate::routing::short_name(agent_name).to_string(),
-        ts: chrono::Utc::now(),
-    };
     r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
         meta.clone(),
         StoryId::new(id),

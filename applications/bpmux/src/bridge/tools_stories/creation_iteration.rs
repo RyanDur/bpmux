@@ -1,3 +1,4 @@
+use super::event_meta::meta_for;
 use super::helpers::{compose_iteration_body, require_nonempty_string, role_from_name};
 use crate::product_management::iteration::{Iteration, IterationId};
 use crate::product_management::story::StoryId;
@@ -5,6 +6,7 @@ use crate::product_management::story::StoryId;
 pub(crate) async fn handle_create_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
@@ -53,12 +55,9 @@ pub(crate) async fn handle_create_iteration(
         .create_story(title.clone(), body.clone(), vec!["iteration".to_string()])
         .await
         .map_err(|e| format!("create_iteration adapter call failed: {e}"))?;
-    let filed_by = crate::routing::short_name(agent_name).to_string();
-    let filed_at = chrono::Utc::now();
-    let meta = crate::product_management::story::events::EventMeta {
-        actor: filed_by.clone(),
-        ts: filed_at,
-    };
+    let meta = meta_for(agent_name, actor_id);
+    let filed_by = meta.actor.clone();
+    let filed_at = meta.ts;
     r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
         meta.clone(),
         StoryId::new(id),

@@ -118,6 +118,7 @@ async fn pm_creates_a_first_class_outcome_distinct_from_epic_with_horizon_1738()
     let result = handle_create_outcome(
         &args("The team runs on its own infra", "next"),
         "pm:claude-code",
+        None,
         Some(&refresh),
         &dispatch,
     )
@@ -152,6 +153,7 @@ async fn create_outcome_is_pm_lane_non_pm_refused_1738() {
     let err = handle_create_outcome(
         &args("X", "now"),
         "dev:claude-code",
+        None,
         Some(&refresh),
         &dispatch,
     )
@@ -167,6 +169,7 @@ async fn create_outcome_rejects_invalid_horizon_1738() {
     let err = handle_create_outcome(
         &args("X", "someday"),
         "pm:claude-code",
+        None,
         Some(&refresh),
         &dispatch,
     )

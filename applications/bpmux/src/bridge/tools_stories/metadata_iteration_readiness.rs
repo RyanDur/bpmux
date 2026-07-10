@@ -1,3 +1,4 @@
+use super::event_meta::meta_for;
 use super::helpers::{
     ensure_iteration_in_canonical_store, require_purpose, require_purpose_any, role_from_name,
 };
@@ -7,6 +8,7 @@ use crate::product_management::story::StoryId;
 pub(crate) async fn handle_designate_current_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
@@ -22,10 +24,7 @@ pub(crate) async fn handle_designate_current_iteration(
             "iteration #{iteration_id} is closed; a closed iteration cannot be the current iteration"
         ));
     }
-    let meta = || crate::product_management::story::events::EventMeta {
-        actor: crate::routing::short_name(agent_name).to_string(),
-        ts: chrono::Utc::now(),
-    };
+    let meta = || meta_for(agent_name, actor_id);
     let prior: Vec<crate::product_management::iteration::Iteration> = r
         .iterations()
         .into_iter()
@@ -70,6 +69,7 @@ pub(crate) async fn handle_designate_current_iteration(
 pub(crate) async fn handle_close_pre_pickup_review(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
@@ -87,10 +87,7 @@ pub(crate) async fn handle_close_pre_pickup_review(
     let role = role_from_name(agent_name).to_string();
     let label = crate::integrations::github::gh_label_codec::GhLabelCodec
         .encode_iteration_review_closed(&role);
-    let meta = crate::product_management::story::events::EventMeta {
-        actor: crate::routing::short_name(agent_name).to_string(),
-        ts: chrono::Utc::now(),
-    };
+    let meta = meta_for(agent_name, actor_id);
     r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
         meta,
         StoryId::new(iteration_id),
@@ -118,6 +115,7 @@ pub(crate) async fn handle_close_pre_pickup_review(
 pub(crate) async fn handle_dev_ok_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
@@ -135,10 +133,7 @@ pub(crate) async fn handle_dev_ok_iteration(
     let role = role_from_name(agent_name).to_string();
     let label =
         crate::integrations::github::gh_label_codec::GhLabelCodec.encode_iteration_dev_ok(&role);
-    let meta = crate::product_management::story::events::EventMeta {
-        actor: crate::routing::short_name(agent_name).to_string(),
-        ts: chrono::Utc::now(),
-    };
+    let meta = meta_for(agent_name, actor_id);
     r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
         meta,
         StoryId::new(iteration_id),

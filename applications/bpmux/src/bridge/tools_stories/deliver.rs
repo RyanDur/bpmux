@@ -1,12 +1,14 @@
 use super::acceptance_test_path::validate_acceptance_test_path_at_deliver;
+use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string, role_from_name};
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::{Story, StoryId, Verdict};
 use crate::sync::RefreshDriver;
 
 pub(crate) async fn handle_deliver_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
@@ -59,10 +61,7 @@ pub(crate) async fn handle_deliver_story(
             .and_then(|s| s.as_ref())
             .map(|s| s.is_concluded())
             .unwrap_or(false);
-        let meta = EventMeta {
-            actor: crate::routing::short_name(agent_name).to_string(),
-            ts: chrono::Utc::now(),
-        };
+        let meta = meta_for(agent_name, actor_id);
         let held_step = refreshed
             .as_ref()
             .and_then(|s| s.as_ref())

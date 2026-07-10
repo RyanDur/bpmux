@@ -23,6 +23,7 @@ pub(super) async fn handle_set_outcome_horizon(
     if let Err(e) = crate::bridge::dispatch_reprioritize_outcome(
         args,
         identity,
+        ctx.routing_user_id.as_deref(),
         ctx.orchestrator.as_ref(),
         ctx.dispatch,
     )
@@ -92,6 +93,7 @@ pub(super) async fn handle_reorder_iteration(
     if let Err(e) = crate::bridge::dispatch_reorder_iteration(
         args,
         identity,
+        ctx.routing_user_id.as_deref(),
         ctx.orchestrator.as_ref(),
         ctx.dispatch,
     )
@@ -158,6 +160,7 @@ pub(super) async fn handle_reprioritize_outcome(
     if let Err(e) = crate::bridge::dispatch_reprioritize_outcome(
         args,
         identity,
+        ctx.routing_user_id.as_deref(),
         ctx.orchestrator.as_ref(),
         ctx.dispatch,
     )

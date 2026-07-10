@@ -81,7 +81,7 @@ fn args(iteration_id: u64) -> serde_json::Map<String, serde_json::Value> {
 async fn pm_designates_current_iteration_sets_is_current_1540() {
     let orch = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let (dispatch, mut rx) = dispatch_channel();
-    handle_designate_current_iteration(&args(1552), "pm:claude-code", Some(&orch), &dispatch)
+    handle_designate_current_iteration(&args(1552), "pm:claude-code", None, Some(&orch), &dispatch)
         .await
         .expect("designate should succeed");
     let iterations = iteration_upserted(&mut rx);
@@ -103,7 +103,7 @@ async fn designate_clears_prior_current_holder_replace_semantic_1540() {
     ])
     .await;
     let (dispatch, mut rx) = dispatch_channel();
-    handle_designate_current_iteration(&args(1552), "pm:claude-code", Some(&orch), &dispatch)
+    handle_designate_current_iteration(&args(1552), "pm:claude-code", None, Some(&orch), &dispatch)
         .await
         .expect("designate");
     let iterations = iteration_upserted(&mut rx);
@@ -129,10 +129,15 @@ async fn designate_clears_prior_current_holder_replace_semantic_1540() {
 async fn designate_rejects_non_iteration_story_1540() {
     let orch = build_orchestrator(vec![feature_seed(1500)]).await;
     let (dispatch, _rx) = dispatch_channel();
-    let err =
-        handle_designate_current_iteration(&args(1500), "pm:claude-code", Some(&orch), &dispatch)
-            .await
-            .expect_err("a non-Iteration story must be rejected");
+    let err = handle_designate_current_iteration(
+        &args(1500),
+        "pm:claude-code",
+        None,
+        Some(&orch),
+        &dispatch,
+    )
+    .await
+    .expect_err("a non-Iteration story must be rejected");
     assert!(
         err.contains("not an Iteration"),
         "error names the story-type mismatch: {err}"
@@ -143,7 +148,13 @@ async fn designate_rejects_non_iteration_story_1540() {
 async fn designate_rejected_for_non_pm_1540() {
     let orch = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let (dispatch, _rx) = dispatch_channel();
-    handle_designate_current_iteration(&args(1552), "dev:claude-code", Some(&orch), &dispatch)
-        .await
-        .expect_err("designate is PM-lane; non-pm is rejected");
+    handle_designate_current_iteration(
+        &args(1552),
+        "dev:claude-code",
+        None,
+        Some(&orch),
+        &dispatch,
+    )
+    .await
+    .expect_err("designate is PM-lane; non-pm is rejected");
 }

@@ -3,7 +3,8 @@ use std::sync::Arc;
 use serde_json::Map;
 use serde_json::Value;
 
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use crate::bridge::tools_stories::event_meta::meta_for;
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::{StoryId, Work};
 use crate::sync::RefreshDriver;
 
@@ -18,6 +19,7 @@ use target::{
 pub(in crate::bridge) async fn handle_move_story(
     args: &Map<String, Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
@@ -66,11 +68,8 @@ pub(in crate::bridge) async fn handle_move_story(
 
     let scheduling_target = scheduling::resolve_scheduling_target(r, id, &target)?;
 
-    let actor_short = crate::routing::short_name(agent_name).to_string();
-    let meta = EventMeta {
-        actor: actor_short.clone(),
-        ts: chrono::Utc::now(),
-    };
+    let meta = meta_for(agent_name, actor_id);
+    let actor_short = meta.actor.clone();
     let story_id = StoryId::new(id);
 
     if was_closed && !target.closes_issue() {

@@ -1,15 +1,16 @@
+use super::event_meta::meta_for;
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
 use super::metadata_outcome_bands::{push_band_change, reorder_within_band};
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::product_management::outcome::{Outcome, OutcomeAction};
 use crate::product_management::story::Horizon;
-use crate::product_management::story::events::EventMeta;
 use crate::sync::RefreshDriver;
 use std::sync::Arc;
 
 pub(crate) async fn handle_reprioritize_outcome(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
@@ -47,10 +48,7 @@ pub(crate) async fn handle_reprioritize_outcome(
     };
 
     let codec = GhLabelCodec;
-    let meta = || EventMeta {
-        actor: crate::routing::short_name(agent_name).to_string(),
-        ts: chrono::Utc::now(),
-    };
+    let meta = || meta_for(agent_name, actor_id);
 
     let band_changed = outcome.horizon() != Some(target_band);
     if band_changed {

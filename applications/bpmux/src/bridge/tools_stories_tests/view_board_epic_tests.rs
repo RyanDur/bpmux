@@ -66,7 +66,7 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(300));
     args.insert("epic_id".into(), serde_json::json!(457));
-    let result = handle_set_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
+    let result = handle_set_parent_epic(&args, "pm:claude-code", None, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     assert_eq!(
@@ -113,7 +113,7 @@ async fn set_parent_epic_rejects_non_existent_epic() {
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(310));
     args.insert("epic_id".into(), serde_json::json!(9999));
-    let result = handle_set_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
+    let result = handle_set_parent_epic(&args, "pm:claude-code", None, Some(&orchestrator)).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("not found"));
 }
@@ -152,7 +152,7 @@ async fn set_parent_epic_rejects_non_epic_parent() {
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(311));
     args.insert("epic_id".into(), serde_json::json!(458));
-    let result = handle_set_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
+    let result = handle_set_parent_epic(&args, "pm:claude-code", None, Some(&orchestrator)).await;
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(err.contains("not an Epic"));
@@ -190,7 +190,7 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(301));
-    let result = handle_unset_parent_epic(&args, "pm:claude-code", Some(&orchestrator)).await;
+    let result = handle_unset_parent_epic(&args, "pm:claude-code", None, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     assert_eq!(orchestrator.story(301).unwrap().parent_epic(), None);
@@ -210,7 +210,7 @@ async fn set_parent_epic_rejects_non_pm_role() {
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(1));
     args.insert("epic_id".into(), serde_json::json!(2));
-    let result = handle_set_parent_epic(&args, "dev:claude-code", None).await;
+    let result = handle_set_parent_epic(&args, "dev:claude-code", None, None).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("restricted to pm"));
 }
@@ -220,7 +220,7 @@ async fn set_parent_epic_rejects_self_parent() {
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(42));
     args.insert("epic_id".into(), serde_json::json!(42));
-    let result = handle_set_parent_epic(&args, "pm:claude-code", None).await;
+    let result = handle_set_parent_epic(&args, "pm:claude-code", None, None).await;
     assert!(result.is_err());
     assert!(
         result
@@ -262,7 +262,8 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
         serde_json::json!("would reject if X"),
     );
     args.insert("parent_epic".into(), serde_json::json!(500));
-    let result = handle_create_story(&args, "pm:claude-code", Some(&orchestrator), &td()).await;
+    let result =
+        handle_create_story(&args, "pm:claude-code", None, Some(&orchestrator), &td()).await;
     assert!(
         result.is_ok(),
         "create-with-parent should succeed: {result:?}"
@@ -317,7 +318,8 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
         serde_json::json!("would reject if X"),
     );
     args.insert("parent_epic".into(), serde_json::json!(501));
-    let result = handle_create_story(&args, "pm:claude-code", Some(&orchestrator), &td()).await;
+    let result =
+        handle_create_story(&args, "pm:claude-code", None, Some(&orchestrator), &td()).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("not an Epic"));
     let drained = orchestrator.drain_pending().await.unwrap();
@@ -599,7 +601,7 @@ async fn create_story_for_epic_title_dispatches_epic_upsert_and_stays_out_of_sto
         "observation_falsifier".into(),
         serde_json::json!("would reject if X"),
     );
-    let result = handle_create_story(&args, "pm:claude-code", Some(&orch), &dispatch).await;
+    let result = handle_create_story(&args, "pm:claude-code", None, Some(&orch), &dispatch).await;
     assert!(result.is_ok(), "epic create should succeed: {result:?}");
 
     let epic_id = match rx.try_recv() {

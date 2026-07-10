@@ -164,6 +164,7 @@ fn state_transitioned(
     crate::product_management::story::events::StoryEvent::new(
         crate::product_management::story::events::EventMeta {
             actor: actor.to_string(),
+            actor_id: None,
             ts: chrono::Utc::now(),
         },
         crate::product_management::story::StoryId::new(id),
@@ -172,6 +173,43 @@ fn state_transitioned(
             placement: None,
         },
     )
+}
+
+fn state_transitioned_by_actor_id(
+    id: u64,
+    actor: &str,
+    actor_id: &str,
+    new_state: crate::product_management::story::Work,
+) -> crate::product_management::story::events::StoryEvent {
+    crate::product_management::story::events::StoryEvent::new(
+        crate::product_management::story::events::EventMeta {
+            actor: actor.to_string(),
+            actor_id: Some(actor_id.to_string()),
+            ts: chrono::Utc::now(),
+        },
+        crate::product_management::story::StoryId::new(id),
+        crate::product_management::story::events::StoryEventKind::StateTransitioned {
+            new_state,
+            placement: None,
+        },
+    )
+}
+
+fn seed_dev_sibling_pair_online(store: &Arc<kernel::Store<AppState, AppAction>>) {
+    store.dispatch(AppAction::Roster(
+        crate::store::RosterAction::RosterMemberUpserted {
+            routing_id: "dev-routing-alpha".to_string(),
+            identity: "dev:claude-code".to_string(),
+            presence: Presence::Online,
+        },
+    ));
+    store.dispatch(AppAction::Roster(
+        crate::store::RosterAction::RosterMemberUpserted {
+            routing_id: "dev-routing-beta".to_string(),
+            identity: "dev:vscode".to_string(),
+            presence: Presence::Online,
+        },
+    ));
 }
 
 async fn drain_roster_presence(
@@ -222,6 +260,41 @@ async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
         crate::message::PresenceWire::Blocked,
         "delivering role becomes Blocked when its story is owner-parked with empty ready queue"
     );
+}
+
+fn presence_of(state: &AppState, routing_id: &str) -> Option<Presence> {
+    crate::store::roster::members(&state.roster)
+        .into_iter()
+        .find(|member| member.routing_id == routing_id)
+        .map(|member| member.presence)
+}
+
+#[tokio::test]
+async fn owner_park_blocks_only_the_delivering_id_never_a_same_display_sibling() {
+    use crate::product_management::story::Work;
+
+    let (hub, _rx, _dir) = fresh_hub();
+    let store = owner_park_kernel(hub);
+    seed_dev_sibling_pair_online(&store);
+
+    store.dispatch(AppAction::Story(StoryAction::Seeded(vec![
+        owner_parked_story(900),
+    ])));
+    store.dispatch(AppAction::Story(StoryAction::Event(
+        state_transitioned_by_actor_id(900, "dev", "dev-routing-alpha", Work::Acceptance),
+    )));
+
+    crate::store::test_support::eventually(
+        "the delivering id (dev-routing-alpha) reaches Blocked while its same-display sibling \
+         (dev-routing-beta) stays Online — matching on display_name instead of the delivering \
+         actor_id would over-block dev-routing-beta too, the STOP-gated regression B-4 unblocks",
+        || {
+            store.select(|state| presence_of(state, "dev-routing-alpha")) == Some(Presence::Blocked)
+                && store.select(|state| presence_of(state, "dev-routing-beta"))
+                    == Some(Presence::Online)
+        },
+    )
+    .await;
 }
 
 #[tokio::test]

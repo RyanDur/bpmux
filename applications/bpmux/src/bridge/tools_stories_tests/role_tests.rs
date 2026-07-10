@@ -113,7 +113,7 @@ async fn comment_on_story_rejects_empty_body() {
     let mut args = serde_json::Map::new();
     args.insert("id".to_string(), serde_json::json!(42));
     args.insert("body".to_string(), serde_json::json!(""));
-    let result = handle_comment_on_story(&args, "dev:claude-code", None).await;
+    let result = handle_comment_on_story(&args, "dev:claude-code", None, None).await;
     assert!(
         result.is_err(),
         "empty body must be rejected: got {result:?}"
@@ -126,7 +126,7 @@ async fn comment_on_story_rejects_whitespace_only_body() {
     let mut args = serde_json::Map::new();
     args.insert("id".to_string(), serde_json::json!(42));
     args.insert("body".to_string(), serde_json::json!("   \n  "));
-    let result = handle_comment_on_story(&args, "dev:claude-code", None).await;
+    let result = handle_comment_on_story(&args, "dev:claude-code", None, None).await;
     assert!(result.is_err(), "whitespace-only body must be rejected");
 }
 
@@ -136,7 +136,7 @@ async fn comment_on_story_rejects_when_refresh_absent() {
         let mut args = serde_json::Map::new();
         args.insert("id".to_string(), serde_json::json!(42));
         args.insert("body".to_string(), serde_json::json!("a real comment"));
-        let result = handle_comment_on_story(&args, caller, None).await;
+        let result = handle_comment_on_story(&args, caller, None, None).await;
         assert!(
             result.is_err(),
             "caller={caller} expected Err, got {result:?}"
@@ -194,9 +194,10 @@ fn move_args(
 async fn move_story_bare_column_move_is_pm_only_1548() {
     for caller in ["dev:claude-code", "designer:claude-code"] {
         let args = move_args(42, "ready", None);
-        let err = crate::bridge::move_story::handle_move_story(&args, caller, None, &no_dispatch())
-            .await
-            .expect_err(&format!("{caller}: bare column-move must be role-rejected"));
+        let err =
+            crate::bridge::move_story::handle_move_story(&args, caller, None, None, &no_dispatch())
+                .await
+                .expect_err(&format!("{caller}: bare column-move must be role-rejected"));
         assert!(
             err.contains("\"kind\":\"workflow-role-not-allowed\""),
             "{caller}: bare column-move must 409 workflow-role-not-allowed; got {err}"
@@ -208,9 +209,10 @@ async fn move_story_bare_column_move_is_pm_only_1548() {
 async fn move_story_positioned_move_is_pm_only_1548() {
     for caller in ["dev:claude-code", "designer:claude-code"] {
         let args = move_args(42, "ready", Some(1));
-        let err = crate::bridge::move_story::handle_move_story(&args, caller, None, &no_dispatch())
-            .await
-            .expect_err(&format!("{caller}: positioned move must be role-rejected"));
+        let err =
+            crate::bridge::move_story::handle_move_story(&args, caller, None, None, &no_dispatch())
+                .await
+                .expect_err(&format!("{caller}: positioned move must be role-rejected"));
         assert!(
             err.contains("\"kind\":\"workflow-role-not-allowed\""),
             "{caller}: positioned move must 409 workflow-role-not-allowed; got {err}"
@@ -225,6 +227,7 @@ async fn move_story_pm_passes_role_gate_on_both_paths_1548() {
         let err = crate::bridge::move_story::handle_move_story(
             &args,
             "pm:claude-code",
+            None,
             None,
             &no_dispatch(),
         )

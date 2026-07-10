@@ -21,6 +21,7 @@ fn seeded() -> SeededStore {
 fn meta(actor: &str, ts_year: i32) -> EventMeta {
     EventMeta {
         actor: actor.to_string(),
+        actor_id: None,
         ts: Utc.with_ymd_and_hms(ts_year, 1, 1, 0, 0, 0).unwrap(),
     }
 }

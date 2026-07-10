@@ -11,6 +11,7 @@ use crate::sync::{SourceAdapter, SyncError};
 fn meta() -> EventMeta {
     EventMeta {
         actor: "dev".to_string(),
+        actor_id: None,
         ts: Utc.with_ymd_and_hms(2026, 4, 24, 0, 0, 0).unwrap(),
     }
 }

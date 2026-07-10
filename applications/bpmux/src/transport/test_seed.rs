@@ -175,6 +175,7 @@ pub async fn post_seed_stories(
         };
         let meta = crate::product_management::story::events::EventMeta {
             actor: "test-seed".to_string(),
+            actor_id: None,
             ts: chrono::Utc::now(),
         };
         if let Err(e) =
@@ -204,6 +205,7 @@ pub async fn post_seed_stories(
         }
         let type_label_meta = crate::product_management::story::events::EventMeta {
             actor: "test-seed".to_string(),
+            actor_id: None,
             ts: chrono::Utc::now(),
         };
         let type_label = if is_iteration_seed {
@@ -230,6 +232,7 @@ pub async fn post_seed_stories(
         for label in &s.labels {
             let tag_meta = crate::product_management::story::events::EventMeta {
                 actor: "test-seed".to_string(),
+                actor_id: None,
                 ts: chrono::Utc::now(),
             };
             let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
@@ -253,6 +256,7 @@ pub async fn post_seed_stories(
         if s.is_closed {
             let close_meta = crate::product_management::story::events::EventMeta {
                 actor: "test-seed".to_string(),
+                actor_id: None,
                 ts: chrono::Utc::now(),
             };
             if let Err(e) =

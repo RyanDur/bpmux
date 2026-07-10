@@ -1,12 +1,14 @@
+use super::event_meta::meta_for;
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
 use crate::product_management::story::StoryId;
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::sync::RefreshDriver;
 use std::sync::Arc;
 
 pub(crate) async fn handle_retire_outcome(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
@@ -24,10 +26,7 @@ pub(crate) async fn handle_retire_outcome(
     let r = refresh.ok_or("retire_outcome requires refresh (RefreshDriver)")?;
     let outcome = ensure_outcome_in_canonical_store(r, outcome_id).await?;
 
-    let meta = || EventMeta {
-        actor: crate::routing::short_name(agent_name).to_string(),
-        ts: chrono::Utc::now(),
-    };
+    let meta = || meta_for(agent_name, actor_id);
     r.mutate_sync(StoryEvent::new(
         meta(),
         StoryId::new(outcome_id),

@@ -12,6 +12,7 @@ use super::{SyncAction, SyncState, reduce};
 fn meta() -> EventMeta {
     EventMeta {
         actor: "dev".to_string(),
+        actor_id: None,
         ts: Utc.with_ymd_and_hms(2026, 7, 8, 0, 0, 0).unwrap(),
     }
 }

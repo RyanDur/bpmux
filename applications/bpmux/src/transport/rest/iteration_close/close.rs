@@ -131,6 +131,7 @@ pub(crate) async fn close_iteration_canonical(
 ) -> Result<(), String> {
     let meta = || crate::product_management::story::events::EventMeta {
         actor: "pm".to_string(),
+        actor_id: None,
         ts: chrono::Utc::now(),
     };
     refresh

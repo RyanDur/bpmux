@@ -1,3 +1,4 @@
+use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, role_from_name};
 use crate::product_management::story::StoryId;
 
@@ -6,6 +7,7 @@ const REASON_CITE_MIN_CHARS: usize = 16;
 pub(crate) async fn handle_close_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
@@ -53,10 +55,7 @@ pub(crate) async fn handle_close_story(
     }
     if let Some(r) = refresh {
         ensure_story_in_canonical_store(r, id).await?;
-        let meta = crate::product_management::story::events::EventMeta {
-            actor: crate::routing::short_name(agent_name).to_string(),
-            ts: chrono::Utc::now(),
-        };
+        let meta = meta_for(agent_name, actor_id);
         if matches!(
             terminal_state,
             crate::product_management::story::Work::Retired

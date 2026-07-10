@@ -1,9 +1,11 @@
+use super::event_meta::meta_for;
 use super::helpers::{require_nonempty_string, role_from_name};
 use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_create_outcome(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
@@ -51,10 +53,7 @@ pub(crate) async fn handle_create_outcome(
         .create_story(title.clone(), body.clone(), vec!["outcome".to_string()])
         .await
         .map_err(|e| format!("create_outcome adapter call failed: {e}"))?;
-    let meta = crate::product_management::story::events::EventMeta {
-        actor: crate::routing::short_name(agent_name).to_string(),
-        ts: chrono::Utc::now(),
-    };
+    let meta = meta_for(agent_name, actor_id);
     r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
         meta,
         StoryId::new(id),

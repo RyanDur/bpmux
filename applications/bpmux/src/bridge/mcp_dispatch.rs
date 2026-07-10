@@ -9,6 +9,7 @@ use super::{McpError, WsSink, rpc_client, tools};
 pub(super) async fn dispatch_tool_call(
     port: u16,
     name: Arc<Mutex<String>>,
+    user_id: Option<String>,
     ws_tx: Arc<Mutex<Option<WsSink>>>,
     subscriptions: SubscriptionRegistry,
     request: CallToolRequestParams,
@@ -129,7 +130,14 @@ pub(super) async fn dispatch_tool_call(
         | "view_verdicts"
         | "view_velocity" => {
             let current_name = name.lock().await.clone();
-            rpc_client::dispatch_via_rpc(port, request.name.as_ref(), &current_name, &args).await
+            rpc_client::dispatch_via_rpc(
+                port,
+                request.name.as_ref(),
+                &current_name,
+                user_id.as_deref(),
+                &args,
+            )
+            .await
         }
         "get_usage" => tools::handle_get_usage(&args).await,
         "view_tokens" => tools::handle_view_tokens(&ws_tx).await,

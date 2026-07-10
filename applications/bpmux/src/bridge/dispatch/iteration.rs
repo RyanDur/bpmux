@@ -6,10 +6,11 @@ use crate::transport::rest::iteration_close::CloseIterationError;
 pub(crate) async fn dispatch_create_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    tools_stories::handle_create_iteration(&args, agent_name, refresh, dispatch).await
+    tools_stories::handle_create_iteration(&args, agent_name, actor_id, refresh, dispatch).await
 }
 
 pub(crate) async fn dispatch_close_iteration(
@@ -49,17 +50,19 @@ pub(crate) async fn dispatch_close_iteration(
 pub(crate) async fn dispatch_set_parent_epic(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
-    tools_stories::handle_set_parent_epic(&args, agent_name, refresh).await
+    tools_stories::handle_set_parent_epic(&args, agent_name, actor_id, refresh).await
 }
 
 pub(crate) async fn dispatch_unset_parent_epic(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
-    tools_stories::handle_unset_parent_epic(&args, agent_name, refresh).await
+    tools_stories::handle_unset_parent_epic(&args, agent_name, actor_id, refresh).await
 }
 
 pub(crate) async fn dispatch_add_story_to_iteration(
@@ -74,28 +77,35 @@ pub(crate) async fn dispatch_add_story_to_iteration(
 pub(crate) async fn dispatch_designate_current_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    tools_stories::handle_designate_current_iteration(&args, agent_name, refresh, dispatch).await
+    tools_stories::handle_designate_current_iteration(
+        &args, agent_name, actor_id, refresh, dispatch,
+    )
+    .await
 }
 
 pub(crate) async fn dispatch_close_pre_pickup_review(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    tools_stories::handle_close_pre_pickup_review(&args, agent_name, refresh, dispatch).await
+    tools_stories::handle_close_pre_pickup_review(&args, agent_name, actor_id, refresh, dispatch)
+        .await
 }
 
 pub(crate) async fn dispatch_dev_ok_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    tools_stories::handle_dev_ok_iteration(&args, agent_name, refresh, dispatch).await
+    tools_stories::handle_dev_ok_iteration(&args, agent_name, actor_id, refresh, dispatch).await
 }
 
 pub(crate) async fn dispatch_remove_iteration_member(
@@ -128,8 +138,9 @@ pub(crate) async fn dispatch_rename_iteration(
 pub(crate) async fn dispatch_reorder_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    tools_stories::handle_reorder_iteration(&args, agent_name, refresh, dispatch).await
+    tools_stories::handle_reorder_iteration(&args, agent_name, actor_id, refresh, dispatch).await
 }

@@ -10,6 +10,7 @@ use crate::product_management::story::{Stage, Story, StoryId, Verdict, Work};
 fn meta(actor: &str, hour: u32) -> EventMeta {
     EventMeta {
         actor: actor.to_string(),
+        actor_id: None,
         ts: Utc.with_ymd_and_hms(2026, 7, 7, hour, 0, 0).unwrap(),
     }
 }

@@ -44,7 +44,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
         "falsifier_reframing".into(),
         serde_json::json!("reframing content"),
     );
-    let result = handle_start_story(&args, "dev:claude-code", Some(&orchestrator)).await;
+    let result = handle_start_story(&args, "dev:claude-code", None, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = orchestrator.story(203).unwrap();
@@ -125,7 +125,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         "verified_observation".into(),
         serde_json::json!("drove the falsifier scenario end-to-end"),
     );
-    let result = handle_deliver_story(&args, "dev:claude-code", Some(&orchestrator)).await;
+    let result = handle_deliver_story(&args, "dev:claude-code", None, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = orchestrator.story(204).unwrap();
@@ -200,7 +200,7 @@ async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(205));
     args.insert("would_file_bug".into(), serde_json::json!(false));
-    let result = handle_accept_story(&args, "owner:human", Some(&orchestrator), None).await;
+    let result = handle_accept_story(&args, "owner:human", None, Some(&orchestrator), None).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = orchestrator.story(205).unwrap();
@@ -285,7 +285,7 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(5070));
     args.insert("would_file_bug".into(), serde_json::json!(false));
-    handle_accept_story(&args, "owner:human", Some(&orch), None)
+    handle_accept_story(&args, "owner:human", None, Some(&orch), None)
         .await
         .unwrap();
 
@@ -360,7 +360,7 @@ async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(206));
     args.insert("reason".into(), serde_json::json!("scope mismatch"));
-    let result = handle_reject_story(&args, "owner:human", Some(&orchestrator)).await;
+    let result = handle_reject_story(&args, "owner:human", None, Some(&orchestrator)).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = orchestrator.story(206).unwrap();
@@ -442,7 +442,8 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
     );
     args.insert("body".into(), serde_json::json!("author note"));
 
-    let result = handle_create_story(&args, "pm:claude-code", Some(&orchestrator), &td()).await;
+    let result =
+        handle_create_story(&args, "pm:claude-code", None, Some(&orchestrator), &td()).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
     let response = result.unwrap();
     assert!(
@@ -525,9 +526,14 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
         "verified_observation".into(),
         serde_json::json!("ran end-to-end"),
     );
-    let result =
-        crate::bridge::dispatch_deliver_story(args, "dev:claude-code", Some(&orchestrator), &hub)
-            .await;
+    let result = crate::bridge::dispatch_deliver_story(
+        args,
+        "dev:claude-code",
+        None,
+        Some(&orchestrator),
+        &hub,
+    )
+    .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let mut combined = String::new();
@@ -580,7 +586,7 @@ async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
     args.insert("id".into(), serde_json::json!(1524));
     args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
     args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
-    let result = handle_start_story(&args, "dev:claude-code", Some(&orchestrator))
+    let result = handle_start_story(&args, "dev:claude-code", None, Some(&orchestrator))
         .await
         .expect("start_story succeeds");
 
@@ -660,7 +666,7 @@ async fn start_story_leads_with_the_latest_reject_not_an_older_one() {
     args.insert("id".into(), serde_json::json!(1525));
     args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
     args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
-    let result = handle_start_story(&args, "dev:claude-code", Some(&orchestrator))
+    let result = handle_start_story(&args, "dev:claude-code", None, Some(&orchestrator))
         .await
         .expect("start_story succeeds");
 

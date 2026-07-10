@@ -64,7 +64,7 @@ mod gate_retire_1348 {
         args.insert("id".into(), serde_json::json!(9101));
         args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
         args.insert("falsifier_reframing".into(), serde_json::json!("f"));
-        let result = handle_start_story(&args, "dev:claude-code", Some(&orch)).await;
+        let result = handle_start_story(&args, "dev:claude-code", None, Some(&orch)).await;
         assert!(
             result.is_ok(),
             "Gherkin-only Feature start_story must succeed without ATP section: {result:?}"
@@ -92,7 +92,7 @@ mod gate_retire_1348 {
             "verified_observation".into(),
             serde_json::json!("drove the user-job end-to-end via real-backend tests"),
         );
-        let result = handle_deliver_story(&args, "dev:claude-code", Some(&orch)).await;
+        let result = handle_deliver_story(&args, "dev:claude-code", None, Some(&orch)).await;
         assert!(
             result.is_ok(),
             "Gherkin-only Feature deliver_story must succeed without ATP section: {result:?}"
@@ -118,7 +118,7 @@ mod gate_retire_1348 {
         args.insert("id".into(), serde_json::json!(9103));
         args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
         args.insert("falsifier_reframing".into(), serde_json::json!("f"));
-        let result = handle_start_story(&args, "dev:claude-code", Some(&orch)).await;
+        let result = handle_start_story(&args, "dev:claude-code", None, Some(&orch)).await;
         assert!(
             result.is_ok(),
             "Gherkin-only Bug start_story must succeed without ATP section: {result:?}"
@@ -140,7 +140,7 @@ mod gate_retire_1348 {
         args.insert("id".into(), serde_json::json!(9104));
         args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
         args.insert("falsifier_reframing".into(), serde_json::json!("f"));
-        let result = handle_start_story(&args, "dev:claude-code", Some(&orch)).await;
+        let result = handle_start_story(&args, "dev:claude-code", None, Some(&orch)).await;
         assert!(
             result.is_err(),
             "Feature with body-named ATP path that doesn't exist must still block: {result:?}"
@@ -168,7 +168,7 @@ mod gate_retire_1348 {
             "verified_observation".into(),
             serde_json::json!("drove end-to-end via tests"),
         );
-        let result = handle_deliver_story(&args, "dev:claude-code", Some(&orch)).await;
+        let result = handle_deliver_story(&args, "dev:claude-code", None, Some(&orch)).await;
         assert!(
             result.is_err(),
             "Feature with body-named ATP path that doesn't exist must still block at deliver: {result:?}"

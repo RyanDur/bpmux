@@ -69,6 +69,7 @@ mod codec_injection_substrate {
     fn meta() -> EventMeta {
         EventMeta {
             actor: "stub".to_string(),
+            actor_id: None,
             ts: Utc.with_ymd_and_hms(2026, 5, 17, 0, 0, 0).unwrap(),
         }
     }

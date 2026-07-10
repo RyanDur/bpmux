@@ -20,8 +20,8 @@ use state_delta::{
     fire_board_invalidate, fire_stories, fire_story_transition, fire_view_backlog_marker,
     story_state_label,
 };
-use tool_dispatch::dispatch;
-pub use validation::{AGENT_HEADER, agent_from_headers};
+use tool_dispatch::{ToolCaller, dispatch};
+pub use validation::{ACTOR_ID_HEADER, AGENT_HEADER, actor_id_from_headers, agent_from_headers};
 use validation::{args_from_value, is_read_only_tool};
 
 pub async fn post_rpc_tool(
@@ -46,6 +46,7 @@ pub async fn post_rpc_tool(
         .role_id_for_purpose(&agent)
         .map(str::to_string)
         .unwrap_or(agent);
+    let actor_id = actor_id_from_headers(&headers);
     let Some(refresh) = refresh else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
@@ -83,7 +84,11 @@ pub async fn post_rpc_tool(
     let prior_state = transition_id
         .filter(|_| !is_read_only_tool(&tool))
         .and_then(|id| story_state_label(&refresh, id));
-    match dispatch(&refresh, &tool, &agent, args, &hub, &dispatcher, &select).await {
+    let caller = ToolCaller {
+        agent: &agent,
+        actor_id: actor_id.as_deref(),
+    };
+    match dispatch(&refresh, &tool, caller, args, &hub, &dispatcher, &select).await {
         Ok(message) => {
             if tool == "view_backlog" {
                 fire_view_backlog_marker(&hub);

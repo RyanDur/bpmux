@@ -1,3 +1,4 @@
+use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, require_purpose};
 use crate::product_management::story::StoryId;
 
@@ -27,6 +28,7 @@ pub(crate) fn retired_iteration_label_axis_error(label: &str) -> String {
 pub(crate) async fn handle_label_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
     require_purpose(agent_name, &["pm"], "label")?;
@@ -47,10 +49,7 @@ pub(crate) async fn handle_label_story(
     }
     if let Some(r) = refresh {
         ensure_story_in_canonical_store(r, id).await?;
-        let meta = crate::product_management::story::events::EventMeta {
-            actor: crate::routing::short_name(agent_name).to_string(),
-            ts: chrono::Utc::now(),
-        };
+        let meta = meta_for(agent_name, actor_id);
         let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
         let tag = codec.decode_tag(label);
         let (event, ok_msg) = match operation {
@@ -112,6 +111,7 @@ pub(crate) async fn handle_label_story(
 pub(crate) async fn handle_comment_on_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
     let id = args
@@ -128,10 +128,7 @@ pub(crate) async fn handle_comment_on_story(
     if let Some(r) = refresh {
         ensure_story_in_canonical_store(r, id).await?;
         let event = crate::product_management::story::events::StoryEvent::new(
-            crate::product_management::story::events::EventMeta {
-                actor: crate::routing::short_name(agent_name).to_string(),
-                ts: chrono::Utc::now(),
-            },
+            meta_for(agent_name, actor_id),
             StoryId::new(id),
             crate::product_management::story::events::StoryEventKind::FreeCommentAppended {
                 body: body.to_string(),

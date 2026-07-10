@@ -1,9 +1,11 @@
+use crate::bridge::tools_stories::event_meta::meta_for;
 use crate::bridge::tools_stories::helpers::{ensure_story_in_canonical_store, role_from_name};
 use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_reject_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
 ) -> Result<String, String> {
     let actor_role = role_from_name(agent_name);
@@ -53,15 +55,15 @@ pub(crate) async fn handle_reject_story(
         crate::workflow::check_target_state_valid(transition, story.state.as_str())
             .map_err(|e| e.as_json_string())?;
     }
-    let actor = crate::routing::short_name(agent_name).to_string();
-    reject_via_canonical_store(r, id, actor, reason.clone()).await?;
+    reject_via_canonical_store(r, id, agent_name, actor_id, reason.clone()).await?;
     Ok(format!("#{id} rejected: {reason}"))
 }
 
 pub(crate) async fn reject_via_canonical_store(
     refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     id: u64,
-    actor: String,
+    agent_name: &str,
+    actor_id: Option<&str>,
     reason: String,
 ) -> Result<(), String> {
     let prior = ensure_story_in_canonical_store(refresh, id).await?;
@@ -80,10 +82,7 @@ pub(crate) async fn reject_via_canonical_store(
     )
     .ok_or_else(|| format!("#{id} reject has no target from '{}'", transition.from))?;
     let was_accepted = prior.is_concluded();
-    let meta = crate::product_management::story::events::EventMeta {
-        actor,
-        ts: chrono::Utc::now(),
-    };
+    let meta = meta_for(agent_name, actor_id);
     let mut events = Vec::new();
     if was_accepted {
         events.push(crate::product_management::story::events::StoryEvent::new(

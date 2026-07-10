@@ -3,12 +3,14 @@ use super::helpers::{
     verify_bug_question_or_bypass,
 };
 use crate::bridge::tools_stories::build_verdict_reprompt_signal;
+use crate::bridge::tools_stories::event_meta::meta_for;
 use crate::bridge::tools_stories::helpers::{ensure_story_in_canonical_store, role_from_name};
 use crate::product_management::story::StoryId;
 
 pub(crate) async fn handle_accept_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
+    actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     hub: Option<&std::sync::Arc<crate::hub::Hub>>,
 ) -> Result<String, String> {
@@ -99,8 +101,7 @@ pub(crate) async fn handle_accept_story(
             .map_err(|e| e.as_json_string())?;
         }
     }
-    let actor = crate::routing::short_name(agent_name).to_string();
-    accept_via_canonical_store(r, id, actor, bypass).await?;
+    accept_via_canonical_store(r, id, agent_name, actor_id, bypass).await?;
     r.test_race_window_complete();
     Ok(format!("#{id} accepted and closed"))
 }
@@ -108,7 +109,8 @@ pub(crate) async fn handle_accept_story(
 pub(crate) async fn accept_via_canonical_store(
     refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     id: u64,
-    actor: String,
+    agent_name: &str,
+    actor_id: Option<&str>,
     bypass: Option<String>,
 ) -> Result<(), String> {
     ensure_story_in_canonical_store(refresh, id).await?;
@@ -131,10 +133,7 @@ pub(crate) async fn accept_via_canonical_store(
             transition.from
         )
     })?;
-    let meta = crate::product_management::story::events::EventMeta {
-        actor,
-        ts: chrono::Utc::now(),
-    };
+    let meta = meta_for(agent_name, actor_id);
     refresh
         .mutate_batch_sync(vec![
             crate::product_management::story::events::StoryEvent::new(
