@@ -2,18 +2,18 @@
 
 use serde_json::{Map, Value, json};
 
-use super::{CommitmentsAction, CommitmentsState, matching_roles, reduce};
+use super::{CommitmentsAction, CommitmentsState, matching_users, reduce};
 
 fn commit(
     state: &CommitmentsState,
-    role: &str,
+    user_id: &str,
     event_class: &str,
     filter: Option<Map<String, Value>>,
 ) -> CommitmentsState {
     reduce(
         state,
         &CommitmentsAction::Committed {
-            role: role.to_string(),
+            user_id: user_id.to_string(),
             event_class: event_class.to_string(),
             filter,
         },
@@ -29,33 +29,33 @@ fn filter(pairs: &[(&str, Value)]) -> Map<String, Value> {
 }
 
 #[test]
-fn a_committed_role_wakes_once_on_its_event_then_the_commitment_is_consumed() {
+fn a_committed_user_wakes_once_on_its_event_then_the_commitment_is_consumed() {
     let armed = commit(
         &CommitmentsState::default(),
-        "dev",
+        "id-dev-1",
         "ci_state_changed",
         None,
     );
     let payload = json!({ "conclusion": "green" });
 
     assert_eq!(
-        matching_roles(&armed, "ci_state_changed", &payload),
-        vec!["dev".to_string()],
-        "the committed role is woken when its event fires"
+        matching_users(&armed, "ci_state_changed", &payload),
+        vec!["id-dev-1".to_string()],
+        "the committed user is woken when its event fires"
     );
 
     let consumed = reduce(
         &armed,
         &CommitmentsAction::CommitmentsMatched {
-            roles: vec!["dev".to_string()],
+            user_ids: vec!["id-dev-1".to_string()],
             event_class: "ci_state_changed".to_string(),
             payload: payload.clone(),
         },
     )
     .unwrap();
     assert!(
-        matching_roles(&consumed, "ci_state_changed", &payload).is_empty(),
-        "one-shot: the commitment is a single obligation — once it fires it is consumed, so a second event does NOT re-wake the role"
+        matching_users(&consumed, "ci_state_changed", &payload).is_empty(),
+        "one-shot: the commitment is a single obligation — once it fires it is consumed, so a second event does NOT re-wake the user"
     );
 }
 
@@ -63,20 +63,20 @@ fn a_committed_role_wakes_once_on_its_event_then_the_commitment_is_consumed() {
 fn a_filter_gates_which_payloads_wake_and_a_non_match_leaves_the_commitment_armed() {
     let armed = commit(
         &CommitmentsState::default(),
-        "dev",
+        "id-dev-1",
         "ci_state_changed",
         Some(filter(&[("conclusion", json!("green"))])),
     );
 
     assert!(
-        matching_roles(&armed, "ci_state_changed", &json!({ "conclusion": "red" })).is_empty(),
+        matching_users(&armed, "ci_state_changed", &json!({ "conclusion": "red" })).is_empty(),
         "a filtered commitment does NOT fire on a non-matching payload"
     );
     assert!(
         reduce(
             &armed,
             &CommitmentsAction::CommitmentsMatched {
-                roles: vec!["dev".to_string()],
+                user_ids: vec!["id-dev-1".to_string()],
                 event_class: "ci_state_changed".to_string(),
                 payload: json!({ "conclusion": "red" }),
             },
@@ -85,27 +85,27 @@ fn a_filter_gates_which_payloads_wake_and_a_non_match_leaves_the_commitment_arme
         "the non-matching event removes nothing — the reducer reports no change and the commitment stays armed"
     );
     assert_eq!(
-        matching_roles(
+        matching_users(
             &armed,
             "ci_state_changed",
             &json!({ "conclusion": "green" })
         ),
-        vec!["dev".to_string()],
+        vec!["id-dev-1".to_string()],
         "the commitment stays armed through the non-match and fires on the matching payload"
     );
 }
 
 #[test]
-fn a_different_event_class_wakes_no_committed_role() {
+fn a_different_event_class_wakes_no_committed_user() {
     let armed = commit(
         &CommitmentsState::default(),
-        "dev",
+        "id-dev-1",
         "ci_state_changed",
         None,
     );
 
     assert!(
-        matching_roles(
+        matching_users(
             &armed,
             "story_state_transition",
             &json!({ "story_id": 1753 })
@@ -118,14 +118,19 @@ fn a_different_event_class_wakes_no_committed_role() {
 #[test]
 fn the_removal_is_scoped_to_the_woken_set_so_a_concurrent_commit_is_not_silently_consumed() {
     let payload = json!({ "conclusion": "green" });
-    let read = commit(&CommitmentsState::default(), "A", "ci_state_changed", None);
-    let woken = matching_roles(&read, "ci_state_changed", &payload);
+    let read = commit(
+        &CommitmentsState::default(),
+        "id-dev-1",
+        "ci_state_changed",
+        None,
+    );
+    let woken = matching_users(&read, "ci_state_changed", &payload);
 
-    let raced = commit(&read, "B", "ci_state_changed", None);
+    let raced = commit(&read, "id-dev-2", "ci_state_changed", None);
     let consumed = reduce(
         &raced,
         &CommitmentsAction::CommitmentsMatched {
-            roles: woken,
+            user_ids: woken,
             event_class: "ci_state_changed".to_string(),
             payload: payload.clone(),
         },
@@ -133,8 +138,8 @@ fn the_removal_is_scoped_to_the_woken_set_so_a_concurrent_commit_is_not_silently
     .unwrap();
 
     assert_eq!(
-        matching_roles(&consumed, "ci_state_changed", &payload),
-        vec!["B".to_string()],
-        "B committed in the read-to-removal window is NOT in the woken set, so its commitment is retained and B still wakes — only A, the role actually read as woken, is consumed"
+        matching_users(&consumed, "ci_state_changed", &payload),
+        vec!["id-dev-2".to_string()],
+        "id-dev-2 committed in the read-to-removal window is NOT in the woken set, so its commitment is retained and id-dev-2 still wakes — only id-dev-1, the user actually read as woken, is consumed"
     );
 }

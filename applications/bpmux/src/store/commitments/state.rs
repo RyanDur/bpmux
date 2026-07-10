@@ -10,5 +10,5 @@ pub struct Commitment {
 
 #[derive(Default, Clone)]
 pub struct CommitmentsState {
-    pub by_role: HashMap<String, Vec<Commitment>>,
+    pub by_user: HashMap<String, Vec<Commitment>>,
 }

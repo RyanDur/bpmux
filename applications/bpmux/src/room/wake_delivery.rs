@@ -1,7 +1,7 @@
 use super::terminal_inject::frame_team_message;
 use crate::message::Message;
 use crate::room::LivePtyRegistry;
-use crate::store::commitments::matching_roles;
+use crate::store::commitments::matching_users;
 use crate::store::{CommitmentsAction, Dispatch, Select};
 
 use super::agnostic_delivery::{HeldInject, owner_mid_typing};
@@ -25,32 +25,30 @@ pub fn wake_committed_terminals(
         return held;
     };
     let line = wake_line(event_class, &payload);
-    let woken = select.select(|state| matching_roles(&state.commitments, event_class, &payload));
+    let woken = select.select(|state| matching_users(&state.commitments, event_class, &payload));
     dispatch.dispatch(
         CommitmentsAction::CommitmentsMatched {
-            roles: woken.clone(),
+            user_ids: woken.clone(),
             event_class: event_class.to_string(),
             payload: payload.clone(),
         }
         .into(),
     );
-    for role in woken {
-        for user_id in select.select(|s| crate::store::routing::resolve(&s.routing, &role)) {
-            let Some(terminal_id) =
-                select.select(|s| crate::store::routing::terminal_for(&s.routing, &user_id))
-            else {
-                continue;
-            };
-            if owner_mid_typing(registry, &terminal_id) {
-                held.push(HeldInject {
-                    user_id,
-                    terminal_id,
-                    line: line.clone(),
-                    ts: ts.clone(),
-                });
-            } else {
-                registry.submit_to(&terminal_id, line.as_bytes());
-            }
+    for user_id in woken {
+        let Some(terminal_id) =
+            select.select(|s| crate::store::routing::terminal_for(&s.routing, &user_id))
+        else {
+            continue;
+        };
+        if owner_mid_typing(registry, &terminal_id) {
+            held.push(HeldInject {
+                user_id,
+                terminal_id,
+                line: line.clone(),
+                ts: ts.clone(),
+            });
+        } else {
+            registry.submit_to(&terminal_id, line.as_bytes());
         }
     }
     held

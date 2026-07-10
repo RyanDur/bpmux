@@ -21,6 +21,8 @@ mod roadmap;
 #[cfg(test)]
 mod roadmap_tests;
 mod wake;
+#[cfg(test)]
+mod wake_tests;
 mod write;
 mod write_iteration;
 mod write_outcome;

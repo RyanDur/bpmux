@@ -34,6 +34,8 @@ mod register_tests;
 mod shared_rest_helpers;
 #[cfg(test)]
 mod story_label_reorder;
+#[cfg(test)]
+mod wake_tests;
 
 pub(crate) use board::{
     board_epics, board_iterations, board_outcomes, board_roadmap, board_stories,

@@ -8,5 +8,5 @@ mod reduce_tests;
 
 pub use action::CommitmentsAction;
 pub use reduce::reduce;
-pub use selectors::matching_roles;
+pub use selectors::matching_users;
 pub use state::CommitmentsState;

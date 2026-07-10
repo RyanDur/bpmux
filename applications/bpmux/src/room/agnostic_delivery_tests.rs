@@ -47,12 +47,12 @@ fn register_and_link(store: &SeededStore, user_id: &str, display: &str, terminal
 }
 
 fn commit(
-    role: &str,
+    user_id: &str,
     event_class: &str,
     filter: Option<serde_json::Map<String, serde_json::Value>>,
 ) -> AppAction {
     CommitmentsAction::Committed {
-        role: role.to_string(),
+        user_id: user_id.to_string(),
         event_class: event_class.to_string(),
         filter,
     }
@@ -559,7 +559,7 @@ async fn a_committed_dormant_agent_is_woken_when_its_gate_event_fires() {
         "2000-01-01T00:00:00Z",
     );
 
-    store.dispatch(commit("dev", "ci_state_changed", None));
+    store.dispatch(commit("sess-dev", "ci_state_changed", None));
 
     wake_committed_terminals(
         &ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"),
@@ -606,7 +606,7 @@ async fn the_live_delivery_loop_wakes_a_committed_dormant_agent_on_a_broadcast_c
         "term-dev",
         "2000-01-01T00:00:00Z",
     );
-    store.dispatch(commit("dev", "ci_state_changed", None));
+    store.dispatch(commit("sess-dev", "ci_state_changed", None));
 
     spawn_terminal_delivery_loop(
         hub.clone(),
@@ -648,7 +648,7 @@ async fn a_committed_wake_is_held_while_the_owner_types_then_delivers_on_pause()
         "term-dev",
         "2000-01-01T00:00:00Z",
     );
-    store.dispatch(commit("dev", "ci_state_changed", None));
+    store.dispatch(commit("sess-dev", "ci_state_changed", None));
 
     registry.note_human_keystroke("term-dev");
     let held = wake_committed_terminals(
@@ -702,7 +702,7 @@ async fn a_filtered_commitment_is_not_woken_by_a_non_matching_event_at_the_deliv
 
     let mut filter = serde_json::Map::new();
     filter.insert("conclusion".to_string(), serde_json::json!("red"));
-    store.dispatch(commit("dev", "ci_state_changed", Some(filter)));
+    store.dispatch(commit("sess-dev", "ci_state_changed", Some(filter)));
 
     wake_committed_terminals(
         &ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"),
@@ -872,5 +872,72 @@ async fn a_non_chat_message_is_never_injected_into_a_terminal() {
     assert!(
         !seen.contains("STATE-BODY"),
         "only chat/insight messages are injected — a state-snapshot must never be written into a PTY; got {seen:?}"
+    );
+}
+
+#[tokio::test]
+async fn an_id_keyed_commitment_wakes_only_the_committer_not_every_session_sharing_its_display() {
+    let store = wired_store();
+    let registry = LivePtyRegistry::new();
+    let live1 = spawn_pty_retained(
+        "/bin/sh",
+        &[
+            "-c".into(),
+            "while read line; do printf 'PROCESSED[%s]\\n' \"$line\"; done".into(),
+        ],
+        None,
+        &[],
+    )
+    .unwrap();
+    let mut rx1 = live1.subscribe();
+    registry.insert("term-dev-1".to_string(), live1);
+    register_agent(
+        &store,
+        "id-dev-1",
+        "dev",
+        "term-dev-1",
+        "2000-01-01T00:00:00Z",
+    );
+
+    let live2 = spawn_pty_retained(
+        "/bin/sh",
+        &[
+            "-c".into(),
+            "while read line; do printf 'PROCESSED[%s]\\n' \"$line\"; done".into(),
+        ],
+        None,
+        &[],
+    )
+    .unwrap();
+    let mut rx2 = live2.subscribe();
+    registry.insert("term-dev-2".to_string(), live2);
+    register_agent(
+        &store,
+        "id-dev-2",
+        "dev",
+        "term-dev-2",
+        "2000-01-01T00:00:00Z",
+    );
+
+    store.dispatch(commit("id-dev-1", "ci_state_changed", None));
+
+    wake_committed_terminals(
+        &ci_event(crate::ci::CiState::Green, "2026-07-09T10:00:00Z"),
+        &registry,
+        &store.select(),
+        &store.dispatcher(),
+    );
+
+    let seen1 = drain_for(&mut rx1, "PROCESSED[").await;
+    assert!(
+        seen1.contains("PROCESSED[") && seen1.contains("ci_state_changed"),
+        "id-dev-1, the committer, wakes on its gate event via the id-carrying commit path; got {seen1:?}"
+    );
+
+    registry.write_to("term-dev-2", b"NO-FANOUT-SENTINEL\r");
+    let seen2 = drain_for(&mut rx2, "NO-FANOUT-SENTINEL").await;
+    assert!(
+        !seen2.contains("ci_state_changed"),
+        "decision 1 (cluster-b-delivery-by-id-design.md): id-dev-2 shares the SAME display 'dev' as the committer but did NOT itself commit — an id-keyed commitment reaches exactly the committer, not every session sharing the display. got {seen2:?}"
     );
 }
