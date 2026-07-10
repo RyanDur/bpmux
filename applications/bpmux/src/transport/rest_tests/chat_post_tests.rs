@@ -173,10 +173,10 @@ async fn post_broadcast_leaves_to_ids_none() {
 }
 
 #[tokio::test]
-async fn post_to_an_unknown_display_among_knowns_contributes_nothing() {
+async fn post_with_any_unresolvable_display_does_not_freeze_partial_to_ids() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
-    let (app, tx) = test_app_with_routing(&dir, &[("dev", "id-dev-1")]);
+    let (app, tx) = test_app_with_routing(&dir, &[("dev", "id-dev-1"), ("dev", "id-dev-2")]);
     let mut rx = tx.subscribe();
     let request = Request::builder()
         .method("POST")
@@ -189,10 +189,56 @@ async fn post_to_an_unknown_display_among_knowns_contributes_nothing() {
     let response = app.oneshot(request).await.expect("response");
     assert_eq!(response.status(), StatusCode::CREATED);
     let msg = rx.try_recv().expect("broadcast message");
-    assert_eq!(
-        msg.to_ids,
-        Some(vec!["id-dev-1".to_string()]),
-        "an unresolvable display contributes nothing — the known id still carries, never Some(empty)"
+    assert!(
+        msg.to_ids.is_none(),
+        "ghost resolves to zero ids — a PARTIAL resolution must not freeze: the whole message stays display-matched (to_ids None) until every addressee exists, else ghost's future user never receives it; got {:?}",
+        msg.to_ids
+    );
+}
+
+#[tokio::test]
+async fn post_to_a_display_with_no_registered_users_leaves_to_ids_none() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (app, tx) = test_app_with_routing(&dir, &[]);
+    let mut rx = tx.subscribe();
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/messages")
+        .header("Content-Type", "application/json")
+        .body(Body::from(r#"{"from":"owner","text":"hi","to":["dev"]}"#))
+        .expect("build request");
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let msg = rx.try_recv().expect("broadcast message");
+    assert!(
+        msg.to_ids.is_none(),
+        "nobody is registered at send time — stamping Some(empty) makes the message a permanent black hole (Some-ids matches only ids, and there are none); it must stay display-matched (to_ids None); got {:?}",
+        msg.to_ids
+    );
+}
+
+#[tokio::test]
+async fn post_addressee_with_no_registered_users_leaves_addressee_ids_none() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (app, tx) = test_app_with_routing(&dir, &[]);
+    let mut rx = tx.subscribe();
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/messages")
+        .header("Content-Type", "application/json")
+        .body(Body::from(
+            r#"{"from":"owner","text":"hi","addressee":"dev"}"#,
+        ))
+        .expect("build request");
+    let response = app.oneshot(request).await.expect("response");
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let msg = rx.try_recv().expect("broadcast message");
+    assert!(
+        msg.addressee_ids.is_none(),
+        "an addressee resolving to zero ids must stamp None, not Some(empty) — a dev who registers later must still match the @dev marker by display fallback; got {:?}",
+        msg.addressee_ids
     );
 }
 

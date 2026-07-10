@@ -7,6 +7,7 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 
 use crate::hub;
+use crate::routing::short_name;
 
 pub const DEFAULT_MESSAGE_LIMIT: usize = 20;
 
@@ -38,6 +39,7 @@ pub struct GetMessagesParams {
 
 pub async fn get_messages(
     State(hub): State<Arc<hub::Hub>>,
+    axum::Extension(select): axum::Extension<crate::store::Select>,
     Query(params): Query<GetMessagesParams>,
 ) -> impl IntoResponse {
     let chat_only = params.chat_only.unwrap_or(true);
@@ -52,6 +54,10 @@ pub async fn get_messages(
         .as_deref()
         .and_then(|s| s.parse::<chrono::DateTime<chrono::Utc>>().ok());
     let as_peer = params.as_peer.clone();
+    let resolved_ids: Vec<String> = as_peer
+        .as_deref()
+        .map(|peer| select.select(|s| crate::store::routing::resolve(&s.routing, short_name(peer))))
+        .unwrap_or_default();
     let matches = |m: &crate::message::Message| -> bool {
         let type_ok = match &wanted_type {
             Some(t) => m.message_type == *t,
@@ -65,10 +71,17 @@ pub async fn get_messages(
         {
             return false;
         }
-        if let Some(ref peer) = as_peer
-            && !crate::transport::ws::should_deliver(m, peer)
-        {
-            return false;
+        if let Some(ref peer) = as_peer {
+            let reaches = if resolved_ids.is_empty() {
+                crate::transport::ws::should_deliver(m, None, peer)
+            } else {
+                resolved_ids
+                    .iter()
+                    .any(|id| crate::transport::ws::should_deliver(m, Some(id), peer))
+            };
+            if !reaches {
+                return false;
+            }
         }
         true
     };

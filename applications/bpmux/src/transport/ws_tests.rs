@@ -207,38 +207,43 @@ fn nudge(to: Option<Vec<&str>>) -> crate::message::Message {
 fn broadcast_delivered_to_everyone() {
     assert!(should_deliver(
         &msg("dev:claude-code", None),
+        None,
         "pm:claude-code",
     ));
-    assert!(should_deliver(&msg("dev:claude-code", None), "owner:human",));
+    assert!(should_deliver(
+        &msg("dev:claude-code", None),
+        None,
+        "owner:human",
+    ));
 }
 
 #[test]
 fn addressed_delivered_to_recipient() {
     let m = msg("dev:claude-code", Some(vec!["pm"]));
-    assert!(should_deliver(&m, "pm:claude-code"));
+    assert!(should_deliver(&m, None, "pm:claude-code"));
 }
 
 #[test]
 fn addressed_delivered_to_sender() {
     let m = msg("dev:claude-code", Some(vec!["pm"]));
-    assert!(should_deliver(&m, "dev:claude-code"));
+    assert!(should_deliver(&m, None, "dev:claude-code"));
 }
 
 #[test]
 fn addressed_not_delivered_to_non_recipient() {
     let m = msg("dev:claude-code", Some(vec!["pm"]));
-    assert!(!should_deliver(&m, "designer:claude-code"));
+    assert!(!should_deliver(&m, None, "designer:claude-code"));
 }
 
 #[test]
 fn full_identity_recipient_delivers_to_matching_peer() {
     let m = msg("dev:claude-code", Some(vec!["pm:claude-code"]));
     assert!(
-        should_deliver(&m, "pm:claude-code"),
+        should_deliver(&m, None, "pm:claude-code"),
         "#1568: a full-identity `to:` recipient must match its peer, like sender/peer are already normalized"
     );
     assert!(
-        !should_deliver(&m, "designer:claude-code"),
+        !should_deliver(&m, None, "designer:claude-code"),
         "#1568: recipient-form normalization must not over-deliver to a non-recipient"
     );
 }
@@ -246,11 +251,11 @@ fn full_identity_recipient_delivers_to_matching_peer() {
 #[test]
 fn group_addressed_delivered_to_all_named() {
     let m = msg("dev:claude-code", Some(vec!["pm", "designer"]));
-    assert!(should_deliver(&m, "pm:claude-code"));
-    assert!(should_deliver(&m, "designer:claude-code"));
-    assert!(should_deliver(&m, "dev:human"));
+    assert!(should_deliver(&m, None, "pm:claude-code"));
+    assert!(should_deliver(&m, None, "designer:claude-code"));
+    assert!(should_deliver(&m, None, "dev:human"));
     assert!(
-        should_deliver(&m, "owner:human"),
+        should_deliver(&m, None, "owner:human"),
         "owner-omniscience: the owner receives a group conversation even though it is NOT named in --to — scope spares peers, never hides from the owner"
     );
 }
@@ -259,11 +264,11 @@ fn group_addressed_delivered_to_all_named() {
 fn owner_receives_every_conversation_even_scoped_to_other_peers() {
     let m = msg("dev:claude-code", Some(vec!["pm", "designer"]));
     assert!(
-        should_deliver(&m, "owner:human"),
+        should_deliver(&m, None, "owner:human"),
         "owner-omniscience (owner-raised): a chat message scoped to:[pm,designer] STILL reaches the owner — --to is peer-attention, never owner-hiding. The owner sees every conversation; the all-conversations view renders it while group rooms still filter by --to."
     );
     assert!(
-        !should_deliver(&m, "designer-x:claude-code"),
+        !should_deliver(&m, None, "designer-x:claude-code"),
         "owner-omniscience does NOT loosen peer scoping — a non-owner not in --to is still excluded"
     );
 }
@@ -273,11 +278,11 @@ fn owner_receives_activity_but_nudges_stay_substrate_excluded() {
     let mut activity = msg("dev:claude-code", None);
     activity.message_type = crate::message::MessageType::Activity;
     assert!(
-        should_deliver(&activity, "owner:human"),
+        should_deliver(&activity, None, "owner:human"),
         "the owner's SESSION receives activity signals (they were already broadcast) — hiding plumbing is the RENDERER's job (events-class hidden from all-conversations by default, FilterPills-toggleable), not the substrate's"
     );
     assert!(
-        !should_deliver(&nudge(Some(vec!["owner"])), "owner:human"),
+        !should_deliver(&nudge(Some(vec!["owner"])), None, "owner:human"),
         "owner-omniscience PRESERVES the deliberate #1525 substrate nudge-exclusion — nudges (recall/handoff routing) never reach the owner-peer; surfacing them is a separate #1525-revisit, not this fix"
     );
 }
@@ -285,15 +290,15 @@ fn owner_receives_activity_but_nudges_stay_substrate_excluded() {
 #[test]
 fn to_all_is_broadcast() {
     let m = msg("dev:claude-code", Some(vec!["all"]));
-    assert!(should_deliver(&m, "pm:claude-code"));
-    assert!(should_deliver(&m, "owner:human"));
-    assert!(should_deliver(&m, "designer:claude-code"));
+    assert!(should_deliver(&m, None, "pm:claude-code"));
+    assert!(should_deliver(&m, None, "owner:human"));
+    assert!(should_deliver(&m, None, "designer:claude-code"));
 }
 
 #[test]
 fn nudge_never_delivered_to_owner_even_when_addressed_to_owner() {
     assert!(
-        !should_deliver(&nudge(Some(vec!["owner"])), "owner:human"),
+        !should_deliver(&nudge(Some(vec!["owner"])), None, "owner:human"),
         "#1525: a Nudge addressed to the owner must NEVER reach the owner-role peer (recall/handoff can address it to: owner)"
     );
 }
@@ -301,11 +306,11 @@ fn nudge_never_delivered_to_owner_even_when_addressed_to_owner() {
 #[test]
 fn nudge_never_delivered_to_owner_on_broadcast_or_all_paths() {
     assert!(
-        !should_deliver(&nudge(None), "owner:human"),
+        !should_deliver(&nudge(None), None, "owner:human"),
         "#1525: a broadcast Nudge (to:None) must not slip through to the owner"
     );
     assert!(
-        !should_deliver(&nudge(Some(vec!["all"])), "owner:human"),
+        !should_deliver(&nudge(Some(vec!["all"])), None, "owner:human"),
         "#1525: a to:all Nudge must not slip through to the owner"
     );
 }
@@ -313,20 +318,53 @@ fn nudge_never_delivered_to_owner_on_broadcast_or_all_paths() {
 #[test]
 fn nudge_still_delivered_to_every_agent_role() {
     assert!(
-        should_deliver(&nudge(Some(vec!["dev"])), "dev:claude-code"),
+        should_deliver(&nudge(Some(vec!["dev"])), None, "dev:claude-code"),
         "#1525: dev must still receive Nudges (valid agent-internal coordination)"
     );
     assert!(
-        should_deliver(&nudge(Some(vec!["pm"])), "pm:claude-code"),
+        should_deliver(&nudge(Some(vec!["pm"])), None, "pm:claude-code"),
         "#1525: pm must still receive Nudges"
     );
     assert!(
-        should_deliver(&nudge(Some(vec!["designer"])), "designer:claude-code"),
+        should_deliver(&nudge(Some(vec!["designer"])), None, "designer:claude-code"),
         "#1525: designer must still receive Nudges"
     );
     assert!(
-        should_deliver(&nudge(Some(vec!["all"])), "dev:claude-code"),
+        should_deliver(&nudge(Some(vec!["all"])), None, "dev:claude-code"),
         "#1525: a to:all Nudge must still reach agents (only the owner is excluded)"
+    );
+}
+
+#[test]
+fn to_ids_precision_excludes_a_display_sibling_session() {
+    let mut m = msg("pm:claude-code", Some(vec!["dev"]));
+    m.to_ids = Some(vec!["id-dev-1".to_string()]);
+    assert!(
+        should_deliver(&m, Some("id-dev-1"), "dev:claude-code"),
+        "the session identified as id-dev-1 is the frozen to_ids target"
+    );
+    assert!(
+        !should_deliver(&m, Some("id-dev-2"), "dev:claude-code"),
+        "id-dev-2 shares the display 'dev' with id-dev-1 but is a DIFFERENT user — id precision must not deliver to it just because the display matches"
+    );
+}
+
+#[test]
+fn legacy_row_with_no_frozen_to_ids_reaches_every_id_sharing_the_display() {
+    let m = msg("pm:claude-code", Some(vec!["dev"]));
+    assert!(m.to_ids.is_none(), "a legacy row has no frozen ids");
+    assert!(should_deliver(&m, Some("id-dev-1"), "dev:claude-code"));
+    assert!(should_deliver(&m, Some("id-dev-2"), "dev:claude-code"));
+}
+
+#[test]
+fn sender_sees_own_message_by_id_even_when_to_ids_excludes_it() {
+    let mut m = msg("dev:claude-code", Some(vec!["pm"]));
+    m.sender_id = Some("id-dev-1".to_string());
+    m.to_ids = Some(vec!["id-pm-1".to_string()]);
+    assert!(
+        should_deliver(&m, Some("id-dev-1"), "dev:claude-code"),
+        "the sender always sees its own message even though the frozen to_ids excludes it"
     );
 }
 

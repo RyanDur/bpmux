@@ -17,10 +17,11 @@ pub(super) async fn handle_broadcast(
     result: Result<crate::message::Message, broadcast::error::RecvError>,
     identity: &str,
     hub: &Arc<hub::Hub>,
+    routing_user_id: Option<&str>,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     match result {
         Ok(msg) => {
-            if should_deliver(&msg, identity) {
+            if should_deliver(&msg, routing_user_id, identity) {
                 send_json(tx, &ServerMessage::from(msg)).await?;
             }
         }

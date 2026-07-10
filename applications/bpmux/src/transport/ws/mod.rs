@@ -78,6 +78,7 @@ pub(super) async fn run_ws_session(
         &store,
         &orchestrator,
         &identity,
+        routing_user_id.as_deref(),
         replay_cursor,
     )
     .await?;
@@ -90,7 +91,7 @@ pub(super) async fn run_ws_session(
         loop {
             tokio::select! {
                 broadcast_result = broadcast_rx.recv() => {
-                    if !loop_handlers::handle_broadcast(&mut tx, broadcast_result, &identity, &hub).await? {
+                    if !loop_handlers::handle_broadcast(&mut tx, broadcast_result, &identity, &hub, routing_user_id.as_deref()).await? {
                         break;
                     }
                 }

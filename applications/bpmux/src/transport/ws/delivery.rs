@@ -4,29 +4,18 @@ use crate::routing::short_name;
 
 pub(crate) const MAX_MESSAGE_SIZE: usize = 65536;
 
-pub(crate) fn should_deliver(msg: &crate::message::Message, peer_identity: &str) -> bool {
+pub(crate) fn should_deliver(
+    msg: &crate::message::Message,
+    user_id: Option<&str>,
+    peer_identity: &str,
+) -> bool {
     if matches!(
         roster_role_for_identity_prefix(short_name(peer_identity)),
         crate::store::RosterRole::Owner
     ) {
         return msg.message_type != MessageType::Nudge;
     }
-    let recipients = match &msg.to {
-        None => return true,
-        Some(r) => r,
-    };
-    if recipients
-        .iter()
-        .any(|r| r == crate::message::BROADCAST_ALL)
-    {
-        return true;
-    }
-    let peer_short = short_name(peer_identity);
-    let sender_short = short_name(&msg.from);
-    if peer_short == sender_short {
-        return true;
-    }
-    recipients.iter().any(|r| short_name(r) == peer_short)
+    msg.is_from_user(user_id, peer_identity) || msg.reaches_user(user_id, peer_identity)
 }
 
 pub(crate) fn message_size_ok(text: &str) -> bool {

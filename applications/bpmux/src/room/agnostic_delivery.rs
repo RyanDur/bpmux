@@ -100,7 +100,13 @@ pub fn deliver_to_terminals(
     let line = framed_line(msg);
     let ts = msg.ts.to_rfc3339();
     for (user_id, terminal_id) in select.select(|s| {
-        crate::store::routing::delivery_targets(&s.routing, msg.to.as_deref(), &msg.from)
+        crate::store::routing::delivery_targets(
+            &s.routing,
+            msg.to.as_deref(),
+            msg.to_ids.as_deref(),
+            &msg.from,
+            msg.sender_id.as_deref(),
+        )
     }) {
         if !after_cursor(select, &user_id, msg.ts) {
             continue;
@@ -140,7 +146,10 @@ pub fn drain_missed(
     };
     messages.reverse();
     for msg in messages {
-        if !msg.is_chat() || short_name(&msg.from) == display || !reaches(&msg, display) {
+        if !msg.is_chat()
+            || msg.is_from_user(Some(user_id), display)
+            || !msg.reaches_user(Some(user_id), display)
+        {
             continue;
         }
         if join.is_some_and(|join| msg.ts <= join) {
@@ -168,14 +177,6 @@ fn after_cursor(select: &Select, user_id: &str, ts: chrono::DateTime<chrono::Utc
     {
         Some(cursor) => ts > cursor.with_timezone(&chrono::Utc),
         None => true,
-    }
-}
-
-fn reaches(msg: &Message, display: &str) -> bool {
-    match msg.to.as_deref() {
-        None => true,
-        Some(names) if names.iter().any(|name| name == BROADCAST_ALL) => true,
-        Some(names) => names.iter().any(|name| short_name(name) == display),
     }
 }
 

@@ -720,6 +720,144 @@ async fn a_filtered_commitment_is_not_woken_by_a_non_matching_event_at_the_deliv
 }
 
 #[tokio::test]
+async fn a_message_with_frozen_to_ids_does_not_retarget_a_dev_registered_after_stamping() {
+    let store = wired_store();
+    let registry = LivePtyRegistry::new();
+    let mut dev1_rx = register_live_cat(&registry, &store, "id-dev-1", "dev", "term-dev-1");
+
+    let mut msg = chat(
+        "pm",
+        "for the first dev only",
+        Some(vec!["dev".to_string()]),
+    );
+    msg.to_ids = Some(vec!["id-dev-1".to_string()]);
+    msg.sender_id = Some("id-pm-1".to_string());
+
+    let mut dev2_rx = register_live_cat(&registry, &store, "id-dev-2", "dev", "term-dev-2");
+
+    deliver_to_terminals(&msg, &registry, &store.select(), &store.dispatcher());
+
+    let seen1 = drain_for(&mut dev1_rx, "for the first dev only").await;
+    assert!(
+        seen1.contains("for the first dev only"),
+        "id-dev-1 is the frozen to_ids target and must receive; got {seen1:?}"
+    );
+
+    registry.write_to("term-dev-2", b"NO-RETARGET-SENTINEL\r");
+    let seen2 = drain_for(&mut dev2_rx, "NO-RETARGET-SENTINEL").await;
+    assert!(
+        !seen2.contains("for the first dev only"),
+        "id-dev-2 was registered under the SAME display 'dev' AFTER the message's to_ids were frozen — a live re-resolve of the display would wrongly retarget it; the frozen to_ids must be consumed as-is; got {seen2:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_legacy_message_with_no_frozen_to_ids_falls_back_to_live_display_resolution() {
+    let store = wired_store();
+    let registry = LivePtyRegistry::new();
+    let mut dev1_rx = register_live_cat(&registry, &store, "id-dev-1", "dev", "term-dev-1");
+    let mut dev2_rx = register_live_cat(&registry, &store, "id-dev-2", "dev", "term-dev-2");
+
+    let legacy = chat(
+        "pm",
+        "legacy broadcast to dev",
+        Some(vec!["dev".to_string()]),
+    );
+    assert!(legacy.to_ids.is_none(), "a legacy row has no frozen ids");
+
+    deliver_to_terminals(&legacy, &registry, &store.select(), &store.dispatcher());
+
+    let seen1 = drain_for(&mut dev1_rx, "legacy broadcast to dev").await;
+    let seen2 = drain_for(&mut dev2_rx, "legacy broadcast to dev").await;
+    assert!(
+        seen1.contains("legacy broadcast to dev") && seen2.contains("legacy broadcast to dev"),
+        "a legacy message (ids None) falls back to live display resolution and reaches BOTH ids currently sharing the 'dev' display; got dev1={seen1:?} dev2={seen2:?}"
+    );
+}
+
+#[tokio::test]
+async fn drain_missed_self_suppresses_by_sender_id_not_by_shared_display() {
+    let store = wired_store();
+    let registry = LivePtyRegistry::new();
+    let sess_dir = tempfile::TempDir::new().unwrap();
+    let (tx, _rx) = broadcast::channel(16);
+    let hub = crate::hub::Hub::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
+
+    let mut sibling_msg = chat_at(
+        "dev",
+        "id-dev-1's own message",
+        None,
+        "2026-06-12T18:00:01Z",
+    );
+    sibling_msg.sender_id = Some("id-dev-1".to_string());
+    hub.broadcast(&sibling_msg).unwrap();
+
+    let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
+    let mut rx = live.subscribe();
+    registry.insert("term-dev-2".to_string(), live);
+    register_and_link(&store, "id-dev-2", "dev", "term-dev-2");
+
+    drain_missed(
+        &hub,
+        &registry,
+        &store.select(),
+        &store.dispatcher(),
+        "id-dev-2",
+        "term-dev-2",
+        "dev",
+        "2026-06-12T18:00:00Z",
+    );
+
+    registry.write_to("term-dev-2", b"SIBLING-SENTINEL\r");
+    let seen = drain_for(&mut rx, "SIBLING-SENTINEL").await;
+    assert!(
+        seen.contains("id-dev-1's own message"),
+        "id-dev-2 shares the 'dev' display with id-dev-1 but is a DIFFERENT user — sender_id-based self-suppress must not swallow a sibling's message just because the display collides; got {seen:?}"
+    );
+}
+
+#[tokio::test]
+async fn drain_missed_still_self_suppresses_the_true_sender_by_id() {
+    let store = wired_store();
+    let registry = LivePtyRegistry::new();
+    let sess_dir = tempfile::TempDir::new().unwrap();
+    let (tx, _rx) = broadcast::channel(16);
+    let hub = crate::hub::Hub::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
+
+    let mut own_msg = chat_at(
+        "dev",
+        "id-dev-1's own message",
+        None,
+        "2026-06-12T18:00:01Z",
+    );
+    own_msg.sender_id = Some("id-dev-1".to_string());
+    hub.broadcast(&own_msg).unwrap();
+
+    let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
+    let mut rx = live.subscribe();
+    registry.insert("term-dev-1".to_string(), live);
+    register_and_link(&store, "id-dev-1", "dev", "term-dev-1");
+
+    drain_missed(
+        &hub,
+        &registry,
+        &store.select(),
+        &store.dispatcher(),
+        "id-dev-1",
+        "term-dev-1",
+        "dev",
+        "2026-06-12T18:00:00Z",
+    );
+
+    registry.write_to("term-dev-1", b"OWN-SENTINEL\r");
+    let seen = drain_for(&mut rx, "OWN-SENTINEL").await;
+    assert!(
+        !seen.contains("id-dev-1's own message"),
+        "id-dev-1's own drain_missed must still self-suppress its own message by id; got {seen:?}"
+    );
+}
+
+#[tokio::test]
 async fn a_non_chat_message_is_never_injected_into_a_terminal() {
     let store = wired_store();
     let registry = LivePtyRegistry::new();

@@ -152,7 +152,7 @@ mod body_diff_gate;
 #[cfg(test)]
 mod boundary_tests;
 #[cfg(test)]
-mod chat_relevance_gate;
+mod chat_relevance_gate_tests;
 #[cfg(test)]
 mod connection_tests;
 #[cfg(test)]

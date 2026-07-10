@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use super::matching::{addressee_matches, from_matches, to_reaches};
 use super::multi_depth::MultiDepthPayload;
 use super::state_delta::StateDeltaPayload;
 use super::state_snapshot::StateSnapshotPayload;
@@ -142,11 +143,20 @@ impl Message {
         self.message_type.is_chat()
     }
 
-    pub fn is_addressed_to(&self, role: &str) -> bool {
-        match self.addressee.as_deref() {
-            None => true,
-            Some(BROADCAST_ALL) => true,
-            Some(target) => target == role,
-        }
+    pub fn reaches_user(&self, user_id: Option<&str>, display: &str) -> bool {
+        to_reaches(self.to.as_deref(), self.to_ids.as_deref(), user_id, display)
+    }
+
+    pub fn is_from_user(&self, user_id: Option<&str>, display: &str) -> bool {
+        from_matches(&self.from, self.sender_id.as_deref(), user_id, display)
+    }
+
+    pub fn addressed_to_user(&self, user_id: Option<&str>, display: &str) -> bool {
+        addressee_matches(
+            self.addressee.as_deref(),
+            self.addressee_ids.as_deref(),
+            user_id,
+            display,
+        )
     }
 }

@@ -140,12 +140,14 @@ impl TestBridge {
                 bpmux.briefings_dir_path().to_string_lossy().into_owned(),
             ));
         }
+        let cwd = bpmux.bridge_cwd(&name_owned);
         let process = TokioChildProcess::new(tokio::process::Command::new(bin).configure(|cmd| {
             cmd.arg("bridge")
                 .arg("--port")
                 .arg(port.to_string())
                 .arg("--name")
-                .arg(&name_owned);
+                .arg(&name_owned)
+                .current_dir(&cwd);
             if matches!(tracker_mode, TrackerMode::Fake) {
                 cmd.arg("--fake-tracker");
             }

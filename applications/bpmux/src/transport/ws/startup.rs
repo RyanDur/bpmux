@@ -17,6 +17,7 @@ pub(super) async fn send_startup_frames(
     store: &Arc<crate::store::Store>,
     orchestrator: &crate::sync::OrchestratorHandle,
     identity: &str,
+    routing_user_id: Option<&str>,
     replay_cursor: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     send_json(tx, &ServerMessage::Welcome {}).await?;
@@ -65,7 +66,10 @@ pub(super) async fn send_startup_frames(
         messages.reverse();
         let cursor_ts = parsed.with_timezone(&chrono::Utc);
         for msg in messages {
-            if msg.state_delta.is_some() && msg.ts > cursor_ts && should_deliver(&msg, identity) {
+            if msg.state_delta.is_some()
+                && msg.ts > cursor_ts
+                && should_deliver(&msg, routing_user_id, identity)
+            {
                 send_json(tx, &ServerMessage::from(msg)).await?;
             }
         }

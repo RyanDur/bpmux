@@ -70,17 +70,25 @@ pub fn resolve_recipients(state: &RoutingState, to: Option<&[String]>) -> Vec<St
 pub fn delivery_targets(
     state: &RoutingState,
     to: Option<&[String]>,
+    to_ids: Option<&[String]>,
     sender: &str,
+    sender_id: Option<&str>,
 ) -> Vec<(String, String)> {
     let identity = &state.identity;
-    let sender_ids = identity.resolve(short_name(sender));
+    let sender_ids: Vec<String> = match sender_id {
+        Some(id) => vec![id.to_string()],
+        None => identity.resolve(short_name(sender)),
+    };
     let recipient_ids: Vec<String> = match to {
         None => identity.all_ids(),
         Some(names) if names.iter().any(|name| name == BROADCAST_ALL) => identity.all_ids(),
-        Some(names) => names
-            .iter()
-            .flat_map(|name| identity.resolve(short_name(name)))
-            .collect(),
+        Some(names) => match to_ids {
+            Some(ids) => ids.to_vec(),
+            None => names
+                .iter()
+                .flat_map(|name| identity.resolve(short_name(name)))
+                .collect(),
+        },
     };
     recipient_ids
         .into_iter()

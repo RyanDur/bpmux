@@ -14,6 +14,13 @@ use crate::hub;
 use crate::message::MessageType;
 use crate::transport::rest::*;
 
+fn leaked_select() -> crate::store::Select {
+    let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
+    let select = seeded.select();
+    std::mem::forget(seeded);
+    select
+}
+
 #[tokio::test]
 async fn chat_only_excludes_activity_by_default() {
     let dir = TempDir::new().expect("tmpdir");
@@ -21,6 +28,7 @@ async fn chat_only_excludes_activity_by_default() {
     let hub = seed_mixed_messages(&dir);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
+        .layer(axum::Extension(leaked_select()))
         .with_state(hub);
     let request = Request::builder()
         .method("GET")
@@ -43,6 +51,7 @@ async fn chat_only_false_returns_all() {
     let hub = seed_mixed_messages(&dir);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
+        .layer(axum::Extension(leaked_select()))
         .with_state(hub);
     let request = Request::builder()
         .method("GET")
@@ -64,6 +73,7 @@ async fn message_type_filter_returns_only_matching_type() {
     let hub = seed_mixed_messages(&dir);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
+        .layer(axum::Extension(leaked_select()))
         .with_state(hub);
     let request = Request::builder()
         .method("GET")
@@ -89,6 +99,7 @@ async fn defaults_to_twenty_messages() {
     let hub = seed_messages(&dir, 25);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
+        .layer(axum::Extension(leaked_select()))
         .with_state(hub);
     let request = Request::builder()
         .method("GET")
@@ -242,6 +253,7 @@ async fn issue_1319_scenario_1_recipient_sees_multi_recipient_to_scoped_history(
     let hub = seed_to_arity_messages(&dir);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
+        .layer(axum::Extension(leaked_select()))
         .with_state(hub);
     let request = Request::builder()
         .method("GET")
@@ -275,6 +287,7 @@ async fn issue_1319_scenario_2_non_recipient_does_not_see_to_scoped_history() {
     let hub = seed_to_arity_messages(&dir);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
+        .layer(axum::Extension(leaked_select()))
         .with_state(hub);
     let request = Request::builder()
         .method("GET")
@@ -308,6 +321,7 @@ async fn issue_1319_scenario_3_owner_view_sees_all_messages_including_to_scoped(
     let hub = seed_to_arity_messages(&dir);
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
+        .layer(axum::Extension(leaked_select()))
         .with_state(hub);
     let request = Request::builder()
         .method("GET")
@@ -355,6 +369,7 @@ async fn issue_1568_full_identity_to_recipient_delivers_on_reload() {
     hub.broadcast(&full_identity_dm).expect("broadcast");
     let router = axum::Router::new()
         .route("/api/messages", axum::routing::get(get_messages))
+        .layer(axum::Extension(leaked_select()))
         .with_state(hub);
     let request = Request::builder()
         .method("GET")

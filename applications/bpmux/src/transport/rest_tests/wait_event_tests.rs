@@ -12,6 +12,14 @@ use crate::hub;
 use crate::transport::rest::wait_for_event;
 
 fn wait_app(dir: &TempDir) -> (Arc<hub::Hub>, axum::Router) {
+    let (hub, router, _dispatch) = wait_app_with_routing(dir, &[]);
+    (hub, router)
+}
+
+fn wait_app_with_routing(
+    dir: &TempDir,
+    registrations: &[(&str, &str)],
+) -> (Arc<hub::Hub>, axum::Router, crate::store::Dispatch) {
     let (tx, _rx) = broadcast::channel(16);
     let hub = Arc::new(hub::Hub::new(
         dir.path().to_path_buf(),
@@ -19,13 +27,27 @@ fn wait_app(dir: &TempDir) -> (Arc<hub::Hub>, axum::Router) {
         tx,
     ));
     let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
+    for (display, user_id) in registrations {
+        seeded.dispatch(
+            crate::store::routing::RoutingAction::Registered {
+                user_id: (*user_id).to_string(),
+                display: (*display).to_string(),
+            }
+            .into(),
+        );
+    }
+    let dispatch = seeded.dispatcher();
     let router = axum::Router::new()
         .route("/api/wait-for-event", axum::routing::get(wait_for_event))
+        .route(
+            "/api/messages",
+            axum::routing::post(crate::transport::rest::post_message),
+        )
         .layer(axum::Extension(seeded.select()))
         .layer(axum::Extension(seeded.dispatcher()))
         .with_state(hub.clone());
     std::mem::forget(seeded);
-    (hub, router)
+    (hub, router, dispatch)
 }
 
 async fn body_json(response: axum::http::Response<Body>) -> serde_json::Value {
@@ -172,6 +194,87 @@ async fn an_agents_own_broadcast_is_not_delivered_back_to_it() {
         .expect("request");
     let event = body_json(router.oneshot(request).await.expect("response")).await;
     assert_eq!(event["timed_out"], true);
+}
+
+#[tokio::test]
+async fn wait_reaches_by_frozen_to_ids_even_after_the_recipients_display_is_renamed() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (hub, router, dispatch) = wait_app_with_routing(&dir, &[("dev", "id-dev-1")]);
+    let mut msg = directed_chat("pm", "for id-dev-1 before the rename", &["dev"]);
+    msg.to_ids = Some(vec!["id-dev-1".to_string()]);
+    hub.broadcast(&msg).expect("broadcast");
+
+    dispatch.dispatch(
+        crate::store::routing::RoutingAction::Renamed {
+            user_id: "id-dev-1".to_string(),
+            display: "devon".to_string(),
+        }
+        .into(),
+    );
+
+    let request = Request::builder()
+        .uri("/api/wait-for-event?as=devon&timeout_ms=200")
+        .body(Body::empty())
+        .expect("request");
+    let event = body_json(router.oneshot(request).await.expect("response")).await;
+    assert_eq!(
+        event["payload"]["text"], "for id-dev-1 before the rename",
+        "id-dev-1's frozen to_ids still reaches it under its NEW display 'devon' — a display-only match would have missed it since the message's `to` field still literally says 'dev'; got {event:?}"
+    );
+}
+
+#[tokio::test]
+async fn wait_delivers_a_message_sent_before_its_recipient_registered() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (_hub, router, dispatch) = wait_app_with_routing(&dir, &[]);
+
+    let post = Request::builder()
+        .method("POST")
+        .uri("/api/messages")
+        .header("Content-Type", "application/json")
+        .body(Body::from(
+            r#"{"from":"owner","text":"early ping for dev","to":["dev"]}"#,
+        ))
+        .expect("build post");
+    let response = router.clone().oneshot(post).await.expect("response");
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    dispatch.dispatch(
+        crate::store::routing::RoutingAction::Registered {
+            user_id: "id-dev-1".to_string(),
+            display: "dev".to_string(),
+        }
+        .into(),
+    );
+
+    let request = Request::builder()
+        .uri("/api/wait-for-event?as=dev&timeout_ms=200")
+        .body(Body::empty())
+        .expect("request");
+    let event = body_json(router.oneshot(request).await.expect("response")).await;
+    assert_eq!(
+        event["payload"]["text"], "early ping for dev",
+        "a message sent to a display BEFORE any user holds it must drain to the user who registers that display LATER — the send stays display-matched instead of freezing an empty id set; got {event:?}"
+    );
+}
+
+#[tokio::test]
+async fn wait_legacy_row_with_no_frozen_to_ids_falls_back_to_current_display() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (hub, router, _dispatch) = wait_app_with_routing(&dir, &[("dev", "id-dev-1")]);
+    let legacy = directed_chat("pm", "legacy addressed to dev", &["dev"]);
+    assert!(legacy.to_ids.is_none(), "a legacy row has no frozen ids");
+    hub.broadcast(&legacy).expect("broadcast");
+
+    let request = Request::builder()
+        .uri("/api/wait-for-event?as=dev&timeout_ms=200")
+        .body(Body::empty())
+        .expect("request");
+    let event = body_json(router.oneshot(request).await.expect("response")).await;
+    assert_eq!(event["payload"]["text"], "legacy addressed to dev");
 }
 
 fn state_delta_message(delta: crate::message::StateDeltaPayload) -> crate::message::Message {

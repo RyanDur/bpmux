@@ -108,36 +108,132 @@ fn addressee_deserializes_from_pre_158_json() {
 }
 
 #[test]
-fn is_addressed_to_none_is_for_everyone() {
+fn addressed_to_user_none_is_not_addressed_to_anyone_the_bridge_live_semantic() {
     let msg = Message {
         addressee: None,
         ..Message::default()
     };
-    assert!(msg.is_addressed_to("dev"));
-    assert!(msg.is_addressed_to("pm"));
-    assert!(msg.is_addressed_to("designer"));
+    assert!(
+        !msg.addressed_to_user(None, "dev"),
+        "the dead is_addressed_to's None->true semantic died with it — the bridge's live semantic (connection.rs addressed_to_me) treats an unaddressed message as NOT specifically addressed"
+    );
+    assert!(!msg.addressed_to_user(None, "pm"));
+    assert!(!msg.addressed_to_user(None, "designer"));
 }
 
 #[test]
-fn is_addressed_to_all_is_for_everyone() {
+fn addressed_to_user_all_is_not_addressed_to_anyone_specifically() {
     let msg = Message {
         addressee: Some("all".to_string()),
         ..Message::default()
     };
-    assert!(msg.is_addressed_to("dev"));
-    assert!(msg.is_addressed_to("pm"));
-    assert!(msg.is_addressed_to("designer"));
+    assert!(!msg.addressed_to_user(None, "dev"));
+    assert!(!msg.addressed_to_user(None, "pm"));
+    assert!(!msg.addressed_to_user(None, "designer"));
 }
 
 #[test]
-fn is_addressed_to_specific_role_excludes_others() {
+fn addressed_to_user_specific_role_excludes_others_by_display() {
     let msg = Message {
         addressee: Some("pm".to_string()),
         ..Message::default()
     };
-    assert!(msg.is_addressed_to("pm"));
-    assert!(!msg.is_addressed_to("dev"));
-    assert!(!msg.is_addressed_to("designer"));
+    assert!(msg.addressed_to_user(None, "pm"));
+    assert!(!msg.addressed_to_user(None, "dev"));
+    assert!(!msg.addressed_to_user(None, "designer"));
+}
+
+#[test]
+fn addressed_to_user_matches_by_id_and_excludes_a_display_sibling() {
+    let msg = Message {
+        addressee: Some("pm".to_string()),
+        addressee_ids: Some(vec!["id-pm-1".to_string()]),
+        ..Message::default()
+    };
+    assert!(msg.addressed_to_user(Some("id-pm-1"), "pm"));
+    assert!(
+        !msg.addressed_to_user(Some("id-pm-2"), "pm"),
+        "id-pm-2 shares the display 'pm' with id-pm-1 but is a DIFFERENT user — id precision must not deliver to it just because the display matches"
+    );
+}
+
+#[test]
+fn reaches_user_matches_by_id_and_excludes_a_display_sibling() {
+    let msg = Message {
+        to: Some(vec!["dev".to_string()]),
+        to_ids: Some(vec!["id-dev-1".to_string()]),
+        ..Message::default()
+    };
+    assert!(msg.reaches_user(Some("id-dev-1"), "dev"));
+    assert!(
+        !msg.reaches_user(Some("id-dev-2"), "dev"),
+        "id-dev-2 shares the display 'dev' with id-dev-1 but is a DIFFERENT user — a frozen to_ids list must not deliver to it just because the display matches"
+    );
+}
+
+#[test]
+fn reaches_user_falls_back_to_display_when_to_ids_is_none_a_legacy_row() {
+    let msg = Message {
+        to: Some(vec!["dev".to_string()]),
+        to_ids: None,
+        ..Message::default()
+    };
+    assert!(msg.reaches_user(Some("id-dev-1"), "dev"));
+    assert!(msg.reaches_user(Some("id-dev-2"), "dev"));
+    assert!(!msg.reaches_user(Some("id-pm-1"), "pm"));
+}
+
+#[test]
+fn reaches_user_treats_to_ids_absence_of_the_caller_id_as_no_match() {
+    let msg = Message {
+        to: Some(vec!["dev".to_string()]),
+        to_ids: Some(vec!["id-dev-1".to_string()]),
+        ..Message::default()
+    };
+    assert!(
+        !msg.reaches_user(None, "dev"),
+        "to_ids present but the caller's own id is unknown — false, never guess by display once ids are frozen"
+    );
+}
+
+#[test]
+fn reaches_user_broadcast_all_reaches_everyone_even_though_all_never_resolves_to_an_id() {
+    let msg = Message {
+        to: Some(vec![BROADCAST_ALL.to_string()]),
+        to_ids: Some(vec![]),
+        ..Message::default()
+    };
+    assert!(
+        msg.reaches_user(Some("id-dev-1"), "dev"),
+        "\"all\" never resolves to a registered id — our ingress never stamps Some(empty), but a peer relay or hand-built frame can still carry it, so reaches_user must special-case broadcast before consulting to_ids"
+    );
+    assert!(msg.reaches_user(None, "designer"));
+}
+
+#[test]
+fn is_from_user_matches_by_id_and_does_not_treat_a_display_sibling_as_the_sender() {
+    let msg = Message {
+        from: "dev".to_string(),
+        sender_id: Some("id-dev-1".to_string()),
+        ..Message::default()
+    };
+    assert!(msg.is_from_user(Some("id-dev-1"), "dev"));
+    assert!(
+        !msg.is_from_user(Some("id-dev-2"), "dev"),
+        "id-dev-2 shares the display 'dev' with the true sender id-dev-1 but is a DIFFERENT user — sender-sees-own must not fire for a display sibling"
+    );
+}
+
+#[test]
+fn is_from_user_falls_back_to_display_when_sender_id_is_none_a_legacy_row() {
+    let msg = Message {
+        from: "dev".to_string(),
+        sender_id: None,
+        ..Message::default()
+    };
+    assert!(msg.is_from_user(Some("id-dev-1"), "dev"));
+    assert!(msg.is_from_user(None, "dev"));
+    assert!(!msg.is_from_user(Some("id-dev-1"), "pm"));
 }
 
 #[test]
@@ -228,28 +324,31 @@ fn multi_depth_with_empty_role_default_still_roundtrips() {
 }
 
 #[test]
-fn is_addressed_to_none_is_for_everyone_sanity() {
+fn addressed_to_user_default_message_is_not_addressed_to_anyone() {
     let msg = Message::default();
-    assert!(msg.is_addressed_to("dev"));
+    assert!(!msg.addressed_to_user(None, "dev"));
 }
 
 #[test]
-fn addressee_is_independent_of_to() {
+fn addressed_to_user_is_independent_of_to() {
     let broadcast_with_addressee = Message {
         to: None,
         addressee: Some("pm".to_string()),
         ..Message::default()
     };
-    assert!(broadcast_with_addressee.is_addressed_to("pm"));
-    assert!(!broadcast_with_addressee.is_addressed_to("dev"));
+    assert!(broadcast_with_addressee.addressed_to_user(None, "pm"));
+    assert!(!broadcast_with_addressee.addressed_to_user(None, "dev"));
 
     let dm_no_addressee = Message {
         to: Some(vec!["pm".to_string()]),
         addressee: None,
         ..Message::default()
     };
-    assert!(dm_no_addressee.is_addressed_to("pm"));
-    assert!(dm_no_addressee.is_addressed_to("dev"));
+    assert!(
+        !dm_no_addressee.addressed_to_user(None, "pm"),
+        "addressed_to_user reads ONLY the addressee field — a `to` DM with no addressee is NOT addressed_to_user (the bridge :150 live semantic); is_addressed_to's None->true died with the dead helper"
+    );
+    assert!(!dm_no_addressee.addressed_to_user(None, "dev"));
 }
 
 #[test]

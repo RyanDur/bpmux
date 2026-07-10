@@ -243,6 +243,12 @@ impl TestBpmux {
             .to_path_buf()
     }
 
+    pub fn bridge_cwd(&self, name: &str) -> std::path::PathBuf {
+        let dir = self.sessions_base_path().join("bridge-cwd").join(name);
+        std::fs::create_dir_all(&dir).expect("create isolated bridge cwd");
+        dir
+    }
+
     pub fn briefings_dir_path(&self) -> std::path::PathBuf {
         self.session_dir
             .as_ref()

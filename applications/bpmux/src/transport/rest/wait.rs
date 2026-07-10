@@ -29,7 +29,9 @@ pub async fn wait_for_event(
     Query(params): Query<WaitParams>,
 ) -> impl IntoResponse {
     let role = params.as_peer.clone().unwrap_or_default();
-    drain_or_block(&hub, &dispatch, &select, &params, &role).await
+    let resolved_ids =
+        select.select(|s| crate::store::routing::resolve(&s.routing, short_name(&role)));
+    drain_or_block(&hub, &dispatch, &select, &params, &role, &resolved_ids).await
 }
 
 async fn drain_or_block(
@@ -38,6 +40,7 @@ async fn drain_or_block(
     select: &crate::store::Select,
     params: &WaitParams,
     role: &str,
+    resolved_ids: &[String],
 ) -> (StatusCode, String) {
     let timeout = Duration::from_millis(params.timeout_ms.unwrap_or(DEFAULT_WAIT_TIMEOUT_MS));
     let after_cursor = durable_drain_cursor(dispatch, select, role, params.after.as_deref())
@@ -46,7 +49,7 @@ async fn drain_or_block(
 
     let mut receiver = hub.subscribe();
 
-    if let Some(event) = first_pending_after(hub, after_cursor, role) {
+    if let Some(event) = first_pending_after(hub, after_cursor, role, resolved_ids) {
         return (StatusCode::OK, event.to_string());
     }
 
@@ -56,12 +59,12 @@ async fn drain_or_block(
         tokio::select! {
             received = receiver.recv() => match received {
                 Ok(message) => {
-                    if let Some(event) = event_for_role(&message, role) {
+                    if let Some(event) = event_for_role(&message, role, resolved_ids) {
                         return (StatusCode::OK, event.to_string());
                     }
                 }
                 Err(RecvError::Lagged(_)) => {
-                    if let Some(event) = first_pending_after(hub, after_cursor, role) {
+                    if let Some(event) = first_pending_after(hub, after_cursor, role, resolved_ids) {
                         return (StatusCode::OK, event.to_string());
                     }
                 }
@@ -112,6 +115,7 @@ fn first_pending_after(
     hub: &hub::Hub,
     after_cursor: Option<chrono::DateTime<chrono::Utc>>,
     role: &str,
+    resolved_ids: &[String],
 ) -> Option<serde_json::Value> {
     const PENDING_SCAN_WINDOW: usize = 500;
     let mut messages = hub.read_recent(PENDING_SCAN_WINDOW, 0, &|_| true).ok()?;
@@ -122,11 +126,23 @@ fn first_pending_after(
             Some(cursor) => message.ts > cursor,
             None => true,
         })
-        .find_map(|message| event_for_role(&message, role))
+        .find_map(|message| event_for_role(&message, role, resolved_ids))
 }
 
-fn event_for_role(message: &crate::message::Message, role: &str) -> Option<serde_json::Value> {
-    if short_name(&message.from) == short_name(role) {
+fn matches_any_resolved(resolved_ids: &[String], matches: impl Fn(Option<&str>) -> bool) -> bool {
+    if resolved_ids.is_empty() {
+        matches(None)
+    } else {
+        resolved_ids.iter().any(|id| matches(Some(id)))
+    }
+}
+
+fn event_for_role(
+    message: &crate::message::Message,
+    role: &str,
+    resolved_ids: &[String],
+) -> Option<serde_json::Value> {
+    if matches_any_resolved(resolved_ids, |id| message.is_from_user(id, role)) {
         return None;
     }
     if let Some(delta) = &message.state_delta {
@@ -140,7 +156,8 @@ fn event_for_role(message: &crate::message::Message, role: &str) -> Option<serde
             "cursor": ts,
         }));
     }
-    if !message.is_chat() || !should_deliver(message, role) {
+    let reaches = matches_any_resolved(resolved_ids, |id| should_deliver(message, id, role));
+    if !message.is_chat() || !reaches {
         return None;
     }
     Some(broadcast_event(message))

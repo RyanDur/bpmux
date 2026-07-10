@@ -30,20 +30,41 @@ pub(crate) fn chat_event_classes(channel: &str, addressee: Option<&str>) -> Vec<
     classes
 }
 
-pub(crate) fn scope_reaches_live_stream(to: Option<&[String]>, recipient_short: &str) -> bool {
+pub(crate) fn scope_reaches_live_stream(
+    to: Option<&[String]>,
+    to_ids: Option<&[String]>,
+    user_id: Option<&str>,
+    recipient_short: &str,
+) -> bool {
     if matches!(
         crate::roster::roster_role_for_identity_prefix(recipient_short),
         crate::store::RosterRole::Owner
     ) {
         return true;
     }
-    match to {
-        None => true,
-        Some(recipients) => {
-            recipients
-                .iter()
-                .any(|r| r == crate::message::BROADCAST_ALL)
-                || recipients.iter().any(|r| r == recipient_short)
-        }
+    crate::message::to_reaches(to, to_ids, user_id, recipient_short)
+}
+
+pub(crate) fn addressed_to_me(
+    addressee: Option<&str>,
+    addressee_ids: Option<&[String]>,
+    to: Option<&[String]>,
+    to_ids: Option<&[String]>,
+    user_id: Option<&str>,
+    display: &str,
+) -> bool {
+    crate::message::addressee_matches(addressee, addressee_ids, user_id, display)
+        || named_directly(to, to_ids, user_id, display)
+}
+
+fn named_directly(
+    to: Option<&[String]>,
+    to_ids: Option<&[String]>,
+    user_id: Option<&str>,
+    display: &str,
+) -> bool {
+    if to.is_none_or(|names| names.iter().any(|r| r == crate::message::BROADCAST_ALL)) {
+        return false;
     }
+    crate::message::to_reaches(to, to_ids, user_id, display)
 }

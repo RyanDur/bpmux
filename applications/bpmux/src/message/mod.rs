@@ -1,4 +1,5 @@
 mod chat;
+mod matching;
 mod multi_depth;
 mod state_delta;
 mod state_snapshot;
@@ -9,6 +10,7 @@ mod wire;
 mod boundary_tests;
 
 pub use chat::{BROADCAST_ALL, Message, MessageType};
+pub(crate) use matching::{addressee_matches, from_matches, to_reaches};
 pub use multi_depth::{DeepDetail, MultiDepthPayload};
 pub use state_delta::StateDeltaPayload;
 pub use state_snapshot::{ReactionsChannelSnapshot, StateSnapshotPayload};

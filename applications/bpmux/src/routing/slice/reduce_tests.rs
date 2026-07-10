@@ -275,7 +275,7 @@ fn delivery_targets_routes_by_id_excluding_the_sender_and_offline_ids() {
         t
     };
 
-    let broadcast = terminals(delivery_targets(&state, None, "owner"));
+    let broadcast = terminals(delivery_targets(&state, None, None, "owner", None));
     assert_eq!(
         broadcast,
         vec!["term-dev".to_string(), "term-pm".to_string()],
@@ -286,20 +286,22 @@ fn delivery_targets_routes_by_id_excluding_the_sender_and_offline_ids() {
         terminals(delivery_targets(
             &state,
             Some(&["all".to_string()]),
-            "owner"
+            None,
+            "owner",
+            None
         )),
         broadcast,
         "an explicit BROADCAST_ALL to-list routes identically to to=None"
     );
 
     assert_eq!(
-        delivery_targets(&state, Some(&["dev".to_string()]), "pm"),
+        delivery_targets(&state, Some(&["dev".to_string()]), None, "pm", None),
         vec![("sess-dev".to_string(), "term-dev".to_string())],
         "a scoped to:[dev] resolves dev's DISPLAY to its id to its terminal and reaches ONLY it"
     );
 
     assert_eq!(
-        delivery_targets(&state, None, "dev:claude-code"),
+        delivery_targets(&state, None, None, "dev:claude-code", None),
         vec![("sess-pm".to_string(), "term-pm".to_string())],
         "the SENDER's own terminal is excluded (no self-echo) and the sender is matched by short-name across a full identity"
     );
@@ -316,7 +318,7 @@ fn delivery_targets_excludes_the_senders_own_terminal_even_under_the_unresolved_
     let state = linked(&state, "sess-pm", "term-pm");
 
     let sender = bridge_agent_name(dev_terminal);
-    let targets = delivery_targets(&state, None, &sender);
+    let targets = delivery_targets(&state, None, None, &sender, None);
 
     assert!(
         targets.iter().any(|(_, t)| t == "term-pm"),
