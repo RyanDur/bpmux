@@ -32,7 +32,6 @@ mod location_tests;
 pub mod mcp;
 pub mod memory;
 pub mod owner_session;
-pub(crate) mod persist;
 pub mod product_management;
 pub mod rate_limit;
 pub mod reactions;

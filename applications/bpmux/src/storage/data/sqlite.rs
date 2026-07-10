@@ -12,11 +12,11 @@ use super::sqlite_outbox as outbox;
 use super::sqlite_surfaced_topics as surfaced_topics;
 use super::sqlite_users as users;
 use crate::memory::lessons::LessonIndex;
-use crate::persist::PersistError;
 use crate::routing::{UserRecord, UserRepo};
 use crate::sync::QueuedEvent;
 use message::Message;
 use message_log::LogError;
+use persist::PersistError;
 
 pub struct SqliteStorage {
     dir: PathBuf,

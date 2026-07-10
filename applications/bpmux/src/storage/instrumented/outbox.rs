@@ -6,8 +6,7 @@ use crate::storage::Storage;
 impl<S: Storage> crate::sync::OutboxRepo for InstrumentedStorage<S> {
     fn load_outbox(
         &self,
-    ) -> Result<std::collections::VecDeque<crate::sync::QueuedEvent>, crate::persist::PersistError>
-    {
+    ) -> Result<std::collections::VecDeque<crate::sync::QueuedEvent>, persist::PersistError> {
         let start = Instant::now();
         let result = self.inner.load_outbox();
         if let Ok(ref queue) = result {
@@ -23,7 +22,7 @@ impl<S: Storage> crate::sync::OutboxRepo for InstrumentedStorage<S> {
     fn save_outbox(
         &self,
         events: &[crate::sync::QueuedEvent],
-    ) -> Result<(), crate::persist::PersistError> {
+    ) -> Result<(), persist::PersistError> {
         let start = Instant::now();
         let result = self.inner.save_outbox(events);
         self.log(&format!(

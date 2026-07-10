@@ -1,8 +1,8 @@
 use std::collections::VecDeque;
 
 use super::FileStorage;
-use crate::persist::PersistError;
 use crate::sync::QueuedEvent;
+use persist::PersistError;
 
 impl crate::sync::OutboxRepo for FileStorage {
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError> {

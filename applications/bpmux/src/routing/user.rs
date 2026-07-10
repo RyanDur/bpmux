@@ -14,17 +14,8 @@ pub(crate) fn default_kind() -> String {
 }
 
 pub trait UserRepo: Send + Sync {
-    fn load_users(&self) -> Result<Vec<UserRecord>, crate::persist::PersistError>;
-    fn upsert_user(
-        &self,
-        id: &str,
-        name: &str,
-        role: &str,
-    ) -> Result<(), crate::persist::PersistError>;
-    fn set_user_last_delivered(
-        &self,
-        id: &str,
-        at: i64,
-    ) -> Result<(), crate::persist::PersistError>;
-    fn delete_users(&self, ids: &[String]) -> Result<(), crate::persist::PersistError>;
+    fn load_users(&self) -> Result<Vec<UserRecord>, persist::PersistError>;
+    fn upsert_user(&self, id: &str, name: &str, role: &str) -> Result<(), persist::PersistError>;
+    fn set_user_last_delivered(&self, id: &str, at: i64) -> Result<(), persist::PersistError>;
+    fn delete_users(&self, ids: &[String]) -> Result<(), persist::PersistError>;
 }

@@ -4,7 +4,7 @@ use super::InstrumentedStorage;
 use crate::storage::Storage;
 
 impl<S: Storage> crate::routing::UserRepo for InstrumentedStorage<S> {
-    fn load_users(&self) -> Result<Vec<crate::routing::UserRecord>, crate::persist::PersistError> {
+    fn load_users(&self) -> Result<Vec<crate::routing::UserRecord>, persist::PersistError> {
         let start = Instant::now();
         let result = self.inner.load_users();
         if let Ok(ref records) = result {
@@ -17,12 +17,7 @@ impl<S: Storage> crate::routing::UserRepo for InstrumentedStorage<S> {
         result
     }
 
-    fn upsert_user(
-        &self,
-        id: &str,
-        name: &str,
-        role: &str,
-    ) -> Result<(), crate::persist::PersistError> {
+    fn upsert_user(&self, id: &str, name: &str, role: &str) -> Result<(), persist::PersistError> {
         let start = Instant::now();
         let result = self.inner.upsert_user(id, name, role);
         self.log(&format!(
@@ -33,11 +28,7 @@ impl<S: Storage> crate::routing::UserRepo for InstrumentedStorage<S> {
         result
     }
 
-    fn set_user_last_delivered(
-        &self,
-        id: &str,
-        at: i64,
-    ) -> Result<(), crate::persist::PersistError> {
+    fn set_user_last_delivered(&self, id: &str, at: i64) -> Result<(), persist::PersistError> {
         let start = Instant::now();
         let result = self.inner.set_user_last_delivered(id, at);
         self.log(&format!(
@@ -48,7 +39,7 @@ impl<S: Storage> crate::routing::UserRepo for InstrumentedStorage<S> {
         result
     }
 
-    fn delete_users(&self, ids: &[String]) -> Result<(), crate::persist::PersistError> {
+    fn delete_users(&self, ids: &[String]) -> Result<(), persist::PersistError> {
         let start = Instant::now();
         let result = self.inner.delete_users(ids);
         self.log(&format!(

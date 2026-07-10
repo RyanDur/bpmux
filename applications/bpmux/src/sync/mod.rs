@@ -3,9 +3,9 @@ use std::sync::Arc;
 
 use chrono::Utc;
 
-pub use crate::persist::PersistError;
 use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::product_management::story::{CastVerdict, FreeComment};
+pub use persist::PersistError;
 
 mod backfill;
 mod coalesce;
@@ -34,8 +34,8 @@ pub use status::{DroppedEvent, SyncStatus, is_stale, is_startup_fail, staleness_
 pub use types::*;
 
 pub trait OutboxRepo: Send + Sync {
-    fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, crate::persist::PersistError>;
-    fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), crate::persist::PersistError>;
+    fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, persist::PersistError>;
+    fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), persist::PersistError>;
 }
 
 pub struct SyncOrchestrator<A: SourceAdapter + 'static> {

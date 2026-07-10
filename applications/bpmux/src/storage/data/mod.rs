@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::persist::PersistError;
+use persist::PersistError;
 
 use super::Storage;
 use crate::routing::UserRecord;
