@@ -25,7 +25,8 @@ pub(super) fn event_for_role(
         let ts = message
             .ts
             .to_rfc3339_opts(chrono::SecondsFormat::AutoSi, true);
-        let (event_class, payload) = delta.to_subscription_event(&ts)?;
+        let (event_class, payload) =
+            delta.to_subscription_event(&ts, &crate::ci_link::github_actions_url())?;
         return Some(serde_json::json!({
             "event_class": event_class,
             "payload": payload,

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 const SELF_FILE: &str = "boundary_tests.rs";
 
-const ALLOWED_CRATE_PATHS: &[&str] = &["crate::message", "crate::ci_link"];
+const ALLOWED_CRATE_PATHS: &[&str] = &["crate::message"];
 
 fn collect_rs_files(dir: &Path, out: &mut Vec<PathBuf>) {
     for entry in std::fs::read_dir(dir).expect("read message dir") {
@@ -52,7 +52,7 @@ fn message_is_a_self_contained_wire_leaf() {
 
     assert!(
         violations.is_empty(),
-        "message is the shared wire vocabulary — a support LEAF. It imports nothing except its own submodules and crate::ci_link (the CI-actions-url support leaf). Features convert INTO its wire types via From impls they own (see impl From<CiState> for CiStateWire in ci/mod.rs, and From<RosterRole>/From<Presence> in roster/mod.rs); a feature type belongs here only as a byte-identical wire mirror, never as a direct import. Violations:\n{}",
+        "message is the shared wire vocabulary — a support LEAF. It imports nothing except its own submodules. Features convert INTO its wire types via From impls they own (see impl From<CiState> for CiStateWire in ci/mod.rs, and From<RosterRole>/From<Presence> in roster/mod.rs); a feature type belongs here only as a byte-identical wire mirror, never as a direct import. Violations:\n{}",
         violations.join("\n")
     );
 }

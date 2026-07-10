@@ -566,14 +566,14 @@ fn persisted_roster_delta_with_pascalcase_survives_and_keeps_typed_values() {
 }
 
 #[test]
-fn ci_state_changed_subscription_event_pins_conclusion_and_freshly_resolved_url() {
+fn ci_state_changed_subscription_event_pins_conclusion_and_emits_the_caller_supplied_url() {
     let payload: StateDeltaPayload = serde_json::from_value(serde_json::json!({
         "domain": "ci",
         "snapshot": {"state": "green", "run_id": 99, "head_sha": "sha1", "display_title": "build"}
     }))
     .expect("ci delta parses");
     let (event_class, body) = payload
-        .to_subscription_event("2026-07-03T00:00:00Z")
+        .to_subscription_event("2026-07-03T00:00:00Z", "https://ci.example.test/actions")
         .expect("a ci delta maps to a subscription event");
     assert_eq!(event_class, "ci_state_changed");
     assert_eq!(body["conclusion"], "green");
@@ -582,7 +582,7 @@ fn ci_state_changed_subscription_event_pins_conclusion_and_freshly_resolved_url(
     assert_eq!(body["display_title"], "build");
     assert_eq!(
         body["url"],
-        serde_json::Value::String(crate::ci::github_actions_url()),
-        "the subscription event resolves the CI actions URL fresh at emit time — never from the persisted snapshot.url, so live and replayed deltas emit the same url"
+        serde_json::Value::String("https://ci.example.test/actions".to_string()),
+        "the subscription event's payload url is the caller-supplied ci_url — never the persisted snapshot.url, so live and replayed deltas emit whatever url the caller resolves"
     );
 }
