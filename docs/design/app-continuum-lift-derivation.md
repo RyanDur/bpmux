@@ -81,3 +81,36 @@ architecture.md's stage section (verified 2026-04-18) predates the
 restructure: it lists seven top-level modules where src/ now holds ~30
 feature modules, and its friction list predates the fitness locks. It
 needs regrounding against the post-restructure tree when next touched.
+(Paid 2026-07-09: architecture.md reground landed `abb3f337`.)
+
+## Execution (2026-07-10) — the lift runs as backend work
+
+Ryan, 2026-07-09, direct: "the app continuum restructure is also a part
+of the backend." The HOLD above was a readiness check, not an exit — the
+lift executes station-by-station as backend work, each station CI-green
+before the next. The three write-path preconditions all landed (conflict
+machinery retired `343e714f`, evidence re-homed off the gate-time
+file-read, drain trigger state-shaped `94c3928b`); the friction trigger
+is superseded by Ryan's call. The github twin pre-lift blocker cleared
+`f6e623e4`.
+
+**Station 1 = `kernel`**, chosen over message on survey evidence
+(2026-07-10): kernel has zero parent-crate imports (message reaches
+`crate::ci_link`, making it a two-module extraction), one external dep
+(tokio) versus four, ~25 consumer files (20 in store/) versus ~108
+across 17 modules, zero integration-test coupling, no orphan-rule
+surface (generic over S/A, names no domain types), and pm's boundary
+lock already declares it the sanctioned leaf. Post-K-1/K-2 the kernel is
+a finished, pure mechanism — the strongest first station.
+
+Station 1 also establishes the workspace pattern every later station
+reuses: `[workspace.package]` (version/edition/license),
+`[workspace.dependencies]` (promote a dep when a second consumer
+appears — derive, don't menu), and `[workspace.lints]` (the per-package
+deny-lints would otherwise silently not bind new crates), plus the
+pre-push size gate's file roots broadened to `components/*/src`.
+
+Remaining seam order after kernel: message (+ci_link) → workflow →
+storage → view → integrations; write-path modules (product_management,
+sync, store, bridge, transport) last. Re-derive nothing per station —
+survey the seam firsthand, spec, land CI-green.
