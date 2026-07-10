@@ -22,7 +22,6 @@ test.describe('#1597 live-cwd header (S6) — the terminal HEADER tracks cwd as 
 
       const activeTerminal = term.output()
       await expect(activeTerminal).toBeVisible({ timeout: 10000 })
-      await activeTerminal.click()
 
       const activeHeader = term.headerStatus()
       const sidebarLabel = term.item(1)
@@ -31,8 +30,7 @@ test.describe('#1597 live-cwd header (S6) — the terminal HEADER tracks cwd as 
       await expect
         .poll(
           async () => {
-            await win.keyboard.type(`cd ${targetDir}`)
-            await win.keyboard.press('Enter')
+            await term.run(`cd ${targetDir}`)
             return (await activeHeader.textContent()) ?? ''
           },
           { timeout: 20000, intervals: [400, 700, 1000, 1500] }

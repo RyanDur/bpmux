@@ -15,12 +15,8 @@ test.describe('#1611 terminal bottom inset — the bottom row is not clipped pas
       await term.addButton().click()
       const active = term.output()
       await expect(active).toBeVisible({ timeout: 10000 })
-      await active.click()
 
-      await win.keyboard.type(
-        'for i in $(seq 1 90); do echo "ROW_$i ===bottombottombottom==="; done'
-      )
-      await win.keyboard.press('Enter')
+      await term.run('for i in $(seq 1 90); do echo "ROW_$i ===bottombottombottom==="; done')
       await win.waitForTimeout(2500)
 
       const fit = await win.evaluate(() => {

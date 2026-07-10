@@ -46,7 +46,6 @@ test.describe('#1594 resize-reflow — resizing the window reflows the terminal 
 
       const activeTerminal = term.output()
       await expect(activeTerminal).toBeVisible({ timeout: 10000 })
-      await activeTerminal.click()
 
       const markersShareARow = async (start: string, end: string): Promise<boolean> =>
         win.evaluate(
@@ -79,8 +78,7 @@ test.describe('#1594 resize-reflow — resizing the window reflows the terminal 
       await expect
         .poll(
           async () => {
-            await win.keyboard.type(`echo WIDESTART${'Z'.repeat(30)}WIDEEND`)
-            await win.keyboard.press('Enter')
+            await term.run(`echo WIDESTART${'Z'.repeat(30)}WIDEEND`)
             return markersShareARow('WIDESTART', 'WIDEEND')
           },
           { timeout: 20000, intervals: [400, 700, 1000, 1500] }
@@ -91,8 +89,7 @@ test.describe('#1594 resize-reflow — resizing the window reflows the terminal 
       await expect
         .poll(
           async () => {
-            await win.keyboard.type(`echo NARROWSTART${'Z'.repeat(30)}NARROWEND`)
-            await win.keyboard.press('Enter')
+            await term.run(`echo NARROWSTART${'Z'.repeat(30)}NARROWEND`)
             return markersBothPresent('NARROWSTART', 'NARROWEND')
           },
           { timeout: 20000, intervals: [400, 700, 1000, 1500] }

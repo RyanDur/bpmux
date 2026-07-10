@@ -120,6 +120,76 @@ export class TerminalPage {
       .toContain(expectedLabel)
   }
 
+  async run(command: string): Promise<void> {
+    const id = await this.activeTerminalId()
+    await this.output().click()
+    await expect(this.output()).toHaveAttribute('data-input-mode', /^(raw|cooked)$/, {
+      timeout: 15000
+    })
+    const mode = await this.output().getAttribute('data-input-mode')
+    if (mode === 'cooked') {
+      const composed = await this.composeSubmit(command)
+      if (composed) return
+    }
+    await this.runRawEchoVerified(id, command)
+  }
+
+  async runEchoVerified(command: string): Promise<void> {
+    const id = await this.activeTerminalId()
+    await this.output().click()
+    const mode = await this.output().getAttribute('data-input-mode')
+    if (mode === 'cooked') {
+      const composed = await this.composeSubmit(command)
+      if (composed) return
+    }
+    if (mode === 'raw' || mode === 'cooked') {
+      await this.runRawEchoVerified(id, command)
+      return
+    }
+    await this.win.keyboard.type(command)
+    await this.win.keyboard.press('Enter')
+  }
+
+  private async composeSubmit(command: string): Promise<boolean> {
+    const compose = this.activePane().getByRole('textbox', { name: 'terminal input', exact: true })
+    return compose
+      .fill(command, { timeout: 3000 })
+      .then(() => compose.press('Enter'))
+      .then(() => true)
+      .catch(() => false)
+  }
+
+  private async terminalBufferText(id: string): Promise<string> {
+    return this.win.evaluate(
+      (termId) =>
+        (window as unknown as { __bpmuxTermText?: Record<string, () => string> }).__bpmuxTermText?.[
+          termId
+        ]?.() ?? '',
+      id
+    )
+  }
+
+  private async runRawEchoVerified(id: string, command: string): Promise<void> {
+    const normalized = command.replace(/\s+/g, '')
+    let lastBuffer = ''
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await this.win.keyboard.press('Control+u')
+      await this.win.keyboard.type(command)
+      const deadline = Date.now() + 3000
+      while (Date.now() < deadline) {
+        lastBuffer = await this.terminalBufferText(id)
+        if (lastBuffer.replace(/\s+/g, '').includes(normalized)) {
+          await this.win.keyboard.press('Enter')
+          return
+        }
+        await this.win.waitForTimeout(150)
+      }
+    }
+    throw new Error(
+      `terminal echo for "${command}" never arrived intact after 5 attempts; buffer tail: ${lastBuffer.slice(-200)}`
+    )
+  }
+
   async rename(n: number, name: string): Promise<void> {
     await this.item(n).dblclick()
     const input = this.renameInput(n)

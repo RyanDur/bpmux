@@ -16,10 +16,7 @@ test.describe('#1581 terminal lifecycle states — a failed/exited terminal is l
 
       await expect(term.output()).toBeVisible({ timeout: 15000 })
 
-      const activeScreen = term.output()
-      await activeScreen.click()
-      await win.keyboard.type('exit')
-      await win.keyboard.press('Enter')
+      await term.run('exit')
 
       await expect(term.item(1)).toContainText('exited', { timeout: 15000 })
     } finally {

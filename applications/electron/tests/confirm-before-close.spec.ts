@@ -18,13 +18,10 @@ test.describe('#1596 close/kill (S5) — confirm-before-close when a foreground 
       await expect(term.output()).toBeVisible({ timeout: 15000 })
 
       const activeScreen = term.output()
-      await activeScreen.click()
-      await win.keyboard.type('echo OUT:$((6*7))')
-      await win.keyboard.press('Enter')
+      await term.run('echo OUT:$((6*7))')
       await expect(activeScreen).toContainText('OUT:42', { timeout: 15000 })
 
-      await win.keyboard.type('sleep 30')
-      await win.keyboard.press('Enter')
+      await term.run('sleep 30')
       await win.waitForTimeout(1000)
 
       const dialog = term.confirmDialog()

@@ -16,13 +16,11 @@ test.describe('#1466/#1595 real-$SHELL via ＋ — spawning a terminal from the 
 
       const activeTerminal = term.output()
       await expect(activeTerminal).toBeVisible({ timeout: 10000 })
-      await activeTerminal.click()
 
       await expect
         .poll(
           async () => {
-            await win.keyboard.type('echo TERM=$TERM')
-            await win.keyboard.press('Enter')
+            await term.run('echo TERM=$TERM')
             return (await activeTerminal.textContent()) ?? ''
           },
           { timeout: 20000, intervals: [400, 700, 1000, 1500] }

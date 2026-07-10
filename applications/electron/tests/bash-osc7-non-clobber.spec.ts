@@ -23,15 +23,13 @@ test.describe('#1606 bash OSC-7 non-clobbering — a bash terminal whose own .ba
 
       const activeTerminal = term.output()
       await expect(activeTerminal).toBeVisible({ timeout: 10000 })
-      await activeTerminal.click()
 
       const activeHeader = term.headerStatus()
 
       await expect
         .poll(
           async () => {
-            await win.keyboard.type(`cd ${targetDir}`)
-            await win.keyboard.press('Enter')
+            await term.runEchoVerified(`cd ${targetDir}`)
             return (await activeHeader.textContent()) ?? ''
           },
           { timeout: 20000, intervals: [400, 700, 1000, 1500] }
