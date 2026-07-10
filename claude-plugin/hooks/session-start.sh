@@ -17,13 +17,6 @@ do
     fi
 done
 
-# Register this agent's routing identity (channels-independence #1712): derive a
-# stable session-id from the workspace directory (held there in a lightweight
-# .bpmux-session-id marker, reclaimed across restart-in-the-same-dir) and register
-# it server-side, so team-messages route by the durable id and the receive-cursor
-# drains from a server-tracked position instead of a stale /tmp file. Idempotent —
-# reclaims the same id each start. Graceful: silent no-op if the server is down or
-# the binary predates the verb. Non-Claude agents self-register via the terminal.
 if [ -n "$BPMUX_BIN" ] && [ -n "${BPMUX_ROLE:-}" ]; then
     "$BPMUX_BIN" register >/dev/null 2>&1 || true
 fi

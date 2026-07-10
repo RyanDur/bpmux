@@ -10,8 +10,10 @@ mod resolve;
 mod room;
 
 #[cfg(test)]
-pub(crate) use resolve::user_id_from_pin_or_dir;
-pub(crate) use resolve::{resolve_bpmux_port, resolve_role, resolve_user_id};
+pub(crate) use resolve::{or_register_user_id_from_pin_or_dir, registered_user_id_from_pin_or_dir};
+pub(crate) use resolve::{
+    resolve_bpmux_port, resolve_or_register_user_id, resolve_registered_user_id, resolve_role,
+};
 
 use resolve::resolve_data_base;
 use room::{run_room_kill, run_room_list, run_room_read, run_room_spawn};

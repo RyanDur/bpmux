@@ -68,6 +68,10 @@ pub mod view;
 pub mod workflow;
 
 pub use cli::bootstrap::run;
+pub(crate) use cli::bootstrap::{
+    Cli, resolve_bpmux_port, resolve_or_register_user_id, resolve_registered_user_id, resolve_role,
+};
 #[cfg(test)]
-pub(crate) use cli::bootstrap::user_id_from_pin_or_dir;
-pub(crate) use cli::bootstrap::{Cli, resolve_bpmux_port, resolve_role, resolve_user_id};
+pub(crate) use cli::bootstrap::{
+    or_register_user_id_from_pin_or_dir, registered_user_id_from_pin_or_dir,
+};

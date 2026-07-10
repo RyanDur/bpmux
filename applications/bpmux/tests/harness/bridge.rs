@@ -72,6 +72,10 @@ impl TestBridge {
                 "BPMUX_BRIEFINGS_DIR".to_string(),
                 bpmux.briefings_dir_path().to_string_lossy().into_owned(),
             ),
+            (
+                "BPMUX_USER_ID".to_string(),
+                uuid::Uuid::new_v4().to_string(),
+            ),
         ];
         let args: Vec<String> = config_args.to_vec();
         let process =
@@ -138,6 +142,12 @@ impl TestBridge {
             env_owned.push((
                 "BPMUX_BRIEFINGS_DIR".to_string(),
                 bpmux.briefings_dir_path().to_string_lossy().into_owned(),
+            ));
+        }
+        if !env_owned.iter().any(|(k, _)| k == "BPMUX_USER_ID") {
+            env_owned.push((
+                "BPMUX_USER_ID".to_string(),
+                uuid::Uuid::new_v4().to_string(),
             ));
         }
         let cwd = bpmux.bridge_cwd(&name_owned);

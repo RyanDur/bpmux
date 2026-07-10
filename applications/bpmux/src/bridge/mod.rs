@@ -124,7 +124,7 @@ pub fn run_bridge(
             crate::transport::self_update::spawn_binary_watcher(ct.clone(), restart_signal);
             let user_id = std::env::current_dir()
                 .ok()
-                .and_then(|cwd| crate::resolve_user_id(&cwd).ok());
+                .and_then(|cwd| crate::resolve_registered_user_id(&cwd));
             let server = BridgeServer::new(port, name.to_string(), user_id);
             let (stdin, stdout) = rmcp::transport::io::stdio();
             let service = server.serve((stdin, stdout)).await?;

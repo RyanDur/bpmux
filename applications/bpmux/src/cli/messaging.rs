@@ -61,7 +61,7 @@ pub(crate) fn run_send(
     let role = crate::resolve_role(&None);
     let sender_id = std::env::current_dir()
         .ok()
-        .and_then(|cwd| crate::resolve_user_id(&cwd).ok());
+        .and_then(|cwd| crate::resolve_registered_user_id(&cwd));
     let body = send_payload(&role, text, to, addressee, sender_id);
     let port = crate::resolve_bpmux_port();
     let url = crate::transport::local_url::api_url(port, "/api/messages");
@@ -95,7 +95,7 @@ pub(crate) fn run_register() -> anyhow::Result<()> {
     let pinned = std::env::var("BPMUX_USER_ID")
         .map(|id| !id.trim().is_empty())
         .unwrap_or(false);
-    let user_id = crate::resolve_user_id(&cwd)?;
+    let user_id = crate::resolve_or_register_user_id(&cwd)?;
     let mut payload = serde_json::Map::new();
     payload.insert("user_id".to_string(), serde_json::json!(user_id));
     payload.insert("display".to_string(), serde_json::json!(role));

@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use tokio::sync::broadcast;
 
 use super::Osc7CwdParser;
-use crate::location::read_or_create_dir_user;
+use crate::location::register_dir_user;
 use crate::room::LivePtyRegistry;
 use crate::store::{Dispatch, Select};
 
@@ -109,7 +109,7 @@ pub fn spawn_agent_run_detector(
                             crate::store::routing::is_terminal_linked(&s.routing, &terminal_id)
                         })
                         && let Ok(dir_user) =
-                            read_or_create_dir_user(std::path::Path::new(&mint.cwd))
+                            register_dir_user(std::path::Path::new(&mint.cwd))
                     {
                         let actions = select.select(|s| {
                             crate::store::routing::register_agent_actions(

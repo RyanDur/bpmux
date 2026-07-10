@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::agent_detect::{AgentRunDetector, spawn_agent_run_detector};
+use crate::location::test_support::DataBaseGuard;
 use crate::store::SeededStore;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -155,6 +156,9 @@ fn after_the_agent_leaves_a_fresh_foreground_job_re_mints() {
 async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless() {
     use crate::room::{LivePtyRegistry, osc7_shell_integration, spawn_pty_retained};
 
+    let data_base = tempfile::TempDir::new().unwrap();
+    let _base_guard = DataBaseGuard::set(data_base.path());
+
     let store = SeededStore::new(Vec::new(), Vec::new(), Vec::new());
     let registry = Arc::new(LivePtyRegistry::new());
 
@@ -194,20 +198,19 @@ async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless()
     registry.write_to(&terminal_id, format!("cd {work_path}\n").as_bytes());
     registry.write_to(&terminal_id, b"sleep 4\n");
 
-    let marker = work.path().join(".bpmux-user-id");
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
     while std::time::Instant::now() < deadline {
-        if marker.is_file() && !resolve(&store, &work_name).is_empty() {
+        if !resolve(&store, &work_name).is_empty() {
             break;
         }
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
 
     assert!(
-        marker.is_file(),
-        "the agent-run detector read_or_create'd the work-dir's .bpmux-user-id marker on a SUSTAINED foreground-job (cd-emit gave the cwd, the sleep is the foreground-child)"
+        !work.path().join(".bpmux-user-id").exists(),
+        "auto-registration writes the identity into the data-home registry, NOT a marker in the detected cwd — the agent's workspace stays clean"
     );
-    let user = crate::location::read_or_create_dir_user(work.path()).unwrap();
+    let user = crate::location::register_dir_user(work.path()).unwrap();
     assert_eq!(
         resolve(&store, &work_name),
         vec![user.id],
@@ -271,6 +274,9 @@ async fn a_cd_through_a_dir_without_running_an_agent_mints_no_id() {
 async fn an_agent_started_in_place_with_no_cd_registers_via_the_startup_emit() {
     use crate::room::{LivePtyRegistry, osc7_shell_integration, spawn_pty_retained};
 
+    let data_base = tempfile::TempDir::new().unwrap();
+    let _base_guard = DataBaseGuard::set(data_base.path());
+
     let store = SeededStore::new(Vec::new(), Vec::new(), Vec::new());
     let registry = Arc::new(LivePtyRegistry::new());
     let work = tempfile::TempDir::new().unwrap();
@@ -306,19 +312,18 @@ async fn an_agent_started_in_place_with_no_cd_registers_via_the_startup_emit() {
 
     registry.write_to(&terminal_id, b"sleep 4\n");
 
-    let marker = work.path().join(".bpmux-user-id");
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
     while std::time::Instant::now() < deadline {
-        if marker.is_file() && !resolve(&store, &work_name).is_empty() {
+        if !resolve(&store, &work_name).is_empty() {
             break;
         }
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
     assert!(
-        marker.is_file(),
-        "an agent that STARTS in the work-dir (no later cd) registers via the STARTUP OSC-7 emit (zsh .zshrc-load / bash PROMPT_COMMAND) — the cwd is tracked without a cd"
+        !work.path().join(".bpmux-user-id").exists(),
+        "start-in-place registration also leaves the workspace clean — identity lives in the data-home registry, not a cwd marker"
     );
-    let user = crate::location::read_or_create_dir_user(work.path()).unwrap();
+    let user = crate::location::register_dir_user(work.path()).unwrap();
     assert_eq!(
         resolve(&store, &work_name),
         vec![user.id],

@@ -6,6 +6,7 @@ use tempfile::TempDir;
 use tower::ServiceExt;
 
 use super::response_json;
+use crate::location::test_support::DataBaseGuard;
 use crate::room::LivePtyRegistry;
 use crate::store::SeededStore;
 use crate::transport::rest::post_terminal_spawn;
@@ -34,6 +35,9 @@ fn spawn_app(store_dir: &TempDir) -> (axum::Router, Arc<LivePtyRegistry>, Seeded
 
 #[tokio::test]
 async fn the_plus_spawn_flow_auto_registers_an_agent_running_in_its_working_dir_headless() {
+    let data_base = TempDir::new().expect("registry base");
+    let _base_guard = DataBaseGuard::set(data_base.path());
+
     let store_dir = TempDir::new().expect("store dir");
     let (router, registry, store) = spawn_app(&store_dir);
     let resolve = |display: &str| {
@@ -67,20 +71,19 @@ async fn the_plus_spawn_flow_auto_registers_an_agent_running_in_its_working_dir_
     registry.write_to(&terminal_id, format!("cd {work_path}\n").as_bytes());
     registry.write_to(&terminal_id, b"sleep 4\n");
 
-    let marker = work.path().join(".bpmux-user-id");
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
     while std::time::Instant::now() < deadline {
-        if marker.is_file() && !resolve(&work_name).is_empty() {
+        if !resolve(&work_name).is_empty() {
             break;
         }
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
 
     assert!(
-        marker.is_file(),
-        "the ＋-spawned terminal's detector minted the work-dir's marker on a sustained foreground-job — the handler wires detection for a bare shell, no BPMUX_ROOM_AGENT gate"
+        !work.path().join(".bpmux-user-id").exists(),
+        "the ＋-spawned terminal's detector registered the agent into the data-home registry on a sustained foreground-job — NO marker is written into the work dir; the handler wires detection for a bare shell, no BPMUX_ROOM_AGENT gate"
     );
-    let user = crate::location::read_or_create_dir_user(work.path()).expect("read marker");
+    let user = crate::location::register_dir_user(work.path()).expect("reclaim from registry");
     assert_eq!(
         resolve(&work_name),
         vec![user.id],
