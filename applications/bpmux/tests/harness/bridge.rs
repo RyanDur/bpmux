@@ -73,6 +73,10 @@ impl TestBridge {
                 bpmux.briefings_dir_path().to_string_lossy().into_owned(),
             ),
             (
+                "BPMUX_IDENTITY_DIR".to_string(),
+                bpmux.identity_dir_path().to_string_lossy().into_owned(),
+            ),
+            (
                 "BPMUX_USER_ID".to_string(),
                 uuid::Uuid::new_v4().to_string(),
             ),
@@ -142,6 +146,12 @@ impl TestBridge {
             env_owned.push((
                 "BPMUX_BRIEFINGS_DIR".to_string(),
                 bpmux.briefings_dir_path().to_string_lossy().into_owned(),
+            ));
+        }
+        if !env_owned.iter().any(|(k, _)| k == "BPMUX_IDENTITY_DIR") {
+            env_owned.push((
+                "BPMUX_IDENTITY_DIR".to_string(),
+                bpmux.identity_dir_path().to_string_lossy().into_owned(),
             ));
         }
         if !env_owned.iter().any(|(k, _)| k == "BPMUX_USER_ID") {

@@ -137,6 +137,7 @@ impl TestBpmux {
         );
         cmd.env("BPMUX_DATA_BASE", session_dir.path());
         cmd.env("BPMUX_BRIEFINGS_DIR", session_dir.path().join("briefings"));
+        cmd.env("BPMUX_IDENTITY_DIR", session_dir.path().join("identity"));
         cmd.env(
             "BPMUX_LOG",
             std::env::temp_dir().join("bpmux-test-diag.log"),
@@ -255,6 +256,14 @@ impl TestBpmux {
             .expect("session dir taken before reading briefings_dir_path")
             .path()
             .join("briefings")
+    }
+
+    pub fn identity_dir_path(&self) -> std::path::PathBuf {
+        self.session_dir
+            .as_ref()
+            .expect("session dir taken before reading identity_dir_path")
+            .path()
+            .join("identity")
     }
 
     pub async fn authed_post(&self, path: &str, body: serde_json::Value) -> reqwest::Response {

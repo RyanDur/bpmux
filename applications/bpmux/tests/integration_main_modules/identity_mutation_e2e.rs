@@ -6,10 +6,6 @@
 //!
 //! Per the 3-class framing — identity-mutation applicability =
 //! {agent: yes, human: no, external: no}. Single-class agent-only.
-//!
-//! Each test uses a unique role-name to isolate the on-disk identity
-//! file under `~/.bpmux/identity/<role>.json` (per #484 disk-isolation
-//! gap; same workaround as commit 20 briefings tests).
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
@@ -25,6 +21,46 @@ fn unique_suffix() -> String {
         .expect("system time")
         .as_micros()
         .to_string()
+}
+
+#[test]
+fn identity_mutation_stays_inside_the_sandboxed_identity_dir_never_the_default_home() {
+    let bpmux = TestBpmux::start();
+    let fake_home = tempfile::TempDir::new().expect("fake home");
+    let fake_home_str = fake_home.path().to_string_lossy().to_string();
+    let rt = tokio::runtime::Runtime::new().expect("rt");
+    rt.block_on(async {
+        let role = "identity-sandbox-pin-role";
+        let agent =
+            TestBridge::connect_with_env(&bpmux, role, &[("HOME", fake_home_str.as_str())]).await;
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        agent
+            .call_tool(
+                "add_value",
+                serde_json::json!({
+                    "name": "SANDBOX_PIN_VALUE",
+                    "description": "pins that identity writes stay in the sandbox"
+                }),
+            )
+            .await
+            .expect("add_value should succeed");
+
+        assert!(
+            !fake_home.path().join(".bpmux").exists(),
+            "identity mutations from a test bridge must NEVER fall through to the DEFAULT ~/.bpmux/identity — this is the leak class that accumulated megabytes of test-role litter in the real data home"
+        );
+        let sandboxed = bpmux
+            .sessions_base_path()
+            .join("identity")
+            .join(format!("{role}.json"));
+        assert!(
+            sandboxed.is_file(),
+            "the identity JSON lands inside the harness-injected BPMUX_IDENTITY_DIR under the test's sandbox"
+        );
+
+        agent.close().await;
+    });
 }
 
 #[test]
