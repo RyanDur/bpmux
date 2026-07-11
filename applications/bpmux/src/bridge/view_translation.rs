@@ -1,7 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::view_model::*;
-use crate::memory;
 
 #[test]
 fn identity_value_view_mirrors_source_fields() {

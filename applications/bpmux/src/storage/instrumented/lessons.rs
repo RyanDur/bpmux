@@ -1,10 +1,10 @@
 use std::time::Instant;
 
 use super::InstrumentedStorage;
-use crate::memory::lessons::LessonIndex;
 use crate::storage::Storage;
+use memory::lessons::LessonIndex;
 
-impl<S: Storage> crate::memory::lessons::LessonRepo for InstrumentedStorage<S> {
+impl<S: Storage> memory::lessons::LessonRepo for InstrumentedStorage<S> {
     fn load_lessons(&self) -> LessonIndex {
         let start = Instant::now();
         let index = self.inner.load_lessons();

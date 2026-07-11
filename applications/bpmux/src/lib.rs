@@ -29,7 +29,6 @@ mod location_migration_tests;
 #[cfg(test)]
 mod location_tests;
 pub mod mcp;
-pub mod memory;
 pub mod owner_session;
 pub mod product_management;
 pub mod rate_limit;

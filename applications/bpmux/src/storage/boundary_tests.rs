@@ -9,7 +9,7 @@ fn src_root() -> PathBuf {
 const COMPOSED_FEATURE_PATHS: &[&str] = &[
     "crate::awareness",
     "message_log",
-    "crate::memory",
+    "memory::",
     "crate::sync",
     "user_routing::",
 ];
@@ -55,7 +55,7 @@ const STORAGE_MECHANISM_TOKENS: &[&str] = &["rusqlite", "refinery"];
 const PORT_OWNING_FEATURE_MODULES: &[&str] = &[
     "awareness.rs",
     "../../../components/message_log/src",
-    "memory",
+    "../../../components/memory/src",
     "sync",
     "../../../components/user_routing/src",
 ];

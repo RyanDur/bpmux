@@ -5,6 +5,7 @@ members = [
     "components/comprehension",
     "components/diag",
     "components/kernel",
+    "components/memory",
     "components/message",
     "components/message_log",
     "components/persist",
@@ -27,6 +28,7 @@ thiserror = "2"
 toml = "0.8"
 tempfile = "3"
 aho-corasick = "1.1.4"
+dirs = "6"
 
 [workspace.lints.rust]
 dead_code = "deny"

@@ -17,7 +17,7 @@ pub fn briefing_path(role: &str) -> PathBuf {
 }
 
 pub fn briefing_path_in(root: &std::path::Path, role: &str) -> PathBuf {
-    let safe_role = crate::memory::identity::sanitize_name(role);
+    let safe_role = memory::identity::sanitize_name(role);
     root.join(format!("{safe_role}.md"))
 }
 

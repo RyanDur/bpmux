@@ -9,6 +9,7 @@ license.workspace = true
 comprehension = { path = "../../components/comprehension" }
 diag = { path = "../../components/diag" }
 kernel = { path = "../../components/kernel" }
+memory = { path = "../../components/memory" }
 message = { path = "../../components/message" }
 message_log = { path = "../../components/message_log" }
 persist = { path = "../../components/persist" }
@@ -19,7 +20,7 @@ clap = { version = "4", features = ["derive"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
-dirs = "6"
+dirs = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 thiserror = { workspace = true }
 anyhow = "1"

@@ -11,8 +11,8 @@ use super::sqlite_meta as meta;
 use super::sqlite_outbox as outbox;
 use super::sqlite_surfaced_topics as surfaced_topics;
 use super::sqlite_users as users;
-use crate::memory::lessons::LessonIndex;
 use crate::sync::QueuedEvent;
+use memory::lessons::LessonIndex;
 use message::Message;
 use message_log::LogError;
 use persist::PersistError;
@@ -86,9 +86,9 @@ impl message_log::MessageLog for SqliteStorage {
     }
 }
 
-impl crate::memory::lessons::LessonRepo for SqliteStorage {
+impl memory::lessons::LessonRepo for SqliteStorage {
     fn load_lessons(&self) -> LessonIndex {
-        crate::memory::lessons::load_index(&self.dir)
+        memory::lessons::load_index(&self.dir)
     }
 
     fn add_lesson(
@@ -98,19 +98,19 @@ impl crate::memory::lessons::LessonRepo for SqliteStorage {
         author_role: &str,
         evidence: Vec<String>,
     ) -> Result<(), std::io::Error> {
-        crate::memory::lessons::add_lesson(&self.dir, topic, lesson, author_role, evidence)
+        memory::lessons::add_lesson(&self.dir, topic, lesson, author_role, evidence)
     }
 
     fn load_peer_lessons(&self, peer: &str) -> LessonIndex {
-        crate::memory::lessons::load_peer_index(&self.dir, peer)
+        memory::lessons::load_peer_index(&self.dir, peer)
     }
 
     fn save_peer_lessons(&self, peer: &str, index: &LessonIndex) -> Result<(), std::io::Error> {
-        crate::memory::lessons::save_peer_index(&self.dir, peer, index)
+        memory::lessons::save_peer_index(&self.dir, peer, index)
     }
 
     fn list_peers(&self) -> Vec<String> {
-        crate::memory::lessons::list_peer_names(&self.dir)
+        memory::lessons::list_peer_names(&self.dir)
     }
 }
 

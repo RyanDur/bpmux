@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::hub::Hub;
-use crate::memory::lessons;
+use memory::lessons;
 use message::Message;
 
 const MAX_RECALL_NUDGES: usize = 3;

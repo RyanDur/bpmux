@@ -23,7 +23,7 @@ pub struct Bookmark {
 }
 
 pub fn bookmark_path(data_dir: &Path, role: &str) -> PathBuf {
-    let safe_role = crate::memory::identity::sanitize_name(role);
+    let safe_role = memory::identity::sanitize_name(role);
     data_dir.join(format!("bookmark-{safe_role}.json"))
 }
 

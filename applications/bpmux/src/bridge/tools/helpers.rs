@@ -24,12 +24,12 @@ pub(super) fn urlencoding(s: &str) -> String {
     crate::transport::local_url::percent_encode(s)
 }
 
-pub(super) fn identity_success(index: &crate::memory::identity::IdentityIndex) -> String {
+pub(super) fn identity_success(index: &memory::identity::IdentityIndex) -> String {
     let view = crate::bridge::view_model::IdentityIndexView::from(index);
     serde_json::to_string_pretty(&view).unwrap_or_else(|_| "{}".to_string())
 }
 
-pub(super) fn identity_error(e: &crate::memory::identity::IdentityError) -> String {
+pub(super) fn identity_error(e: &memory::identity::IdentityError) -> String {
     serde_json::json!({
         "error": e.kind(),
         "detail": e.to_string(),

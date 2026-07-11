@@ -33,7 +33,7 @@ pub async fn get_lessons(
 ) -> impl IntoResponse {
     match hub.read_messages() {
         Ok(messages) => {
-            let mut index = crate::memory::lessons::build_index(&messages, &hub.owner_name);
+            let mut index = memory::lessons::build_index(&messages, &hub.owner_name);
             let saved = hub.storage.load_lessons();
             index.lessons = saved.lessons;
 
@@ -59,7 +59,7 @@ pub async fn get_lessons(
                 return (StatusCode::OK, text);
             }
 
-            let groups = crate::memory::lessons::group_by_topic(&index);
+            let groups = memory::lessons::group_by_topic(&index);
             let topic_filter = params.topic.as_deref().map(str::to_lowercase);
             let filtered: Vec<_> = groups
                 .iter()
@@ -106,7 +106,7 @@ pub async fn get_peer_lessons(
     };
 
     let index = hub.storage.load_peer_lessons(&peer_name);
-    let groups = crate::memory::lessons::group_by_topic(&index);
+    let groups = memory::lessons::group_by_topic(&index);
     if groups.is_empty() {
         return (
             StatusCode::OK,

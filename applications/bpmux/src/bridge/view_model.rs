@@ -1,7 +1,5 @@
 use serde::Serialize;
 
-use crate::memory;
-
 #[derive(Debug, Clone, Serialize)]
 pub struct IdentityValueView {
     pub name: String,

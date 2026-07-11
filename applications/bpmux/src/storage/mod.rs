@@ -8,7 +8,7 @@ pub use data::*;
 pub trait Storage:
     crate::awareness::SurfacedTopicsRepo
     + message_log::MessageLog
-    + crate::memory::lessons::LessonRepo
+    + memory::lessons::LessonRepo
     + crate::sync::OutboxRepo
     + user_routing::UserRepo
     + Send
