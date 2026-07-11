@@ -119,9 +119,9 @@ fn classify_log_does_not_affect_classification_behavior() {
 }
 
 use super::awareness::handoff::HandoffTracker;
-use crate::comprehension::bayes::BayesModel;
-use crate::comprehension::classifier::MessageClass;
 use crate::hub::Hub;
+use comprehension::bayes::BayesModel;
+use comprehension::classifier::MessageClass;
 use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::sync::broadcast;
@@ -249,7 +249,7 @@ fn nudge_text_does_not_classify_as_experience() {
         "somebody:else",
         "📝 3 candidate moments from recent chat. Pointers, not content to copy — reflect through your own role's lens and save your own framing if any apply:\n  1. [from dev] test preview\nCall save_lesson(topic, lesson) only for durable rules in your own words.",
     );
-    let class = crate::comprehension::classifier::classify(&nudge_msg, "owner");
+    let class = comprehension::classifier::classify(&nudge_msg, "owner");
     assert!(
         !class.is_experience(),
         "reworded nudge text must not classify as experience, got {class:?}"

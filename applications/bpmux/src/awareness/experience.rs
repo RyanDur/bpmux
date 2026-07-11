@@ -1,9 +1,9 @@
 use std::time::Duration;
 use tokio::time::Instant;
 
-use crate::comprehension::bayes::BayesModel;
-use crate::comprehension::classifier;
 use crate::hub::Hub;
+use comprehension::bayes::BayesModel;
+use comprehension::classifier;
 use diag::log_diag;
 use message::{Message, MessageType};
 

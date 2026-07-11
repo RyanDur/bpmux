@@ -1,8 +1,8 @@
 use std::time::Duration;
 use tokio::time::Instant;
 
-use crate::comprehension::classifier;
 use crate::hub::Hub;
+use comprehension::classifier;
 use message::Message;
 
 use super::agents::AgentTracker;

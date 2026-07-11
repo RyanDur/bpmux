@@ -1,4 +1,4 @@
-use crate::comprehension::classifier::classify;
+use comprehension::classifier::classify;
 use message::Message;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

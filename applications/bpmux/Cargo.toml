@@ -6,6 +6,7 @@ description = "P2P group chat for AI pair programming sessions"
 license.workspace = true
 
 [dependencies]
+comprehension = { path = "../../components/comprehension" }
 diag = { path = "../../components/diag" }
 kernel = { path = "../../components/kernel" }
 message = { path = "../../components/message" }
@@ -42,7 +43,7 @@ ring = "0.17.14"
 aes-gcm = "0.10.3"
 base64 = "0.22.1"
 webrtc = "0.17.1"
-aho-corasick = "1.1.4"
+aho-corasick = { workspace = true }
 rustls = { version = "0.23", features = ["ring"] }
 tower-http = { version = "0.6", features = ["cors"] }
 regex = "1"

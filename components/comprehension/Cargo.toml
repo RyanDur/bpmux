@@ -1,0 +1,15 @@
+[package]
+name = "comprehension"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Message comprehension: Bayes model, message classifier, search"
+
+[dependencies]
+message = { path = "../message" }
+serde = { workspace = true, features = ["derive"] }
+chrono = { workspace = true, features = ["serde"] }
+aho-corasick = { workspace = true }
+
+[lints]
+workspace = true

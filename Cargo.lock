@@ -361,6 +361,7 @@ dependencies = [
  "base64",
  "chrono",
  "clap",
+ "comprehension",
  "diag",
  "dirs",
  "futures",
@@ -624,6 +625,16 @@ checksum = "ba5a308b75df32fe02788e748662718f03fde005016435c444eea572398219fd"
 dependencies = [
  "bytes",
  "memchr",
+]
+
+[[package]]
+name = "comprehension"
+version = "0.1.0"
+dependencies = [
+ "aho-corasick",
+ "chrono",
+ "message",
+ "serde",
 ]
 
 [[package]]

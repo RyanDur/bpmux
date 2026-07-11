@@ -19,7 +19,6 @@ pub(crate) mod ci_link;
 #[cfg(test)]
 mod ci_tests;
 mod cli;
-pub mod comprehension;
 pub mod hub;
 #[cfg(test)]
 mod hub_tests;
