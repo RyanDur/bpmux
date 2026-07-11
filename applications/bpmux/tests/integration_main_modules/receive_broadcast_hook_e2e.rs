@@ -1,5 +1,4 @@
 use std::process::Stdio;
-use std::time::Duration;
 
 use serde_json::{Value, json};
 use tokio::io::AsyncWriteExt;
@@ -29,6 +28,11 @@ async fn receive_broadcast_stop_hook_delivers_a_live_broadcast_as_block_reason()
     let bpmux = TestBpmux::start();
     let port = bpmux.port();
     let tmp = tempfile::tempdir().expect("tmpdir");
+    std::fs::write(
+        tmp.path().join("bpmux-receive-cursor-dev"),
+        "2020-01-01T00:00:00Z",
+    )
+    .expect("seed cursor file");
 
     let mut hook = tokio::process::Command::new("bash")
         .arg(receive_hook_script())
@@ -48,7 +52,6 @@ async fn receive_broadcast_stop_hook_delivers_a_live_broadcast_as_block_reason()
         .await
         .expect("write empty hook stdin");
 
-    tokio::time::sleep(Duration::from_millis(200)).await;
     let posted = bpmux
         .authed_post(
             "/api/messages",
@@ -128,6 +131,11 @@ async fn receive_broadcast_stop_hook_does_not_deliver_a_message_scoped_to_anothe
     let bpmux = TestBpmux::start();
     let port = bpmux.port();
     let tmp = tempfile::tempdir().expect("tmpdir");
+    std::fs::write(
+        tmp.path().join("bpmux-receive-cursor-dev"),
+        "2020-01-01T00:00:00Z",
+    )
+    .expect("seed cursor file");
 
     let mut hook = tokio::process::Command::new("bash")
         .arg(receive_hook_script())
@@ -147,7 +155,6 @@ async fn receive_broadcast_stop_hook_does_not_deliver_a_message_scoped_to_anothe
         .await
         .expect("write empty hook stdin");
 
-    tokio::time::sleep(Duration::from_millis(200)).await;
     let posted = bpmux
         .authed_post(
             "/api/messages",
