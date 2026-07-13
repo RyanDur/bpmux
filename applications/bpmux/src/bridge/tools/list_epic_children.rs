@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use crate::product_management::epic::EpicId;
-use crate::product_management::story::Story;
 use crate::sync::RefreshDriver;
+use product_management::epic::EpicId;
+use product_management::story::Story;
 
 pub(in crate::bridge) async fn handle_list_epic_children(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -31,7 +31,7 @@ pub(in crate::bridge) async fn handle_list_epic_children(
                 "title": s.title,
                 "state": format!(
                     "{:?}",
-                    crate::product_management::scheduling::projected_state(s, &iterations)
+                    product_management::scheduling::projected_state(s, &iterations)
                 ).to_lowercase(),
                 "story_type": s.story_type().as_label(),
                 "is_closed": s.is_concluded(),

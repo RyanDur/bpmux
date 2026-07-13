@@ -5,7 +5,7 @@ use super::helpers::{
 use crate::bridge::tools_stories::build_verdict_reprompt_signal;
 use crate::bridge::tools_stories::event_meta::meta_for;
 use crate::bridge::tools_stories::helpers::ensure_story_in_canonical_store;
-use crate::product_management::story::StoryId;
+use product_management::story::StoryId;
 
 pub(crate) async fn handle_accept_story(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -30,7 +30,7 @@ pub(crate) async fn handle_accept_story(
     let class = story_opt
         .as_ref()
         .map(|s| {
-            crate::product_management::story::gate_class_from_acceptor_and_story_type(
+            product_management::story::gate_class_from_acceptor_and_story_type(
                 s.acceptor(),
                 s.story_type(),
             )
@@ -123,7 +123,7 @@ pub(crate) async fn accept_via_canonical_store(
         coarse: new_state,
         placement,
     } = crate::board::advance(
-        &crate::product_management::story::Verdict::Succeed {
+        &product_management::story::Verdict::Succeed {
             step: transition.from.as_str().into(),
         },
         workflow,
@@ -137,30 +137,28 @@ pub(crate) async fn accept_via_canonical_store(
     let meta = meta_for(agent_name, actor_id);
     refresh
         .mutate_batch_sync(vec![
-            crate::product_management::story::events::StoryEvent::new(
+            product_management::story::events::StoryEvent::new(
                 meta.clone(),
                 StoryId::new(id),
-                crate::product_management::story::events::StoryEventKind::VerdictCast {
-                    verdict: crate::product_management::story::Verdict::Succeed {
+                product_management::story::events::StoryEventKind::VerdictCast {
+                    verdict: product_management::story::Verdict::Succeed {
                         step: "acceptance".into(),
                     },
                     payload: bypass.map(format_bypass_payload),
                 },
             ),
-            crate::product_management::story::events::StoryEvent::new(
+            product_management::story::events::StoryEvent::new(
                 meta.clone(),
                 StoryId::new(id),
-                crate::product_management::story::events::StoryEventKind::StateTransitioned {
+                product_management::story::events::StoryEventKind::StateTransitioned {
                     new_state,
                     placement,
                 },
             ),
-            crate::product_management::story::events::StoryEvent::new(
+            product_management::story::events::StoryEvent::new(
                 meta,
                 StoryId::new(id),
-                crate::product_management::story::events::StoryEventKind::StoryClosed {
-                    reason: None,
-                },
+                product_management::story::events::StoryEventKind::StoryClosed { reason: None },
             ),
         ])
         .map_err(|e| format!("#{id} accept enqueue failed: {e}"))?;

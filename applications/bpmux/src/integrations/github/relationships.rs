@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 
 use super::relationship_block::{embed, extract};
-use crate::product_management::epic::EpicId;
-use crate::product_management::iteration::IterationId;
-use crate::product_management::outcome::OutcomeId;
-use crate::product_management::roadmap::RoadmapId;
-use crate::product_management::story::StoryId;
+use product_management::epic::EpicId;
+use product_management::iteration::IterationId;
+use product_management::outcome::OutcomeId;
+use product_management::roadmap::RoadmapId;
+use product_management::story::StoryId;
 
 pub trait Relationships: Serialize + serde::de::DeserializeOwned + Sized {
     fn read_from_body(body: &str) -> Option<Self> {

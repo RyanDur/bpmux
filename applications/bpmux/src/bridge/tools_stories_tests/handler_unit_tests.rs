@@ -2,8 +2,8 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::story::StoryId;
 use crate::transport::protocol::ClientMessage;
+use product_management::story::StoryId;
 
 #[tokio::test]
 async fn accept_requires_refresh_after_5n_fallback_retirement() {
@@ -164,10 +164,10 @@ async fn pass_desk_check_blocks_when_would_file_bug_true_without_force() {
 #[tokio::test]
 async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Story, Work};
     use crate::sync::{RefreshDriver, SyncOrchestrator};
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());

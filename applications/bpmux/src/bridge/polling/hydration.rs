@@ -3,16 +3,16 @@ use std::sync::Arc;
 const HYDRATION_MAX_PER_TICK: usize = 3;
 
 pub(crate) fn select_stories_to_hydrate(
-    stories: &[crate::product_management::story::Story],
+    stories: &[product_management::story::Story],
     limit: usize,
-    iterations: &[crate::product_management::iteration::Iteration],
+    iterations: &[product_management::iteration::Iteration],
 ) -> Vec<u64> {
-    use crate::product_management::scheduling::ProjectedState;
+    use product_management::scheduling::ProjectedState;
     stories
         .iter()
         .filter(|s| {
             matches!(
-                crate::product_management::scheduling::projected_state(s, iterations),
+                product_management::scheduling::projected_state(s, iterations),
                 ProjectedState::Ready | ProjectedState::InProgress | ProjectedState::Acceptance
             ) && s.body.is_none()
         })
@@ -22,16 +22,16 @@ pub(crate) fn select_stories_to_hydrate(
 }
 
 pub(crate) fn select_stories_to_revalidate(
-    stories: &[crate::product_management::story::Story],
+    stories: &[product_management::story::Story],
     limit: usize,
-    iterations: &[crate::product_management::iteration::Iteration],
+    iterations: &[product_management::iteration::Iteration],
 ) -> Vec<(u64, Option<String>)> {
-    use crate::product_management::scheduling::ProjectedState;
+    use product_management::scheduling::ProjectedState;
     stories
         .iter()
         .filter(|s| {
             matches!(
-                crate::product_management::scheduling::projected_state(s, iterations),
+                product_management::scheduling::projected_state(s, iterations),
                 ProjectedState::Ready | ProjectedState::InProgress | ProjectedState::Acceptance
             ) && s.body.is_some()
         })

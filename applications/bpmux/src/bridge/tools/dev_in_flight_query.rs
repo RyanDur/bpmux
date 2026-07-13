@@ -2,11 +2,11 @@
 
 use super::dev_in_flight::*;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::Story;
-use crate::product_management::story::StoryId;
-use crate::product_management::story::Work;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
+use product_management::story::Story;
+use product_management::story::StoryId;
+use product_management::story::Work;
 use std::sync::Arc;
 
 fn seed(state: Work, number: u64) -> Story {

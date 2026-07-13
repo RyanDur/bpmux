@@ -1,8 +1,8 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string};
-use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-use crate::product_management::story::{Story, StoryId, Verdict, Work};
 use crate::sync::RefreshDriver;
+use product_management::story::events::{StoryEvent, StoryEventKind};
+use product_management::story::{Story, StoryId, Verdict, Work};
 use workflow::StageId;
 
 const REASON_CITE_MIN_CHARS: usize = 16;
@@ -122,7 +122,7 @@ fn enforce_judge(held: &StageId, role: &str, agent_name: &str) -> Result<(), Str
 fn cast_and_transition(
     r: &std::sync::Arc<dyn RefreshDriver>,
     id: u64,
-    meta: crate::product_management::story::events::EventMeta,
+    meta: product_management::story::events::EventMeta,
     verdict: Verdict,
     payload: Option<String>,
     new_state: Work,

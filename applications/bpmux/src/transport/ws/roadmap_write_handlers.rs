@@ -3,9 +3,9 @@ use futures::stream::SplitSink;
 
 use super::client::ClientCtx;
 use super::send_json;
-use crate::product_management::iteration::IterationId;
-use crate::product_management::outcome::OutcomeId;
 use crate::transport::protocol::ServerMessage;
+use product_management::iteration::IterationId;
+use product_management::outcome::OutcomeId;
 
 pub(super) async fn handle_set_outcome_horizon(
     ctx: &ClientCtx<'_>,

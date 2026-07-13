@@ -1,10 +1,4 @@
 use super::AppAction;
-use crate::product_management::epic::EpicAction;
-use crate::product_management::evidence::EvidenceAction;
-use crate::product_management::history::SharedHistoryAction;
-use crate::product_management::iteration::IterationAction;
-use crate::product_management::outcome::OutcomeAction;
-use crate::product_management::story::slice::StoryAction;
 use crate::store::board::BoardAction;
 use crate::store::ci::CiAction;
 use crate::store::commitments::CommitmentsAction;
@@ -14,6 +8,12 @@ use crate::store::roster::RosterAction;
 use crate::store::routing::RoutingAction;
 use crate::store::sync::SyncAction;
 use crate::store::sync_health::SyncHealthAction;
+use product_management::epic::EpicAction;
+use product_management::evidence::EvidenceAction;
+use product_management::history::SharedHistoryAction;
+use product_management::iteration::IterationAction;
+use product_management::outcome::OutcomeAction;
+use product_management::story::slice::StoryAction;
 
 impl From<RosterAction> for AppAction {
     fn from(action: RosterAction) -> Self {

@@ -1,5 +1,5 @@
 use super::GhLabelCodec;
-use crate::product_management::story::Horizon;
+use product_management::story::Horizon;
 
 impl GhLabelCodec {
     pub fn decode_parent_outcome(&self, label: &str) -> Option<(u64, u32)> {

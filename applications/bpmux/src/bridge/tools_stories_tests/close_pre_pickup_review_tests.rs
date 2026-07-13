@@ -3,12 +3,12 @@
 use super::super::tools_stories::*;
 use crate::integrations::github::mapper::decode_iteration_from_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::iteration::readiness::iteration_readiness;
-use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
-use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::{AppAction, Dispatch};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
+use product_management::iteration::readiness::iteration_readiness;
+use product_management::iteration::{Iteration, IterationAction, IterationId};
+use product_management::story::{Story, StoryId, Work};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;
 use workflow::bundled_default::bundled_default;

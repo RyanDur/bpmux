@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::product_management::story::events::StoryEventKind;
-use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{Stage, Story, StoryId, Work};
+use product_management::story::events::StoryEventKind;
+use product_management::story::slice::StoryAction;
+use product_management::story::{Stage, Story, StoryId, Work};
 use workflow::StageId;
 
 pub mod flow;
@@ -158,7 +158,7 @@ pub fn placements_for_ingest(
 }
 
 pub fn state_label(
-    coarse: &crate::product_management::scheduling::ProjectedState,
+    coarse: &product_management::scheduling::ProjectedState,
     fine: Option<Stage>,
 ) -> &'static str {
     match fine {
@@ -169,10 +169,10 @@ pub fn state_label(
 }
 
 pub fn wire_state(
-    coarse: &crate::product_management::scheduling::ProjectedState,
+    coarse: &product_management::scheduling::ProjectedState,
     held: Option<&StageId>,
 ) -> String {
-    use crate::product_management::scheduling::ProjectedState;
+    use product_management::scheduling::ProjectedState;
     match (coarse, held) {
         (ProjectedState::InProgress, Some(stage)) => stage.as_str().to_string(),
         _ => coarse.as_str().to_string(),

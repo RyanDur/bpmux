@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use crate::product_management::epic::{Epic, EpicId};
-use crate::product_management::evidence::Evidence;
-use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::outcome::Outcome;
-use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::{CastVerdict, FreeComment, Stage, Story};
 use crate::sync::{ConditionalBody, SyncError};
+use product_management::epic::{Epic, EpicId};
+use product_management::evidence::Evidence;
+use product_management::iteration::{Iteration, IterationId};
+use product_management::outcome::Outcome;
+use product_management::story::events::StoryEvent;
+use product_management::story::{CastVerdict, FreeComment, Stage, Story};
 
 use super::{BoxedFuture, SyncStatus};
 

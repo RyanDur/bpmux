@@ -2,8 +2,8 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::story::{StoryId, StoryKind};
 use crate::transport::protocol::ClientMessage;
+use product_management::story::{StoryId, StoryKind};
 
 fn td() -> crate::store::Dispatch {
     crate::store::Dispatch::recording().0
@@ -12,11 +12,11 @@ fn td() -> crate::store::Dispatch {
 #[tokio::test]
 async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Stage, Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Stage, Story, Verdict, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -98,11 +98,11 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
 #[tokio::test]
 async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_state_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Stage, Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Stage, Story, Verdict, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -178,11 +178,11 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
 #[tokio::test]
 async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Verdict, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -264,11 +264,11 @@ async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
 #[tokio::test]
 async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -332,11 +332,11 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
 #[tokio::test]
 async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Verdict, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -350,8 +350,8 @@ async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
     adapter.seed_stories(vec![seeded]);
     let orchestrator: Arc<dyn RefreshDriver> =
         Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
-    let current = crate::product_management::iteration::Iteration {
-        id: crate::product_management::iteration::IterationId::new(9000),
+    let current = product_management::iteration::Iteration {
+        id: product_management::iteration::IterationId::new(9000),
         title: String::new(),
         body: None,
         filed_at: Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
@@ -418,11 +418,11 @@ async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
 #[tokio::test]
 async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Story, StoryKind, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, StoryKind, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -498,7 +498,7 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
     assert!(
         matches!(
             &pushed[1].kind,
-            StoryEventKind::AcceptorAssigned { acceptor, .. } if pushed[1].id == StoryId::new(51) && *acceptor == crate::product_management::story::Acceptor::Team
+            StoryEventKind::AcceptorAssigned { acceptor, .. } if pushed[1].id == StoryId::new(51) && *acceptor == product_management::story::Acceptor::Team
         ),
         "the 'As an agent (pm or dev)' multi-role use-axis derives the team acceptor, assigned at create (#1787); got {:?}",
         &pushed[1]
@@ -508,10 +508,10 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
 #[tokio::test]
 async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Stage, Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::{Stage, Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -569,10 +569,10 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
 #[tokio::test]
 async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{CastVerdict, Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::{CastVerdict, Story, Verdict, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -630,10 +630,10 @@ async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
 #[tokio::test]
 async fn start_story_leads_with_the_latest_reject_not_an_older_one() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{CastVerdict, Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::{CastVerdict, Story, Verdict, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -703,10 +703,10 @@ async fn start_story_leads_with_the_latest_reject_not_an_older_one() {
 mod classify_for_pass_desk_check_tests {
     use super::*;
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::{Story, Work};
     use std::sync::Arc;
 
     async fn orchestrator_with_seed(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {

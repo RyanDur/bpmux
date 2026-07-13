@@ -39,7 +39,7 @@ pub(crate) async fn handle_edit_outcome(
         updated.push("why");
     }
     dispatch.dispatch(crate::store::AppAction::Outcome(
-        crate::product_management::outcome::OutcomeAction::Upserted(vec![outcome]),
+        product_management::outcome::OutcomeAction::Upserted(vec![outcome]),
     ));
     Ok(format!("#{outcome_id} {} updated", updated.join(" + ")))
 }

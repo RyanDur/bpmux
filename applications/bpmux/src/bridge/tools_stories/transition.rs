@@ -1,9 +1,9 @@
 use super::acceptance_test_path::validate_acceptance_test_path_at_pickup;
 use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string};
-use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-use crate::product_management::story::{StoryId, Verdict, Work};
 use crate::sync::RefreshDriver;
+use product_management::story::events::{StoryEvent, StoryEventKind};
+use product_management::story::{StoryId, Verdict, Work};
 
 pub(crate) async fn handle_start_story(
     args: &serde_json::Map<String, serde_json::Value>,

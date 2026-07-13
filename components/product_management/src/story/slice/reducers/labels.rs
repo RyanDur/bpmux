@@ -1,0 +1,14 @@
+use super::Stories;
+use crate::story::events::LabelDerivedFields;
+use crate::story::{StoryId, StoryKey};
+
+pub(super) fn apply_labels_refreshed(w: &mut Stories, id: StoryId, fields: &LabelDerivedFields) {
+    if fields.raw_labels.is_empty() {
+        return;
+    }
+    if let Some(existing) = w.get_mut(&StoryKey::Saved(id)) {
+        existing.acceptor = fields.acceptor;
+        existing.parent_epic = fields.parent_epic;
+        existing.tags = fields.tags.clone();
+    }
+}

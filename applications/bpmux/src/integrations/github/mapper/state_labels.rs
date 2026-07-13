@@ -1,5 +1,5 @@
-use crate::product_management::scheduling::ProjectedState;
-use crate::product_management::story::{Stage, Work};
+use product_management::scheduling::ProjectedState;
+use product_management::story::{Stage, Work};
 use workflow::StageId;
 
 pub fn stage_github_label(stage: Stage) -> &'static str {

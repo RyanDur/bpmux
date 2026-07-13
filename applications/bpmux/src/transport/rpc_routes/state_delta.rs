@@ -47,8 +47,7 @@ pub(crate) fn story_state_label(
     number: u64,
 ) -> Option<&'static str> {
     refresh.story(number).map(|story| {
-        crate::product_management::scheduling::projected_state(&story, &refresh.iterations())
-            .as_str()
+        product_management::scheduling::projected_state(&story, &refresh.iterations()).as_str()
     })
 }
 

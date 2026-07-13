@@ -4,13 +4,13 @@
 use crate::bridge::tools_stories::{handle_create_outcome, handle_map_iteration_to_outcome};
 use crate::integrations::github::mapper::{decode_iteration_from_story, decode_outcome_from_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::iteration::{Iteration, IterationAction, IterationId};
-use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
-use crate::product_management::story::{Horizon, Story, StoryId, StoryKind, Work};
 use crate::store::{AppAction, Dispatch};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
+use product_management::iteration::{Iteration, IterationAction, IterationId};
+use product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
+use product_management::story::{Horizon, Story, StoryId, StoryKind, Work};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;

@@ -1,6 +1,6 @@
-use crate::product_management::iteration::label::IterationLabelParts;
-use crate::product_management::label_codec::LabelCodec;
-use crate::product_management::story::{Acceptor, Tag};
+use product_management::iteration::label::IterationLabelParts;
+use product_management::label_codec::LabelCodec;
+use product_management::story::{Acceptor, Tag};
 
 mod iteration;
 mod outcome;

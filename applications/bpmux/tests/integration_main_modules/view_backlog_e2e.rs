@@ -70,9 +70,9 @@ fn view_backlog_returns_zero_counts_for_empty_board() {
 #[test]
 fn view_backlog_reflects_seeded_states_via_fixture() {
     use bpmux::integrations::github::relationships::{IterationRelationships, Relationships};
-    use bpmux::product_management::story::StoryId;
     use harness::mock_gh::issue_json;
     use httpmock::{Method, MockServer};
+    use product_management::story::StoryId;
     use serde_json::Value;
 
     let server = MockServer::start();

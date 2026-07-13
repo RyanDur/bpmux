@@ -2,9 +2,9 @@ use super::labels_refreshed;
 use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::integrations::github::mapper::{decode_story_metadata, outbound_state_label};
-use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-use crate::product_management::story::{StoryId, Work};
 use crate::sync::SyncError;
+use product_management::story::events::{StoryEvent, StoryEventKind};
+use product_management::story::{StoryId, Work};
 
 async fn strip_state_labels(
     inner: &OctocrabStoryTracker,
@@ -57,7 +57,7 @@ pub(in crate::integrations::github) async fn push_story_closed(
     strip_state_labels(
         inner,
         number,
-        crate::product_management::scheduling::ProjectedState::Accepted.github_label(),
+        product_management::scheduling::ProjectedState::Accepted.github_label(),
     )
     .await?;
     match inner.close_story(number).await {

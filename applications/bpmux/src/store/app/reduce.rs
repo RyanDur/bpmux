@@ -1,10 +1,5 @@
 use std::sync::Arc;
 
-use crate::product_management::epic;
-use crate::product_management::evidence;
-use crate::product_management::iteration;
-use crate::product_management::outcome;
-use crate::product_management::story::slice;
 use crate::store::board;
 use crate::store::ci::{self, CiAction};
 use crate::store::commitments::CommitmentsAction;
@@ -13,6 +8,11 @@ use crate::store::roster;
 use crate::store::routing::RoutingAction;
 use crate::store::sync::SyncAction;
 use crate::store::sync_health::SyncHealthAction;
+use product_management::epic;
+use product_management::evidence;
+use product_management::iteration;
+use product_management::outcome;
+use product_management::story::slice;
 
 use super::{AppAction, AppState};
 
@@ -105,7 +105,7 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
                 .map(Arc::new)
                 .unwrap_or_else(|| state.board.clone());
             let shared_history =
-                crate::product_management::history::react_to_story(&state.shared_history, action)
+                product_management::history::react_to_story(&state.shared_history, action)
                     .map(Arc::new)
                     .unwrap_or_else(|| state.shared_history.clone());
             let local_history = board::history::react_to_story(&state.local_history, action)
@@ -127,7 +127,7 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
             None => state.clone(),
         },
         AppAction::SharedHistory(action) => {
-            match crate::product_management::history::reduce(&state.shared_history, action) {
+            match product_management::history::reduce(&state.shared_history, action) {
                 Some(shared_history) => AppState {
                     shared_history: Arc::new(shared_history),
                     ..state.clone()

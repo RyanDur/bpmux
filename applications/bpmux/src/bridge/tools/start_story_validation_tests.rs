@@ -4,10 +4,10 @@
 mod gate_retire_1348 {
     use crate::bridge::tools_stories::{handle_deliver_story, handle_start_story};
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryId, StoryKind, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::{Story, StoryId, StoryKind, Work};
     use std::sync::Arc;
 
     async fn seeded_orchestrator(

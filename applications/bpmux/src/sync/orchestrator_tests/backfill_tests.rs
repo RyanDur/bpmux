@@ -4,9 +4,9 @@ use chrono::{TimeZone, Utc};
 
 use super::seed_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::{CastVerdict, StoryId, Verdict, Work};
 use crate::store::SeededStore;
 use crate::sync::{RefreshDriver, SyncOrchestrator, backfill_shared_history};
+use product_management::story::{CastVerdict, StoryId, Verdict, Work};
 
 fn ready_verdict(hour: u32, actor: &str) -> CastVerdict {
     CastVerdict {

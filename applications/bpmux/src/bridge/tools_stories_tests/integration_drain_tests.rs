@@ -2,16 +2,16 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::story::StoryId;
 use crate::transport::protocol::ClientMessage;
+use product_management::story::StoryId;
 
 #[tokio::test]
 async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::{Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -44,10 +44,10 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
 #[tokio::test]
 async fn start_story_passes_chore_without_acceptance_test_path() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::{Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -75,10 +75,10 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
 #[tokio::test]
 async fn start_story_keeps_the_stores_optimistic_reject_when_the_adapter_verdicts_lag_the_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{CastVerdict, Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::{CastVerdict, Story, Verdict, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -129,10 +129,10 @@ async fn start_story_keeps_the_stores_optimistic_reject_when_the_adapter_verdict
 #[tokio::test]
 async fn start_story_fetches_the_rework_lead_when_the_store_has_no_cached_verdicts() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{CastVerdict, Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::{CastVerdict, Story, Verdict, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -176,11 +176,11 @@ async fn start_story_fetches_the_rework_lead_when_the_store_has_no_cached_verdic
 #[tokio::test]
 async fn reject_story_returns_optimistically_and_defers_gh_push_to_the_async_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -233,11 +233,11 @@ async fn reject_story_returns_optimistically_and_defers_gh_push_to_the_async_dra
 #[tokio::test]
 async fn fail_desk_check_returns_optimistically_and_defers_gh_push_to_the_async_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Stage, Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Stage, Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -282,11 +282,11 @@ async fn fail_desk_check_returns_optimistically_and_defers_gh_push_to_the_async_
 #[tokio::test]
 async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -333,11 +333,11 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
 #[tokio::test]
 async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -372,9 +372,9 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     );
 }
 
-fn current_iteration_of(members: &[u64]) -> Vec<crate::product_management::iteration::Iteration> {
-    use crate::product_management::iteration::{Iteration, IterationId};
+fn current_iteration_of(members: &[u64]) -> Vec<product_management::iteration::Iteration> {
     use chrono::{TimeZone, Utc};
+    use product_management::iteration::{Iteration, IterationId};
     vec![Iteration {
         id: IterationId::new(9000),
         title: String::new(),
@@ -395,12 +395,12 @@ fn current_iteration_of(members: &[u64]) -> Vec<crate::product_management::itera
 async fn a_transition_out_of_the_board_pushes_no_state_label_and_strips_the_stale_one() {
     use crate::integrations::github::gh_label_codec::GhLabelCodec;
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::label_codec::LabelCodec;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::label_codec::LabelCodec;
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -452,11 +452,11 @@ async fn a_transition_out_of_the_board_pushes_no_state_label_and_strips_the_stal
 #[tokio::test]
 async fn a_transition_to_ready_for_a_current_iteration_member_pushes_the_ready_label() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -494,10 +494,10 @@ async fn a_transition_to_ready_for_a_current_iteration_member_pushes_the_ready_l
 #[tokio::test]
 async fn deliver_story_returns_optimistically_and_defers_push_failure_to_the_async_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Stage, Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::{Stage, Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());

@@ -2,17 +2,17 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::story::StoryId;
 use crate::transport::protocol::ClientMessage;
+use product_management::story::StoryId;
 
 #[tokio::test]
 async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -57,11 +57,11 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
 #[tokio::test]
 async fn label_story_migrated_path_enqueues_tag_added_event() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Story, Tag, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Tag, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -108,11 +108,11 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
 #[tokio::test]
 async fn label_story_migrated_path_enqueues_tag_removed_event() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Story, Tag, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Tag, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -180,11 +180,11 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
 #[tokio::test]
 async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Stage, Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Stage, Story, Verdict, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -239,7 +239,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         &pushed[0].kind,
         StoryEventKind::AcceptorAssigned {
             acceptor, ..
-        } if pushed[0].id == StoryId::new(201) && *acceptor == crate::product_management::story::Acceptor::Owner
+        } if pushed[0].id == StoryId::new(201) && *acceptor == product_management::story::Acceptor::Owner
     ));
     assert!(matches!(
         &pushed[1].kind,
@@ -266,11 +266,11 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
 #[tokio::test]
 async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Stage, Story, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Stage, Story, Verdict, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());

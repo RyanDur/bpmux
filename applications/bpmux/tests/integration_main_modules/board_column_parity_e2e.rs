@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use bpmux::board::{Column, column_of};
-use bpmux::product_management::iteration::{Iteration, IterationId};
-use bpmux::product_management::story::{Stage, Story, StoryId, Work};
 use chrono::Utc;
+use product_management::iteration::{Iteration, IterationId};
+use product_management::story::{Stage, Story, StoryId, Work};
 
 fn story_in(state: Work) -> Story {
     Story::new_minimal(

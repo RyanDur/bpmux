@@ -1,9 +1,9 @@
 use serde::Serialize;
 
-use crate::product_management::iteration::readiness::{IterationReadiness, iteration_readiness};
-use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::outcome::{Outcome, OutcomeId};
-use crate::product_management::story::StoryId;
+use product_management::iteration::readiness::{IterationReadiness, iteration_readiness};
+use product_management::iteration::{Iteration, IterationId};
+use product_management::outcome::{Outcome, OutcomeId};
+use product_management::story::StoryId;
 use workflow::config::WorkflowConfig;
 
 #[derive(Debug, Clone, Serialize)]

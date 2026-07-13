@@ -1,6 +1,4 @@
-pub fn story_type_from_labels(
-    labels: &[String],
-) -> Option<crate::product_management::story::StoryKind> {
+pub fn story_type_from_labels(labels: &[String]) -> Option<product_management::story::StoryKind> {
     labels.iter().find_map(|l| {
         crate::integrations::github::gh_label_codec::GhLabelCodec.decode_story_type(l)
     })
@@ -52,15 +50,13 @@ pub fn is_current_from_labels(labels: &[String]) -> bool {
     })
 }
 
-pub fn acceptor_from_labels(
-    labels: &[String],
-) -> Option<crate::product_management::story::Acceptor> {
+pub fn acceptor_from_labels(labels: &[String]) -> Option<product_management::story::Acceptor> {
     labels
         .iter()
         .find_map(|l| crate::integrations::github::gh_label_codec::GhLabelCodec.decode_acceptor(l))
 }
 
-pub fn horizon_from_labels(labels: &[String]) -> Option<crate::product_management::story::Horizon> {
+pub fn horizon_from_labels(labels: &[String]) -> Option<product_management::story::Horizon> {
     labels
         .iter()
         .find_map(|l| crate::integrations::github::gh_label_codec::GhLabelCodec.decode_horizon(l))

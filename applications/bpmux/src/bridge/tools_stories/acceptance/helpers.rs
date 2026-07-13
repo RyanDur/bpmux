@@ -29,8 +29,8 @@ impl BugGate {
     }
 }
 
-pub(crate) fn verdict_to_id(verdict: &crate::product_management::story::Verdict) -> &'static str {
-    use crate::product_management::story::Verdict;
+pub(crate) fn verdict_to_id(verdict: &product_management::story::Verdict) -> &'static str {
+    use product_management::story::Verdict;
     match verdict {
         Verdict::Succeed { step } => match step.as_str() {
             "ready" => "pickup",

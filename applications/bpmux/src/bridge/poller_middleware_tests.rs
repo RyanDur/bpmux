@@ -6,11 +6,11 @@ use chrono::{TimeZone, Utc};
 
 use crate::bridge::tools::handle_get_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::{AppAction, SeededStore};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
+use product_management::iteration::{Iteration, IterationId};
+use product_management::story::slice::StoryAction;
+use product_management::story::{Story, StoryId, Work};
 
 fn seed_minimal(id: u64, state: Work) -> Story {
     Story::new_minimal(
@@ -168,7 +168,7 @@ async fn select_stories_to_hydrate_returns_empty_when_all_hydrated() {
 
 #[tokio::test]
 async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let seed = SeededStore::new(vec![], vec![], vec![]);
@@ -192,7 +192,7 @@ async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
 
 #[tokio::test]
 async fn local_body_mutate_invalidates_prior_etag() {
-    use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+    use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let handle = SeededStore::new(vec![], vec![], vec![]);
@@ -224,7 +224,7 @@ async fn local_body_mutate_invalidates_prior_etag() {
 
 #[tokio::test]
 async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh() {
-    use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+    use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
     let handle = SeededStore::new(vec![], vec![], vec![]);
@@ -246,7 +246,7 @@ async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh(
     let after = orch.story(9200).expect("story present");
     assert_eq!(
         after.acceptor(),
-        Some(crate::product_management::story::Acceptor::Owner),
+        Some(product_management::story::Acceptor::Owner),
         "a label refresh must adopt the adapter-decoded typed fields so derived selectors read fresh values, not the stale pre-refresh story; got {:?}",
         after.acceptor()
     );

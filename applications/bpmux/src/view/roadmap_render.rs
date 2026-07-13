@@ -1,5 +1,5 @@
-use crate::product_management::roadmap::selectors::{OutcomeState, RoadmapOutcomeCard};
-use crate::product_management::story::Horizon;
+use product_management::roadmap::selectors::{OutcomeState, RoadmapOutcomeCard};
+use product_management::story::Horizon;
 
 pub fn render_overview_layer(value: &serde_json::Value) -> String {
     let outcomes: Vec<RoadmapOutcomeCard> =

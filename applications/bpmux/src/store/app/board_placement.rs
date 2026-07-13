@@ -2,8 +2,8 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use crate::board::{BoardAction, BoardPlacements, placed_story_ids};
-use crate::product_management::story::slice::Stories;
-use crate::product_management::story::{StoryId, Work};
+use product_management::story::slice::Stories;
+use product_management::story::{StoryId, Work};
 
 pub(super) fn unplace_departed(stories: &Stories, board: &BoardPlacements) -> Vec<BoardAction> {
     let in_middle: HashSet<StoryId> = stories

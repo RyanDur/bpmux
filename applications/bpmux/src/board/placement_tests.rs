@@ -4,8 +4,8 @@ use super::{
     BoardAction, BoardPlacements, fine_stage, placement_of, placements_for_ingest, reduce,
     state_label,
 };
-use crate::product_management::story::{Stage, Story, StoryId, Work};
 use chrono::{TimeZone, Utc};
+use product_management::story::{Stage, Story, StoryId, Work};
 use workflow::StageId;
 
 fn in_progress_story(id: u64) -> Story {
@@ -128,7 +128,7 @@ fn fine_stage_defaults_an_unknown_placement_id_to_dev() {
 
 #[test]
 fn state_label_composes_the_middle_sub_section_from_the_fine_stage() {
-    use crate::product_management::scheduling::ProjectedState;
+    use product_management::scheduling::ProjectedState;
     assert_eq!(
         state_label(&ProjectedState::InProgress, Some(Stage::DeskCheck)),
         "desk-check"
@@ -141,7 +141,7 @@ fn state_label_composes_the_middle_sub_section_from_the_fine_stage() {
 
 #[test]
 fn state_label_passes_a_non_middle_position_through_to_its_coarse_token() {
-    use crate::product_management::scheduling::ProjectedState;
+    use product_management::scheduling::ProjectedState;
     assert_eq!(state_label(&ProjectedState::Ready, None), "ready");
     assert_eq!(state_label(&ProjectedState::Acceptance, None), "acceptance");
     assert_eq!(state_label(&ProjectedState::Accepted, None), "accepted");

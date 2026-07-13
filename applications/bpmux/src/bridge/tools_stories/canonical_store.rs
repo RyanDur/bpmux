@@ -1,7 +1,7 @@
 pub(crate) async fn ensure_story_in_canonical_store(
     refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     id: u64,
-) -> Result<crate::product_management::story::Story, String> {
+) -> Result<product_management::story::Story, String> {
     if let Some(story) = refresh.story(id) {
         return Ok(story);
     }
@@ -22,7 +22,7 @@ pub(crate) async fn ensure_story_in_canonical_store(
 pub(crate) async fn ensure_outcome_in_canonical_store(
     refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     id: u64,
-) -> Result<crate::product_management::outcome::Outcome, String> {
+) -> Result<product_management::outcome::Outcome, String> {
     if let Some(outcome) = find_outcome_in_store(refresh, id) {
         return Ok(outcome);
     }
@@ -50,11 +50,11 @@ pub(crate) async fn ensure_outcome_in_canonical_store(
 fn find_outcome_in_store(
     refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     id: u64,
-) -> Option<crate::product_management::outcome::Outcome> {
+) -> Option<product_management::outcome::Outcome> {
     refresh
         .outcomes()
         .into_iter()
-        .find(|outcome| outcome.id == crate::product_management::outcome::OutcomeId::new(id))
+        .find(|outcome| outcome.id == product_management::outcome::OutcomeId::new(id))
 }
 
 fn not_an_outcome_message(id: u64) -> String {
@@ -64,9 +64,8 @@ fn not_an_outcome_message(id: u64) -> String {
 pub(crate) async fn ensure_iteration_in_canonical_store(
     refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     id: u64,
-) -> Result<crate::product_management::iteration::Iteration, String> {
-    if let Some(iteration) =
-        refresh.iteration(crate::product_management::iteration::IterationId::new(id))
+) -> Result<product_management::iteration::Iteration, String> {
+    if let Some(iteration) = refresh.iteration(product_management::iteration::IterationId::new(id))
     {
         return Ok(iteration);
     }
@@ -79,8 +78,7 @@ pub(crate) async fn ensure_iteration_in_canonical_store(
              cannot proceed with an iteration operation against unknown state"
         )
     })?;
-    if let Some(iteration) =
-        refresh.iteration(crate::product_management::iteration::IterationId::new(id))
+    if let Some(iteration) = refresh.iteration(product_management::iteration::IterationId::new(id))
     {
         return Ok(iteration);
     }
@@ -102,8 +100,8 @@ fn not_an_iteration_message(id: u64) -> String {
 pub(crate) async fn ensure_epic_in_canonical_store(
     refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     id: u64,
-) -> Result<crate::product_management::epic::Epic, String> {
-    let epic_id = crate::product_management::epic::EpicId::new(id);
+) -> Result<product_management::epic::Epic, String> {
+    let epic_id = product_management::epic::EpicId::new(id);
     if let Some(epic) = refresh.epic(epic_id) {
         return Ok(epic);
     }

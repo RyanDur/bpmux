@@ -1,8 +1,8 @@
-use crate::product_management::epic::Epic;
-use crate::product_management::iteration::Iteration;
-use crate::product_management::outcome::Outcome;
-use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::{Story, StoryId};
+use product_management::epic::Epic;
+use product_management::iteration::Iteration;
+use product_management::outcome::Outcome;
+use product_management::story::events::StoryEvent;
+use product_management::story::{Story, StoryId};
 use workflow::StageId;
 
 #[derive(Debug, Clone, Default)]
@@ -108,14 +108,14 @@ pub trait SourceAdapter: Send + Sync {
         &self,
         number: u64,
     ) -> impl std::future::Future<
-        Output = Result<Vec<crate::product_management::story::FreeComment>, SyncError>,
+        Output = Result<Vec<product_management::story::FreeComment>, SyncError>,
     > + Send;
 
     fn fetch_verdicts(
         &self,
         number: u64,
     ) -> impl std::future::Future<
-        Output = Result<Vec<crate::product_management::story::CastVerdict>, SyncError>,
+        Output = Result<Vec<product_management::story::CastVerdict>, SyncError>,
     > + Send;
 
     fn push_event(

@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::sync::Mutex;
 
-use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::{CastVerdict, FreeComment, Story, StoryId};
 use crate::sync::{Ingested, SourceAdapter, SyncError};
+use product_management::story::events::StoryEvent;
+use product_management::story::{CastVerdict, FreeComment, Story, StoryId};
 
 mod ingest;
 mod mutation;
@@ -146,7 +146,7 @@ impl SourceAdapter for InMemorySourceAdapter {
         let story = Story::new_minimal(
             StoryId::new(number),
             title.to_string(),
-            crate::product_management::story::Work::NotStarted,
+            product_management::story::Work::NotStarted,
             chrono::Utc::now(),
             "in-memory".to_string(),
         );

@@ -1,5 +1,5 @@
-use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::sync::{SourceAdapter, SyncError};
+use product_management::story::events::{StoryEvent, StoryEventKind};
 
 use super::{PendingWrite, SyncOrchestrator};
 
@@ -34,7 +34,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         crate::sync::PushContext {
             member_of_current_iteration: match &event.kind {
                 StoryEventKind::StateTransitioned { .. } => {
-                    crate::product_management::scheduling::in_current_iteration(
+                    product_management::scheduling::in_current_iteration(
                         event.id,
                         &self.read_iterations(),
                     )

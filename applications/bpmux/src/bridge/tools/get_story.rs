@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use crate::product_management::scheduling::ProjectedState;
-use crate::product_management::story::{CastVerdict, Stage, Verdict, most_recent_needs_work};
 use crate::sync::RefreshDriver;
+use product_management::scheduling::ProjectedState;
+use product_management::story::{CastVerdict, Stage, Verdict, most_recent_needs_work};
 use workflow::StageId;
 
 use super::get_story_view::{
@@ -64,11 +64,10 @@ pub(in crate::bridge) async fn handle_get_story(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'id' argument")?;
     let r = refresh.ok_or("get_story requires refresh (canonical-store)")?;
-    if let Some(iteration) = r.iteration(crate::product_management::iteration::IterationId::new(id))
-    {
+    if let Some(iteration) = r.iteration(product_management::iteration::IterationId::new(id)) {
         return render_iteration_detail(r, &iteration).await;
     }
-    if let Some(epic) = r.epic(crate::product_management::epic::EpicId::new(id)) {
+    if let Some(epic) = r.epic(product_management::epic::EpicId::new(id)) {
         return render_epic_detail(refresh, &epic).await;
     }
     let mut story = r
@@ -90,7 +89,7 @@ pub(in crate::bridge) async fn handle_get_story(
     }
     let fine = r.story_fine_stage(&story);
     let iterations = r.iterations();
-    let projected = crate::product_management::scheduling::projected_state(&story, &iterations);
+    let projected = product_management::scheduling::projected_state(&story, &iterations);
     let needs_gates = matches!(projected, ProjectedState::Ready)
         || fine == Some(Stage::Dev)
         || story.is_concluded();

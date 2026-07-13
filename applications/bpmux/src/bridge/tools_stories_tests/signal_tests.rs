@@ -2,10 +2,10 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::story::Acceptor;
-use crate::product_management::story::StoryKind;
-use crate::product_management::story::story_type_from_title;
 use crate::transport::protocol::ClientMessage;
+use product_management::story::Acceptor;
+use product_management::story::StoryKind;
+use product_management::story::story_type_from_title;
 
 #[test]
 fn delivery_signals_target_designer_and_pm() {

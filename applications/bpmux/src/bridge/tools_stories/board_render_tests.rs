@@ -4,11 +4,11 @@ use std::collections::HashMap;
 
 use super::board_render::*;
 use crate::board::Column;
-use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::story::Story;
-use crate::product_management::story::StoryId;
-use crate::product_management::story::Work;
 use chrono::{TimeZone, Utc};
+use product_management::iteration::{Iteration, IterationId};
+use product_management::story::Story;
+use product_management::story::StoryId;
+use product_management::story::Work;
 use workflow::StageId;
 
 fn bundled_middle() -> Vec<StageId> {
@@ -113,7 +113,7 @@ fn default_scope_is_unchanged_full_board() {
 #[test]
 fn a_card_surfaces_its_acceptor_so_the_team_sees_who_accepts() {
     let mut s = story(77, "acceptor-visible", Work::NotStarted);
-    s.acceptor = Some(crate::product_management::story::Acceptor::Owner);
+    s.acceptor = Some(product_management::story::Acceptor::Owner);
     let stories = [s];
     let out = build_board_text(
         &[],

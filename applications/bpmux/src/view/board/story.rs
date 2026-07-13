@@ -1,8 +1,8 @@
 use serde::Serialize;
 
-use crate::product_management::epic::EpicId;
-use crate::product_management::label_codec::LabelCodec;
-use crate::product_management::story::{Story, most_recent_needs_work};
+use product_management::epic::EpicId;
+use product_management::label_codec::LabelCodec;
+use product_management::story::{Story, most_recent_needs_work};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct StoryView {

@@ -13,10 +13,10 @@ use super::{
 };
 use crate::ci::CiState;
 use crate::hub::Hub;
-use crate::product_management::story::slice::StoryAction;
 use crate::store::CiBroadcastListener;
 use crate::store::ci::CiSnapshot;
 use message::{Message, MessageType, StateDeltaPayload};
+use product_management::story::slice::StoryAction;
 
 fn owner_park_kernel(hub: Arc<Hub>) -> Arc<kernel::Store<AppState, AppAction>> {
     let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));
@@ -109,22 +109,22 @@ async fn reactions_listener_emits_typed_state_delta() {
     }
 }
 
-fn owner_parked_story(id: u64) -> crate::product_management::story::Story {
-    use crate::product_management::story::{StoryId, Work};
-    let mut story = crate::product_management::story::Story::new_minimal(
+fn owner_parked_story(id: u64) -> product_management::story::Story {
+    use product_management::story::{StoryId, Work};
+    let mut story = product_management::story::Story::new_minimal(
         StoryId::new(id),
         format!("story {id}"),
         Work::Acceptance,
         chrono::Utc::now(),
         "dev".to_string(),
     );
-    story.acceptor = Some(crate::product_management::story::Acceptor::Owner);
+    story.acceptor = Some(product_management::story::Acceptor::Owner);
     story
 }
 
-fn ready_story(id: u64) -> crate::product_management::story::Story {
-    use crate::product_management::story::{StoryId, Work};
-    crate::product_management::story::Story::new_minimal(
+fn ready_story(id: u64) -> product_management::story::Story {
+    use product_management::story::{StoryId, Work};
+    product_management::story::Story::new_minimal(
         StoryId::new(id),
         format!("ready {id}"),
         Work::NotStarted,
@@ -133,12 +133,9 @@ fn ready_story(id: u64) -> crate::product_management::story::Story {
     )
 }
 
-fn current_iteration(
-    id: u64,
-    story_ids: &[u64],
-) -> crate::product_management::iteration::Iteration {
-    crate::product_management::iteration::Iteration {
-        id: crate::product_management::iteration::IterationId::new(id),
+fn current_iteration(id: u64, story_ids: &[u64]) -> product_management::iteration::Iteration {
+    product_management::iteration::Iteration {
+        id: product_management::iteration::IterationId::new(id),
         title: String::new(),
         body: None,
         filed_at: chrono::Utc::now(),
@@ -147,7 +144,7 @@ fn current_iteration(
         iteration_order: None,
         stories: story_ids
             .iter()
-            .map(|n| crate::product_management::story::StoryId::new(*n))
+            .map(|n| product_management::story::StoryId::new(*n))
             .collect(),
         review_closers: Vec::new(),
         dev_ok_by: Vec::new(),
@@ -159,16 +156,16 @@ fn current_iteration(
 fn state_transitioned(
     id: u64,
     actor: &str,
-    new_state: crate::product_management::story::Work,
-) -> crate::product_management::story::events::StoryEvent {
-    crate::product_management::story::events::StoryEvent::new(
-        crate::product_management::story::events::EventMeta {
+    new_state: product_management::story::Work,
+) -> product_management::story::events::StoryEvent {
+    product_management::story::events::StoryEvent::new(
+        product_management::story::events::EventMeta {
             actor: actor.to_string(),
             actor_id: None,
             ts: chrono::Utc::now(),
         },
-        crate::product_management::story::StoryId::new(id),
-        crate::product_management::story::events::StoryEventKind::StateTransitioned {
+        product_management::story::StoryId::new(id),
+        product_management::story::events::StoryEventKind::StateTransitioned {
             new_state,
             placement: None,
         },
@@ -179,16 +176,16 @@ fn state_transitioned_by_actor_id(
     id: u64,
     actor: &str,
     actor_id: &str,
-    new_state: crate::product_management::story::Work,
-) -> crate::product_management::story::events::StoryEvent {
-    crate::product_management::story::events::StoryEvent::new(
-        crate::product_management::story::events::EventMeta {
+    new_state: product_management::story::Work,
+) -> product_management::story::events::StoryEvent {
+    product_management::story::events::StoryEvent::new(
+        product_management::story::events::EventMeta {
             actor: actor.to_string(),
             actor_id: Some(actor_id.to_string()),
             ts: chrono::Utc::now(),
         },
-        crate::product_management::story::StoryId::new(id),
-        crate::product_management::story::events::StoryEventKind::StateTransitioned {
+        product_management::story::StoryId::new(id),
+        product_management::story::events::StoryEventKind::StateTransitioned {
             new_state,
             placement: None,
         },
@@ -231,7 +228,7 @@ async fn drain_roster_presence(
 
 #[tokio::test]
 async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
-    use crate::product_management::story::Work;
+    use product_management::story::Work;
 
     let dir = TempDir::new().expect("tempdir");
     let (tx, mut rx) = broadcast::channel::<Message>(64);
@@ -271,7 +268,7 @@ fn presence_of(state: &AppState, routing_id: &str) -> Option<Presence> {
 
 #[tokio::test]
 async fn owner_park_blocks_only_the_delivering_id_never_a_same_display_sibling() {
-    use crate::product_management::story::Work;
+    use product_management::story::Work;
 
     let (hub, _rx, _dir) = fresh_hub();
     let store = owner_park_kernel(hub);
@@ -299,7 +296,7 @@ async fn owner_park_blocks_only_the_delivering_id_never_a_same_display_sibling()
 
 #[tokio::test]
 async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
-    use crate::product_management::story::Work;
+    use product_management::story::Work;
 
     let dir = TempDir::new().expect("tempdir");
     let (tx, mut rx) = broadcast::channel::<Message>(64);
@@ -308,7 +305,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
     let store = owner_park_kernel(hub);
     seed_dev_online_kernel(&store);
     store.dispatch(AppAction::Iteration(
-        crate::product_management::iteration::IterationAction::Upserted(vec![current_iteration(
+        product_management::iteration::IterationAction::Upserted(vec![current_iteration(
             800,
             &[901],
         )]),
@@ -366,7 +363,7 @@ fn dev_presence(state: &AppState) -> Option<Presence> {
 
 #[tokio::test]
 async fn owner_park_worker_reentrant_dispatch_lands_the_presence_change_in_durable_state() {
-    use crate::product_management::story::Work;
+    use product_management::story::Work;
 
     let (hub, _rx, _dir) = fresh_hub();
     let store = owner_park_kernel(hub);
@@ -393,7 +390,7 @@ async fn board_placement_reconciler_worker_reentrant_dispatch_unplaces_a_departe
     let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));
     store.add_listener(Arc::new(app::BoardPlacementReconciler));
 
-    let story = crate::product_management::story::StoryId::new(1);
+    let story = product_management::story::StoryId::new(1);
     store.dispatch(AppAction::Board(crate::board::BoardAction::StoryPlaced {
         story,
         stage: workflow::StageId::from("desk-check"),
@@ -417,7 +414,7 @@ async fn a_board_placement_burst_persists_the_final_board_with_no_placement_lost
 
     for id in [1u64, 2, 3] {
         store.dispatch(AppAction::Board(crate::board::BoardAction::StoryPlaced {
-            story: crate::product_management::story::StoryId::new(id),
+            story: product_management::story::StoryId::new(id),
             stage: workflow::StageId::from("desk-check"),
         }));
     }
@@ -425,7 +422,7 @@ async fn a_board_placement_burst_persists_the_final_board_with_no_placement_lost
     let placed = |id: u64| {
         crate::board::placement_of(
             &crate::board::persistence::load(&hub.dir),
-            crate::product_management::story::StoryId::new(id),
+            product_management::story::StoryId::new(id),
         )
         .is_some()
     };

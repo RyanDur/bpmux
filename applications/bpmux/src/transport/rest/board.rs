@@ -9,13 +9,13 @@ pub(crate) fn ordered_board_stories(
     let items: Vec<serde_json::Value> = all
         .iter()
         .map(|s| {
-            let projected = crate::product_management::scheduling::projected_state(s, &iterations);
+            let projected = product_management::scheduling::projected_state(s, &iterations);
             let state = crate::board::wire_state(&projected, refresh.story_held_stage(s).as_ref());
             crate::view::board::story_to_board_json(&codec, s, &state)
         })
         .collect();
     let current_order: Vec<u64> =
-        crate::product_management::iteration::label::current_iteration(&iterations)
+        product_management::iteration::label::current_iteration(&iterations)
             .map(|iteration| iteration.stories.iter().map(|id| id.value()).collect())
             .unwrap_or_default();
     sort_ready_by_membership(items, &current_order)
@@ -38,10 +38,10 @@ pub(crate) fn sort_ready_by_membership(
         }
     }
     for (state, list) in by_state.iter_mut() {
-        if state == crate::product_management::scheduling::ProjectedState::Ready.as_str() {
+        if state == product_management::scheduling::ProjectedState::Ready.as_str() {
             list.sort_by_cached_key(|s| {
                 let id = s.get("id").and_then(|v| v.as_u64()).unwrap_or(0);
-                crate::product_management::scheduling::ready_membership_rank(id, current_order)
+                product_management::scheduling::ready_membership_rank(id, current_order)
             });
         }
     }
@@ -98,9 +98,8 @@ pub(crate) fn board_epics(refresh: &Arc<dyn crate::sync::RefreshDriver>) -> Vec<
         .epics()
         .iter()
         .map(|epic| {
-            let children = crate::product_management::epic::children_of(&stories, epic.id);
-            let derived =
-                crate::product_management::epic::derive_epic_state(&children, &iterations);
+            let children = product_management::epic::children_of(&stories, epic.id);
+            let derived = product_management::epic::derive_epic_state(&children, &iterations);
             serde_json::json!({
                 "id": epic.id.value(),
                 "title": epic.title,
@@ -135,7 +134,7 @@ pub(crate) fn board_iterations(
 pub(crate) fn board_roadmap(
     refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
-    crate::product_management::roadmap::selectors::roadmap_cards(
+    product_management::roadmap::selectors::roadmap_cards(
         &refresh.outcomes(),
         &refresh.iterations(),
         workflow::current_workflow(),

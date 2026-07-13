@@ -2,9 +2,9 @@ use chrono::{DateTime, Utc};
 
 use super::label_fields::story_type_from_labels;
 use super::state_labels::resolve_state_and_placement;
-use crate::product_management::epic::EpicId;
-use crate::product_management::story::events::LabelDerivedFields;
-use crate::product_management::story::{Story, StoryId, StoryKind, Tag, story_type_from_title};
+use product_management::epic::EpicId;
+use product_management::story::events::LabelDerivedFields;
+use product_management::story::{Story, StoryId, StoryKind, Tag, story_type_from_title};
 use workflow::StageId;
 
 pub fn story_type_from_labels_or_title(labels: &[String], title: &str) -> StoryKind {

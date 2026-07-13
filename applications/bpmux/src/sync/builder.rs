@@ -29,7 +29,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
 
     pub fn with_codec(
         mut self,
-        codec: Arc<dyn crate::product_management::label_codec::LabelCodec + Send + Sync>,
+        codec: Arc<dyn product_management::label_codec::LabelCodec + Send + Sync>,
     ) -> Self {
         self.codec = codec;
         self

@@ -2,8 +2,8 @@ use chrono::{DateTime, Utc};
 
 use super::story_decode::extract_label_names;
 use crate::integrations::github::relationships::{OutcomeRelationships, Relationships};
-use crate::product_management::outcome::{Outcome, OutcomeId, OutcomeLifecycle};
-use crate::product_management::story::{Story, Work};
+use product_management::outcome::{Outcome, OutcomeId, OutcomeLifecycle};
+use product_management::story::{Story, Work};
 
 pub fn is_outcome_issue(v: &serde_json::Value) -> bool {
     extract_label_names(v)

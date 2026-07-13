@@ -1,4 +1,4 @@
-use crate::product_management::story::events::{StoryEvent, StoryEventKind};
+use product_management::story::events::{StoryEvent, StoryEventKind};
 
 mod acceptor;
 mod comments;
@@ -21,7 +21,7 @@ pub(in crate::integrations::github) use lifecycle::{
 pub(super) fn labels_refreshed(number: u64, labels: Vec<String>) -> StoryEvent {
     StoryEvent::new(
         crate::sync::cache_fill_meta(),
-        crate::product_management::story::StoryId::new(number),
+        product_management::story::StoryId::new(number),
         StoryEventKind::LabelsRefreshed {
             fields: crate::integrations::github::mapper::project_labels(&labels),
         },

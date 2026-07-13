@@ -98,7 +98,7 @@ pub(crate) async fn close_iteration(
     dispatch: &crate::store::Dispatch,
     iteration_id: u64,
 ) -> Result<(), CloseIterationError> {
-    let iteration = match refresh.iteration(crate::product_management::iteration::IterationId::new(
+    let iteration = match refresh.iteration(product_management::iteration::IterationId::new(
         iteration_id,
     )) {
         Some(it) => it,
@@ -129,35 +129,35 @@ pub(crate) async fn close_iteration_canonical(
     dispatch: &crate::store::Dispatch,
     iteration_id: u64,
 ) -> Result<(), String> {
-    let meta = || crate::product_management::story::events::EventMeta {
+    let meta = || product_management::story::events::EventMeta {
         actor: "pm".to_string(),
         actor_id: None,
         ts: chrono::Utc::now(),
     };
     refresh
-        .mutate_sync(crate::product_management::story::events::StoryEvent::new(
+        .mutate_sync(product_management::story::events::StoryEvent::new(
             meta(),
-            crate::product_management::story::StoryId::new(iteration_id),
-            crate::product_management::story::events::StoryEventKind::CurrentIterationCleared,
+            product_management::story::StoryId::new(iteration_id),
+            product_management::story::events::StoryEventKind::CurrentIterationCleared,
         ))
         .map_err(|e| format!("#{iteration_id} current-designation-clear enqueue failed: {e}"))?;
     refresh
-        .mutate_sync(crate::product_management::story::events::StoryEvent::new(
+        .mutate_sync(product_management::story::events::StoryEvent::new(
             meta(),
-            crate::product_management::story::StoryId::new(iteration_id),
-            crate::product_management::story::events::StoryEventKind::StoryClosed {
+            product_management::story::StoryId::new(iteration_id),
+            product_management::story::events::StoryEventKind::StoryClosed {
                 reason: Some(
                     "iteration-close (terminal; promote-on-close retired #1556)".to_string(),
                 ),
             },
         ))
         .map_err(|e| format!("#{iteration_id} iteration-close enqueue failed: {e}"))?;
-    if let Some(iteration) = refresh.iteration(
-        crate::product_management::iteration::IterationId::new(iteration_id),
-    ) {
+    if let Some(iteration) = refresh.iteration(product_management::iteration::IterationId::new(
+        iteration_id,
+    )) {
         dispatch.dispatch(crate::store::AppAction::Iteration(
-            crate::product_management::iteration::IterationAction::Upserted(vec![
-                crate::product_management::iteration::Iteration {
+            product_management::iteration::IterationAction::Upserted(vec![
+                product_management::iteration::Iteration {
                     complete: true,
                     is_current: false,
                     ..iteration

@@ -20,12 +20,12 @@ use std::sync::Arc;
 
 use bpmux::hub::Hub;
 use bpmux::integrations::in_memory::InMemorySourceAdapter;
-use bpmux::product_management::story::events::EventMeta;
-use bpmux::product_management::story::events::{StoryEvent, StoryEventKind};
-use bpmux::product_management::story::{Story, StoryId, Work};
 use bpmux::sync::RefreshDriver;
 use bpmux::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
+use product_management::story::events::EventMeta;
+use product_management::story::events::{StoryEvent, StoryEventKind};
+use product_management::story::{Story, StoryId, Work};
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 

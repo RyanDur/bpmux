@@ -32,9 +32,9 @@ const WAIT_PRESENCE_TIMEOUT: Duration = Duration::from_secs(30);
 #[test]
 fn view_board_response_exposes_story_fields_for_agent_assertions() {
     use bpmux::integrations::github::relationships::{IterationRelationships, Relationships};
-    use bpmux::product_management::story::StoryId;
     use harness::mock_gh::issue_json;
     use httpmock::{Method, MockServer};
+    use product_management::story::StoryId;
     use serde_json::Value;
 
     let server = MockServer::start();

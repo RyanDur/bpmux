@@ -29,26 +29,26 @@ pub(crate) struct SeededStore {
 #[cfg(test)]
 impl SeededStore {
     pub(crate) fn new(
-        outcomes: Vec<crate::product_management::outcome::Outcome>,
-        iterations: Vec<crate::product_management::iteration::Iteration>,
-        epics: Vec<crate::product_management::epic::Epic>,
+        outcomes: Vec<product_management::outcome::Outcome>,
+        iterations: Vec<product_management::iteration::Iteration>,
+        epics: Vec<product_management::epic::Epic>,
     ) -> Self {
         let handle = Self {
             store: kernel::Store::new(AppState::default(), Box::new(super::app::app_reduce)),
         };
         if !outcomes.is_empty() {
             handle.dispatch(AppAction::Outcome(
-                crate::product_management::outcome::OutcomeAction::Upserted(outcomes),
+                product_management::outcome::OutcomeAction::Upserted(outcomes),
             ));
         }
         if !iterations.is_empty() {
             handle.dispatch(AppAction::Iteration(
-                crate::product_management::iteration::IterationAction::Upserted(iterations),
+                product_management::iteration::IterationAction::Upserted(iterations),
             ));
         }
         if !epics.is_empty() {
             handle.dispatch(AppAction::Epic(
-                crate::product_management::epic::EpicAction::Upserted(epics),
+                product_management::epic::EpicAction::Upserted(epics),
             ));
         }
         handle
@@ -97,9 +97,9 @@ impl SeededStore {
 #[cfg(test)]
 pub(crate) fn bind_seeded_refresh(
     refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
-    outcomes: Vec<crate::product_management::outcome::Outcome>,
-    iterations: Vec<crate::product_management::iteration::Iteration>,
-    epics: Vec<crate::product_management::epic::Epic>,
+    outcomes: Vec<product_management::outcome::Outcome>,
+    iterations: Vec<product_management::iteration::Iteration>,
+    epics: Vec<product_management::epic::Epic>,
 ) {
     let handle = SeededStore::new(outcomes, iterations, epics);
     handle.bind_refresh(refresh);

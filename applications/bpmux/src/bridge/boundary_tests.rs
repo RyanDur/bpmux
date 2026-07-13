@@ -112,7 +112,7 @@ fn bridge_surface_reads_no_raw_slice_state() {
 
     assert!(
         violations.is_empty(),
-        "the bridge is a surface: inside a select closure it passes a whole store grain to a named domain selector (crate::product_management::...(&state.stories)) or clones a grain wholesale (state.shared_history.clone()), never pokes into a grain's collection (state.stories.values(), state.iterations.get(...), state.board.iter()). A raw slice read hard-codes projection logic into the surface that belongs in a domain selector — add the selector in the owning slice and call it. Raw slice reads in the bridge:\n{}",
+        "the bridge is a surface: inside a select closure it passes a whole store grain to a named domain selector (product_management::...(&state.stories)) or clones a grain wholesale (state.shared_history.clone()), never pokes into a grain's collection (state.stories.values(), state.iterations.get(...), state.board.iter()). A raw slice read hard-codes projection logic into the surface that belongs in a domain selector — add the selector in the owning slice and call it. Raw slice reads in the bridge:\n{}",
         violations.join("\n")
     );
 }

@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::deliver_story_body_diff_gate::*;
-use crate::product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
 use chrono::{DateTime, TimeZone, Utc};
+use product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
 
 fn story_with_pickup(pickup_ts: DateTime<Utc>) -> Story {
     let mut s = Story::new_minimal(

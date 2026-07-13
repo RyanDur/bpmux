@@ -1,7 +1,7 @@
-use crate::product_management::iteration::Iteration;
-use crate::product_management::scheduling::{ProjectedState, projected_state};
-use crate::product_management::story::{Acceptor, Story, Work};
 use crate::store::{Presence, RosterMember};
+use product_management::iteration::Iteration;
+use product_management::scheduling::{ProjectedState, projected_state};
+use product_management::story::{Acceptor, Story, Work};
 
 fn ready_queue_is_empty(stories: &[Story], iterations: &[Iteration]) -> bool {
     !stories
@@ -65,8 +65,8 @@ impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for Owner
             return Box::pin(async {});
         };
         let actor_if_delivered =
-            |event: &crate::product_management::story::events::StoryEvent| match &event.kind {
-                crate::product_management::story::events::StoryEventKind::StateTransitioned {
+            |event: &product_management::story::events::StoryEvent| match &event.kind {
+                product_management::story::events::StoryEventKind::StateTransitioned {
                     new_state: Work::Acceptance,
                     ..
                 } => Some(match &event.meta.actor_id {
@@ -78,16 +78,16 @@ impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for Owner
                 _ => None,
             };
         let delivering = match story_action {
-            crate::product_management::story::slice::StoryAction::Event(event) => {
+            product_management::story::slice::StoryAction::Event(event) => {
                 actor_if_delivered(event)
             }
-            crate::product_management::story::slice::StoryAction::Events(events) => {
+            product_management::story::slice::StoryAction::Events(events) => {
                 events.iter().rev().find_map(actor_if_delivered)
             }
             _ => None,
         };
         let stories: Vec<Story> = reaction.current.stories.values().cloned().collect();
-        let iterations = crate::product_management::iteration::all(&reaction.current.iterations);
+        let iterations = product_management::iteration::all(&reaction.current.iterations);
         let roster = crate::store::roster::members(&reaction.current.roster);
         let changes = owner_park_presence(&stories, &iterations, &roster, delivering.as_ref());
         let dispatch = std::sync::Arc::clone(&reaction.dispatch);

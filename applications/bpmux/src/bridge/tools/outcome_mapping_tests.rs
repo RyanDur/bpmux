@@ -9,14 +9,14 @@ use crate::integrations::github::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::outcome::{Outcome, OutcomeId};
-use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::{AppAction, Dispatch};
 use crate::sync::RefreshDriver;
 use crate::sync::SourceAdapter;
 use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
+use product_management::iteration::{Iteration, IterationId};
+use product_management::outcome::{Outcome, OutcomeId};
+use product_management::story::{Story, StoryId, Work};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
@@ -39,9 +39,9 @@ fn dispatch_channel() -> (Dispatch, tokio::sync::mpsc::UnboundedReceiver<AppActi
 fn iteration_upserted(rx: &mut tokio::sync::mpsc::UnboundedReceiver<AppAction>) -> Vec<Iteration> {
     let mut found = Vec::new();
     while let Ok(action) = rx.try_recv() {
-        if let AppAction::Iteration(
-            crate::product_management::iteration::IterationAction::Upserted(iterations),
-        ) = action
+        if let AppAction::Iteration(product_management::iteration::IterationAction::Upserted(
+            iterations,
+        )) = action
         {
             found.extend(iterations);
         }
@@ -138,7 +138,7 @@ async fn drill_iteration_ids(
 ) -> Vec<u64> {
     let workflow = workflow::current_workflow();
     let outcome = reingested_outcome(adapter, id).await;
-    crate::product_management::roadmap::drill::derive_outcome_drill_in(
+    product_management::roadmap::drill::derive_outcome_drill_in(
         &outcome,
         &refresh.iterations(),
         workflow,

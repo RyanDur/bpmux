@@ -1,8 +1,8 @@
 use crate::harness::mock_gh::issue_json;
 use crate::harness::pty::TestBpmux;
 use bpmux::integrations::github::relationships::{IterationRelationships, Relationships};
-use bpmux::product_management::story::StoryId;
 use httpmock::{Method, MockServer};
+use product_management::story::StoryId;
 use serde_json::Value;
 
 fn seeded_bpmux() -> (TestBpmux, MockServer) {

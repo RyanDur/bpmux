@@ -2,9 +2,9 @@
 
 use super::submit_verdict::*;
 use crate::hub::Hub;
-use crate::product_management::evidence::evidence_for_story;
-use crate::product_management::story::StoryId;
 use crate::store::SeededStore;
+use product_management::evidence::evidence_for_story;
+use product_management::story::StoryId;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -38,7 +38,7 @@ fn make_hub_with_rx(
     (hub, rx)
 }
 
-fn stored(store: &SeededStore, id: u64) -> Vec<crate::product_management::evidence::Evidence> {
+fn stored(store: &SeededStore, id: u64) -> Vec<product_management::evidence::Evidence> {
     store
         .select()
         .select(|state| evidence_for_story(&state.evidence, StoryId::new(id)))

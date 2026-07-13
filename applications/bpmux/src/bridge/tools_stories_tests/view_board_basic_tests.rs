@@ -2,8 +2,8 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::product_management::story::StoryId;
 use crate::transport::protocol::ClientMessage;
+use product_management::story::StoryId;
 
 #[tokio::test]
 async fn view_board_requires_refresh_after_5l_fallback_retirement() {
@@ -15,10 +15,10 @@ async fn view_board_requires_refresh_after_5l_fallback_retirement() {
 #[tokio::test]
 async fn view_board_auto_reingests_when_store_is_empty() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::{Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -107,11 +107,11 @@ async fn view_board_handles_refresh_failing_returns_honest_empty_with_diag_log()
 #[tokio::test]
 async fn view_board_buckets_stories_by_story_state() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::iteration::{Iteration, IterationId};
-    use crate::product_management::story::{Stage, Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::iteration::{Iteration, IterationId};
+    use product_management::story::{Stage, Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -197,10 +197,10 @@ async fn view_board_buckets_stories_by_story_state() {
 #[tokio::test]
 async fn view_board_buckets_concluded_stories_into_retired_or_accepted_column() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Stage, Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::{Stage, Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -253,11 +253,11 @@ async fn view_board_buckets_concluded_stories_into_retired_or_accepted_column() 
 #[tokio::test]
 async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -329,7 +329,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
             &e.kind,
             StoryEventKind::StateTransitioned { new_state, .. }
                 if e.id == StoryId::new(301)
-                    && *new_state == crate::product_management::story::Work::Retired
+                    && *new_state == product_management::story::Work::Retired
         )),
         "StateTransitioned → Retired must fire for retire-class reason"
     );
@@ -338,11 +338,11 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
 #[tokio::test]
 async fn close_story_accept_disposition_transitions_state_to_accepted() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Story, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());

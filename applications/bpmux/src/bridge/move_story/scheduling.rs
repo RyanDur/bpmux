@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use crate::product_management::iteration::IterationId;
-use crate::product_management::iteration::label::current_iteration_id;
-use crate::product_management::story::StoryId;
 use crate::sync::RefreshDriver;
+use product_management::iteration::IterationId;
+use product_management::iteration::label::current_iteration_id;
+use product_management::story::StoryId;
 
 use super::target::TargetState;
 
@@ -12,9 +12,7 @@ pub(super) fn resolve_scheduling_target(
     id: u64,
     target: &TargetState,
 ) -> Result<Option<IterationId>, String> {
-    let is_epic = r
-        .epic(crate::product_management::epic::EpicId::new(id))
-        .is_some();
+    let is_epic = r.epic(product_management::epic::EpicId::new(id)).is_some();
     if is_epic || !matches!(target, TargetState::Ready) {
         return Ok(None);
     }

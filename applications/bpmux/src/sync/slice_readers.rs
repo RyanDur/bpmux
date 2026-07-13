@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 
 use super::SyncOrchestrator;
-use crate::product_management::epic::{self, Epic};
-use crate::product_management::iteration::{self, Iteration};
-use crate::product_management::outcome::{self, Outcome};
-use crate::product_management::story::{self, Stage, Story, StoryId};
 use crate::sync::{MutationId, QueuedWrite, SourceAdapter};
+use product_management::epic::{self, Epic};
+use product_management::iteration::{self, Iteration};
+use product_management::outcome::{self, Outcome};
+use product_management::story::{self, Stage, Story, StoryId};
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub(super) fn set_select(&self, select: crate::store::Select) {
@@ -112,15 +112,12 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub(super) fn read_evidence_for_story(
         &self,
         story_id: StoryId,
-    ) -> Vec<crate::product_management::evidence::Evidence> {
+    ) -> Vec<product_management::evidence::Evidence> {
         self.select
             .get()
             .map(|s| {
                 s.select(|state| {
-                    crate::product_management::evidence::evidence_for_story(
-                        &state.evidence,
-                        story_id,
-                    )
+                    product_management::evidence::evidence_for_story(&state.evidence, story_id)
                 })
             })
             .unwrap_or_default()

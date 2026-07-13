@@ -1,8 +1,8 @@
 use chrono::Utc;
 
-use crate::product_management::story::events::StoryEvent;
 use crate::store::SyncHealthAction;
 use crate::sync::SourceAdapter;
+use product_management::story::events::StoryEvent;
 
 use super::SyncOrchestrator;
 
@@ -20,10 +20,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         }
     }
 
-    pub(super) fn dispatch_story(
-        &self,
-        action: crate::product_management::story::slice::StoryAction,
-    ) {
+    pub(super) fn dispatch_story(&self, action: product_management::story::slice::StoryAction) {
         self.emit(crate::store::AppAction::Story(action));
     }
 
@@ -44,15 +41,15 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     }
 
     pub(super) fn apply_story_event(&self, event: &StoryEvent) {
-        self.dispatch_story(crate::product_management::story::slice::StoryAction::Event(
+        self.dispatch_story(product_management::story::slice::StoryAction::Event(
             event.clone(),
         ));
     }
 
     pub(super) fn apply_story_events(&self, events: &[StoryEvent]) {
-        self.dispatch_story(
-            crate::product_management::story::slice::StoryAction::Events(events.to_vec()),
-        );
+        self.dispatch_story(product_management::story::slice::StoryAction::Events(
+            events.to_vec(),
+        ));
     }
 
     pub(super) fn record_ingest_success(&self) {

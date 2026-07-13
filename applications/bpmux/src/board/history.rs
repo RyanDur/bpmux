@@ -1,9 +1,9 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{StoryId, Work};
+use product_management::story::events::{StoryEvent, StoryEventKind};
+use product_management::story::slice::StoryAction;
+use product_management::story::{StoryId, Work};
 use workflow::StageId;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

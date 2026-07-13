@@ -2,9 +2,9 @@
 
 use chrono::{TimeZone, Utc};
 
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::{StoryId, Work};
 use crate::sync::{QueuedEvent, load_outbox_from_disk};
+use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use product_management::story::{StoryId, Work};
 
 fn meta() -> EventMeta {
     EventMeta {

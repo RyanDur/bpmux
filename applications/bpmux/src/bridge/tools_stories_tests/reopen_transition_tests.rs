@@ -9,11 +9,11 @@ mod reopen_on_state_transition_tests {
     #![allow(clippy::unwrap_used)]
     use super::*;
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-    use crate::product_management::story::{Stage, Story, StoryId, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Stage, Story, StoryId, Work};
     use std::sync::Arc;
 
     fn seeded_chore(id: u64, state: Work) -> (Story, Vec<String>) {

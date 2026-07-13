@@ -1,6 +1,6 @@
-use crate::product_management::iteration::Iteration;
-use crate::product_management::scheduling::{ProjectedState, projected_state};
-use crate::product_management::story::Story;
+use product_management::iteration::Iteration;
+use product_management::scheduling::{ProjectedState, projected_state};
+use product_management::story::Story;
 
 pub const VIEW_BACKLOG_MARKER: &str = "__BPMUX_VIEW_BACKLOG__";
 

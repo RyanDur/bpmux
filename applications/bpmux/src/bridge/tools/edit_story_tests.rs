@@ -4,11 +4,11 @@
 
 use crate::bridge::tools_stories::handle_edit_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::Dispatch;
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
+use product_management::story::{Story, StoryId, Work};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 
@@ -134,7 +134,7 @@ async fn edit_story_with_both_title_and_body_updates_both() {
 
 #[tokio::test]
 async fn edit_story_body_returns_optimistically_and_pushes_via_the_drain() {
-    use crate::product_management::story::events::StoryEventKind;
+    use product_management::story::events::StoryEventKind;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(1234, "[Feature] t", "old body")]);
@@ -180,9 +180,9 @@ async fn edit_story_body_returns_optimistically_and_pushes_via_the_drain() {
 
 #[tokio::test]
 async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
-    use crate::product_management::story::Acceptor;
-    use crate::product_management::story::events::EventMeta;
-    use crate::product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::Acceptor;
+    use product_management::story::events::EventMeta;
+    use product_management::story::events::{StoryEvent, StoryEventKind};
 
     let refresh = build_refresh(vec![seed_story(1234, "title", "body")]).await;
     let meta = EventMeta {

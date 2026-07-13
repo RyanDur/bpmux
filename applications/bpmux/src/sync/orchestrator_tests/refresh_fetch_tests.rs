@@ -6,11 +6,11 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::{Stage, Story, StoryId, Work};
 use crate::store::SeededStore;
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
+use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use product_management::story::{Stage, Story, StoryId, Work};
 
 #[tokio::test]
 async fn refresh_story_pulls_single_story_from_adapter_into_store() {
@@ -140,7 +140,7 @@ async fn fetch_body_records_error_when_source_fails() {
 
 #[tokio::test]
 async fn fetch_free_comments_caches_comments_on_the_story() {
-    use crate::product_management::story::FreeComment;
+    use product_management::story::FreeComment;
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(9, Work::NotStarted)]);
     let seeded = vec![FreeComment {
@@ -166,7 +166,7 @@ async fn fetch_free_comments_caches_comments_on_the_story() {
 
 #[tokio::test]
 async fn fetch_verdicts_caches_comments_on_the_story() {
-    use crate::product_management::story::{CastVerdict, Verdict};
+    use product_management::story::{CastVerdict, Verdict};
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(11, Work::NotStarted)]);
     let seeded = vec![CastVerdict {

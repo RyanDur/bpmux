@@ -6,12 +6,12 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::{AppAction, SeededStore};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
+use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use product_management::story::slice::StoryAction;
+use product_management::story::{Story, StoryId, Work};
 
 mod outbox_coalesce_1339_step_2e {
     use super::*;

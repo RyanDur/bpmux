@@ -2,9 +2,9 @@
 
 use bpmux::board::{Column, column_of};
 use bpmux::integrations::github::mapper::state_from_labels;
-use bpmux::product_management::iteration::{Iteration, IterationId};
-use bpmux::product_management::story::{Stage, Story, StoryId, Work};
 use chrono::Utc;
+use product_management::iteration::{Iteration, IterationId};
+use product_management::story::{Stage, Story, StoryId, Work};
 
 fn story_in(state: Work) -> Story {
     Story::new_minimal(

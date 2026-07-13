@@ -2,14 +2,14 @@
 
 use chrono::{TimeZone, Utc};
 
-use crate::product_management::epic::EpicId;
-use crate::product_management::story::events::{
+use crate::sync::{QueuedEvent, load_outbox_from_disk};
+use product_management::epic::EpicId;
+use product_management::story::events::{
     EventMeta, LabelDerivedFields, StoryEvent, StoryEventKind,
 };
-use crate::product_management::story::{
+use product_management::story::{
     Acceptor, CastVerdict, FreeComment, Stage, Story, StoryId, StoryKind, Tag, Verdict, Work,
 };
-use crate::sync::{QueuedEvent, load_outbox_from_disk};
 
 const FIX_QUEUED_TAG_ADDED: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"label":"ready"}}}"#;
 const FIX_QUEUED_TRANSITIONED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"new_state":"in-progress","placement":"desk-check"}}}"#;

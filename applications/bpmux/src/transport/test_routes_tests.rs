@@ -207,8 +207,8 @@ async fn roundtrip_coherence_user_job_and_falsifier_preserved_in_body() {
 #[tokio::test]
 async fn rest_get_board_auto_reingests_when_orchestrator_store_is_empty() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{Story, StoryId, Work};
     use chrono::{TimeZone, Utc};
+    use product_management::story::{Story, StoryId, Work};
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let ts = Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap();

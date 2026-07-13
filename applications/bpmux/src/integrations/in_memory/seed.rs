@@ -1,6 +1,6 @@
 use super::InMemorySourceAdapter;
-use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::{CastVerdict, FreeComment, Story};
+use product_management::story::events::StoryEvent;
+use product_management::story::{CastVerdict, FreeComment, Story};
 
 impl InMemorySourceAdapter {
     pub fn new() -> Self {

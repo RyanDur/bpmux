@@ -1,6 +1,6 @@
 use crate::bridge::tools_stories::event_meta::meta_for;
 use crate::bridge::tools_stories::helpers::ensure_story_in_canonical_store;
-use crate::product_management::story::StoryId;
+use product_management::story::StoryId;
 
 const FALSIFIER_CITE_MIN_CHARS: usize = 16;
 
@@ -34,7 +34,7 @@ pub(crate) async fn handle_fail_desk_check(
     if let Some(story) = prior.as_ref() {
         let current_state = match refresh {
             Some(r) => crate::board::state_label(
-                &crate::product_management::scheduling::projected_state(story, &r.iterations()),
+                &product_management::scheduling::projected_state(story, &r.iterations()),
                 r.story_fine_stage(story),
             ),
             None => story.state.as_str(),
@@ -62,7 +62,7 @@ pub(crate) async fn handle_fail_desk_check(
         coarse: new_state,
         placement,
     } = crate::board::advance(
-        &crate::product_management::story::Verdict::Fail {
+        &product_management::story::Verdict::Fail {
             step: transition.from.as_str().into(),
         },
         workflow,
@@ -77,26 +77,26 @@ pub(crate) async fn handle_fail_desk_check(
         let meta = meta_for(agent_name, actor_id);
         let mut events = Vec::new();
         if was_accepted {
-            events.push(crate::product_management::story::events::StoryEvent::new(
+            events.push(product_management::story::events::StoryEvent::new(
                 meta.clone(),
                 StoryId::new(id),
-                crate::product_management::story::events::StoryEventKind::StoryReopened,
+                product_management::story::events::StoryEventKind::StoryReopened,
             ));
         }
-        events.push(crate::product_management::story::events::StoryEvent::new(
+        events.push(product_management::story::events::StoryEvent::new(
             meta.clone(),
             StoryId::new(id),
-            crate::product_management::story::events::StoryEventKind::VerdictCast {
-                verdict: crate::product_management::story::Verdict::Fail {
+            product_management::story::events::StoryEventKind::VerdictCast {
+                verdict: product_management::story::Verdict::Fail {
                     step: "desk-check".into(),
                 },
                 payload: Some(reason.to_string()),
             },
         ));
-        events.push(crate::product_management::story::events::StoryEvent::new(
+        events.push(product_management::story::events::StoryEvent::new(
             meta,
             StoryId::new(id),
-            crate::product_management::story::events::StoryEventKind::StateTransitioned {
+            product_management::story::events::StoryEventKind::StateTransitioned {
                 placement,
                 new_state,
             },

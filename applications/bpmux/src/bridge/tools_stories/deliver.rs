@@ -1,9 +1,9 @@
 use super::acceptance_test_path::validate_acceptance_test_path_at_deliver;
 use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string};
-use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-use crate::product_management::story::{Story, StoryId, Verdict};
 use crate::sync::RefreshDriver;
+use product_management::story::events::{StoryEvent, StoryEventKind};
+use product_management::story::{Story, StoryId, Verdict};
 
 pub(crate) async fn handle_deliver_story(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -66,12 +66,12 @@ pub(crate) async fn handle_deliver_story(
             .as_ref()
             .and_then(|s| s.as_ref())
             .and_then(|story| r.story_held_stage(story))
-            .unwrap_or_else(|| crate::product_management::story::Stage::Dev.id());
+            .unwrap_or_else(|| product_management::story::Stage::Dev.id());
         let crate::board::Decision {
             coarse: new_state,
             placement,
         } = crate::board::advance(
-            &crate::product_management::story::Verdict::Succeed {
+            &product_management::story::Verdict::Succeed {
                 step: held_step.clone(),
             },
             workflow,

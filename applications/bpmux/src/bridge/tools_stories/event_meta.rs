@@ -1,4 +1,4 @@
-use crate::product_management::story::events::EventMeta;
+use product_management::story::events::EventMeta;
 
 pub(crate) fn meta_for(agent_name: &str, actor_id: Option<&str>) -> EventMeta {
     EventMeta {

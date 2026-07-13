@@ -88,10 +88,7 @@ async fn external_create_via_gh_cli_appears_in_bpmux_after_refresh() {
     );
 
     let story = refresh.story(101).expect("story in store");
-    assert_eq!(
-        story.id,
-        crate::product_management::story::StoryId::new(101)
-    );
+    assert_eq!(story.id, product_management::story::StoryId::new(101));
     assert_eq!(story.title, "[Feature] external-via-gh-cli");
 }
 
@@ -120,7 +117,7 @@ async fn external_label_change_propagates_to_bpmux_state_after_refresh() {
     let initial = refresh.story(202).expect("seeded story");
     assert_eq!(
         initial.state,
-        crate::product_management::story::Work::NotStarted,
+        product_management::story::Work::NotStarted,
         "no state-bearing label → Icebox"
     );
 
@@ -148,7 +145,7 @@ async fn external_label_change_propagates_to_bpmux_state_after_refresh() {
     let updated = refresh.story(202).expect("story still present");
     assert_eq!(
         updated.state,
-        crate::product_management::story::Work::InProgress,
+        product_management::story::Work::InProgress,
         "post-refresh, bpmux state reflects externally-added 'in progress' label"
     );
 }
@@ -235,7 +232,7 @@ async fn external_re_open_returns_the_story_to_the_label_derived_state_after_ref
     let initial = refresh.story(505).expect("seeded story");
     assert_eq!(
         initial.state,
-        crate::product_management::story::Work::Accepted,
+        product_management::story::Work::Accepted,
         "closed with no labels forces the terminal Accepted state at decode"
     );
 
@@ -255,7 +252,7 @@ async fn external_re_open_returns_the_story_to_the_label_derived_state_after_ref
     let updated = refresh.story(505).expect("story still present");
     assert_eq!(
         updated.state,
-        crate::product_management::story::Work::NotStarted,
+        product_management::story::Work::NotStarted,
         "post-refresh, an externally-reopened issue with no labels returns to icebox"
     );
 }
@@ -293,7 +290,7 @@ async fn external_label_remove_clears_state_back_to_icebox_after_refresh() {
     let initial = refresh.story(606).expect("seeded story");
     assert_eq!(
         initial.state,
-        crate::product_management::story::Work::InProgress,
+        product_management::story::Work::InProgress,
         "fixture seeds in-progress state"
     );
 
@@ -313,7 +310,7 @@ async fn external_label_remove_clears_state_back_to_icebox_after_refresh() {
     let updated = refresh.story(606).expect("story still present");
     assert_eq!(
         updated.state,
-        crate::product_management::story::Work::NotStarted,
+        product_management::story::Work::NotStarted,
         "post-refresh, bpmux state clears back to Icebox after externally-removed label"
     );
 }
@@ -417,7 +414,7 @@ async fn external_close_propagates_to_bpmux_accepted_state_after_refresh() {
     let updated = refresh.story(303).expect("story still present");
     assert_eq!(
         updated.state,
-        crate::product_management::story::Work::Accepted,
+        product_management::story::Work::Accepted,
         "post-refresh, an externally-closed issue forces Accepted state per state_from_labels"
     );
 }

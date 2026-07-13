@@ -2,10 +2,10 @@
 
 use super::board_placement::unplace_departed;
 use crate::board::{BoardAction, BoardPlacements, placement_edge, reduce};
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::slice::{Stories, StoryAction};
-use crate::product_management::story::{Stage, Story, StoryId, Work};
 use chrono::{TimeZone, Utc};
+use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use product_management::story::slice::{Stories, StoryAction};
+use product_management::story::{Stage, Story, StoryId, Work};
 use workflow::StageId;
 
 fn story(id: u64, state: Work) -> Story {
@@ -64,7 +64,7 @@ fn batched_intent(id: u64, placement: Option<StageId>) -> StoryAction {
         },
         StoryId::new(id),
         StoryEventKind::VerdictCast {
-            verdict: crate::product_management::story::Verdict::Succeed {
+            verdict: product_management::story::Verdict::Succeed {
                 step: "in-progress".into(),
             },
             payload: None,

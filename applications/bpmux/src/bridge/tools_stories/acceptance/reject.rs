@@ -1,6 +1,6 @@
 use crate::bridge::tools_stories::event_meta::meta_for;
 use crate::bridge::tools_stories::helpers::ensure_story_in_canonical_store;
-use crate::product_management::story::StoryId;
+use product_management::story::StoryId;
 
 pub(crate) async fn handle_reject_story(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -38,7 +38,7 @@ pub(crate) async fn handle_reject_story(
     let class = story_opt
         .as_ref()
         .map(|s| {
-            crate::product_management::story::gate_class_from_acceptor_and_story_type(
+            product_management::story::gate_class_from_acceptor_and_story_type(
                 s.acceptor(),
                 s.story_type(),
             )
@@ -76,7 +76,7 @@ pub(crate) async fn reject_via_canonical_store(
         coarse: new_state,
         placement,
     } = crate::board::advance(
-        &crate::product_management::story::Verdict::Fail {
+        &product_management::story::Verdict::Fail {
             step: transition.from.as_str().into(),
         },
         workflow,
@@ -86,26 +86,26 @@ pub(crate) async fn reject_via_canonical_store(
     let meta = meta_for(agent_name, actor_id);
     let mut events = Vec::new();
     if was_accepted {
-        events.push(crate::product_management::story::events::StoryEvent::new(
+        events.push(product_management::story::events::StoryEvent::new(
             meta.clone(),
             StoryId::new(id),
-            crate::product_management::story::events::StoryEventKind::StoryReopened,
+            product_management::story::events::StoryEventKind::StoryReopened,
         ));
     }
-    events.push(crate::product_management::story::events::StoryEvent::new(
+    events.push(product_management::story::events::StoryEvent::new(
         meta.clone(),
         StoryId::new(id),
-        crate::product_management::story::events::StoryEventKind::VerdictCast {
-            verdict: crate::product_management::story::Verdict::Fail {
+        product_management::story::events::StoryEventKind::VerdictCast {
+            verdict: product_management::story::Verdict::Fail {
                 step: "acceptance".into(),
             },
             payload: Some(reason),
         },
     ));
-    events.push(crate::product_management::story::events::StoryEvent::new(
+    events.push(product_management::story::events::StoryEvent::new(
         meta,
         StoryId::new(id),
-        crate::product_management::story::events::StoryEventKind::StateTransitioned {
+        product_management::story::events::StoryEventKind::StateTransitioned {
             placement,
             new_state,
         },

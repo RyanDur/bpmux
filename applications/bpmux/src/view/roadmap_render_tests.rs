@@ -1,10 +1,10 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::roadmap_render::{render_overview_layer, render_roadmap};
-use crate::product_management::iteration::readiness::OutcomeReadiness;
-use crate::product_management::outcome::OutcomeId;
-use crate::product_management::roadmap::selectors::{RoadmapOutcomeInput, derive_roadmap};
-use crate::product_management::story::Horizon;
+use product_management::iteration::readiness::OutcomeReadiness;
+use product_management::outcome::OutcomeId;
+use product_management::roadmap::selectors::{RoadmapOutcomeInput, derive_roadmap};
+use product_management::story::Horizon;
 
 fn outcome(id: u64, title: &str, horizon: Option<Horizon>) -> RoadmapOutcomeInput {
     RoadmapOutcomeInput {

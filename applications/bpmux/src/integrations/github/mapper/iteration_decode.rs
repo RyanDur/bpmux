@@ -6,8 +6,8 @@ use super::label_fields::{
 };
 use super::story_decode::extract_label_names;
 use crate::integrations::github::relationships::{IterationRelationships, Relationships};
-use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::story::Story;
+use product_management::iteration::{Iteration, IterationId};
+use product_management::story::Story;
 
 pub fn is_iteration_issue(v: &serde_json::Value) -> bool {
     extract_label_names(v)

@@ -7,10 +7,10 @@ use chrono::{TimeZone, Utc};
 use super::get_story::handle_get_story;
 use crate::integrations::github::mapper::decode_iteration_from_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
 use crate::store::SeededStore;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
+use product_management::iteration::{Iteration, IterationId};
+use product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
 
 fn current_iteration_of(members: &[u64]) -> Iteration {
     Iteration {
@@ -764,22 +764,22 @@ async fn latest_reject_survives_an_iteration_move() {
 
     let meta = crate::sync::cache_fill_meta();
     handle.dispatch(crate::store::AppAction::Story(
-        crate::product_management::story::slice::StoryAction::Event(
-            crate::product_management::story::events::StoryEvent::new(
+        product_management::story::slice::StoryAction::Event(
+            product_management::story::events::StoryEvent::new(
                 meta.clone(),
                 StoryId::new(1524),
-                crate::product_management::story::events::StoryEventKind::TagAdded {
+                product_management::story::events::StoryEventKind::TagAdded {
                     label: "parent-iteration-#1656.1".to_string(),
                 },
             ),
         ),
     ));
     handle.dispatch(crate::store::AppAction::Story(
-        crate::product_management::story::slice::StoryAction::Event(
-            crate::product_management::story::events::StoryEvent::new(
+        product_management::story::slice::StoryAction::Event(
+            product_management::story::events::StoryEvent::new(
                 meta,
                 StoryId::new(1524),
-                crate::product_management::story::events::StoryEventKind::TagRemoved {
+                product_management::story::events::StoryEventKind::TagRemoved {
                     label: "parent-iteration-#1655.1".to_string(),
                 },
             ),
@@ -806,7 +806,7 @@ async fn get_story_stays_unhydrated_when_gate_fetch_fails() {
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orchestrator);
     handle.dispatch(crate::store::AppAction::Story(
-        crate::product_management::story::slice::StoryAction::Seeded(vec![story]),
+        product_management::story::slice::StoryAction::Seeded(vec![story]),
     ));
     let args = serde_json::json!({"id": 442});
     let result = handle_get_story(args.as_object().unwrap(), Some(&orchestrator))
@@ -937,7 +937,7 @@ async fn epic_view_workflow_state_derives_from_children_not_the_epics_own_shed_l
     );
     let epic = crate::integrations::github::mapper::decode_epic_from_story(&epic_story, false);
     let mut child = make_story(701, Work::InProgress, None);
-    child.parent_epic = Some(crate::product_management::epic::EpicId::new(700));
+    child.parent_epic = Some(product_management::epic::EpicId::new(700));
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![child]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));

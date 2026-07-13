@@ -10,9 +10,9 @@ use crate::integrations::github::mapper::{
     story_type_from_labels, story_type_from_labels_or_title, tags_from_labels,
     warn_on_inconsistent_state_labels,
 };
-use crate::product_management::epic::EpicId;
-use crate::product_management::story::{StoryId, StoryKind, Tag, Verdict, Work};
 use crate::sync::{SyncError, classify_close_error};
+use product_management::epic::EpicId;
+use product_management::story::{StoryId, StoryKind, Tag, Verdict, Work};
 
 #[test]
 fn is_iteration_position_label_matches_iteration_name_dot_number() {

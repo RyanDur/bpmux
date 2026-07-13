@@ -29,8 +29,11 @@ mod location_migration_tests;
 #[cfg(test)]
 mod location_tests;
 pub mod mcp;
+#[cfg(test)]
+mod order_state_pin_tests;
 pub mod owner_session;
-pub mod product_management;
+#[cfg(test)]
+mod pm_integration_tests;
 pub mod rate_limit;
 pub mod reactions;
 #[cfg(test)]

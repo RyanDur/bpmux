@@ -6,12 +6,12 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{Stage, Story, StoryId, StoryKind, Work};
 use crate::store::{AppAction, SeededStore};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
+use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use product_management::story::slice::StoryAction;
+use product_management::story::{Stage, Story, StoryId, StoryKind, Work};
 
 #[tokio::test]
 async fn ingest_once_populates_store_from_adapter() {
@@ -209,7 +209,7 @@ async fn drain_pass_handles_multiple_events_in_order() {
 
 #[tokio::test]
 async fn ingest_preserves_an_in_flight_label_mutation_against_a_pre_drain_refresh() {
-    use crate::product_management::story::Tag;
+    use product_management::story::Tag;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let seeded = seed_story(1687, Work::NotStarted);

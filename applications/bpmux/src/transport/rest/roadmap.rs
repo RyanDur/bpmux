@@ -37,13 +37,13 @@ pub async fn get_roadmap(
             let drill = outcome
                 .as_ref()
                 .map(|outcome| {
-                    crate::product_management::roadmap::drill::derive_outcome_drill_in(
+                    product_management::roadmap::drill::derive_outcome_drill_in(
                         outcome,
                         &all_iterations,
                         workflow::current_workflow(),
                     )
                 })
-                .unwrap_or(crate::product_management::roadmap::drill::OutcomeDrillIn {
+                .unwrap_or(product_management::roadmap::drill::OutcomeDrillIn {
                     iterations: Vec::new(),
                     convene: None,
                 });
@@ -59,14 +59,14 @@ pub async fn get_roadmap(
             let state = query
                 .state
                 .as_deref()
-                .and_then(crate::product_management::roadmap::selectors::OutcomeState::from_cli);
+                .and_then(product_management::roadmap::selectors::OutcomeState::from_cli);
             let order = query
                 .order
                 .as_deref()
-                .and_then(crate::product_management::roadmap::filter::RoadmapOrder::from_cli)
-                .unwrap_or(crate::product_management::roadmap::filter::RoadmapOrder::Priority);
-            let filtered = crate::product_management::roadmap::filter::filter_roadmap(
-                crate::product_management::roadmap::selectors::roadmap_cards(
+                .and_then(product_management::roadmap::filter::RoadmapOrder::from_cli)
+                .unwrap_or(product_management::roadmap::filter::RoadmapOrder::Priority);
+            let filtered = product_management::roadmap::filter::filter_roadmap(
+                product_management::roadmap::selectors::roadmap_cards(
                     &refresh.outcomes(),
                     &refresh.iterations(),
                     workflow::current_workflow(),

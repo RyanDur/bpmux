@@ -1,10 +1,10 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_iteration_in_canonical_store, require_purpose};
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::product_management::iteration::Iteration;
-use crate::product_management::story::StoryId;
-use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::sync::RefreshDriver;
+use product_management::iteration::Iteration;
+use product_management::story::StoryId;
+use product_management::story::events::{StoryEvent, StoryEventKind};
 use std::sync::Arc;
 
 pub(crate) async fn handle_reorder_iteration(
@@ -98,7 +98,7 @@ fn renumber_iteration_order(
     }
     if !updates.is_empty() {
         dispatch.dispatch(crate::store::AppAction::Iteration(
-            crate::product_management::iteration::IterationAction::Upserted(updates),
+            product_management::iteration::IterationAction::Upserted(updates),
         ));
     }
     Ok(band_size)
@@ -128,7 +128,7 @@ pub(crate) async fn handle_rename_iteration(
         .await
         .map_err(|e| format!("#{iteration_id} name update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Iteration(
-        crate::product_management::iteration::IterationAction::Upserted(vec![Iteration {
+        product_management::iteration::IterationAction::Upserted(vec![Iteration {
             title,
             ..iteration
         }]),

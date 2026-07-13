@@ -3,10 +3,10 @@
 use chrono::{TimeZone, Utc};
 
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::epic::EpicId;
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::{FreeComment, Story, StoryId, Work};
 use crate::sync::{SourceAdapter, SyncError};
+use product_management::epic::EpicId;
+use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use product_management::story::{FreeComment, Story, StoryId, Work};
 
 fn meta() -> EventMeta {
     EventMeta {
@@ -201,7 +201,7 @@ async fn push_event_accepts_story_created_variant() {
             title: "t".to_string(),
             body: "b".to_string(),
             initial_state: Work::NotStarted,
-            story_type: crate::product_management::story::StoryKind::Feature,
+            story_type: product_management::story::StoryKind::Feature,
         },
     );
     adapter

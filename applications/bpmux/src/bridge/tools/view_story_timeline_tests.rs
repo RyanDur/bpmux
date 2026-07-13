@@ -34,11 +34,11 @@ async fn handler_errors_when_story_not_in_board() {
 #[tokio::test]
 async fn handler_reads_gates_from_canonical_store() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::slice::StoryAction;
-    use crate::product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::slice::StoryAction;
+    use product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -83,11 +83,11 @@ async fn handler_reads_gates_from_canonical_store() {
 #[tokio::test]
 async fn handler_returns_filed_only_with_unhydrated_flag_when_verdicts_missing() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::slice::StoryAction;
-    use crate::product_management::story::{Story, StoryId, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::slice::StoryAction;
+    use product_management::story::{Story, StoryId, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -120,8 +120,8 @@ async fn handler_returns_filed_only_with_unhydrated_flag_when_verdicts_missing()
 #[test]
 fn build_timeline_from_board_sorts_chronologically() {
     use super::view_story_timeline::build_timeline_from_board;
-    use crate::product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
     use chrono::{TimeZone, Utc};
+    use product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
 
     let story = Story::new_minimal(
         StoryId::new(500),
@@ -158,8 +158,8 @@ fn build_timeline_from_board_sorts_chronologically() {
 #[test]
 fn build_timeline_from_board_renders_full_rework_cycle() {
     use super::view_story_timeline::build_timeline_from_board;
-    use crate::product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
     use chrono::{TimeZone, Utc};
+    use product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
 
     let story = Story::new_minimal(
         StoryId::new(501),
@@ -216,10 +216,10 @@ fn build_timeline_from_board_renders_full_rework_cycle() {
 #[tokio::test]
 async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());

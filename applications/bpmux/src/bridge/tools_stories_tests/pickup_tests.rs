@@ -102,11 +102,11 @@ async fn start_story_validation_passes_then_refresh_required_after_5n() {
 #[tokio::test]
 async fn start_story_stamps_actor_id_from_the_threaded_identify_user_id() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEventKind;
-    use crate::product_management::story::{Story, StoryId, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::StoryEventKind;
+    use product_management::story::{Story, StoryId, Work};
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());

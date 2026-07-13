@@ -19,10 +19,10 @@ use tokio_util::sync::CancellationToken;
 use bpmux::auth as auth_token;
 use bpmux::hub::Hub;
 use bpmux::integrations::in_memory::InMemorySourceAdapter;
-use bpmux::product_management::story::{Story, StoryId, Work};
 use bpmux::sync::{RefreshDriver, SyncOrchestrator};
 use bpmux::transport::auth::{AuthState, gate};
 use bpmux::transport::rpc_routes::post_rpc_tool;
+use product_management::story::{Story, StoryId, Work};
 
 fn seed_story(adapter: &InMemorySourceAdapter, id: u64) {
     let story = Story {
@@ -35,7 +35,7 @@ fn seed_story(adapter: &InMemorySourceAdapter, id: u64) {
         filed_by: "test".to_string(),
         filed_at: Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
         body_etag: None,
-        story_type: bpmux::product_management::story::story_type_from_title("fixture story"),
+        story_type: product_management::story::story_type_from_title("fixture story"),
         acceptor: None,
         parent_epic: None,
         tags: Vec::new(),

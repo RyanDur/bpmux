@@ -2,8 +2,8 @@
 
 use super::json::story_to_board_json;
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::product_management::epic::EpicId;
-use crate::product_management::story::{Story, StoryId, StoryKind, Work};
+use product_management::epic::EpicId;
+use product_management::story::{Story, StoryId, StoryKind, Work};
 
 fn sample_story(state: Work, story_type: StoryKind) -> Story {
     Story {
@@ -74,7 +74,7 @@ fn story_to_board_json_acceptor_null_when_none_1551() {
 #[test]
 fn story_to_board_json_acceptor_emits_class_string_1551() {
     let mut s = sample_story(Work::Acceptance, StoryKind::Feature);
-    s.acceptor = Some(crate::product_management::story::Acceptor::Dev);
+    s.acceptor = Some(product_management::story::Acceptor::Dev);
     let json = story_to_board_json(&GhLabelCodec, &s, s.state.as_str());
     assert_eq!(
         json["acceptor"].as_str(),
@@ -92,7 +92,7 @@ fn story_to_board_json_rework_comment_null_when_no_backward_edge() {
 
 #[test]
 fn story_to_board_json_rework_comment_carries_backward_edge_payload() {
-    use crate::product_management::story::{CastVerdict, Verdict};
+    use product_management::story::{CastVerdict, Verdict};
     let mut s = sample_story(Work::NotStarted, StoryKind::Feature);
     s.verdicts = Some(vec![
         CastVerdict {
@@ -138,7 +138,7 @@ fn story_to_board_json_rework_comment_carries_backward_edge_payload() {
 
 #[test]
 fn story_to_board_json_rework_comment_clears_after_forward_edge() {
-    use crate::product_management::story::{CastVerdict, Verdict};
+    use product_management::story::{CastVerdict, Verdict};
     let mut s = sample_story(Work::InProgress, StoryKind::Feature);
     s.verdicts = Some(vec![
         CastVerdict {
@@ -238,7 +238,7 @@ fn story_to_board_json_labels_include_story_type() {
 #[test]
 fn story_to_board_json_labels_include_desk_check_fail_tag() {
     let mut s = sample_story(Work::NotStarted, StoryKind::Feature);
-    s.tags = vec![crate::product_management::story::Tag::DeskCheckFail];
+    s.tags = vec![product_management::story::Tag::DeskCheckFail];
     let json = story_to_board_json(&GhLabelCodec, &s, s.state.as_str());
     let labels = json["labels"].as_array().expect("labels array");
     assert!(labels.iter().any(|l| l.as_str() == Some("desk-check-fail")));
@@ -330,23 +330,21 @@ fn json_str<'a>(json: &'a serde_json::Value, key: &str) -> &'a str {
 
 struct StubLabelCodec;
 
-impl crate::product_management::label_codec::LabelCodec for StubLabelCodec {
+impl product_management::label_codec::LabelCodec for StubLabelCodec {
     fn decode_iteration(
         &self,
         label: &str,
-    ) -> Option<crate::product_management::iteration::label::IterationLabelParts> {
+    ) -> Option<product_management::iteration::label::IterationLabelParts> {
         let rest = label.strip_prefix("iter|")?;
         let (name, pos_str) = rest.rsplit_once(':')?;
         let position = pos_str.parse().ok()?;
         if name.is_empty() {
             return None;
         }
-        Some(
-            crate::product_management::iteration::label::IterationLabelParts {
-                name: name.to_string(),
-                position,
-            },
-        )
+        Some(product_management::iteration::label::IterationLabelParts {
+            name: name.to_string(),
+            position,
+        })
     }
     fn is_iteration_label_loose(&self, label: &str) -> bool {
         label.starts_with("iter|") && label.contains(':')
@@ -361,19 +359,16 @@ impl crate::product_management::label_codec::LabelCodec for StubLabelCodec {
         let parts = self.decode_iteration(label)?;
         Some(format!("iter|{}:", parts.name))
     }
-    fn encode_tag(&self, tag: crate::product_management::story::Tag) -> &'static str {
+    fn encode_tag(&self, tag: product_management::story::Tag) -> &'static str {
         match tag {
-            crate::product_management::story::Tag::DeskCheckFail => "stub-desk-check-fail",
+            product_management::story::Tag::DeskCheckFail => "stub-desk-check-fail",
         }
     }
-    fn encode_acceptor(
-        &self,
-        acceptor: crate::product_management::story::Acceptor,
-    ) -> &'static str {
+    fn encode_acceptor(&self, acceptor: product_management::story::Acceptor) -> &'static str {
         match acceptor {
-            crate::product_management::story::Acceptor::Team => "stub-team",
-            crate::product_management::story::Acceptor::Owner => "stub-owner",
-            crate::product_management::story::Acceptor::Dev => "stub-dev",
+            product_management::story::Acceptor::Team => "stub-team",
+            product_management::story::Acceptor::Owner => "stub-owner",
+            product_management::story::Acceptor::Dev => "stub-dev",
         }
     }
 }

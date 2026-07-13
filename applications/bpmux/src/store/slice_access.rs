@@ -4,9 +4,9 @@ use super::{
     AggregatedReaction, CiBroadcastListener, CiSnapshot, ReactionsBroadcastListener,
     RosterBroadcastListener, RosterMember, Select, Store, ci, reactions, roster,
 };
-use crate::product_management::epic::{self, Epic};
-use crate::product_management::iteration::{self, Iteration};
-use crate::product_management::outcome::{self, Outcome};
+use product_management::epic::{self, Epic};
+use product_management::iteration::{self, Iteration};
+use product_management::outcome::{self, Outcome};
 
 impl Store {
     pub fn selector(&self) -> Select {

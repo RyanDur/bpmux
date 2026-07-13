@@ -3,9 +3,9 @@ use std::sync::Arc;
 
 use chrono::Utc;
 
-use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-use crate::product_management::story::{CastVerdict, FreeComment};
 pub use persist::PersistError;
+use product_management::story::events::{StoryEvent, StoryEventKind};
+use product_management::story::{CastVerdict, FreeComment};
 
 mod backfill;
 mod coalesce;
@@ -41,7 +41,7 @@ pub trait OutboxRepo: Send + Sync {
 pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     pub(super) dispatch: std::sync::OnceLock<crate::store::Dispatch>,
     pub(super) adapter: Arc<A>,
-    pub(super) codec: Arc<dyn crate::product_management::label_codec::LabelCodec + Send + Sync>,
+    pub(super) codec: Arc<dyn product_management::label_codec::LabelCodec + Send + Sync>,
     pub(super) select: std::sync::OnceLock<crate::store::Select>,
     pub(super) issue_locks:
         tokio::sync::Mutex<std::collections::HashMap<u64, Arc<tokio::sync::Mutex<()>>>>,
@@ -109,7 +109,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             let fine = self.read_story_fine_stage(&story);
             let stale = stale_state_labels_for(&story, &labels, fine, &iterations);
             for stale_label in stale {
-                let meta = crate::product_management::story::events::EventMeta {
+                let meta = product_management::story::events::EventMeta {
                     actor: "bpmux:reconcile".to_string(),
                     actor_id: None,
                     ts: Utc::now(),

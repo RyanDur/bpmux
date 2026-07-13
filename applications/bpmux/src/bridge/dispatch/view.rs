@@ -14,8 +14,8 @@ pub(crate) fn dispatch_view_velocity(select: &crate::store::Select) -> Result<St
         (
             state.shared_history.clone(),
             state.local_history.clone(),
-            crate::product_management::iteration::all(&state.iterations),
-            crate::product_management::story::slice::feature_ids(&state.stories),
+            product_management::iteration::all(&state.iterations),
+            product_management::story::slice::feature_ids(&state.stories),
         )
     });
     let view =

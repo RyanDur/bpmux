@@ -6,8 +6,8 @@ use crate::integrations::github::mapper::outcome_with_body;
 use crate::integrations::github::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
-use crate::product_management::iteration::IterationId;
-use crate::product_management::outcome::OutcomeId;
+use product_management::iteration::IterationId;
+use product_management::outcome::OutcomeId;
 
 pub(crate) async fn handle_add_story_to_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -93,7 +93,7 @@ pub(crate) async fn handle_map_iteration_to_outcome(
         .await
         .map_err(|e| format!("#{outcome_id} iteration-map body update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Outcome(
-        crate::product_management::outcome::OutcomeAction::Upserted(vec![optimistic]),
+        product_management::outcome::OutcomeAction::Upserted(vec![optimistic]),
     ));
 
     let mut child = iteration
@@ -107,8 +107,8 @@ pub(crate) async fn handle_map_iteration_to_outcome(
         .await
         .map_err(|e| format!("#{iteration_id} outcome-FK-set body update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Iteration(
-        crate::product_management::iteration::IterationAction::Upserted(vec![
-            crate::product_management::iteration::Iteration {
+        product_management::iteration::IterationAction::Upserted(vec![
+            product_management::iteration::Iteration {
                 outcome: Some(OutcomeId::new(outcome_id)),
                 body: Some(iteration_body),
                 ..iteration

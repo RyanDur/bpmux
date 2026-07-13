@@ -1,8 +1,8 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
-use crate::product_management::story::StoryId;
-use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::sync::RefreshDriver;
+use product_management::story::StoryId;
+use product_management::story::events::{StoryEvent, StoryEventKind};
 use std::sync::Arc;
 
 pub(crate) async fn handle_retire_outcome(
@@ -32,7 +32,7 @@ pub(crate) async fn handle_retire_outcome(
         meta(),
         StoryId::new(outcome_id),
         StoryEventKind::StateTransitioned {
-            new_state: crate::product_management::story::Work::Retired,
+            new_state: product_management::story::Work::Retired,
             placement: None,
         },
     ))
@@ -57,7 +57,7 @@ pub(crate) async fn handle_retire_outcome(
     }
 
     dispatch.dispatch(crate::store::AppAction::Outcome(
-        crate::product_management::outcome::OutcomeAction::Upserted(vec![outcome.retired()]),
+        product_management::outcome::OutcomeAction::Upserted(vec![outcome.retired()]),
     ));
 
     let orphaned = outcome.iterations.len();

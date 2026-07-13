@@ -6,11 +6,11 @@ use crate::integrations::github::mapper::{
     decode_epic_from_story, decode_story_metadata, is_epic_story,
 };
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::epic::Epic;
-use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::story::{Story, StoryId, StoryKind, Work};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
+use product_management::epic::Epic;
+use product_management::iteration::{Iteration, IterationId};
+use product_management::story::{Story, StoryId, StoryKind, Work};
 use serde_json::json;
 use std::sync::Arc;
 

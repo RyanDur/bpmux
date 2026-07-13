@@ -7,15 +7,15 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{Stage, Story, StoryId, Work};
 use crate::store::sync::OutboxSink;
 use crate::store::test_support::eventually;
 use crate::store::{AppAction, SeededStore};
 use crate::sync::{
     PendingWrite, QueuedWrite, RefreshDriver, SyncOrchestrator, load_outbox_from_disk,
 };
+use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use product_management::story::slice::StoryAction;
+use product_management::story::{Stage, Story, StoryId, Work};
 
 mod outbox_persistence {
     use super::*;

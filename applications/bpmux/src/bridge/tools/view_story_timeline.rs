@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::product_management::story::{CastVerdict, Story, Verdict};
 use crate::sync::RefreshDriver;
+use product_management::story::{CastVerdict, Story, Verdict};
 
 pub fn verdict_as_str(verdict: &Verdict) -> &'static str {
     match verdict {

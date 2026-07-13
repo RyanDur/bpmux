@@ -7,12 +7,12 @@ use crate::integrations::github::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::outcome::OutcomeId;
-use crate::product_management::story::{Story, StoryId, Work};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
+use product_management::iteration::{Iteration, IterationId};
+use product_management::outcome::OutcomeId;
+use product_management::story::{Story, StoryId, Work};
 use std::sync::Arc;
 
 fn iteration_seed(id: u64, title: &str) -> (Story, Vec<String>) {

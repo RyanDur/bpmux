@@ -12,12 +12,12 @@ mod verdict_substrate_integration_1407 {
     use crate::bridge::tools_stories::role_from_name;
     use crate::hub::Hub;
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::evidence::{EvidenceAction, evidence_for_story};
-    use crate::product_management::story::{Story, StoryId, Work};
     use crate::store::{AppAction, SeededStore};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::evidence::{EvidenceAction, evidence_for_story};
+    use product_management::story::{Story, StoryId, Work};
     use std::path::PathBuf;
     use std::sync::Arc;
     use tempfile::TempDir;
@@ -75,7 +75,7 @@ mod verdict_substrate_integration_1407 {
             Utc.with_ymd_and_hms(2026, 5, 18, 0, 0, 0).unwrap(),
             "dev".to_string(),
         );
-        story.acceptor = Some(crate::product_management::story::Acceptor::Team);
+        story.acceptor = Some(product_management::story::Acceptor::Team);
         story
     }
 

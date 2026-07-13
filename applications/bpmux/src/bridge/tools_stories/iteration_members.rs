@@ -2,9 +2,9 @@ use super::helpers::{
     ensure_iteration_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
 };
 use crate::integrations::github::relationships::{IterationRelationships, Relationships};
-use crate::product_management::iteration::Iteration;
-use crate::product_management::story::{Story, StoryId, Work};
 use crate::sync::RefreshDriver;
+use product_management::iteration::Iteration;
+use product_management::story::{Story, StoryId, Work};
 use std::sync::Arc;
 
 async fn member_of(
@@ -40,7 +40,7 @@ async fn rewrite_members(
         .await
         .map_err(|e| format!("#{id} iteration-member body update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Iteration(
-        crate::product_management::iteration::IterationAction::Upserted(vec![Iteration {
+        product_management::iteration::IterationAction::Upserted(vec![Iteration {
             stories,
             ..iteration.clone()
         }]),

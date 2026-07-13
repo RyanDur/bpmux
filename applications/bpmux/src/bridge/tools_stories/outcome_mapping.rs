@@ -5,9 +5,9 @@ use crate::integrations::github::mapper::outcome_with_body;
 use crate::integrations::github::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
-use crate::product_management::iteration::IterationId;
-use crate::product_management::outcome::Outcome;
 use crate::sync::RefreshDriver;
+use product_management::iteration::IterationId;
+use product_management::outcome::Outcome;
 use std::sync::Arc;
 
 async fn verify_iteration_mapped(
@@ -58,7 +58,7 @@ pub(crate) async fn handle_unmap_outcome_iteration(
         .await
         .map_err(|e| format!("#{outcome_id} iteration-unmap body update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Outcome(
-        crate::product_management::outcome::OutcomeAction::Upserted(vec![optimistic]),
+        product_management::outcome::OutcomeAction::Upserted(vec![optimistic]),
     ));
 
     let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
@@ -73,8 +73,8 @@ pub(crate) async fn handle_unmap_outcome_iteration(
         .await
         .map_err(|e| format!("#{iteration_id} outcome-FK-clear body update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Iteration(
-        crate::product_management::iteration::IterationAction::Upserted(vec![
-            crate::product_management::iteration::Iteration {
+        product_management::iteration::IterationAction::Upserted(vec![
+            product_management::iteration::Iteration {
                 outcome: None,
                 body: Some(iteration_body),
                 ..iteration
@@ -120,7 +120,7 @@ pub(crate) async fn handle_reorder_outcome_iteration(
     )
     .await?;
     dispatch.dispatch(crate::store::AppAction::Outcome(
-        crate::product_management::outcome::OutcomeAction::Upserted(vec![outcome_with_body(
+        product_management::outcome::OutcomeAction::Upserted(vec![outcome_with_body(
             &outcome, &new_body,
         )]),
     ));

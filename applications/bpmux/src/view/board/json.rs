@@ -1,6 +1,6 @@
-use crate::product_management::label_codec::LabelCodec;
-use crate::product_management::story::Story;
 use crate::view::board::StoryView;
+use product_management::label_codec::LabelCodec;
+use product_management::story::Story;
 
 pub fn story_to_board_json<C: LabelCodec>(
     codec: &C,

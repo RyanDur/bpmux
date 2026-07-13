@@ -4,8 +4,8 @@
 use std::sync::Arc;
 
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::{Story, StoryId, Work};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
+use product_management::story::{Story, StoryId, Work};
 
 use super::startup_tasks::spawn_background_ingest;
 

@@ -1,4 +1,4 @@
-use crate::product_management::story::Acceptor;
+use product_management::story::Acceptor;
 
 pub(crate) fn derive_acceptor(user_job: &str) -> Option<Acceptor> {
     let trimmed = user_job.trim_start();

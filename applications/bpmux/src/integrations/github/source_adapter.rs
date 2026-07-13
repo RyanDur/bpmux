@@ -3,9 +3,9 @@ use crate::bridge::tracker::{ConditionalIssue, StoryTracker};
 use crate::integrations::github::mapper::{
     decode_free_comment, decode_story_with_placement, decode_verdicts,
 };
-use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::{CastVerdict, FreeComment, Story};
 use crate::sync::{ConditionalBody, Ingested, SourceAdapter, SyncError};
+use product_management::story::events::StoryEvent;
+use product_management::story::{CastVerdict, FreeComment, Story};
 
 impl SourceAdapter for GitHubSourceAdapter {
     async fn ingest_metadata(&self) -> Result<Ingested, SyncError> {

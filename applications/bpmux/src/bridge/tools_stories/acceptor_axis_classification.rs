@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use super::acceptor_axis::derive_acceptor;
-use crate::product_management::story::Acceptor;
+use product_management::story::Acceptor;
 
 #[test]
 fn owner_use_axis_derives_owner() {

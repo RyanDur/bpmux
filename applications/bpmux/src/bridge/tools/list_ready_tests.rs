@@ -4,10 +4,10 @@ use std::sync::Arc;
 
 use crate::bridge::dispatch::dispatch_list_ready;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::story::{Story, StoryId, Work};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
+use product_management::iteration::{Iteration, IterationId};
+use product_management::story::{Story, StoryId, Work};
 
 fn member(id: u64) -> Story {
     Story::new_minimal(

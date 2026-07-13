@@ -1,4 +1,4 @@
-use crate::product_management::story::{CastVerdict, Verdict};
+use product_management::story::{CastVerdict, Verdict};
 
 pub fn enrich_body(original_body: &str, context: &str) -> String {
     format!("{context}\n{original_body}")

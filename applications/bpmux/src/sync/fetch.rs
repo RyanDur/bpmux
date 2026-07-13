@@ -1,8 +1,8 @@
 use super::types::cache_fill_meta;
 use super::{CastVerdict, FreeComment, SyncOrchestrator};
-use crate::product_management::story::StoryId;
-use crate::product_management::story::events::{StoryEvent, StoryEventKind};
 use crate::sync::{ConditionalBody, SourceAdapter, SyncError};
+use product_management::story::StoryId;
+use product_management::story::events::{StoryEvent, StoryEventKind};
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub async fn fetch_body(&self, number: u64) -> Result<String, SyncError> {

@@ -4,11 +4,11 @@ use chrono::{DateTime, TimeZone, Utc};
 use serde_json::Value;
 
 use super::view::dispatch_view_velocity;
-use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{Story, StoryId, StoryKind, Verdict, Work};
 use crate::store::{AppAction, SeededStore};
+use product_management::iteration::{Iteration, IterationId};
+use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use product_management::story::slice::StoryAction;
+use product_management::story::{Story, StoryId, StoryKind, Verdict, Work};
 use workflow::StageId;
 
 fn at(hour: u32) -> DateTime<Utc> {

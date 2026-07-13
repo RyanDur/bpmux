@@ -1,4 +1,4 @@
-use crate::product_management::story::{Verdict, Work};
+use product_management::story::{Verdict, Work};
 use workflow::{StageId, WorkflowConfig};
 
 #[derive(Debug, Clone, PartialEq, Eq)]

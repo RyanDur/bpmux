@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::{IterationView, OutcomeView};
-use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::outcome::{Outcome, OutcomeId, OutcomeLifecycle};
-use crate::product_management::story::{Horizon, StoryId};
+use product_management::iteration::{Iteration, IterationId};
+use product_management::outcome::{Outcome, OutcomeId, OutcomeLifecycle};
+use product_management::story::{Horizon, StoryId};
 use workflow::bundled_default::bundled_default;
 
 fn fixed_ts() -> chrono::DateTime<chrono::Utc> {

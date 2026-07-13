@@ -1,7 +1,7 @@
 use super::event_meta::meta_for;
 use super::helpers::{compose_iteration_body, require_nonempty_string};
-use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::story::StoryId;
+use product_management::iteration::{Iteration, IterationId};
+use product_management::story::StoryId;
 
 pub(crate) async fn handle_create_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -49,8 +49,8 @@ pub(crate) async fn handle_create_iteration(
         .filter_map(|it| it.iteration_order)
         .max()
         .map_or(
-            crate::product_management::iteration::label::DEFAULT_FIRST_POSITION,
-            |m| m + crate::product_management::iteration::label::DEFAULT_STEP,
+            product_management::iteration::label::DEFAULT_FIRST_POSITION,
+            |m| m + product_management::iteration::label::DEFAULT_STEP,
         );
     let id = r
         .create_story(title.clone(), body.clone(), vec!["iteration".to_string()])
@@ -59,25 +59,25 @@ pub(crate) async fn handle_create_iteration(
     let meta = meta_for(agent_name, actor_id);
     let filed_by = meta.actor.clone();
     let filed_at = meta.ts;
-    r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+    r.mutate_sync(product_management::story::events::StoryEvent::new(
         meta.clone(),
         StoryId::new(id),
-        crate::product_management::story::events::StoryEventKind::TagAdded {
+        product_management::story::events::StoryEventKind::TagAdded {
             label: "iteration".to_string(),
         },
     ))
     .map_err(|e| format!("#{id} iteration label enqueue failed: {e}"))?;
-    r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+    r.mutate_sync(product_management::story::events::StoryEvent::new(
         meta,
         StoryId::new(id),
-        crate::product_management::story::events::StoryEventKind::TagAdded {
+        product_management::story::events::StoryEventKind::TagAdded {
             label: crate::integrations::github::gh_label_codec::GhLabelCodec
                 .encode_iteration_order(next_order),
         },
     ))
     .map_err(|e| format!("#{id} iteration-order label enqueue failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Iteration(
-        crate::product_management::iteration::IterationAction::Upserted(vec![Iteration {
+        product_management::iteration::IterationAction::Upserted(vec![Iteration {
             id: IterationId::new(id),
             title: title.clone(),
             body: Some(body),

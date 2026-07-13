@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use serde::Serialize;
 
-use crate::product_management::story::Stage;
 use crate::sync::RefreshDriver;
+use product_management::story::Stage;
 
 #[derive(Serialize)]
 struct DevInFlight {

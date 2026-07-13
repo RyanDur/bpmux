@@ -2,10 +2,10 @@
 
 use super::super::tools_stories::*;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::{Story, StoryId, Work};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
+use product_management::story::{Story, StoryId, Work};
 use std::sync::Arc;
 
 async fn build_orchestrator() -> Arc<dyn RefreshDriver> {
@@ -116,7 +116,7 @@ async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
     assert!(
         story
             .tags
-            .contains(&crate::product_management::story::Tag::DeskCheckFail),
+            .contains(&product_management::story::Tag::DeskCheckFail),
         "the desk-check-fail label classifies into the typed tag at the tool edge; got {:?}",
         story.tags
     );

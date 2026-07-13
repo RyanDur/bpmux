@@ -2,8 +2,8 @@
 #![allow(clippy::expect_used)]
 
 use crate::integrations::github::mapper::decode_story_metadata;
-use crate::product_management::epic::EpicId;
-use crate::product_management::story::{Story, StoryId};
+use product_management::epic::EpicId;
+use product_management::story::{Story, StoryId};
 
 #[test]
 fn decode_story_metadata_covers_every_metadata_axis_field_via_roundtrip() {
@@ -65,17 +65,17 @@ fn assert_metadata_axis_complete(decoded: &Story, labels: &[String]) {
     );
     assert_eq!(
         *state,
-        crate::product_management::story::Work::InProgress,
+        product_management::story::Work::InProgress,
         "state must decode from labels"
     );
     assert_eq!(
         *story_type,
-        crate::product_management::story::StoryKind::Feature,
+        product_management::story::StoryKind::Feature,
         "story_type must decode from labels into the stored domain field at ingest"
     );
     assert_eq!(
         *tags,
-        vec![crate::product_management::story::Tag::DeskCheckFail],
+        vec![product_management::story::Tag::DeskCheckFail],
         "the iteration-<name>.<pos> label is recognized-and-dropped at ingest — it lands in NO visible tag now that iteration_slot is retired"
     );
     assert_eq!(
@@ -100,7 +100,7 @@ fn assert_metadata_axis_complete(decoded: &Story, labels: &[String]) {
     );
     assert_eq!(
         *acceptor,
-        Some(crate::product_management::story::Acceptor::Owner),
+        Some(product_management::story::Acceptor::Owner),
         "acceptor must decode from the 'awaiting owner' label into the stored domain field at ingest"
     );
     assert_eq!(
@@ -116,7 +116,7 @@ fn assert_metadata_axis_complete(decoded: &Story, labels: &[String]) {
     );
     assert_eq!(
         crate::integrations::github::mapper::horizon_from_labels(labels),
-        Some(crate::product_management::story::Horizon::Next),
+        Some(product_management::story::Horizon::Next),
         "horizon must decode from the horizon.next label"
     );
     assert_eq!(

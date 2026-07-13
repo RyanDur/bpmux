@@ -9,6 +9,7 @@ members = [
     "components/message",
     "components/message_log",
     "components/persist",
+    "components/product_management",
     "components/user_routing",
     "components/workflow",
 ]

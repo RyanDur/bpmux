@@ -4,12 +4,12 @@ use std::sync::Arc;
 
 use super::view_backlog::*;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::story::Story;
-use crate::product_management::story::StoryId;
-use crate::product_management::story::Work;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
+use product_management::iteration::{Iteration, IterationId};
+use product_management::story::Story;
+use product_management::story::StoryId;
+use product_management::story::Work;
 
 fn story(num: u64, title: &str, state: Work) -> Story {
     Story::new_minimal(

@@ -1,22 +1,22 @@
 use std::sync::Arc;
 
-use crate::product_management::iteration::Iteration;
-use crate::product_management::scheduling::ProjectedState;
-use crate::product_management::story::Story;
 use crate::sync::RefreshDriver;
+use product_management::iteration::Iteration;
+use product_management::scheduling::ProjectedState;
+use product_management::story::Story;
 
 pub(in crate::bridge) async fn handle_list_ready(
     refresh: &Arc<dyn RefreshDriver>,
     iterations: &[Iteration],
 ) -> Result<String, String> {
-    let current_order = crate::product_management::iteration::label::current_iteration(iterations)
+    let current_order = product_management::iteration::label::current_iteration(iterations)
         .map(|iteration| iteration.stories.clone())
         .unwrap_or_default();
     let ready: Vec<Story> = refresh
         .all_stories()
         .into_iter()
         .filter(|story| {
-            crate::product_management::scheduling::projected_state(story, iterations)
+            product_management::scheduling::projected_state(story, iterations)
                 == ProjectedState::Ready
         })
         .collect();

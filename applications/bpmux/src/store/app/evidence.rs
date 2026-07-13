@@ -18,10 +18,10 @@ impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for Evide
         if Arc::ptr_eq(&reaction.previous.evidence, &reaction.current.evidence) {
             return Box::pin(async {});
         }
-        let store = crate::product_management::evidence::to_store(&reaction.current.evidence);
+        let store = product_management::evidence::to_store(&reaction.current.evidence);
         let dir = self.hub.dir.clone();
         Box::pin(async move {
-            if let Err(e) = crate::product_management::evidence::save(&dir, &store) {
+            if let Err(e) = product_management::evidence::save(&dir, &store) {
                 diag::log_diag(&format!("evidence: persist failed: {e}"));
             }
         })

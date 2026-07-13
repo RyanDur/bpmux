@@ -4,7 +4,7 @@ use std::pin::Pin;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 
 #[derive(
     Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
@@ -46,7 +46,7 @@ pub struct PendingWrite {
 
 impl PendingWrite {
     pub fn from_event(
-        codec: &dyn crate::product_management::label_codec::LabelCodec,
+        codec: &dyn product_management::label_codec::LabelCodec,
         event: StoryEvent,
     ) -> Self {
         let iteration_class = match &event.kind {

@@ -7,7 +7,7 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 
 use crate::hub;
-use crate::product_management::label_codec::LabelCodec;
+use product_management::label_codec::LabelCodec;
 
 pub fn seed_api_enabled() -> bool {
     std::env::var("BPMUX_TEST_SEED_API")
@@ -157,39 +157,37 @@ pub async fn post_seed_stories(
     };
     for s in &body.stories {
         let initial_state = match s.initial_state.as_str() {
-            "icebox" | "ready" => crate::product_management::story::Work::NotStarted,
-            "in-progress" | "desk-check" => crate::product_management::story::Work::InProgress,
-            "delivered" | "acceptance" => crate::product_management::story::Work::Acceptance,
-            "accepted" => crate::product_management::story::Work::Accepted,
-            _ => crate::product_management::story::Work::NotStarted,
+            "icebox" | "ready" => product_management::story::Work::NotStarted,
+            "in-progress" | "desk-check" => product_management::story::Work::InProgress,
+            "delivered" | "acceptance" => product_management::story::Work::Acceptance,
+            "accepted" => product_management::story::Work::Accepted,
+            _ => product_management::story::Work::NotStarted,
         };
         let is_iteration_seed = s.story_type.as_str() == "iteration";
         let is_epic_seed = s.story_type.as_str() == "epic";
         let story_type = {
-            use crate::product_management::story::StoryKind;
+            use product_management::story::StoryKind;
             match s.story_type.as_str() {
                 "bug" => StoryKind::Bug,
                 "chore" => StoryKind::Chore,
                 _ => StoryKind::Feature,
             }
         };
-        let meta = crate::product_management::story::events::EventMeta {
+        let meta = product_management::story::events::EventMeta {
             actor: "test-seed".to_string(),
             actor_id: None,
             ts: chrono::Utc::now(),
         };
-        if let Err(e) =
-            refresh.mutate_sync(crate::product_management::story::events::StoryEvent::new(
-                meta,
-                crate::product_management::story::StoryId::new(s.id),
-                crate::product_management::story::events::StoryEventKind::StoryCreated {
-                    title: s.title.clone(),
-                    body: s.body.clone(),
-                    initial_state: initial_state.clone(),
-                    story_type,
-                },
-            ))
-        {
+        if let Err(e) = refresh.mutate_sync(product_management::story::events::StoryEvent::new(
+            meta,
+            product_management::story::StoryId::new(s.id),
+            product_management::story::events::StoryEventKind::StoryCreated {
+                title: s.title.clone(),
+                body: s.body.clone(),
+                initial_state: initial_state.clone(),
+                story_type,
+            },
+        )) {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("seed_stories: StoryCreated #{} failed: {e}", s.id),
@@ -198,12 +196,12 @@ pub async fn post_seed_stories(
         if s.initial_state == "desk-check" {
             dispatcher.dispatch(crate::store::AppAction::Board(
                 crate::board::BoardAction::StoryPlaced {
-                    story: crate::product_management::story::StoryId::new(s.id),
-                    stage: crate::product_management::story::Stage::DeskCheck.id(),
+                    story: product_management::story::StoryId::new(s.id),
+                    stage: product_management::story::Stage::DeskCheck.id(),
                 },
             ));
         }
-        let type_label_meta = crate::product_management::story::events::EventMeta {
+        let type_label_meta = product_management::story::events::EventMeta {
             actor: "test-seed".to_string(),
             actor_id: None,
             ts: chrono::Utc::now(),
@@ -215,22 +213,18 @@ pub async fn post_seed_stories(
         } else {
             crate::integrations::github::gh_label_codec::GhLabelCodec.encode_story_type(story_type)
         };
-        if let Err(e) =
-            refresh.mutate_sync(crate::product_management::story::events::StoryEvent::new(
-                type_label_meta,
-                crate::product_management::story::StoryId::new(s.id),
-                crate::product_management::story::events::StoryEventKind::TagAdded {
-                    label: type_label,
-                },
-            ))
-        {
+        if let Err(e) = refresh.mutate_sync(product_management::story::events::StoryEvent::new(
+            type_label_meta,
+            product_management::story::StoryId::new(s.id),
+            product_management::story::events::StoryEventKind::TagAdded { label: type_label },
+        )) {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("seed_stories: type-label TagAdded on #{} failed: {e}", s.id),
             );
         }
         for label in &s.labels {
-            let tag_meta = crate::product_management::story::events::EventMeta {
+            let tag_meta = product_management::story::events::EventMeta {
                 actor: "test-seed".to_string(),
                 actor_id: None,
                 ts: chrono::Utc::now(),
@@ -239,10 +233,10 @@ pub async fn post_seed_stories(
             if codec.is_iteration_label_loose(label) {
                 continue;
             }
-            let event = crate::product_management::story::events::StoryEvent::new(
+            let event = product_management::story::events::StoryEvent::new(
                 tag_meta,
-                crate::product_management::story::StoryId::new(s.id),
-                crate::product_management::story::events::StoryEventKind::TagAdded {
+                product_management::story::StoryId::new(s.id),
+                product_management::story::events::StoryEventKind::TagAdded {
                     label: label.clone(),
                 },
             );
@@ -254,20 +248,18 @@ pub async fn post_seed_stories(
             }
         }
         if s.is_closed {
-            let close_meta = crate::product_management::story::events::EventMeta {
+            let close_meta = product_management::story::events::EventMeta {
                 actor: "test-seed".to_string(),
                 actor_id: None,
                 ts: chrono::Utc::now(),
             };
-            if let Err(e) =
-                refresh.mutate_sync(crate::product_management::story::events::StoryEvent::new(
-                    close_meta,
-                    crate::product_management::story::StoryId::new(s.id),
-                    crate::product_management::story::events::StoryEventKind::StoryClosed {
-                        reason: Some("test-seed: closed at seed time".to_string()),
-                    },
-                ))
-            {
+            if let Err(e) = refresh.mutate_sync(product_management::story::events::StoryEvent::new(
+                close_meta,
+                product_management::story::StoryId::new(s.id),
+                product_management::story::events::StoryEventKind::StoryClosed {
+                    reason: Some("test-seed: closed at seed time".to_string()),
+                },
+            )) {
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("seed_stories: StoryClosed #{} failed: {e}", s.id),
@@ -275,8 +267,8 @@ pub async fn post_seed_stories(
             }
         }
         if is_iteration_seed || is_epic_seed {
-            let mut carrier = crate::product_management::story::Story::new_minimal(
-                crate::product_management::story::StoryId::new(s.id),
+            let mut carrier = product_management::story::Story::new_minimal(
+                product_management::story::StoryId::new(s.id),
                 s.title.clone(),
                 initial_state,
                 chrono::Utc::now(),
@@ -285,7 +277,7 @@ pub async fn post_seed_stories(
             carrier.body = Some(s.body.clone());
             if is_iteration_seed {
                 dispatcher.dispatch(crate::store::AppAction::Iteration(
-                    crate::product_management::iteration::IterationAction::Upserted(vec![
+                    product_management::iteration::IterationAction::Upserted(vec![
                         crate::integrations::github::mapper::decode_iteration_from_story(
                             &carrier,
                             &s.labels,
@@ -295,7 +287,7 @@ pub async fn post_seed_stories(
                 ));
             } else {
                 dispatcher.dispatch(crate::store::AppAction::Epic(
-                    crate::product_management::epic::EpicAction::Upserted(vec![
+                    product_management::epic::EpicAction::Upserted(vec![
                         crate::integrations::github::mapper::decode_epic_from_story(
                             &carrier,
                             s.is_closed,

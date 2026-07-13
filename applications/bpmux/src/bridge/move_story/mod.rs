@@ -4,9 +4,9 @@ use serde_json::Map;
 use serde_json::Value;
 
 use crate::bridge::tools_stories::event_meta::meta_for;
-use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-use crate::product_management::story::{StoryId, Work};
 use crate::sync::RefreshDriver;
+use product_management::story::events::{StoryEvent, StoryEventKind};
+use product_management::story::{StoryId, Work};
 
 mod authorization;
 mod scheduling;

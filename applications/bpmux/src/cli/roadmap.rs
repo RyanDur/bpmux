@@ -39,11 +39,11 @@ pub(crate) fn run_roadmap(
 
 fn validate_state(state: Option<&str>) -> anyhow::Result<()> {
     if let Some(value) = state
-        && crate::product_management::roadmap::selectors::OutcomeState::from_cli(value).is_none()
+        && product_management::roadmap::selectors::OutcomeState::from_cli(value).is_none()
     {
         anyhow::bail!(
             "invalid --state '{value}': must be {}",
-            crate::product_management::roadmap::selectors::OutcomeState::CLI_VALUES
+            product_management::roadmap::selectors::OutcomeState::CLI_VALUES
         );
     }
     Ok(())
@@ -51,11 +51,11 @@ fn validate_state(state: Option<&str>) -> anyhow::Result<()> {
 
 fn validate_order(order: Option<&str>) -> anyhow::Result<()> {
     if let Some(value) = order
-        && crate::product_management::roadmap::filter::RoadmapOrder::from_cli(value).is_none()
+        && product_management::roadmap::filter::RoadmapOrder::from_cli(value).is_none()
     {
         anyhow::bail!(
             "invalid --order '{value}': must be {}",
-            crate::product_management::roadmap::filter::RoadmapOrder::CLI_VALUES
+            product_management::roadmap::filter::RoadmapOrder::CLI_VALUES
         );
     }
     Ok(())

@@ -70,7 +70,7 @@ pub(crate) fn build_reject_signal(id: u64, reason: &str) -> ClientMessage {
 pub(crate) fn classify_for_pass_desk_check(
     id: u64,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
-) -> crate::product_management::story::StoryKind {
+) -> product_management::story::StoryKind {
     refresh
         .and_then(|r| r.story(id))
         .map(|s| s.story_type())
@@ -78,14 +78,14 @@ pub(crate) fn classify_for_pass_desk_check(
 }
 
 pub(crate) fn addressee_for_pass_desk_check(
-    story_type: crate::product_management::story::StoryKind,
-    acceptor: Option<crate::product_management::story::Acceptor>,
+    story_type: product_management::story::StoryKind,
+    acceptor: Option<product_management::story::Acceptor>,
 ) -> &'static str {
     let workflow = workflow::current_workflow();
     let owner = || workflow.owner_role_name().unwrap_or("owner");
     let team = || workflow.role_name_for_purpose("pm").unwrap_or("pm");
 
-    use crate::product_management::story::{Acceptor, StoryKind};
+    use product_management::story::{Acceptor, StoryKind};
     match acceptor {
         Some(Acceptor::Team) => team(),
         Some(Acceptor::Owner) => owner(),
@@ -117,8 +117,8 @@ pub(crate) fn build_pass_desk_check_pm_present_signal(id: u64) -> ClientMessage 
 
 pub(crate) fn build_pass_desk_check_signals(
     id: u64,
-    story_type: crate::product_management::story::StoryKind,
-    acceptor: Option<crate::product_management::story::Acceptor>,
+    story_type: product_management::story::StoryKind,
+    acceptor: Option<product_management::story::Acceptor>,
 ) -> Vec<ClientMessage> {
     let primary = addressee_for_pass_desk_check(story_type, acceptor);
     let owner = workflow::current_workflow()

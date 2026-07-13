@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 
-use crate::product_management::story::{Story, Verdict};
+use product_management::story::{Story, Verdict};
 
 pub(super) fn pickup_ts(story: &Story) -> Option<DateTime<Utc>> {
     story

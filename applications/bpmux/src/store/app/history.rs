@@ -24,7 +24,7 @@ impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for Share
         let history = reaction.current.shared_history.clone();
         let dir = self.hub.dir.clone();
         Box::pin(async move {
-            if let Err(e) = crate::product_management::history_persistence::save(&dir, &history) {
+            if let Err(e) = product_management::history_persistence::save(&dir, &history) {
                 diag::log_diag(&format!("history: shared-history persist failed: {e}"));
             }
         })

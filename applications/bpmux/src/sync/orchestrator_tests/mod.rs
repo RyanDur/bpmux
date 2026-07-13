@@ -12,8 +12,8 @@ mod staleness_tests;
 
 use chrono::{TimeZone, Utc};
 
-use crate::product_management::story::events::EventMeta;
-use crate::product_management::story::{Story, StoryId, Work};
+use product_management::story::events::EventMeta;
+use product_management::story::{Story, StoryId, Work};
 
 pub(super) fn meta() -> EventMeta {
     EventMeta {

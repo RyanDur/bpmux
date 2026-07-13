@@ -4,9 +4,9 @@ use chrono::{TimeZone, Utc};
 
 use super::history::{PlacementHistory, react_to_story};
 use super::history_persistence;
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{Stage, StoryId, Work};
+use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use product_management::story::slice::StoryAction;
+use product_management::story::{Stage, StoryId, Work};
 
 fn fresh_dir(tag: &str) -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!(

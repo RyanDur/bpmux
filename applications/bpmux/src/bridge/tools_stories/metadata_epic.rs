@@ -2,8 +2,8 @@ use super::event_meta::meta_for;
 use super::helpers::{
     ensure_epic_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
 };
-use crate::product_management::epic::EpicId;
-use crate::product_management::story::StoryId;
+use product_management::epic::EpicId;
+use product_management::story::StoryId;
 
 pub(crate) async fn handle_set_parent_epic(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -28,10 +28,10 @@ pub(crate) async fn handle_set_parent_epic(
     ensure_story_in_canonical_store(r, id).await?;
     ensure_epic_in_canonical_store(r, epic_id).await?;
     let meta = meta_for(agent_name, actor_id);
-    r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+    r.mutate_sync(product_management::story::events::StoryEvent::new(
         meta,
         StoryId::new(id),
-        crate::product_management::story::events::StoryEventKind::ParentEpicSet {
+        product_management::story::events::StoryEventKind::ParentEpicSet {
             epic_id: EpicId::new(epic_id),
         },
     ))
@@ -54,10 +54,10 @@ pub(crate) async fn handle_unset_parent_epic(
     let r = refresh.ok_or("unset_parent_epic requires refresh (RefreshDriver)")?;
     ensure_story_in_canonical_store(r, id).await?;
     let meta = meta_for(agent_name, actor_id);
-    r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+    r.mutate_sync(product_management::story::events::StoryEvent::new(
         meta,
         StoryId::new(id),
-        crate::product_management::story::events::StoryEventKind::ParentEpicUnset,
+        product_management::story::events::StoryEventKind::ParentEpicUnset,
     ))
     .map_err(|e| format!("#{id} parent_epic-unset enqueue failed: {e}"))?;
     Ok(format!("#{id} ungrouped from parent epic"))

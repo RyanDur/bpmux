@@ -3,9 +3,9 @@
 use chrono::{TimeZone, Utc};
 
 use super::history::{PlacementHistory, react_to_story};
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{Stage, Story, StoryId, Verdict, Work};
+use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use product_management::story::slice::StoryAction;
+use product_management::story::{Stage, Story, StoryId, Verdict, Work};
 
 fn meta(actor: &str, hour: u32) -> EventMeta {
     EventMeta {

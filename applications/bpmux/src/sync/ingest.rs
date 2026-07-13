@@ -8,11 +8,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
 
     fn seed_and_place(
         &self,
-        items: Vec<crate::product_management::story::Story>,
-        placements: Vec<(crate::product_management::story::StoryId, workflow::StageId)>,
+        items: Vec<product_management::story::Story>,
+        placements: Vec<(product_management::story::StoryId, workflow::StageId)>,
     ) {
         let board_actions = crate::board::placements_for_ingest(&items, &placements);
-        self.dispatch_story(crate::product_management::story::slice::StoryAction::Seeded(items));
+        self.dispatch_story(product_management::story::slice::StoryAction::Seeded(items));
         for action in board_actions {
             self.dispatch_board(crate::store::AppAction::Board(action));
         }
@@ -60,19 +60,17 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                     .collect::<Vec<_>>();
                 if !fresh_outcomes.is_empty() {
                     self.dispatch_board(crate::store::AppAction::Outcome(
-                        crate::product_management::outcome::OutcomeAction::Upserted(fresh_outcomes),
+                        product_management::outcome::OutcomeAction::Upserted(fresh_outcomes),
                     ));
                 }
                 if !fresh_iterations.is_empty() {
                     self.dispatch_board(crate::store::AppAction::Iteration(
-                        crate::product_management::iteration::IterationAction::Upserted(
-                            fresh_iterations,
-                        ),
+                        product_management::iteration::IterationAction::Upserted(fresh_iterations),
                     ));
                 }
                 if !fresh_epics.is_empty() {
                     self.dispatch_board(crate::store::AppAction::Epic(
-                        crate::product_management::epic::EpicAction::Upserted(fresh_epics),
+                        product_management::epic::EpicAction::Upserted(fresh_epics),
                     ));
                 }
                 self.seed_and_place(items, placements);
@@ -89,7 +87,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub async fn refresh_story(
         &self,
         number: u64,
-    ) -> Result<Option<crate::product_management::story::Story>, SyncError> {
+    ) -> Result<Option<product_management::story::Story>, SyncError> {
         match self.adapter.fetch_story_metadata(number).await {
             Ok(Some((story, placement))) => {
                 let present_with_queued_local_write =

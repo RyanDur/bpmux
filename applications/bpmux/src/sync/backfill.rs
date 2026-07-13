@@ -1,6 +1,6 @@
-use crate::product_management::history::{SharedHistoryAction, VerdictRecord};
 use crate::store::AppAction;
 use crate::sync::RefreshDriver;
+use product_management::history::{SharedHistoryAction, VerdictRecord};
 
 pub(crate) async fn backfill_shared_history(
     refresh: &dyn RefreshDriver,

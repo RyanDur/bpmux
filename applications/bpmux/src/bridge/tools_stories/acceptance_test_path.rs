@@ -57,8 +57,8 @@ fn is_acceptable_acceptance_test_path(candidate: &str) -> bool {
         && OPS_EXTS.iter().any(|ext| candidate.ends_with(ext))
 }
 
-fn user_facing_story_type(t: crate::product_management::story::StoryKind) -> bool {
-    use crate::product_management::story::StoryKind;
+fn user_facing_story_type(t: product_management::story::StoryKind) -> bool {
+    use product_management::story::StoryKind;
     matches!(t, StoryKind::Feature | StoryKind::Bug)
 }
 

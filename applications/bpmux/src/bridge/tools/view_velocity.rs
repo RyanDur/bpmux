@@ -4,12 +4,12 @@ use serde::Serialize;
 
 use crate::board::flow::{Position, ReworkBreakdown, desk_check_rework, sub_section_timings};
 use crate::board::history::PlacementHistory;
-use crate::product_management::history::SharedHistory;
-use crate::product_management::iteration::Iteration;
-use crate::product_management::metrics::{
+use product_management::history::SharedHistory;
+use product_management::iteration::Iteration;
+use product_management::metrics::{
     acceptance_rejection_rate, lead_time_median_hours, velocity, velocity_series,
 };
-use crate::product_management::story::StoryId;
+use product_management::story::StoryId;
 
 const VELOCITY_WINDOW: NonZeroUsize = NonZeroUsize::MIN;
 

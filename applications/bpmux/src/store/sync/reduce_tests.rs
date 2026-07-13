@@ -3,9 +3,9 @@
 use chrono::{TimeZone, Utc};
 
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::product_management::story::StoryId;
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use crate::sync::{MutationId, PendingWrite, QueuedWrite};
+use product_management::story::StoryId;
+use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 
 use super::{SyncAction, SyncState, reduce};
 

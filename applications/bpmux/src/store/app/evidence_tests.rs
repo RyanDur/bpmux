@@ -7,13 +7,13 @@ use tokio::sync::broadcast;
 
 use super::evidence::EvidencePersister;
 use crate::hub::Hub;
-use crate::product_management::evidence::{
-    EvidenceAction, evidence_for_story, evidence_path, from_store, load, to_store,
-};
-use crate::product_management::story::StoryId;
 use crate::store::{AppAction, AppState, Presence, RosterAction, app_reduce};
 use kernel::{Dispatch, Listener, Reaction};
 use message::Message;
+use product_management::evidence::{
+    EvidenceAction, evidence_for_story, evidence_path, from_store, load, to_store,
+};
+use product_management::story::StoryId;
 
 fn fresh_hub() -> (Arc<Hub>, TempDir) {
     let dir = TempDir::new().expect("tempdir");
@@ -106,7 +106,7 @@ async fn an_untouched_evidence_grain_writes_no_file() {
 fn a_cold_boot_hydrates_the_evidence_grain_from_its_file() {
     let (hub, _dir) = fresh_hub();
     let seeded = app_reduce(&AppState::default(), &verdict_action(42, "designer"));
-    crate::product_management::evidence::save(&hub.dir, &to_store(&seeded.evidence)).unwrap();
+    product_management::evidence::save(&hub.dir, &to_store(&seeded.evidence)).unwrap();
 
     let state = AppState::default().with_evidence(from_store(&load(&hub.dir)));
 

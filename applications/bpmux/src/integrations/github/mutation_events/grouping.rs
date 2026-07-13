@@ -1,8 +1,8 @@
 use super::labels_refreshed;
 use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
-use crate::product_management::epic::EpicId;
-use crate::product_management::story::events::StoryEvent;
 use crate::sync::SyncError;
+use product_management::epic::EpicId;
+use product_management::story::events::StoryEvent;
 
 pub(in crate::integrations::github) async fn push_parent_epic_set(
     inner: &OctocrabStoryTracker,

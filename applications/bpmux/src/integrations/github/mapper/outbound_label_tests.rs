@@ -1,5 +1,5 @@
 use super::outbound_state_label;
-use crate::product_management::story::Work;
+use product_management::story::Work;
 
 #[test]
 fn the_outbound_label_is_the_coarse_position_never_a_fine_stage() {

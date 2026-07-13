@@ -1,6 +1,6 @@
 use super::event_meta::meta_for;
 use super::helpers::require_nonempty_string;
-use crate::product_management::story::StoryId;
+use product_management::story::StoryId;
 
 pub(crate) async fn handle_create_outcome(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -34,9 +34,9 @@ pub(crate) async fn handle_create_outcome(
         "horizon is required: one of now | next | later (sequence, not calendar).",
     )?;
     let horizon = match horizon_raw.to_ascii_lowercase().as_str() {
-        "now" => crate::product_management::story::Horizon::Now,
-        "next" => crate::product_management::story::Horizon::Next,
-        "later" => crate::product_management::story::Horizon::Later,
+        "now" => product_management::story::Horizon::Now,
+        "next" => product_management::story::Horizon::Next,
+        "later" => product_management::story::Horizon::Later,
         other => {
             return Err(format!(
                 "invalid horizon '{other}': must be now, next, or later (sequence, not calendar)"
@@ -55,24 +55,24 @@ pub(crate) async fn handle_create_outcome(
         .await
         .map_err(|e| format!("create_outcome adapter call failed: {e}"))?;
     let meta = meta_for(agent_name, actor_id);
-    r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+    r.mutate_sync(product_management::story::events::StoryEvent::new(
         meta,
         StoryId::new(id),
-        crate::product_management::story::events::StoryEventKind::TagAdded {
+        product_management::story::events::StoryEventKind::TagAdded {
             label: crate::integrations::github::gh_label_codec::GhLabelCodec
                 .encode_horizon(horizon),
         },
     ))
     .map_err(|e| format!("#{id} outcome horizon label enqueue failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Outcome(
-        crate::product_management::outcome::OutcomeAction::Upserted(vec![
-            crate::product_management::outcome::Outcome {
-                id: crate::product_management::outcome::OutcomeId::new(id),
+        product_management::outcome::OutcomeAction::Upserted(vec![
+            product_management::outcome::Outcome {
+                id: product_management::outcome::OutcomeId::new(id),
                 title: title.clone(),
                 body: Some(body),
                 filed_at: chrono::Utc::now(),
                 filed_by: user_routing::short_name(agent_name).to_string(),
-                lifecycle: crate::product_management::outcome::OutcomeLifecycle::Active {
+                lifecycle: product_management::outcome::OutcomeLifecycle::Active {
                     horizon: Some(horizon),
                     horizon_order: None,
                 },

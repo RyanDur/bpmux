@@ -4,11 +4,11 @@ use crate::integrations::github::mapper::{
     decode_epic_from_story, decode_iteration_from_story, decode_outcome_from_story, is_epic_story,
     placement_from_labels,
 };
-use crate::product_management::epic::Epic;
-use crate::product_management::iteration::Iteration;
-use crate::product_management::outcome::Outcome;
-use crate::product_management::story::{Story, StoryId};
 use crate::sync::{Ingested, SyncError};
+use product_management::epic::Epic;
+use product_management::iteration::Iteration;
+use product_management::outcome::Outcome;
+use product_management::story::{Story, StoryId};
 use workflow::StageId;
 
 pub(super) struct Classified {
@@ -24,7 +24,7 @@ pub(super) fn derive_typed_fields_from_labels(story: &mut Story, labels: &[Strin
     let labeled_type =
         crate::integrations::github::mapper::story_type_from_labels_or_title(labels, &story.title);
     if labeled_type != story.story_type
-        && crate::product_management::story::story_type_from_title(&story.title) == story.story_type
+        && product_management::story::story_type_from_title(&story.title) == story.story_type
     {
         story.story_type = labeled_type;
     }

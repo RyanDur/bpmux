@@ -6,12 +6,12 @@
 use crate::bridge::tools_stories::handle_create_iteration;
 use crate::integrations::github::mapper::decode_iteration_from_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::iteration::{Iteration, IterationAction};
-use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::{AppAction, Dispatch};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
+use product_management::iteration::{Iteration, IterationAction};
+use product_management::story::{Story, StoryId, Work};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;

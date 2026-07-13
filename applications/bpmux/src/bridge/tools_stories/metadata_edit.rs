@@ -18,7 +18,7 @@ pub(crate) async fn handle_edit_story(
     let title = args.get("title").and_then(|v| v.as_str());
     let acceptor = match args.get("acceptor").and_then(|v| v.as_str()) {
         Some(raw) => Some(
-            crate::product_management::story::Acceptor::parse(raw.trim()).ok_or_else(|| {
+            product_management::story::Acceptor::parse(raw.trim()).ok_or_else(|| {
                 format!("acceptor must be one of: team | owner | dev (got {raw:?})")
             })?,
         ),
@@ -32,12 +32,12 @@ pub(crate) async fn handle_edit_story(
     }
     let r = refresh
         .ok_or("edit_story requires refresh (RefreshDriver) — no canonical store available")?;
-    let iteration = r.iteration(crate::product_management::iteration::IterationId::new(id));
+    let iteration = r.iteration(product_management::iteration::IterationId::new(id));
     if let Some(b) = body
         && iteration.is_none()
     {
         let story = ensure_story_in_canonical_store(r, id).await?;
-        if story.story_type() != crate::product_management::story::StoryKind::Chore {
+        if story.story_type() != product_management::story::StoryKind::Chore {
             crate::bridge::atp_substantive_gate::verify_atp_pre_filing(b, None)
                 .map_err(|e| e.as_json_string())?;
         }
@@ -58,10 +58,10 @@ pub(crate) async fn handle_edit_story(
     if let Some(acceptor) = acceptor {
         ensure_story_in_canonical_store(r, id).await?;
         let meta = meta_for(agent_name, actor_id);
-        r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+        r.mutate_sync(product_management::story::events::StoryEvent::new(
             meta,
-            crate::product_management::story::StoryId::new(id),
-            crate::product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
+            product_management::story::StoryId::new(id),
+            product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
         ))
         .map_err(|e| format!("#{id} acceptor enqueue failed: {e}"))?;
         r.drain_pending()
@@ -80,8 +80,8 @@ pub(crate) async fn handle_edit_story(
             None => iteration.body.clone(),
         };
         dispatch.dispatch(crate::store::AppAction::Iteration(
-            crate::product_management::iteration::IterationAction::Upserted(vec![
-                crate::product_management::iteration::Iteration {
+            product_management::iteration::IterationAction::Upserted(vec![
+                product_management::iteration::Iteration {
                     title: new_title,
                     body: new_body,
                     ..iteration
@@ -90,7 +90,7 @@ pub(crate) async fn handle_edit_story(
         ));
     }
     if (title.is_some() || body.is_some())
-        && let Some(epic) = r.epic(crate::product_management::epic::EpicId::new(id))
+        && let Some(epic) = r.epic(product_management::epic::EpicId::new(id))
     {
         let new_title = title
             .map(str::to_string)
@@ -100,13 +100,11 @@ pub(crate) async fn handle_edit_story(
             None => epic.body.clone(),
         };
         dispatch.dispatch(crate::store::AppAction::Epic(
-            crate::product_management::epic::EpicAction::Upserted(vec![
-                crate::product_management::epic::Epic {
-                    title: new_title,
-                    body: new_body,
-                    ..epic
-                },
-            ]),
+            product_management::epic::EpicAction::Upserted(vec![product_management::epic::Epic {
+                title: new_title,
+                body: new_body,
+                ..epic
+            }]),
         ));
     }
     Ok(format!("#{id} {} updated", updated.join(" + ")))

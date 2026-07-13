@@ -1,7 +1,7 @@
 use serde_json::Map;
 use serde_json::Value;
 
-use crate::product_management::story::{Stage, Work};
+use product_management::story::{Stage, Work};
 
 const TARGET_STATE_RETIRED: &str = "retired";
 const TARGET_STATE_ICEBOX: &str = "icebox";
@@ -55,7 +55,7 @@ impl TargetState {
         match self {
             Self::Icebox => None,
             Self::Ready => {
-                Some(crate::product_management::scheduling::ProjectedState::Ready.github_label())
+                Some(product_management::scheduling::ProjectedState::Ready.github_label())
             }
             Self::Workflow(state) => state.github_label(),
             Self::Retired => Work::Retired.github_label(),
@@ -109,11 +109,11 @@ pub(super) fn require_nonempty(
 }
 
 pub(super) fn current_state_display(
-    story: Option<&crate::product_management::story::Story>,
+    story: Option<&product_management::story::Story>,
     fine: Option<Stage>,
-    iterations: &[crate::product_management::iteration::Iteration],
+    iterations: &[product_management::iteration::Iteration],
 ) -> &'static str {
-    use crate::product_management::scheduling::projected_state;
+    use product_management::scheduling::projected_state;
     match story {
         Some(s) if s.is_concluded() => "retired-or-accepted",
         Some(s) => match &s.state {

@@ -4,11 +4,11 @@ use super::relationships::{
     EpicRelationships, IterationRelationships, OutcomeRelationships, Relationships,
     RoadmapRelationships, StoryRelationships,
 };
-use crate::product_management::epic::EpicId;
-use crate::product_management::iteration::IterationId;
-use crate::product_management::outcome::OutcomeId;
-use crate::product_management::roadmap::RoadmapId;
-use crate::product_management::story::StoryId;
+use product_management::epic::EpicId;
+use product_management::iteration::IterationId;
+use product_management::outcome::OutcomeId;
+use product_management::roadmap::RoadmapId;
+use product_management::story::StoryId;
 
 #[test]
 fn iteration_relationships_round_trip_through_body_preserving_order() {

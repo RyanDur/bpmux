@@ -4,9 +4,9 @@ use chrono::{TimeZone, Utc};
 
 use super::flow::{Position, ReworkBreakdown, desk_check_rework, sub_section_timings};
 use super::history::{PlacementHistory, react_to_story};
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{Stage, StoryId, Work};
+use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use product_management::story::slice::StoryAction;
+use product_management::story::{Stage, StoryId, Work};
 
 fn transition(story: u64, hour: u32, to: Work, placement: Option<Stage>) -> StoryEvent {
     StoryEvent::new(

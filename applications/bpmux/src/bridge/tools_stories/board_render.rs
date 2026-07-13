@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::board::{Column, board_columns, group_by_column};
-use crate::product_management::story::StoryId;
 use crate::view::board::arrangement::column_header;
+use product_management::story::StoryId;
 use workflow::StageId;
 
 #[derive(Default)]
@@ -13,14 +13,14 @@ pub(in crate::bridge) struct BoardScope {
 }
 
 pub(in crate::bridge) fn build_board_text(
-    epics: &[crate::product_management::epic::Epic],
-    stories: &[crate::product_management::story::Story],
-    iterations: &[crate::product_management::iteration::Iteration],
+    epics: &[product_management::epic::Epic],
+    stories: &[product_management::story::Story],
+    iterations: &[product_management::iteration::Iteration],
     scope: &BoardScope,
     fine: &HashMap<StoryId, StageId>,
     middle: &[StageId],
 ) -> String {
-    let format_entry = |s: &crate::product_management::story::Story| -> (u64, String) {
+    let format_entry = |s: &product_management::story::Story| -> (u64, String) {
         let parent_epic = s.parent_epic();
         let prefix = if parent_epic.is_some() { "↳ " } else { "" };
         let suffix = match parent_epic {
@@ -42,10 +42,10 @@ pub(in crate::bridge) fn build_board_text(
             ),
         )
     };
-    let in_scope_iteration = |s: &crate::product_management::story::Story| -> bool {
+    let in_scope_iteration = |s: &product_management::story::Story| -> bool {
         match scope.iteration {
             Some(n) => {
-                let target = crate::product_management::iteration::IterationId::new(n);
+                let target = product_management::iteration::IterationId::new(n);
                 iterations
                     .iter()
                     .any(|it| it.id == target && it.stories.contains(&s.id))
@@ -77,16 +77,14 @@ pub(in crate::bridge) fn build_board_text(
     };
     let mut out = String::new();
     if scope.state.is_none() && scope.iteration.is_none() {
-        let mut epics: Vec<&crate::product_management::epic::Epic> = epics.iter().collect();
+        let mut epics: Vec<&product_management::epic::Epic> = epics.iter().collect();
         epics.sort_by_key(|e| e.id);
         if !epics.is_empty() {
             out.push_str(&format!("EPICS ({})\n", epics.len()));
             for epic in &epics {
-                let children = crate::product_management::epic::children_of(stories, epic.id);
-                let counts =
-                    crate::product_management::epic::derive_epic_counts(&children, iterations);
-                let derived =
-                    crate::product_management::epic::derive_epic_state(&children, iterations);
+                let children = product_management::epic::children_of(stories, epic.id);
+                let counts = product_management::epic::derive_epic_counts(&children, iterations);
+                let derived = product_management::epic::derive_epic_state(&children, iterations);
                 out.push_str(&format!(
                     "  #{} [{}] {} ({total} children: {accepted} accepted, {retired} retired, {active} active, {icebox} icebox)\n",
                     epic.id.value(),

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use crate::product_management::iteration::Iteration;
-use crate::product_management::scheduling::{ProjectedState, projected_state};
-use crate::product_management::story::{Stage, Story};
+use product_management::iteration::Iteration;
+use product_management::scheduling::{ProjectedState, projected_state};
+use product_management::story::{Stage, Story};
 use workflow::StageId;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

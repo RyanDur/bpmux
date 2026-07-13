@@ -1,7 +1,7 @@
 use super::event_meta::meta_for;
 use super::helpers::{compose_story_body, require_nonempty_string};
-use crate::product_management::epic::EpicId;
-use crate::product_management::story::StoryId;
+use product_management::epic::EpicId;
+use product_management::story::StoryId;
 
 pub(crate) async fn handle_create_story(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -15,7 +15,7 @@ pub(crate) async fn handle_create_story(
         .get("title")
         .and_then(|v| v.as_str())
         .ok_or("missing 'title' argument")?;
-    let story_type = crate::product_management::story::story_type_from_title(title);
+    let story_type = product_management::story::story_type_from_title(title);
     validate_actor_role_can_create(role, story_type)?;
     let user_job = require_nonempty_string(
         args,
@@ -39,7 +39,7 @@ pub(crate) async fn handle_create_story(
         acceptance_test_path,
         author_body,
     );
-    if story_type != crate::product_management::story::StoryKind::Chore {
+    if story_type != product_management::story::StoryKind::Chore {
         crate::bridge::atp_substantive_gate::verify_atp_pre_filing(
             &composed_body,
             acceptance_test_path,
@@ -56,7 +56,7 @@ pub(crate) async fn handle_create_story(
     validate_parent_epic(r, parent_epic)?;
     let acceptor = match args.get("acceptor").and_then(|v| v.as_str()) {
         Some(raw) => Some(
-            crate::product_management::story::Acceptor::parse(raw.trim()).ok_or_else(|| {
+            product_management::story::Acceptor::parse(raw.trim()).ok_or_else(|| {
                 format!("acceptor must be one of: team | owner | dev (got {raw:?})")
             })?,
         ),
@@ -76,16 +76,14 @@ pub(crate) async fn handle_create_story(
     .await?;
     if crate::integrations::github::mapper::is_epic_title(title) {
         dispatch.dispatch(crate::store::AppAction::Epic(
-            crate::product_management::epic::EpicAction::Upserted(vec![
-                crate::product_management::epic::Epic {
-                    id: crate::product_management::epic::EpicId::new(id),
-                    title: title.to_string(),
-                    body: Some(epic_body),
-                    filed_at: chrono::Utc::now(),
-                    filed_by: user_routing::short_name(agent_name).to_string(),
-                    is_closed: false,
-                },
-            ]),
+            product_management::epic::EpicAction::Upserted(vec![product_management::epic::Epic {
+                id: product_management::epic::EpicId::new(id),
+                title: title.to_string(),
+                body: Some(epic_body),
+                filed_at: chrono::Utc::now(),
+                filed_by: user_routing::short_name(agent_name).to_string(),
+                is_closed: false,
+            }]),
         ));
         r.remove_story(id);
     }
@@ -99,7 +97,7 @@ pub(crate) async fn handle_create_story(
 
 fn validate_actor_role_can_create(
     role: &str,
-    story_type: crate::product_management::story::StoryKind,
+    story_type: product_management::story::StoryKind,
 ) -> Result<(), String> {
     let workflow = workflow::current_workflow();
     let pm = workflow.role_name_for_purpose("pm").unwrap_or("pm");
@@ -111,7 +109,7 @@ fn validate_actor_role_can_create(
     {
         return Ok(());
     }
-    let is_chore = story_type == crate::product_management::story::StoryKind::Chore;
+    let is_chore = story_type == product_management::story::StoryKind::Chore;
     if actor_role != pm && !(actor_role == dev && is_chore) {
         return Err(
             "create_story is pm-lane (dev may author [Chore]-class stories per chore-ownership \
@@ -146,41 +144,41 @@ fn validate_parent_epic(
 
 async fn create_and_broadcast_story_events(
     r: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
-    meta: crate::product_management::story::events::EventMeta,
+    meta: product_management::story::events::EventMeta,
     title: &str,
     composed_body: String,
-    story_type: crate::product_management::story::StoryKind,
+    story_type: product_management::story::StoryKind,
     parent_epic: Option<EpicId>,
-    acceptor: Option<crate::product_management::story::Acceptor>,
+    acceptor: Option<product_management::story::Acceptor>,
 ) -> Result<u64, String> {
     let id = r
         .create_story(title.to_string(), composed_body.clone(), Vec::new())
         .await
         .map_err(|e| format!("create_story failed: {e}"))?;
-    r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+    r.mutate_sync(product_management::story::events::StoryEvent::new(
         meta.clone(),
         StoryId::new(id),
-        crate::product_management::story::events::StoryEventKind::StoryCreated {
+        product_management::story::events::StoryEventKind::StoryCreated {
             title: title.to_string(),
             body: composed_body,
-            initial_state: crate::product_management::story::Work::NotStarted,
+            initial_state: product_management::story::Work::NotStarted,
             story_type,
         },
     ))
     .map_err(|e| format!("#{id} created but enqueue failed: {e}"))?;
     if let Some(acceptor) = acceptor {
-        r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+        r.mutate_sync(product_management::story::events::StoryEvent::new(
             meta.clone(),
             StoryId::new(id),
-            crate::product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
+            product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
         ))
         .map_err(|e| format!("#{id} acceptor enqueue failed: {e}"))?;
     }
     if let Some(epic_id) = parent_epic {
-        r.mutate_sync(crate::product_management::story::events::StoryEvent::new(
+        r.mutate_sync(product_management::story::events::StoryEvent::new(
             meta,
             StoryId::new(id),
-            crate::product_management::story::events::StoryEventKind::ParentEpicSet { epic_id },
+            product_management::story::events::StoryEventKind::ParentEpicSet { epic_id },
         ))
         .map_err(|e| format!("#{id} parent_epic enqueue failed: {e}"))?;
     }

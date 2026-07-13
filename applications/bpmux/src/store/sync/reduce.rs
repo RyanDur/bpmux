@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
-use crate::product_management::story::events::StoryEventKind;
 use crate::sync::{MutationId, QueuedWrite};
+use product_management::story::events::StoryEventKind;
 
 use super::{SyncAction, SyncState};
 

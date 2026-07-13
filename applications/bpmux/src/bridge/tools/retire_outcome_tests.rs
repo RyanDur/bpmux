@@ -7,13 +7,13 @@ use crate::integrations::github::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
-use crate::product_management::story::{Story, StoryId, StoryKind, Work};
 use crate::store::{AppAction, Dispatch};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
+use product_management::iteration::{Iteration, IterationId};
+use product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
+use product_management::story::{Story, StoryId, StoryKind, Work};
 use serde_json::{Map, Value, json};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -129,7 +129,7 @@ fn args(outcome: u64, reason: Option<&str>) -> Map<String, Value> {
 }
 
 fn band_numbers(refresh: &Arc<dyn RefreshDriver>) -> Vec<u64> {
-    crate::product_management::roadmap::selectors::roadmap_cards(
+    product_management::roadmap::selectors::roadmap_cards(
         &refresh.outcomes(),
         &refresh.iterations(),
         workflow::current_workflow(),

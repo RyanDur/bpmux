@@ -2,7 +2,7 @@ use super::{
     ACCEPTOR_DEV_LABEL, ACCEPTOR_OWNER_LABEL, ACCEPTOR_TEAM_LABEL, DESK_CHECK_FAIL_LABEL,
     GhLabelCodec, WORKFLOW_STATE_LABELS,
 };
-use crate::product_management::story::{Acceptor, StoryKind, Tag};
+use product_management::story::{Acceptor, StoryKind, Tag};
 
 impl GhLabelCodec {
     pub fn decode_parent_epic(&self, label: &str) -> Option<u64> {

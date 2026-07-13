@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::product_management::iteration::IterationId;
-use crate::product_management::outcome::OutcomeId;
 use message::Message;
+use product_management::iteration::IterationId;
+use product_management::outcome::OutcomeId;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]

@@ -6,12 +6,12 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::slice::StoryAction;
-use crate::product_management::story::{Stage, Story, StoryId, Work};
 use crate::store::{AppAction, SeededStore, bind_seeded_refresh};
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
+use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use product_management::story::slice::StoryAction;
+use product_management::story::{Stage, Story, StoryId, Work};
 
 mod slice_7_2_mutation_id_dispatch {
     use super::*;

@@ -3,12 +3,12 @@
 use crate::bridge::dispatch::dispatch_move_story;
 use crate::integrations::github::mapper::{decode_epic_from_story, decode_iteration_from_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::epic::Epic;
-use crate::product_management::iteration::{Iteration, IterationAction};
-use crate::product_management::story::{Story, StoryId, Work};
 use crate::store::{AppAction, Dispatch, SeededStore};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
+use product_management::epic::Epic;
+use product_management::iteration::{Iteration, IterationAction};
+use product_management::story::{Story, StoryId, Work};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;
 

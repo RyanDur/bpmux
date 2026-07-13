@@ -2,9 +2,9 @@ use super::event_meta::meta_for;
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
 use super::metadata_outcome_bands::{push_band_change, reorder_within_band};
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::product_management::outcome::{Outcome, OutcomeAction};
-use crate::product_management::story::Horizon;
 use crate::sync::RefreshDriver;
+use product_management::outcome::{Outcome, OutcomeAction};
+use product_management::story::Horizon;
 use std::sync::Arc;
 
 pub(crate) async fn handle_reprioritize_outcome(

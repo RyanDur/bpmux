@@ -3,11 +3,11 @@ use crate::bridge::tools_stories::acceptance::helpers::{
 };
 use crate::bridge::tools_stories::event_meta::meta_for;
 use crate::bridge::tools_stories::helpers::ensure_story_in_canonical_store;
-use crate::product_management::story::StoryId;
+use product_management::story::StoryId;
 
 fn parse_acceptor_arg(
     args: &serde_json::Map<String, serde_json::Value>,
-) -> Result<crate::product_management::story::Acceptor, String> {
+) -> Result<product_management::story::Acceptor, String> {
     let raw = args.get("acceptor").and_then(|v| v.as_str()).ok_or_else(|| {
         serde_json::json!({
             "kind": "workflow-gate-mismatch",
@@ -17,7 +17,7 @@ fn parse_acceptor_arg(
         })
         .to_string()
     })?;
-    crate::product_management::story::Acceptor::parse(raw.trim()).ok_or_else(|| {
+    product_management::story::Acceptor::parse(raw.trim()).ok_or_else(|| {
         serde_json::json!({
             "kind": "workflow-gate-mismatch",
             "attempted_transition": "pass-desk-check",
@@ -49,7 +49,7 @@ pub(crate) async fn handle_pass_desk_check(
     let story_opt = r_opt.and_then(|r| r.story(id));
     let class = story_opt
         .as_ref()
-        .map(|s| crate::product_management::story::gate_class_from_acceptor(s.acceptor()))
+        .map(|s| product_management::story::gate_class_from_acceptor(s.acceptor()))
         .unwrap_or(workflow::GateClass::TeamVerifiable);
     let transition = workflow::resolve_transition(workflow, "pass-desk-check", class)
         .map_err(|e| e.as_json_string())?;
@@ -89,7 +89,7 @@ pub(crate) async fn handle_pass_desk_check(
             coarse: new_state,
             placement,
         } = crate::board::advance(
-            &crate::product_management::story::Verdict::Succeed {
+            &product_management::story::Verdict::Succeed {
                 step: transition.from.as_str().into(),
             },
             workflow,
@@ -102,31 +102,31 @@ pub(crate) async fn handle_pass_desk_check(
         })?;
         let mut events = Vec::new();
         if was_closed {
-            events.push(crate::product_management::story::events::StoryEvent::new(
+            events.push(product_management::story::events::StoryEvent::new(
                 meta.clone(),
                 StoryId::new(id),
-                crate::product_management::story::events::StoryEventKind::StoryReopened,
+                product_management::story::events::StoryEventKind::StoryReopened,
             ));
         }
-        events.push(crate::product_management::story::events::StoryEvent::new(
+        events.push(product_management::story::events::StoryEvent::new(
             meta.clone(),
             StoryId::new(id),
-            crate::product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
+            product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
         ));
-        events.push(crate::product_management::story::events::StoryEvent::new(
+        events.push(product_management::story::events::StoryEvent::new(
             meta.clone(),
             StoryId::new(id),
-            crate::product_management::story::events::StoryEventKind::VerdictCast {
-                verdict: crate::product_management::story::Verdict::Succeed {
+            product_management::story::events::StoryEventKind::VerdictCast {
+                verdict: product_management::story::Verdict::Succeed {
                     step: "desk-check".into(),
                 },
                 payload: bypass.clone().map(format_bypass_payload),
             },
         ));
-        events.push(crate::product_management::story::events::StoryEvent::new(
+        events.push(product_management::story::events::StoryEvent::new(
             meta,
             StoryId::new(id),
-            crate::product_management::story::events::StoryEventKind::StateTransitioned {
+            product_management::story::events::StoryEventKind::StateTransitioned {
                 new_state,
                 placement,
             },

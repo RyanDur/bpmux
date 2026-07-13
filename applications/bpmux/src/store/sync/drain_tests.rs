@@ -11,13 +11,13 @@ use tokio_util::sync::CancellationToken;
 use crate::ci::CiStateStore;
 use crate::hub::Hub;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
-use crate::product_management::story::{Story, StoryId, Work};
 use crate::storage::StorageBackend;
 use crate::store::Store;
 use crate::store::test_support::eventually;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use message::Message;
+use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use product_management::story::{Story, StoryId, Work};
 
 fn meta() -> EventMeta {
     EventMeta {
@@ -167,7 +167,7 @@ async fn an_ingested_upsert_is_selectable_the_moment_refresh_returns() {
 
     let outcomes = store
         .selector()
-        .select(|state| crate::product_management::outcome::all(&state.outcomes).len());
+        .select(|state| product_management::outcome::all(&state.outcomes).len());
     assert_eq!(
         outcomes, 1,
         "an ingested upsert is reduced into the store and selectable the instant refresh returns, before any runtime yield"

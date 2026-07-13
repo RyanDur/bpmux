@@ -1,6 +1,6 @@
 use super::{InnerState, typed_label_mirror};
-use crate::product_management::story::events::{StoryEvent, StoryEventKind};
-use crate::product_management::story::{CastVerdict, FreeComment};
+use product_management::story::events::{StoryEvent, StoryEventKind};
+use product_management::story::{CastVerdict, FreeComment};
 
 pub(super) fn apply_push_event(
     s: &mut InnerState,
@@ -71,7 +71,7 @@ pub(super) fn apply_push_event(
             story_type,
         } => {
             let story = s.stories.entry(event.id.value()).or_insert_with(|| {
-                crate::product_management::story::Story::new_minimal(
+                product_management::story::Story::new_minimal(
                     event.id,
                     title.clone(),
                     initial_state.clone(),

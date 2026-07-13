@@ -2,8 +2,8 @@
 
 use super::*;
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::product_management::story::{Story, StoryId, Work};
 use chrono::{TimeZone, Utc};
+use product_management::story::{Story, StoryId, Work};
 
 fn story(id: u64, title: &str, state: Work) -> Story {
     Story::new_minimal(
@@ -27,7 +27,7 @@ fn project_mirrors_core_identity_fields() {
 #[test]
 fn project_encodes_badge_labels_from_typed_fields() {
     let mut s = story(11, "badged", Work::Acceptance);
-    s.tags = vec![crate::product_management::story::Tag::DeskCheckFail];
+    s.tags = vec![product_management::story::Tag::DeskCheckFail];
     let view = StoryView::project(&GhLabelCodec, &s, s.state.as_str());
     assert!(
         view.labels.iter().any(|l| l == "desk-check-fail"),

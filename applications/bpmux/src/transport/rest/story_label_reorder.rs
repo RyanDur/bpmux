@@ -3,11 +3,11 @@
 use super::labels::{LabelMutationPayload, post_story_labels};
 use crate::hub::Hub;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::story::{Story, StoryId, Work};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::response::IntoResponse;
+use product_management::story::{Story, StoryId, Work};
 use std::sync::Arc;
 use tokio::sync::broadcast;
 

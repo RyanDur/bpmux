@@ -1,6 +1,6 @@
 use super::story_decode::{decode_story_metadata, extract_label_names};
-use crate::product_management::epic::{Epic, EpicId};
-use crate::product_management::story::Story;
+use product_management::epic::{Epic, EpicId};
+use product_management::story::Story;
 
 pub fn is_epic_title(title: &str) -> bool {
     title.trim_start().to_ascii_lowercase().starts_with("[epic")

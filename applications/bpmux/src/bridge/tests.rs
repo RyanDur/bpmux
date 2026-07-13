@@ -257,10 +257,10 @@ mod ingest_poll_loop_tests {
     use std::time::Duration;
 
     use crate::bridge::run_ingest_poll_loop;
-    use crate::product_management::story::events::StoryEvent;
     use crate::sync::RefreshDriver;
     use crate::sync::SyncError;
     use crate::sync::{BoxedFuture, SyncStatus};
+    use product_management::story::events::StoryEvent;
 
     struct CountingDriver {
         refresh_all: AtomicUsize,
@@ -304,8 +304,7 @@ mod ingest_poll_loop_tests {
         fn refresh_story(
             &self,
             _n: u64,
-        ) -> BoxedFuture<'_, Result<Option<crate::product_management::story::Story>, SyncError>>
-        {
+        ) -> BoxedFuture<'_, Result<Option<product_management::story::Story>, SyncError>> {
             Box::pin(async { Ok(None) })
         }
         fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>> {
@@ -361,14 +360,14 @@ mod ingest_poll_loop_tests {
         fn fetch_free_comments(
             &self,
             _n: u64,
-        ) -> BoxedFuture<'_, Result<Vec<crate::product_management::story::FreeComment>, SyncError>>
+        ) -> BoxedFuture<'_, Result<Vec<product_management::story::FreeComment>, SyncError>>
         {
             Box::pin(async { Ok(Vec::new()) })
         }
         fn fetch_verdicts(
             &self,
             _n: u64,
-        ) -> BoxedFuture<'_, Result<Vec<crate::product_management::story::CastVerdict>, SyncError>>
+        ) -> BoxedFuture<'_, Result<Vec<product_management::story::CastVerdict>, SyncError>>
         {
             Box::pin(async { Ok(Vec::new()) })
         }
@@ -380,13 +379,13 @@ mod ingest_poll_loop_tests {
         ) -> BoxedFuture<'_, Result<u64, SyncError>> {
             Box::pin(async { Ok(0) })
         }
-        fn story(&self, _number: u64) -> Option<crate::product_management::story::Story> {
+        fn story(&self, _number: u64) -> Option<product_management::story::Story> {
             None
         }
-        fn all_stories(&self) -> Vec<crate::product_management::story::Story> {
+        fn all_stories(&self) -> Vec<product_management::story::Story> {
             Vec::new()
         }
-        fn remove_story(&self, _id: u64) -> Option<crate::product_management::story::Story> {
+        fn remove_story(&self, _id: u64) -> Option<product_management::story::Story> {
             None
         }
         fn clear_stories(&self) {}

@@ -41,12 +41,10 @@ impl Store {
                 .with_reactions(crate::store::reactions::from_store(
                     &crate::reactions::load(&hub.dir),
                 ))
-                .with_evidence(crate::product_management::evidence::from_store(
-                    &crate::product_management::evidence::load(&hub.dir),
+                .with_evidence(product_management::evidence::from_store(
+                    &product_management::evidence::load(&hub.dir),
                 ))
-                .with_shared_history(crate::product_management::history_persistence::load(
-                    &hub.dir,
-                ))
+                .with_shared_history(product_management::history_persistence::load(&hub.dir))
                 .with_local_history(crate::board::history_persistence::load(&hub.dir))
                 .with_routing(crate::store::routing::from_users(
                     &hub.storage.load_users().unwrap_or_default(),

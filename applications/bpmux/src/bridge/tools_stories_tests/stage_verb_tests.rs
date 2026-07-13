@@ -8,11 +8,11 @@ mod stage_verb_behavior {
     #![allow(clippy::unwrap_used)]
     use super::*;
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::product_management::story::events::StoryEvent;
-    use crate::product_management::story::{Stage, Story, StoryId, Verdict, Work};
     use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
+    use product_management::story::events::StoryEvent;
+    use product_management::story::{Stage, Story, StoryId, Verdict, Work};
     use std::sync::Arc;
 
     async fn seeded(id: u64, state: Work, labels: &[&str]) -> Arc<dyn RefreshDriver> {

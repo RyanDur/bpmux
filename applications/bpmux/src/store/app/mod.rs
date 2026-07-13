@@ -1,11 +1,5 @@
 use std::sync::Arc;
 
-use crate::product_management::epic::{EpicAction, EpicState};
-use crate::product_management::evidence::{EvidenceAction, EvidenceState};
-use crate::product_management::history::{SharedHistory, SharedHistoryAction};
-use crate::product_management::iteration::{IterationAction, IterationState};
-use crate::product_management::outcome::{OutcomeAction, OutcomeState};
-use crate::product_management::story::slice::{Stories, StoryAction};
 use crate::store::board::history::PlacementHistory;
 use crate::store::board::{BoardAction, BoardPlacements};
 use crate::store::ci::{CiAction, CiState};
@@ -16,6 +10,12 @@ use crate::store::roster::{RosterAction, RosterState};
 use crate::store::routing::{RoutingAction, RoutingState};
 use crate::store::sync::{SyncAction, SyncState};
 use crate::store::sync_health::{SyncHealthAction, SyncHealthState};
+use product_management::epic::{EpicAction, EpicState};
+use product_management::evidence::{EvidenceAction, EvidenceState};
+use product_management::history::{SharedHistory, SharedHistoryAction};
+use product_management::iteration::{IterationAction, IterationState};
+use product_management::outcome::{OutcomeAction, OutcomeState};
+use product_management::story::slice::{Stories, StoryAction};
 
 mod action_conversions;
 mod board_placement;
@@ -44,6 +44,8 @@ mod evidence_tests;
 mod history_tests;
 #[cfg(test)]
 mod owner_park_tests;
+#[cfg(test)]
+mod pm_slice_tests;
 #[cfg(test)]
 mod reactions_tests;
 #[cfg(test)]

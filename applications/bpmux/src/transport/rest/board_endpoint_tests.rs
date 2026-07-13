@@ -6,11 +6,11 @@ use crate::integrations::github::relationships::{
     IterationRelationships, OutcomeRelationships, Relationships,
 };
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::product_management::iteration::{Iteration, IterationId};
-use crate::product_management::outcome::OutcomeId;
-use crate::product_management::story::{Story, StoryId, Work};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
+use product_management::iteration::{Iteration, IterationId};
+use product_management::outcome::OutcomeId;
+use product_management::story::{Story, StoryId, Work};
 use std::sync::Arc;
 
 async fn orchestrator(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {

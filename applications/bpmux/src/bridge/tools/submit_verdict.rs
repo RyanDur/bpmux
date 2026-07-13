@@ -1,6 +1,6 @@
-use crate::product_management::evidence::{EvidenceAction, evidence_for_story};
-use crate::product_management::story::StoryId;
 use message::{Message, MessageType};
+use product_management::evidence::{EvidenceAction, evidence_for_story};
+use product_management::story::StoryId;
 use std::sync::Arc;
 
 pub(in crate::bridge) async fn handle_submit_verdict(

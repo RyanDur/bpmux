@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 use super::{BoardAction, BoardPlacements, persistence, reduce};
-use crate::product_management::story::StoryId;
+use product_management::story::StoryId;
 
 fn fresh_dir(tag: &str) -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!("bpmux-placements-{tag}-{}", std::process::id()));

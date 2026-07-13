@@ -1,9 +1,9 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, require_purpose};
-use crate::product_management::story::StoryId;
+use product_management::story::StoryId;
 
 pub(crate) fn is_retired_iteration_label_axis(label: &str) -> bool {
-    use crate::product_management::label_codec::LabelCodec;
+    use product_management::label_codec::LabelCodec;
     crate::integrations::github::gh_label_codec::GhLabelCodec
         .decode_iteration(label)
         .is_some()
@@ -56,16 +56,16 @@ pub(crate) async fn handle_label_story(
         let (event, ok_msg) = match operation {
             "add" => (
                 if let Some(tag) = tag {
-                    crate::product_management::story::events::StoryEvent::new(
+                    product_management::story::events::StoryEvent::new(
                         meta,
                         StoryId::new(id),
-                        crate::product_management::story::events::StoryEventKind::TagSet { tag },
+                        product_management::story::events::StoryEventKind::TagSet { tag },
                     )
                 } else {
-                    crate::product_management::story::events::StoryEvent::new(
+                    product_management::story::events::StoryEvent::new(
                         meta,
                         StoryId::new(id),
-                        crate::product_management::story::events::StoryEventKind::TagAdded {
+                        product_management::story::events::StoryEventKind::TagAdded {
                             label: label.to_string(),
                         },
                     )
@@ -74,16 +74,16 @@ pub(crate) async fn handle_label_story(
             ),
             "remove" => (
                 if let Some(tag) = tag {
-                    crate::product_management::story::events::StoryEvent::new(
+                    product_management::story::events::StoryEvent::new(
                         meta,
                         StoryId::new(id),
-                        crate::product_management::story::events::StoryEventKind::TagUnset { tag },
+                        product_management::story::events::StoryEventKind::TagUnset { tag },
                     )
                 } else {
-                    crate::product_management::story::events::StoryEvent::new(
+                    product_management::story::events::StoryEvent::new(
                         meta,
                         StoryId::new(id),
-                        crate::product_management::story::events::StoryEventKind::TagRemoved {
+                        product_management::story::events::StoryEventKind::TagRemoved {
                             label: label.to_string(),
                         },
                     )
@@ -128,10 +128,10 @@ pub(crate) async fn handle_comment_on_story(
     }
     if let Some(r) = refresh {
         ensure_story_in_canonical_store(r, id).await?;
-        let event = crate::product_management::story::events::StoryEvent::new(
+        let event = product_management::story::events::StoryEvent::new(
             meta_for(agent_name, actor_id),
             StoryId::new(id),
-            crate::product_management::story::events::StoryEventKind::FreeCommentAppended {
+            product_management::story::events::StoryEventKind::FreeCommentAppended {
                 body: body.to_string(),
             },
         );

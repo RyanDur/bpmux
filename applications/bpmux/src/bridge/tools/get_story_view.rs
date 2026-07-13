@@ -1,22 +1,22 @@
 use std::sync::Arc;
 
-use crate::product_management::iteration::section::{
+use crate::sync::RefreshDriver;
+use product_management::iteration::section::{
     derive_iteration_member_section, substitute_member_stories_section,
 };
-use crate::sync::RefreshDriver;
 
 pub(super) const NOT_HYDRATED_PLACEHOLDER: &str =
     "(body not yet hydrated; no refresh driver available to live-fetch.)";
 
 pub(super) async fn render_iteration_detail(
     r: &Arc<dyn RefreshDriver>,
-    iteration: &crate::product_management::iteration::Iteration,
+    iteration: &product_management::iteration::Iteration,
 ) -> Result<String, String> {
     let id = iteration.id.value();
     let mut body = iteration.body.clone();
     if body.is_none() && r.fetch_body(id).await.is_ok() {
         body = r
-            .iteration(crate::product_management::iteration::IterationId::new(id))
+            .iteration(product_management::iteration::IterationId::new(id))
             .and_then(|it| it.body);
     }
     let body_hydrated = body.is_some();
@@ -49,7 +49,7 @@ pub(super) async fn render_iteration_detail(
 
 pub(super) async fn render_epic_detail(
     refresh: Option<&Arc<dyn RefreshDriver>>,
-    epic: &crate::product_management::epic::Epic,
+    epic: &product_management::epic::Epic,
 ) -> Result<String, String> {
     let id = epic.id.value();
     let mut body = epic.body.clone();
@@ -58,7 +58,7 @@ pub(super) async fn render_epic_detail(
         && r.fetch_body(id).await.is_ok()
     {
         body = r
-            .epic(crate::product_management::epic::EpicId::new(id))
+            .epic(product_management::epic::EpicId::new(id))
             .and_then(|e| e.body);
     }
     let body_hydrated = body.is_some();
@@ -66,11 +66,11 @@ pub(super) async fn render_epic_detail(
     let workflow_state = match refresh {
         Some(r) => {
             let stories = r.all_stories();
-            let children = crate::product_management::epic::children_of(&stories, epic.id);
+            let children = product_management::epic::children_of(&stories, epic.id);
             let iterations = r.iterations();
-            crate::product_management::epic::derive_epic_state(&children, &iterations).as_str()
+            product_management::epic::derive_epic_state(&children, &iterations).as_str()
         }
-        None => crate::product_management::scheduling::ProjectedState::Icebox.as_str(),
+        None => product_management::scheduling::ProjectedState::Icebox.as_str(),
     };
     let out = serde_json::json!({
         "id": id,

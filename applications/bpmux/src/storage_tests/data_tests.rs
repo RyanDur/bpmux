@@ -255,8 +255,8 @@ contract!(
 );
 
 fn seed_outbox_event(number: u64, label: &str) -> crate::sync::QueuedEvent {
-    use crate::product_management::story::StoryId;
-    use crate::product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+    use product_management::story::StoryId;
+    use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
     let event = StoryEvent::new(
         EventMeta {
             actor: "dev".to_string(),

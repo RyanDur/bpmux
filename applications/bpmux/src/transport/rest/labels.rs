@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use super::shared::{broadcast_board_invalidate, broadcast_stories, err_body, json_headers};
 use crate::hub;
-use crate::product_management::label_codec::LabelCodec;
+use product_management::label_codec::LabelCodec;
 
 #[derive(Deserialize)]
 pub struct LabelMutationPayload {
@@ -49,26 +49,24 @@ pub async fn post_story_labels(
     };
     for op in reorder_label_ops(&payload) {
         let meta = crate::sync::cache_fill_meta();
-        let story_id = crate::product_management::story::StoryId::new(id);
+        let story_id = product_management::story::StoryId::new(id);
         let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
         let (event, descriptor) = match op {
             LabelOp::Add(label) => {
                 let descriptor = format!("TagAdded {label} on #{id}");
                 let event = if let Some(tag) = codec.decode_tag(&label) {
-                    Some(crate::product_management::story::events::StoryEvent::new(
+                    Some(product_management::story::events::StoryEvent::new(
                         meta,
                         story_id,
-                        crate::product_management::story::events::StoryEventKind::TagSet { tag },
+                        product_management::story::events::StoryEventKind::TagSet { tag },
                     ))
                 } else if codec.is_iteration_label_loose(&label) {
                     None
                 } else {
-                    Some(crate::product_management::story::events::StoryEvent::new(
+                    Some(product_management::story::events::StoryEvent::new(
                         meta,
                         story_id,
-                        crate::product_management::story::events::StoryEventKind::TagAdded {
-                            label,
-                        },
+                        product_management::story::events::StoryEventKind::TagAdded { label },
                     ))
                 };
                 (event, descriptor)
@@ -76,20 +74,18 @@ pub async fn post_story_labels(
             LabelOp::Remove(label) => {
                 let descriptor = format!("TagRemoved {label} on #{id}");
                 let event = if let Some(tag) = codec.decode_tag(&label) {
-                    Some(crate::product_management::story::events::StoryEvent::new(
+                    Some(product_management::story::events::StoryEvent::new(
                         meta,
                         story_id,
-                        crate::product_management::story::events::StoryEventKind::TagUnset { tag },
+                        product_management::story::events::StoryEventKind::TagUnset { tag },
                     ))
                 } else if codec.is_iteration_label_loose(&label) {
                     None
                 } else {
-                    Some(crate::product_management::story::events::StoryEvent::new(
+                    Some(product_management::story::events::StoryEvent::new(
                         meta,
                         story_id,
-                        crate::product_management::story::events::StoryEventKind::TagRemoved {
-                            label,
-                        },
+                        product_management::story::events::StoryEventKind::TagRemoved { label },
                     ))
                 };
                 (event, descriptor)
@@ -107,7 +103,7 @@ pub async fn post_story_labels(
         }
     }
     if let Some(mut iteration) =
-        refresh.iteration(crate::product_management::iteration::IterationId::new(id))
+        refresh.iteration(product_management::iteration::IterationId::new(id))
     {
         let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
         for label in &payload.add {
@@ -139,7 +135,7 @@ pub async fn post_story_labels(
             }
         }
         dispatcher.dispatch(crate::store::AppAction::Iteration(
-            crate::product_management::iteration::IterationAction::Upserted(vec![iteration]),
+            product_management::iteration::IterationAction::Upserted(vec![iteration]),
         ));
     }
     broadcast_board_invalidate(&hub);

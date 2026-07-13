@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use crate::product_management::story::events::StoryEvent;
-use crate::product_management::story::{CastVerdict, FreeComment, Story, StoryId};
 use crate::sync::{ConditionalBody, SourceAdapter, SyncError};
+use product_management::story::events::StoryEvent;
+use product_management::story::{CastVerdict, FreeComment, Story, StoryId};
 
 use super::{BoxedFuture, RefreshDriver, SyncOrchestrator, SyncStatus};
 
@@ -34,15 +34,15 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.set_select(select);
     }
 
-    fn outcomes(&self) -> Vec<crate::product_management::outcome::Outcome> {
+    fn outcomes(&self) -> Vec<product_management::outcome::Outcome> {
         self.read_outcomes()
     }
 
-    fn iterations(&self) -> Vec<crate::product_management::iteration::Iteration> {
+    fn iterations(&self) -> Vec<product_management::iteration::Iteration> {
         self.read_iterations()
     }
 
-    fn epics(&self) -> Vec<crate::product_management::epic::Epic> {
+    fn epics(&self) -> Vec<product_management::epic::Epic> {
         self.read_epics()
     }
 
@@ -105,7 +105,7 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.read_story(StoryId::new(number))
     }
 
-    fn story_fine_stage(&self, story: &Story) -> Option<crate::product_management::story::Stage> {
+    fn story_fine_stage(&self, story: &Story) -> Option<product_management::story::Stage> {
         self.read_story_fine_stage(story)
     }
 
@@ -117,7 +117,7 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.read_all_stories()
     }
 
-    fn evidence_for_story(&self, id: u64) -> Vec<crate::product_management::evidence::Evidence> {
+    fn evidence_for_story(&self, id: u64) -> Vec<product_management::evidence::Evidence> {
         self.read_evidence_for_story(StoryId::new(id))
     }
 
