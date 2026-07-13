@@ -34,6 +34,18 @@ async fn receive_broadcast_stop_hook_delivers_a_live_broadcast_as_block_reason()
     )
     .expect("seed cursor file");
 
+    let posted = bpmux
+        .authed_post(
+            "/api/messages",
+            json!({ "from": "pm", "text": "standup in 5" }),
+        )
+        .await;
+    assert!(
+        posted.status().is_success(),
+        "broadcast POST should succeed, got {}",
+        posted.status()
+    );
+
     let mut hook = tokio::process::Command::new("bash")
         .arg(receive_hook_script())
         .env("BPMUX_PORT", port.to_string())
@@ -51,18 +63,6 @@ async fn receive_broadcast_stop_hook_delivers_a_live_broadcast_as_block_reason()
         .write_all(b"{}")
         .await
         .expect("write empty hook stdin");
-
-    let posted = bpmux
-        .authed_post(
-            "/api/messages",
-            json!({ "from": "pm", "text": "standup in 5" }),
-        )
-        .await;
-    assert!(
-        posted.status().is_success(),
-        "broadcast POST should succeed, got {}",
-        posted.status()
-    );
 
     let output = hook
         .wait_with_output()
@@ -137,6 +137,18 @@ async fn receive_broadcast_stop_hook_does_not_deliver_a_message_scoped_to_anothe
     )
     .expect("seed cursor file");
 
+    let posted = bpmux
+        .authed_post(
+            "/api/messages",
+            json!({ "from": "pm", "text": "for designer only", "to": ["designer"] }),
+        )
+        .await;
+    assert!(
+        posted.status().is_success(),
+        "scoped POST should succeed, got {}",
+        posted.status()
+    );
+
     let mut hook = tokio::process::Command::new("bash")
         .arg(receive_hook_script())
         .env("BPMUX_PORT", port.to_string())
@@ -154,18 +166,6 @@ async fn receive_broadcast_stop_hook_does_not_deliver_a_message_scoped_to_anothe
         .write_all(b"{}")
         .await
         .expect("write empty hook stdin");
-
-    let posted = bpmux
-        .authed_post(
-            "/api/messages",
-            json!({ "from": "pm", "text": "for designer only", "to": ["designer"] }),
-        )
-        .await;
-    assert!(
-        posted.status().is_success(),
-        "scoped POST should succeed, got {}",
-        posted.status()
-    );
 
     let output = hook
         .wait_with_output()
