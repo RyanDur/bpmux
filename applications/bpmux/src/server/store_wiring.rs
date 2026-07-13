@@ -157,6 +157,7 @@ fn assemble(
         hub.clone(),
         parent_ct,
         rate_limit_observer.clone(),
+        Arc::new(crate::transport::ci_watcher::CiWatcherDriver),
     ));
     app_store.add_listener(ci_poll.clone());
     app_store.add_listener(Arc::new(RoutingPersister::new(hub.storage.clone())));

@@ -1,9 +1,15 @@
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
+
+use tokio_util::sync::CancellationToken;
 
 use crate::bridge::tracker::ConditionalRunEntry;
-use crate::ci::CiEvent;
+use crate::ci::{CiEvent, CiStateStore};
+use crate::hub::Hub;
 use crate::rate_limit::RateLimitObserver;
+use crate::store::AppAction;
+use kernel::Dispatch;
 
 pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
@@ -14,6 +20,18 @@ pub trait CiPollFetch: Send + Sync + 'static {
     ) -> BoxedFuture<'a, Result<ConditionalRunEntry, String>>;
 
     fn rate_limit_observer(&self) -> RateLimitObserver;
+}
+
+pub trait CiWatchDriver: Send + Sync {
+    fn spawn_watch(
+        &self,
+        dispatch: Dispatch<AppAction>,
+        tracker: Arc<dyn CiPollFetch>,
+        ci_state_store: CiStateStore,
+        hub: Arc<Hub>,
+        observer: RateLimitObserver,
+        ct: CancellationToken,
+    );
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

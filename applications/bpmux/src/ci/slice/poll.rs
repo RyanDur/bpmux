@@ -6,10 +6,9 @@ use crate::ci::CiStateStore;
 use crate::hub::Hub;
 use crate::rate_limit::RateLimitObserver;
 use crate::store::{AppAction, AppState};
-use crate::transport::ci_watcher;
 use kernel::{DeliveryMode, Dispatch, Listener, ListenerFuture, Reaction};
 
-use super::{CiAction, CiPollFetch};
+use super::{CiAction, CiPollFetch, CiWatchDriver};
 
 pub struct CiPoll {
     tracker: Option<Arc<dyn CiPollFetch>>,
@@ -17,6 +16,7 @@ pub struct CiPoll {
     hub: Arc<Hub>,
     parent_ct: CancellationToken,
     observer: RateLimitObserver,
+    watch_driver: Arc<dyn CiWatchDriver>,
     token: Mutex<Option<CancellationToken>>,
 }
 
@@ -27,6 +27,7 @@ impl CiPoll {
         hub: Arc<Hub>,
         parent_ct: CancellationToken,
         observer: RateLimitObserver,
+        watch_driver: Arc<dyn CiWatchDriver>,
     ) -> Self {
         Self {
             tracker,
@@ -34,6 +35,7 @@ impl CiPoll {
             hub,
             parent_ct,
             observer,
+            watch_driver,
             token: Mutex::new(None),
         }
     }
@@ -57,7 +59,7 @@ impl CiPoll {
             return;
         }
         let token = self.parent_ct.child_token();
-        ci_watcher::spawn(
+        self.watch_driver.spawn_watch(
             dispatch,
             tracker,
             self.ci_state_store.clone(),

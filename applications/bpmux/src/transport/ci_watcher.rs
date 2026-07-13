@@ -3,14 +3,31 @@ use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 
+use crate::ci::slice::CiWatchDriver;
 use crate::ci::{CiStateStore, MAX_BACKOFF, POLL_INTERVAL};
 use crate::hub::Hub;
 use crate::rate_limit::RateLimitObserver;
-use crate::store::{CiAction, CiPollFetch, CiSnapshot};
+use crate::store::{AppAction, CiAction, CiPollFetch, CiSnapshot};
 use kernel::Dispatch;
 use message::{CiSnapshotWire, Message, MessageType, StateDeltaPayload};
 
 pub const WATCHER_UNHEALTHY_THRESHOLD: Duration = Duration::from_secs(120);
+
+pub struct CiWatcherDriver;
+
+impl CiWatchDriver for CiWatcherDriver {
+    fn spawn_watch(
+        &self,
+        dispatch: Dispatch<AppAction>,
+        tracker: Arc<dyn CiPollFetch>,
+        ci_state_store: CiStateStore,
+        hub: Arc<Hub>,
+        observer: RateLimitObserver,
+        ct: CancellationToken,
+    ) {
+        spawn(dispatch, tracker, ci_state_store, hub, observer, ct);
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Transition {
