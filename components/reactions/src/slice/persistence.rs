@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::reactions::{Reaction, ReactionsStore};
+use crate::{Reaction, ReactionsStore};
 
 use super::{EmojiBuckets, ReactionsState};
 

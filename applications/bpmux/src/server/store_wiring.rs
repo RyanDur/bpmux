@@ -132,9 +132,9 @@ fn assemble(
     let ci_listeners: CiListeners = Arc::new(Mutex::new(Vec::new()));
     let app_store = kernel::Store::new(
         AppState::with_board(board::persistence::load(&hub.dir))
-            .with_reactions(crate::store::reactions::from_store(
-                &crate::reactions::load(&hub.dir),
-            ))
+            .with_reactions(crate::store::reactions::from_store(&reactions::load(
+                &hub.dir,
+            )))
             .with_evidence(product_management::evidence::from_store(
                 &product_management::evidence::load(&hub.dir),
             ))

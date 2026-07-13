@@ -42,7 +42,7 @@ pub async fn post_seed_messages(
 
 #[derive(Deserialize)]
 pub struct SeedReactionsBody {
-    pub store: crate::reactions::ReactionsStore,
+    pub store: reactions::ReactionsStore,
 }
 
 pub async fn post_seed_reactions(

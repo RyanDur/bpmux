@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-use super::reactions::slice::{
+use crate::slice::{
     ReactionsAction, ReactionsState, aggregated_for_channel, from_store, reduce, to_store,
 };
-use super::reactions::{load, save};
+use crate::{load, save};
 use tempfile::tempdir;
 
 fn toggle(

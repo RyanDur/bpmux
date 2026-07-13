@@ -3,9 +3,9 @@ use std::sync::Arc;
 use crate::hub;
 
 pub use crate::ci::slice as ci;
-pub use crate::reactions::slice as reactions;
 pub use crate::roster;
 pub use board;
+pub use reactions::slice as reactions;
 pub use user_routing::slice as routing;
 pub mod commitments;
 pub mod sync;

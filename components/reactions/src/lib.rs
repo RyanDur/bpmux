@@ -36,3 +36,6 @@ pub fn save(data_dir: &Path, store: &ReactionsStore) -> Result<(), std::io::Erro
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     std::fs::write(&path, json)
 }
+
+#[cfg(test)]
+mod reactions_tests;

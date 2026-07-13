@@ -483,7 +483,7 @@ async fn get_reactions_reads_the_store_selector_with_no_file_present() {
     .await;
 
     assert!(
-        !crate::reactions::reactions_path(&hub.dir).exists(),
+        !reactions::reactions_path(&hub.dir).exists(),
         "no persister is registered on this store, so the data lives only in the store"
     );
 
@@ -510,7 +510,7 @@ async fn get_reactions_reads_the_store_selector_with_no_file_present() {
     );
     assert_eq!(agg[0]["count"], 1);
     assert!(
-        !crate::reactions::reactions_path(&hub.dir).exists(),
+        !reactions::reactions_path(&hub.dir).exists(),
         "GET must not read or materialize a reactions.json file",
     );
 }

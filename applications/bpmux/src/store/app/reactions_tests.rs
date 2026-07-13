@@ -61,7 +61,7 @@ async fn a_reaction_toggle_is_flushed_to_disk() {
     let (hub, _dir) = fresh_hub();
     let listener = ReactionsPersister::new(hub.clone());
     drive(&listener, AppState::default(), &toggle_action("owner")).await;
-    let hydrated = from_store(&crate::reactions::load(&hub.dir));
+    let hydrated = from_store(&reactions::load(&hub.dir));
     assert_eq!(
         aggregated_for_channel(&hydrated, "broadcast")[0].count,
         1,
@@ -75,7 +75,7 @@ async fn an_untouched_reactions_grain_writes_no_file() {
     let listener = ReactionsPersister::new(hub.clone());
     drive(&listener, AppState::default(), &roster_action()).await;
     assert!(
-        !crate::reactions::reactions_path(&hub.dir).exists(),
+        !reactions::reactions_path(&hub.dir).exists(),
         "the pointer guard keeps the persister quiet when reactions are untouched"
     );
 }
@@ -84,9 +84,9 @@ async fn an_untouched_reactions_grain_writes_no_file() {
 fn a_cold_boot_hydrates_the_reactions_grain_from_its_file() {
     let (hub, _dir) = fresh_hub();
     let seeded = app_reduce(&AppState::default(), &toggle_action("owner"));
-    crate::reactions::save(&hub.dir, &to_store(&seeded.reactions)).unwrap();
+    reactions::save(&hub.dir, &to_store(&seeded.reactions)).unwrap();
 
-    let state = AppState::default().with_reactions(from_store(&crate::reactions::load(&hub.dir)));
+    let state = AppState::default().with_reactions(from_store(&reactions::load(&hub.dir)));
 
     assert_eq!(
         aggregated_for_channel(&state.reactions, "broadcast"),

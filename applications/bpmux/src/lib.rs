@@ -34,9 +34,6 @@ pub mod owner_session;
 #[cfg(test)]
 mod pm_integration_tests;
 pub mod rate_limit;
-pub mod reactions;
-#[cfg(test)]
-mod reactions_tests;
 pub mod room;
 pub mod roster;
 pub mod server;
