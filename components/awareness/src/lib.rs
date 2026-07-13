@@ -91,3 +91,6 @@ pub fn spawn(host: Arc<dyn AwarenessHost>, owner_name: String) {
         }
     });
 }
+
+#[cfg(test)]
+mod awareness_tests;

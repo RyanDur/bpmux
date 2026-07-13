@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use tokio::sync::broadcast;
 
 use super::Hub;
-use crate::awareness::AwarenessHost;
+use awareness::AwarenessHost;
 use message::Message;
 use message_log::LogError;
 

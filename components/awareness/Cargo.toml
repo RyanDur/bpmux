@@ -1,0 +1,18 @@
+[package]
+name = "awareness"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Ambient awareness: experience, handoff, pileon, recall detectors over the message stream"
+
+[dependencies]
+comprehension = { path = "../comprehension" }
+diag = { path = "../diag" }
+memory = { path = "../memory" }
+message = { path = "../message" }
+message_log = { path = "../message_log" }
+chrono = { workspace = true }
+tokio = { workspace = true, features = ["sync", "rt", "time", "macros"] }
+
+[lints]
+workspace = true

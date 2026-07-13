@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::awareness::AwarenessHost;
+use crate::AwarenessHost;
 use memory::lessons;
 use message::Message;
 

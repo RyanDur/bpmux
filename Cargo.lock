@@ -226,6 +226,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
+name = "awareness"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "comprehension",
+ "diag",
+ "memory",
+ "message",
+ "message_log",
+ "tokio",
+]
+
+[[package]]
 name = "aws-lc-rs"
 version = "1.16.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -368,6 +381,7 @@ dependencies = [
  "aes-gcm",
  "aho-corasick",
  "anyhow",
+ "awareness",
  "axum",
  "base64",
  "board",

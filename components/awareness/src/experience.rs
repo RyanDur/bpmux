@@ -1,7 +1,7 @@
 use std::time::Duration;
 use tokio::time::Instant;
 
-use crate::awareness::AwarenessHost;
+use crate::AwarenessHost;
 use comprehension::bayes::BayesModel;
 use comprehension::classifier;
 use diag::log_diag;

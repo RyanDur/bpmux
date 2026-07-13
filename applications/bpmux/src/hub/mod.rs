@@ -10,6 +10,8 @@ use message::Message;
 use message_log::LogError;
 
 mod awareness_host;
+#[cfg(test)]
+mod awareness_host_tests;
 
 pub const BROADCAST_CHANNEL_CAPACITY: usize = 10_000;
 

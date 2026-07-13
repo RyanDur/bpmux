@@ -81,7 +81,7 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
         let ct = ct.clone();
         let restart_signal = restart_signal.clone();
         async move {
-            crate::awareness::spawn(hub.clone(), hub.owner_name.clone());
+            awareness::spawn(hub.clone(), hub.owner_name.clone());
             transport::self_update::spawn_binary_watcher(ct.clone(), restart_signal);
             spawn_shutdown_signal_listener(ct.clone());
             server::run_server(hub, port, ct)

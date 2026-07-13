@@ -158,7 +158,7 @@ impl crate::sync::OutboxRepo for SqliteStorage {
     }
 }
 
-impl crate::awareness::SurfacedTopicsRepo for SqliteStorage {
+impl awareness::SurfacedTopicsRepo for SqliteStorage {
     fn load_surfaced_topics(&self) -> HashSet<String> {
         surfaced_topics::load(&self.lock())
     }

@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use super::FileStorage;
 
-impl crate::awareness::SurfacedTopicsRepo for FileStorage {
+impl awareness::SurfacedTopicsRepo for FileStorage {
     fn load_surfaced_topics(&self) -> HashSet<String> {
         let path = self.dir.join("surfaced-topics.json");
         std::fs::read_to_string(&path)

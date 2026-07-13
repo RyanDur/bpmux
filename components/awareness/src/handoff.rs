@@ -1,7 +1,7 @@
 use std::time::Duration;
 use tokio::time::Instant;
 
-use crate::awareness::AwarenessHost;
+use crate::AwarenessHost;
 use message::{Message, MessageType};
 
 use super::agents::AgentTracker;

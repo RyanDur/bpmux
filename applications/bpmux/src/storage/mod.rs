@@ -6,7 +6,7 @@ pub use backend::StorageBackend;
 pub use data::*;
 
 pub trait Storage:
-    crate::awareness::SurfacedTopicsRepo
+    awareness::SurfacedTopicsRepo
     + message_log::MessageLog
     + memory::lessons::LessonRepo
     + crate::sync::OutboxRepo

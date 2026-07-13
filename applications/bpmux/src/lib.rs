@@ -3,9 +3,6 @@
 pub mod auth;
 #[cfg(test)]
 mod auth_tests;
-pub mod awareness;
-#[cfg(test)]
-mod awareness_tests;
 pub mod bookmark;
 #[cfg(test)]
 mod bookmark_tests;
