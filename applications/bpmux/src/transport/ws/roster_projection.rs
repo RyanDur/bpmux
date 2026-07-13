@@ -31,7 +31,7 @@ fn fresh_orchestrator() -> Arc<crate::store::Store> {
         tx,
     ));
     std::mem::forget(dir);
-    Arc::new(crate::store::Store::new(
+    Arc::new(crate::store::test_support::wired_store(
         hub,
         None,
         crate::ci::CiStateStore::new(),

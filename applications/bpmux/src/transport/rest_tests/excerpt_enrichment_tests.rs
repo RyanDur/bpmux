@@ -197,7 +197,7 @@ async fn post_reaction_cascade_threads_excerpt_into_broadcast_event_text() {
     };
     hub.broadcast(&target_msg).expect("seed target message");
 
-    let orch = std::sync::Arc::new(crate::store::Store::new(
+    let orch = std::sync::Arc::new(crate::store::test_support::wired_store(
         hub.clone(),
         None,
         crate::ci::CiStateStore::new(),
@@ -261,7 +261,7 @@ async fn post_reaction_cascade_falls_back_to_no_excerpt_when_target_absent() {
         tx.clone(),
     ));
 
-    let orch = std::sync::Arc::new(crate::store::Store::new(
+    let orch = std::sync::Arc::new(crate::store::test_support::wired_store(
         hub.clone(),
         None,
         crate::ci::CiStateStore::new(),

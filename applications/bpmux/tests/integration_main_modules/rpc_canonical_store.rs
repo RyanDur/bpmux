@@ -94,7 +94,7 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
         "test".to_string(),
         wake_tx,
     ));
-    let app_store = Arc::new(bpmux::store::Store::new(
+    let app_store = Arc::new(bpmux::server::store_wiring::build_store(
         hub.clone(),
         None,
         bpmux::ci::CiStateStore::new(),

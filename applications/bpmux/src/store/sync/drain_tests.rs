@@ -11,6 +11,7 @@ use tokio_util::sync::CancellationToken;
 use crate::ci::CiStateStore;
 use crate::hub::Hub;
 use crate::integrations::in_memory::InMemorySourceAdapter;
+use crate::server::store_wiring::build_store_with_refresh;
 use crate::storage::StorageBackend;
 use crate::store::Store;
 use crate::store::test_support::eventually;
@@ -53,13 +54,16 @@ async fn write_queued_burst_single_flights_one_drain_that_pushes_each_write_once
     let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let refresh: Arc<dyn RefreshDriver> = orch.clone();
 
-    let store: Arc<Store> = Arc::new(
-        Store::new(hub, None, CiStateStore::new(), CancellationToken::new()).with_refresh(
-            refresh.clone(),
-            Duration::from_secs(60),
-            Duration::from_secs(15),
-        ),
-    );
+    let store: Arc<Store> = Arc::new(build_store_with_refresh(
+        hub,
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+        Vec::new(),
+        refresh.clone(),
+        Duration::from_secs(60),
+        Duration::from_secs(15),
+    ));
     refresh.bind_select(store.selector());
     refresh.bind_dispatch(store.dispatcher());
 
@@ -108,13 +112,16 @@ async fn a_mutated_write_is_selectable_the_moment_mutate_returns() {
     let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let refresh: Arc<dyn RefreshDriver> = orch.clone();
 
-    let store: Arc<Store> = Arc::new(
-        Store::new(hub, None, CiStateStore::new(), CancellationToken::new()).with_refresh(
-            refresh.clone(),
-            Duration::from_secs(60),
-            Duration::from_secs(15),
-        ),
-    );
+    let store: Arc<Store> = Arc::new(build_store_with_refresh(
+        hub,
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+        Vec::new(),
+        refresh.clone(),
+        Duration::from_secs(60),
+        Duration::from_secs(15),
+    ));
     refresh.bind_select(store.selector());
     refresh.bind_dispatch(store.dispatcher());
 
@@ -153,13 +160,16 @@ async fn an_ingested_upsert_is_selectable_the_moment_refresh_returns() {
     let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
     let refresh: Arc<dyn RefreshDriver> = orch.clone();
 
-    let store: Arc<Store> = Arc::new(
-        Store::new(hub, None, CiStateStore::new(), CancellationToken::new()).with_refresh(
-            refresh.clone(),
-            Duration::from_secs(60),
-            Duration::from_secs(15),
-        ),
-    );
+    let store: Arc<Store> = Arc::new(build_store_with_refresh(
+        hub,
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+        Vec::new(),
+        refresh.clone(),
+        Duration::from_secs(60),
+        Duration::from_secs(15),
+    ));
     refresh.bind_select(store.selector());
     refresh.bind_dispatch(store.dispatcher());
 

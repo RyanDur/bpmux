@@ -62,23 +62,31 @@ pub async fn run_server(
     let electron_capture_lock: std::sync::Arc<tokio::sync::Mutex<()>> =
         std::sync::Arc::new(tokio::sync::Mutex::new(()));
     let pty_registry = std::sync::Arc::new(crate::room::LivePtyRegistry::new());
-    let mut store_inner = crate::store::Store::with_initial_outbox(
-        hub.clone(),
-        tracker
-            .as_ref()
-            .cloned()
-            .map(|t| t as std::sync::Arc<dyn crate::store::CiPollFetch>),
-        ci_state_store.clone(),
-        ct.clone(),
-        hydrated_outbox,
-    );
-    if let Some(refresh) = orchestrator.as_ref().cloned() {
-        store_inner = store_inner.with_refresh(
+    let store_inner = match orchestrator.as_ref().cloned() {
+        Some(refresh) => store_wiring::build_store_with_refresh(
+            hub.clone(),
+            tracker
+                .as_ref()
+                .cloned()
+                .map(|t| t as std::sync::Arc<dyn crate::store::CiPollFetch>),
+            ci_state_store.clone(),
+            ct.clone(),
+            hydrated_outbox,
             refresh,
             crate::bridge::poll_interval_from_env(),
             crate::bridge::hydration_interval_from_env(),
-        );
-    }
+        ),
+        None => store_wiring::build_store_with_outbox(
+            hub.clone(),
+            tracker
+                .as_ref()
+                .cloned()
+                .map(|t| t as std::sync::Arc<dyn crate::store::CiPollFetch>),
+            ci_state_store.clone(),
+            ct.clone(),
+            hydrated_outbox,
+        ),
+    };
     let store = std::sync::Arc::new(store_inner);
     crate::room::spawn_terminal_delivery_loop(
         hub.clone(),
@@ -136,6 +144,7 @@ mod startup_sequence;
 mod startup_tasks;
 #[cfg(test)]
 mod startup_tasks_tests;
+pub mod store_wiring;
 mod wiring;
 use routes::{gated_routes, test_routes, test_seed_routes};
 use setup::*;

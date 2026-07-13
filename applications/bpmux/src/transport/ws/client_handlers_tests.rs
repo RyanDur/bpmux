@@ -16,7 +16,7 @@ fn fresh_store() -> (Arc<Store>, Arc<Hub>) {
     let (tx, _rx) = tokio::sync::broadcast::channel::<message::Message>(64);
     let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "local".to_string(), tx));
     std::mem::forget(dir);
-    let store = Arc::new(Store::new(
+    let store = Arc::new(crate::store::test_support::wired_store(
         hub.clone(),
         None,
         crate::ci::CiStateStore::new(),

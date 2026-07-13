@@ -14,6 +14,7 @@ use super::{
 };
 use crate::ci::CiStateStore;
 use crate::hub::Hub;
+use crate::server::store_wiring::build_store;
 use message::Message;
 
 fn fresh_orch() -> Arc<Store> {
@@ -21,7 +22,7 @@ fn fresh_orch() -> Arc<Store> {
     let (tx, _rx) = broadcast::channel::<Message>(64);
     let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "local".to_string(), tx));
     std::mem::forget(dir);
-    Arc::new(Store::new(
+    Arc::new(build_store(
         hub,
         None,
         CiStateStore::new(),
@@ -397,7 +398,7 @@ async fn post_reaction_rest_handler_dispatches_through_orchestrator() {
     let dir = TempDir::new().expect("tempdir");
     let (tx, _rx) = broadcast::channel::<Message>(64);
     let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "test".to_string(), tx));
-    let orch: Arc<Store> = Arc::new(Store::new(
+    let orch: Arc<Store> = Arc::new(build_store(
         hub.clone(),
         None,
         CiStateStore::new(),
@@ -465,7 +466,7 @@ async fn get_reactions_reads_the_store_selector_with_no_file_present() {
     let dir = TempDir::new().expect("tempdir");
     let (tx, _rx) = broadcast::channel::<Message>(64);
     let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "test".to_string(), tx));
-    let orch: Arc<Store> = Arc::new(Store::new(
+    let orch: Arc<Store> = Arc::new(build_store(
         hub.clone(),
         None,
         CiStateStore::new(),
@@ -524,7 +525,7 @@ async fn post_reaction_returns_present_from_the_post_dispatch_selector() {
     let dir = TempDir::new().expect("tempdir");
     let (tx, _rx) = broadcast::channel::<Message>(64);
     let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "test".to_string(), tx));
-    let orch: Arc<Store> = Arc::new(Store::new(
+    let orch: Arc<Store> = Arc::new(build_store(
         hub.clone(),
         None,
         CiStateStore::new(),
