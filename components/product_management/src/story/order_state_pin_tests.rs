@@ -21,6 +21,8 @@ const CANONICAL_STORY_KEYS: &[&str] = &[
     "acceptor",
     "parent_epic",
     "tags",
+    "remote_updated_at",
+    "state_written_at",
 ];
 
 const SELF_FILE: &str = "order_state_pin_tests.rs";
@@ -49,6 +51,8 @@ fn fully_populated_story() -> Story {
     story.acceptor = Some(Acceptor::Owner);
     story.parent_epic = Some(EpicId::new(7));
     story.tags = vec![Tag::DeskCheckFail];
+    story.remote_updated_at = Some(Utc.with_ymd_and_hms(2026, 1, 2, 0, 0, 0).unwrap());
+    story.state_written_at = Some(Utc.with_ymd_and_hms(2026, 1, 3, 0, 0, 0).unwrap());
     story
 }
 

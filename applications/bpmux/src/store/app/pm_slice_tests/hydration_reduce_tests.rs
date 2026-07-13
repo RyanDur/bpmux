@@ -126,6 +126,74 @@ fn a_metadata_reseed_preserves_the_store_only_optimistic_verdict() {
     assert_eq!(gates[0].payload.as_deref(), Some("accepted in error"));
 }
 
+fn locally_transition(store: &crate::store::SeededStore, id: u64, new_state: Work) {
+    apply(
+        store,
+        StoryEvent::new(
+            meta("pm", 2026),
+            StoryId::new(id),
+            StoryEventKind::StateTransitioned {
+                new_state,
+                placement: None,
+            },
+        ),
+    );
+}
+
+#[test]
+fn a_reseed_with_absent_remote_freshness_preserves_the_locally_written_state() {
+    let store = seeded();
+    created(&store, 800, "reopened", Work::NotStarted);
+    locally_transition(&store, 800, Work::Accepted);
+
+    seed(&store, vec![minimal(800, "reopened", Work::NotStarted)]);
+
+    assert_eq!(
+        story_at(&store, 800).unwrap().state,
+        Work::Accepted,
+        "an undated reseed carries no freshness and cannot supersede the dated local state write"
+    );
+}
+
+#[test]
+fn a_reseed_with_older_remote_freshness_preserves_the_locally_written_state() {
+    let store = seeded();
+    created(&store, 801, "reopened", Work::NotStarted);
+    locally_transition(&store, 801, Work::Accepted);
+
+    let mut stale = minimal(801, "reopened", Work::NotStarted);
+    stale.remote_updated_at = Some(Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap());
+    seed(&store, vec![stale]);
+
+    assert_eq!(
+        story_at(&store, 801).unwrap().state,
+        Work::Accepted,
+        "a remote snapshot older than the local state write is stale and cannot supersede it"
+    );
+}
+
+#[test]
+fn a_reseed_with_newer_remote_freshness_applies_the_remote_state() {
+    let store = seeded();
+    created(&store, 802, "reopened", Work::NotStarted);
+    locally_transition(&store, 802, Work::Accepted);
+
+    let mut fresh = minimal(802, "reopened", Work::InProgress);
+    fresh.remote_updated_at = Some(Utc.with_ymd_and_hms(2027, 1, 1, 0, 0, 0).unwrap());
+    seed(&store, vec![fresh]);
+
+    let after = story_at(&store, 802).unwrap();
+    assert_eq!(
+        after.state,
+        Work::InProgress,
+        "a remote snapshot newer than the local state write wins — the genuine-reopen path stays possible"
+    );
+    assert_eq!(
+        after.state_written_at, None,
+        "once remote authority applies, the local-write marker clears so subsequent snapshots read remote-authoritative"
+    );
+}
+
 #[test]
 fn free_comments_fetched_event_replaces_lazy_field() {
     let store = seeded();

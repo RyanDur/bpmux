@@ -26,6 +26,7 @@ pub(super) fn issue_to_board_json(issue: &octocrab::models::issues::Issue) -> se
         "parent_epic": parent_epic,
         "assignees": issue.assignees.iter().map(|a| a.login.clone()).collect::<Vec<_>>(),
         "created_at": issue.created_at.to_rfc3339(),
+        "updated_at": issue.updated_at.to_rfc3339(),
         "body": issue.body.clone().unwrap_or_default(),
     })
 }

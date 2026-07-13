@@ -52,6 +52,11 @@ pub fn decode_story_with_placement(v: &serde_json::Value) -> Option<(Story, Opti
         .and_then(|x| x.as_str())
         .map(ToString::to_string)
         .unwrap_or_else(|| "unknown".to_string());
+    let remote_updated_at = v
+        .get("updated_at")
+        .and_then(|x| x.as_str())
+        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc));
     let mut story = Story::new_minimal(
         StoryId::new(number),
         title.clone(),
@@ -59,6 +64,7 @@ pub fn decode_story_with_placement(v: &serde_json::Value) -> Option<(Story, Opti
         filed_at,
         filed_by,
     );
+    story.remote_updated_at = remote_updated_at;
     story.story_type = story_type_from_labels_or_title(&labels, &title);
     story.acceptor = super::label_fields::acceptor_from_labels(&labels);
     story.parent_epic = super::label_fields::parent_epic_from_labels(&labels).map(EpicId::new);

@@ -14,7 +14,9 @@ use product_management::story::{
 const FIX_QUEUED_TAG_ADDED: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"label":"ready"}}}"#;
 const FIX_QUEUED_TRANSITIONED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"new_state":"in-progress","placement":"desk-check"}}}"#;
 const FIX_QUEUED_VERDICT: &str = r#"{"id":0,"event":{"VerdictCast":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"verdict":{"Fail":{"step":"acceptance"}},"payload":"narrow viewport"}}}"#;
-const FIX_QUEUED_REFRESHED: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[]}}}}"#;
+const FIX_QUEUED_REFRESHED: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[],"remote_updated_at":null,"state_written_at":null}}}}"#;
+
+const FIX_LEGACY_REFRESHED_WITHOUT_FRESHNESS: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[]}}}}"#;
 const FIX_STORY_EVENT: &str = r#"{"TagAdded":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"label":"ready"}}"#;
 
 const FIX_ABSENT_PLACEMENT: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","ts":"2026-07-07T12:00:00Z"},"id":700,"new_state":"in-progress"}}}"#;
@@ -80,6 +82,19 @@ fn queued_verdict_cast_row_round_trips_byte_identically() {
 #[test]
 fn queued_story_refreshed_row_round_trips_byte_identically() {
     assert_byte_round_trip(FIX_QUEUED_REFRESHED);
+}
+
+#[test]
+fn a_legacy_refreshed_row_without_freshness_fields_defaults_to_none() {
+    let parsed: QueuedEvent = serde_json::from_str(FIX_LEGACY_REFRESHED_WITHOUT_FRESHNESS)
+        .expect("pre-freshness row deserializes");
+    match &parsed.event.kind {
+        StoryEventKind::StoryRefreshed { story } => {
+            assert_eq!(story.remote_updated_at, None);
+            assert_eq!(story.state_written_at, None);
+        }
+        other => panic!("fixture is a StoryRefreshed row; got {other:?}"),
+    }
 }
 
 #[test]

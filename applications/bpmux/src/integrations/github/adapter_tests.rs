@@ -234,6 +234,39 @@ fn decode_story_metadata_decodes_body_when_present() {
 }
 
 #[test]
+fn decode_story_metadata_reads_remote_updated_at_from_the_issue_updated_at_field() {
+    let dated = serde_json::json!({
+        "number": 77,
+        "title": "t",
+        "state": "open",
+        "labels": [{"name": "ready"}],
+        "created_at": "2026-04-20T00:00:00Z",
+        "updated_at": "2026-07-09T18:30:00Z",
+        "user": {"login": "pm"},
+    });
+    let story = decode_story_metadata(&dated).expect("story");
+    assert_eq!(
+        story.remote_updated_at.map(|dt| dt.to_rfc3339()),
+        Some("2026-07-09T18:30:00+00:00".to_string()),
+        "the issue's updated_at is the remote freshness the LWW guard compares against"
+    );
+
+    let undated = serde_json::json!({
+        "number": 78,
+        "title": "t",
+        "state": "open",
+        "labels": [{"name": "ready"}],
+        "created_at": "2026-04-20T00:00:00Z",
+        "user": {"login": "pm"},
+    });
+    let story = decode_story_metadata(&undated).expect("story");
+    assert_eq!(
+        story.remote_updated_at, None,
+        "a snapshot without updated_at carries no freshness"
+    );
+}
+
+#[test]
 fn decode_story_metadata_reads_string_label_shape() {
     let json = serde_json::json!({
         "number": 1,

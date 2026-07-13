@@ -70,6 +70,10 @@ pub struct Story {
     pub parent_epic: Option<EpicId>,
     #[serde(default)]
     pub tags: Vec<Tag>,
+    #[serde(default)]
+    pub remote_updated_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    pub state_written_at: Option<DateTime<Utc>>,
 }
 
 impl Story {
@@ -95,6 +99,8 @@ impl Story {
             acceptor: None,
             parent_epic: None,
             tags: Vec::new(),
+            remote_updated_at: None,
+            state_written_at: None,
         }
     }
 

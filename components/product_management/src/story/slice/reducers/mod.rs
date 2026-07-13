@@ -7,6 +7,7 @@ use crate::story::{Story, StoryId, StoryKey};
 mod comments;
 mod labels;
 mod lifecycle;
+mod lww;
 
 use comments::{
     apply_free_comment_appended, apply_free_comments_fetched, apply_verdict_cast,
@@ -47,6 +48,13 @@ pub fn reduce(state: &Stories, action: &StoryAction) -> Stories {
                         seeded.body = existing.body.clone();
                         seeded.body_etag = existing.body_etag.clone();
                     }
+                    if !lww::remote_state_supersedes_local(
+                        existing.state_written_at,
+                        seeded.remote_updated_at,
+                    ) {
+                        seeded.state = existing.state.clone();
+                        seeded.state_written_at = existing.state_written_at;
+                    }
                 }
                 stories.insert(key, seeded);
             }
@@ -77,7 +85,7 @@ fn apply_event(w: &mut Stories, event: &StoryEvent) {
             *story_type,
         ),
         StoryEventKind::StateTransitioned { new_state, .. } => {
-            apply_state_transitioned(w, id, new_state.clone())
+            apply_state_transitioned(w, id, &event.meta, new_state.clone())
         }
         StoryEventKind::VerdictCast { verdict, payload } => {
             apply_verdict_cast(w, id, &event.meta, verdict.clone(), payload.clone())

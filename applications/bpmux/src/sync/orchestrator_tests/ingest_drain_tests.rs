@@ -325,6 +325,7 @@ async fn drain_echo_applies_full_remote_authority_once_the_queue_for_the_story_i
 
     let mut echo_story = seed_story(43, Work::Accepted);
     echo_story.title = "authoritative-remote-title".to_string();
+    echo_story.remote_updated_at = Some(Utc.with_ymd_and_hms(2026, 4, 25, 16, 0, 0).unwrap());
     adapter.queue_push_follow_up(StoryEvent::new(
         meta(),
         StoryId::new(43),
@@ -464,6 +465,38 @@ async fn refresh_story_seeds_when_no_local_write_is_queued() {
         orchestrator.story(77).unwrap().state,
         Work::Acceptance,
         "with an empty outbox refresh hydrates the story exactly as before WR-1"
+    );
+}
+
+#[tokio::test]
+async fn a_stale_ingest_after_the_accept_write_drains_does_not_revert_the_accepted_state() {
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    adapter.seed_stories(vec![seed_story(45, Work::Acceptance)]);
+    let orchestrator = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    handle.bind_refresh(&orch_dyn);
+
+    orchestrator.ingest_once().await.unwrap();
+    orchestrator
+        .mutate(StoryEvent::new(
+            meta(),
+            StoryId::new(45),
+            StoryEventKind::StateTransitioned {
+                new_state: Work::Accepted,
+                placement: None,
+            },
+        ))
+        .unwrap();
+    orchestrator.drain_pass().await.unwrap();
+
+    adapter.seed_stories(vec![seed_story(45, Work::Acceptance)]);
+    orchestrator.ingest_once().await.unwrap();
+
+    assert_eq!(
+        orchestrator.story(45).unwrap().state,
+        Work::Accepted,
+        "the post-drain window: an undated poll snapshot read before the accept push is reflected remotely must NOT revert the optimistic Accepted state"
     );
 }
 

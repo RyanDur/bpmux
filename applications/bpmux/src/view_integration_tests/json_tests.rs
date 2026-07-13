@@ -22,6 +22,8 @@ fn sample_story(state: Work, story_type: StoryKind) -> Story {
         acceptor: None,
         parent_epic: None,
         tags: Vec::new(),
+        remote_updated_at: None,
+        state_written_at: None,
     }
 }
 

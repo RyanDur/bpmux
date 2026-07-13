@@ -55,6 +55,8 @@ fn assert_metadata_axis_complete(decoded: &Story, labels: &[String]) {
         acceptor,
         parent_epic,
         tags,
+        remote_updated_at,
+        state_written_at,
     } = decoded;
 
     assert_eq!(*id, StoryId::new(42), "number must roundtrip from JSON");
@@ -128,6 +130,8 @@ fn assert_metadata_axis_complete(decoded: &Story, labels: &[String]) {
     let _ = free_comments;
     let _ = verdicts;
     let _ = body_etag;
+    let _ = remote_updated_at;
+    let _ = state_written_at;
 }
 
 #[test]

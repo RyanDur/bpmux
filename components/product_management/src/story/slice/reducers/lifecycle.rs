@@ -27,13 +27,21 @@ pub(super) fn apply_story_created(
         acceptor: None,
         parent_epic: None,
         tags: Vec::new(),
+        remote_updated_at: None,
+        state_written_at: None,
     };
     w.insert(StoryKey::Saved(id), story);
 }
 
-pub(super) fn apply_state_transitioned(w: &mut Stories, id: StoryId, new_state: Work) {
+pub(super) fn apply_state_transitioned(
+    w: &mut Stories,
+    id: StoryId,
+    meta: &EventMeta,
+    new_state: Work,
+) {
     if let Some(story) = w.get_mut(&StoryKey::Saved(id)) {
         story.state = new_state;
+        story.state_written_at = Some(meta.ts);
     }
 }
 
@@ -93,7 +101,13 @@ pub(super) fn apply_story_refreshed(w: &mut Stories, id: StoryId, story: &Story)
     match w.get_mut(&key) {
         Some(existing) => {
             existing.title = story.title.clone();
-            existing.state = story.state.clone();
+            if super::lww::remote_state_supersedes_local(
+                existing.state_written_at,
+                story.remote_updated_at,
+            ) {
+                existing.state = story.state.clone();
+                existing.state_written_at = None;
+            }
             if story.body.is_some() {
                 existing.body = story.body.clone();
                 existing.body_etag = None;
