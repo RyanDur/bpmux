@@ -51,7 +51,8 @@ pub mod telemetry;
 pub mod transport;
 #[cfg(test)]
 mod user_id_pin_tests;
-pub mod view;
+#[cfg(test)]
+mod view_integration_tests;
 #[cfg(test)]
 mod workflow_test_support;
 

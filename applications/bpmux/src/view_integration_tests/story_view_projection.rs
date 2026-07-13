@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::*;
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use chrono::{TimeZone, Utc};
 use product_management::story::{Story, StoryId, Work};
+use view::board::StoryView;
 
 fn story(id: u64, title: &str, state: Work) -> Story {
     Story::new_minimal(

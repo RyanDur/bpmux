@@ -19,7 +19,7 @@ pub async fn get_metrics(State(hub): State<Arc<hub::Hub>>) -> impl IntoResponse 
         }
     };
     let now = chrono::Utc::now();
-    let metrics = crate::view::velocity::compute(&messages, now, |_| true);
+    let metrics = view::velocity::compute(&messages, now, |_| true);
     (
         StatusCode::OK,
         json_headers(),

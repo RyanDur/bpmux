@@ -11,7 +11,7 @@ pub(crate) fn ordered_board_stories(
         .map(|s| {
             let projected = product_management::scheduling::projected_state(s, &iterations);
             let state = board::wire_state(&projected, refresh.story_held_stage(s).as_ref());
-            crate::view::board::story_to_board_json(&codec, s, &state)
+            view::board::story_to_board_json(&codec, s, &state)
         })
         .collect();
     let current_order: Vec<u64> =
@@ -118,7 +118,7 @@ pub(crate) fn board_epics(refresh: &Arc<dyn crate::sync::RefreshDriver>) -> Vec<
 pub(crate) fn board_iterations(
     refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
-    use crate::view::board::IterationView;
+    use view::board::IterationView;
     let outcomes = refresh.outcomes();
     let workflow = workflow::current_workflow();
     refresh
@@ -147,7 +147,7 @@ pub(crate) fn board_roadmap(
 pub(crate) fn board_outcomes(
     refresh: &Arc<dyn crate::sync::RefreshDriver>,
 ) -> Vec<serde_json::Value> {
-    use crate::view::board::OutcomeView;
+    use view::board::OutcomeView;
     let all_iterations = refresh.iterations();
     let workflow = workflow::current_workflow();
     refresh

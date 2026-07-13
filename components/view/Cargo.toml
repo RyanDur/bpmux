@@ -1,0 +1,18 @@
+[package]
+name = "view"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Read-model projections: board wire views, roadmap render, velocity"
+
+[dependencies]
+board = { path = "../board" }
+product_management = { path = "../product_management" }
+workflow = { path = "../workflow" }
+message = { path = "../message" }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+
+[lints]
+workspace = true

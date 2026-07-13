@@ -35,7 +35,7 @@ impl StoryView {
     }
 }
 
-pub(crate) fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String> {
+pub fn wire_labels<C: LabelCodec>(codec: &C, story: &Story) -> Vec<String> {
     let mut labels: Vec<String> = Vec::new();
     labels.push(story.story_type().as_label().to_string());
     for tag in story.tags() {

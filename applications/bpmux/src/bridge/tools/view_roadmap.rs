@@ -34,5 +34,5 @@ async fn fetch_roadmap_view(port: u16) -> Result<String, String> {
         .map_err(|e| format!("failed to read response: {e}"))?;
     let value: serde_json::Value =
         serde_json::from_str(&body).map_err(|e| format!("unparseable roadmap response: {e}"))?;
-    Ok(crate::view::roadmap_render::render_overview_layer(&value))
+    Ok(view::roadmap_render::render_overview_layer(&value))
 }

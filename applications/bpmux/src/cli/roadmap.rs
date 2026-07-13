@@ -31,7 +31,7 @@ pub(crate) fn run_roadmap(
     let out = if outcome.is_some() {
         render_drill(&value)
     } else {
-        crate::view::roadmap_render::render_overview_layer(&value)
+        view::roadmap_render::render_overview_layer(&value)
     };
     print!("{out}");
     Ok(())

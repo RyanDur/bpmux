@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::json::story_to_board_json;
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use product_management::epic::EpicId;
 use product_management::story::{Story, StoryId, StoryKind, Work};
+use view::board::story_to_board_json;
 
 fn sample_story(state: Work, story_type: StoryKind) -> Story {
     Story {
