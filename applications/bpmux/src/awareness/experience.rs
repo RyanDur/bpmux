@@ -1,7 +1,7 @@
 use std::time::Duration;
 use tokio::time::Instant;
 
-use crate::hub::Hub;
+use crate::awareness::AwarenessHost;
 use comprehension::bayes::BayesModel;
 use comprehension::classifier;
 use diag::log_diag;
@@ -108,7 +108,7 @@ impl ExperienceDetector {
         }
     }
 
-    pub fn flush(&mut self, hub: &Hub, agents: &AgentTracker) {
+    pub fn flush(&mut self, host: &dyn AwarenessHost, agents: &AgentTracker) {
         for recipient in &agents.connected {
             let filtered: Vec<&PendingExperience> = self
                 .pending
@@ -127,7 +127,7 @@ impl ExperienceDetector {
                 to: Some(vec![recipient.clone()]),
                 ..Message::default()
             };
-            let _ = hub.broadcast(&nudge);
+            let _ = host.broadcast(&nudge);
         }
         self.pending.clear();
     }

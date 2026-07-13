@@ -1,7 +1,7 @@
 use std::time::Duration;
 use tokio::time::Instant;
 
-use crate::hub::Hub;
+use crate::awareness::AwarenessHost;
 use comprehension::classifier;
 use message::Message;
 
@@ -25,7 +25,13 @@ impl PileonDetector {
         }
     }
 
-    pub fn on_message(&mut self, hub: &Hub, msg: &Message, sender: &str, _agents: &AgentTracker) {
+    pub fn on_message(
+        &mut self,
+        host: &dyn AwarenessHost,
+        msg: &Message,
+        sender: &str,
+        _agents: &AgentTracker,
+    ) {
         if !msg.is_chat() {
             return;
         }
@@ -57,7 +63,7 @@ impl PileonDetector {
                     to: Some(self.responders.clone()),
                     ..Message::default()
                 };
-                let _ = hub.broadcast(&nudge);
+                let _ = host.broadcast(&nudge);
                 self.window_start = None;
                 self.responders.clear();
             }

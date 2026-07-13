@@ -171,7 +171,7 @@ fn flush_excludes_recipient_own_messages() {
         "precondition: detector should have pending experiences after feeding corrections"
     );
 
-    detector.flush(&hub, &agents);
+    detector.flush(&*hub, &agents);
 
     let nudges = drain_broadcasts(&mut rx);
     assert!(!nudges.is_empty(), "expected at least one nudge");
@@ -227,7 +227,7 @@ fn flush_skips_recipients_with_only_own_experiences() {
         ),
         "pm",
     );
-    detector.flush(&hub, &agents);
+    detector.flush(&*hub, &agents);
 
     let nudges = drain_broadcasts(&mut rx);
     let pm_nudge = nudges
@@ -331,7 +331,7 @@ fn handoff_nudge_suppressed_when_recipient_already_responded() {
 
     let _ = drain_broadcasts(&mut rx);
 
-    tracker.timeout_nudge(&hub);
+    tracker.timeout_nudge(&*hub);
 
     let broadcasts_after = drain_broadcasts(&mut rx);
     let suppressed = !broadcasts_after
@@ -361,7 +361,7 @@ fn handoff_nudge_fires_when_recipient_silent() {
     assert!(tracker.is_pending());
 
     let _ = drain_broadcasts(&mut rx);
-    tracker.timeout_nudge(&hub);
+    tracker.timeout_nudge(&*hub);
 
     let broadcasts_after = drain_broadcasts(&mut rx);
     let fired = broadcasts_after

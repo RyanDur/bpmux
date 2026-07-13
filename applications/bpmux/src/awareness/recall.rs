@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::hub::Hub;
+use crate::awareness::AwarenessHost;
 use memory::lessons;
 use message::Message;
 
@@ -13,10 +13,10 @@ pub struct RecallSystem {
 }
 
 impl RecallSystem {
-    pub fn new(hub: &Hub) -> Self {
-        let surfaced_topics = hub.storage.load_surfaced_topics();
+    pub fn new(host: &dyn AwarenessHost) -> Self {
+        let surfaced_topics = host.load_surfaced_topics();
         let recall_count = surfaced_topics.len();
-        let cached_index = lessons::load_index(&hub.dir);
+        let cached_index = host.own_lesson_index();
         Self {
             surfaced_topics,
             recall_count,
@@ -24,9 +24,15 @@ impl RecallSystem {
         }
     }
 
-    pub fn on_message(&mut self, hub: &Hub, msg: &Message, sender: &str, owner_name: &str) {
+    pub fn on_message(
+        &mut self,
+        host: &dyn AwarenessHost,
+        msg: &Message,
+        sender: &str,
+        owner_name: &str,
+    ) {
         if sender == "bpmux" && msg.text.contains("lesson saved") {
-            self.cached_index = hub.storage.load_lessons();
+            self.cached_index = host.load_lessons();
         }
 
         if !msg.is_chat()
@@ -73,10 +79,10 @@ impl RecallSystem {
                 to: Some(vec![sender.to_string()]),
                 ..Message::default()
             };
-            let _ = hub.broadcast(&nudge);
+            let _ = host.broadcast(&nudge);
             self.surfaced_topics.insert(lesson.topic.clone());
             self.recall_count += 1;
-            let _ = hub.storage.save_surfaced_topics(&self.surfaced_topics);
+            let _ = host.save_surfaced_topics(&self.surfaced_topics);
         }
     }
 }
