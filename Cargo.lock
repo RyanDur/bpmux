@@ -351,6 +351,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "board"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "product_management",
+ "serde",
+ "serde_json",
+ "workflow",
+]
+
+[[package]]
 name = "bpmux"
 version = "0.1.0"
 dependencies = [
@@ -359,6 +370,7 @@ dependencies = [
  "anyhow",
  "axum",
  "base64",
+ "board",
  "chrono",
  "clap",
  "comprehension",

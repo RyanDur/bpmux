@@ -10,7 +10,7 @@ pub(crate) fn ordered_board_stories(
         .iter()
         .map(|s| {
             let projected = product_management::scheduling::projected_state(s, &iterations);
-            let state = crate::board::wire_state(&projected, refresh.story_held_stage(s).as_ref());
+            let state = board::wire_state(&projected, refresh.story_held_stage(s).as_ref());
             crate::view::board::story_to_board_json(&codec, s, &state)
         })
         .collect();
@@ -57,7 +57,7 @@ pub(crate) fn board_stories(
 pub(crate) fn board_columns_json() -> Vec<serde_json::Value> {
     let workflow = workflow::current_workflow();
     let middle = workflow::board_middle_stage_ids(workflow);
-    crate::board::board_columns(&middle)
+    board::board_columns(&middle)
         .iter()
         .map(|column| {
             let id = column_wire_id(column);
@@ -66,8 +66,8 @@ pub(crate) fn board_columns_json() -> Vec<serde_json::Value> {
         .collect()
 }
 
-fn column_wire_id(column: &crate::board::Column) -> String {
-    use crate::board::Column;
+fn column_wire_id(column: &board::Column) -> String {
+    use board::Column;
     match column {
         Column::Icebox => "icebox".to_string(),
         Column::Ready => "ready".to_string(),

@@ -25,10 +25,10 @@ pub(crate) async fn handle_pass_stage(
     let verdict = Verdict::Succeed {
         step: held.as_str().into(),
     };
-    let crate::board::Decision {
+    let board::Decision {
         coarse: new_state,
         placement,
-    } = crate::board::advance(&verdict, workflow)
+    } = board::advance(&verdict, workflow)
         .ok_or_else(|| format!("#{id} pass_stage has no forward state from '{}'", held))?;
     cast_and_transition(
         r,
@@ -71,10 +71,10 @@ pub(crate) async fn handle_fail_stage(
     let verdict = Verdict::Fail {
         step: held.as_str().into(),
     };
-    let crate::board::Decision {
+    let board::Decision {
         coarse: new_state,
         placement,
-    } = crate::board::advance(&verdict, workflow)
+    } = board::advance(&verdict, workflow)
         .ok_or_else(|| format!("#{id} fail_stage has no fail target from '{}'", held))?;
     cast_and_transition(
         r,

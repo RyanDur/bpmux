@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use chrono::{DateTime, Utc};
 
-use crate::board::history::{PlacementHistory, PlacementRecord};
+use crate::history::{PlacementHistory, PlacementRecord};
 use product_management::story::{StoryId, Work};
 use workflow::StageId;
 

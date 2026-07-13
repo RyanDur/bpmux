@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use crate::board::{Column, board_columns, group_by_column};
 use crate::view::board::arrangement::column_header;
+use board::{Column, board_columns, group_by_column};
 use product_management::story::StoryId;
 use workflow::StageId;
 

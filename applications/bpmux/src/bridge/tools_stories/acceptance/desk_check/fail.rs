@@ -33,7 +33,7 @@ pub(crate) async fn handle_fail_desk_check(
     };
     if let Some(story) = prior.as_ref() {
         let current_state = match refresh {
-            Some(r) => crate::board::state_label(
+            Some(r) => board::state_label(
                 &product_management::scheduling::projected_state(story, &r.iterations()),
                 r.story_fine_stage(story),
             ),
@@ -58,10 +58,10 @@ pub(crate) async fn handle_fail_desk_check(
         });
         return Err(err.to_string());
     }
-    let crate::board::Decision {
+    let board::Decision {
         coarse: new_state,
         placement,
-    } = crate::board::advance(
+    } = board::advance(
         &product_management::story::Verdict::Fail {
             step: transition.from.as_str().into(),
         },

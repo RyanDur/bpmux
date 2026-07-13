@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use super::board_render::*;
-use crate::board::Column;
+use board::Column;
 use chrono::{TimeZone, Utc};
 use product_management::iteration::{Iteration, IterationId};
 use product_management::story::Story;

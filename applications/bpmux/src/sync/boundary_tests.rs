@@ -111,7 +111,7 @@ fn slice_readers_reach_grains_only_through_named_selectors() {
     let violations = raw_grain_reads(&contents);
     assert!(
         violations.is_empty(),
-        "slice_readers.rs is the designated store-read seam: inside each select closure it hands a whole grain to a named domain selector (story::slice::get(&state.stories, id), crate::board::fine_stage(story, &state.board)) and never pokes into a grain's collection directly (state.stories.is_empty(), state.iterations.get(...)). A raw grain read here is projection logic leaking into the read seam that belongs in the owning slice's selector — add the selector and call it. Raw grain reads in slice_readers.rs:\n{}",
+        "slice_readers.rs is the designated store-read seam: inside each select closure it hands a whole grain to a named domain selector (story::slice::get(&state.stories, id), board::fine_stage(story, &state.board)) and never pokes into a grain's collection directly (state.stories.is_empty(), state.iterations.get(...)). A raw grain read here is projection logic leaking into the read seam that belongs in the owning slice's selector — add the selector and call it. Raw grain reads in slice_readers.rs:\n{}",
         violations.join("\n")
     );
 }

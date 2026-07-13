@@ -110,7 +110,7 @@ pub(in crate::bridge) async fn handle_move_story(
                 story_id,
                 StoryEventKind::StateTransitioned {
                     new_state: state.clone(),
-                    placement: crate::board::placement_from_target(
+                    placement: board::placement_from_target(
                         &target_str.to_ascii_lowercase().replace([' ', '_'], "-"),
                         &workflow::board_middle_stage_ids(workflow::current_workflow()),
                     ),

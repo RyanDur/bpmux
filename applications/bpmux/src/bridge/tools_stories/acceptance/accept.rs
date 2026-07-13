@@ -119,10 +119,10 @@ pub(crate) async fn accept_via_canonical_store(
     let transition = workflow
         .transition_by_id("accept")
         .ok_or("workflow has no 'accept' transition")?;
-    let crate::board::Decision {
+    let board::Decision {
         coarse: new_state,
         placement,
-    } = crate::board::advance(
+    } = board::advance(
         &product_management::story::Verdict::Succeed {
             step: transition.from.as_str().into(),
         },

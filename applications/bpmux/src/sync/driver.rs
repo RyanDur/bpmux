@@ -53,10 +53,10 @@ pub trait RefreshDriver: Send + Sync {
     ) -> BoxedFuture<'_, Result<u64, SyncError>>;
     fn story(&self, id: u64) -> Option<Story>;
     fn story_fine_stage(&self, story: &Story) -> Option<Stage> {
-        crate::board::fine_stage(story, &crate::board::BoardPlacements::default())
+        board::fine_stage(story, &board::BoardPlacements::default())
     }
     fn story_held_stage(&self, story: &Story) -> Option<workflow::StageId> {
-        crate::board::held_stage(story, &crate::board::BoardPlacements::default())
+        board::held_stage(story, &board::BoardPlacements::default())
     }
     fn all_stories(&self) -> Vec<Story>;
     fn evidence_for_story(&self, _id: u64) -> Vec<Evidence> {

@@ -7,9 +7,9 @@ use tempfile::TempDir;
 use tokio::sync::broadcast;
 
 use super::history::{LocalHistoryPersister, SharedHistoryPersister};
-use crate::board::history_persistence as local_persistence;
 use crate::hub::Hub;
 use crate::store::{AppAction, AppState, app_reduce};
+use board::history_persistence as local_persistence;
 use kernel::{Dispatch, Listener, Reaction};
 use message::Message;
 use product_management::history_persistence as shared_persistence;
@@ -139,7 +139,7 @@ fn a_cold_boot_hydrates_both_history_grains_from_their_files() {
     shared_persistence::save(&hub.dir, &shared.shared_history).unwrap();
     local_persistence::save(&hub.dir, &local.local_history).unwrap();
 
-    let state = AppState::with_board(crate::board::persistence::load(&hub.dir))
+    let state = AppState::with_board(board::persistence::load(&hub.dir))
         .with_shared_history(shared_persistence::load(&hub.dir))
         .with_local_history(local_persistence::load(&hub.dir));
 

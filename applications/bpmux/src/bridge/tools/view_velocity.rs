@@ -2,8 +2,8 @@ use std::num::NonZeroUsize;
 
 use serde::Serialize;
 
-use crate::board::flow::{Position, ReworkBreakdown, desk_check_rework, sub_section_timings};
-use crate::board::history::PlacementHistory;
+use board::flow::{Position, ReworkBreakdown, desk_check_rework, sub_section_timings};
+use board::history::PlacementHistory;
 use product_management::history::SharedHistory;
 use product_management::iteration::Iteration;
 use product_management::metrics::{

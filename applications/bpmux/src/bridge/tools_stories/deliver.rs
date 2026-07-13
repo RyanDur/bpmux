@@ -67,10 +67,10 @@ pub(crate) async fn handle_deliver_story(
             .and_then(|s| s.as_ref())
             .and_then(|story| r.story_held_stage(story))
             .unwrap_or_else(|| product_management::story::Stage::Dev.id());
-        let crate::board::Decision {
+        let board::Decision {
             coarse: new_state,
             placement,
-        } = crate::board::advance(
+        } = board::advance(
             &product_management::story::Verdict::Succeed {
                 step: held_step.clone(),
             },

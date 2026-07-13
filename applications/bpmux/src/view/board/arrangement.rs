@@ -1,4 +1,4 @@
-use crate::board::Column;
+use board::Column;
 
 pub fn column_header(column: &Column) -> String {
     match column {

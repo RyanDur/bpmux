@@ -87,19 +87,15 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub(super) fn read_story_fine_stage(&self, story: &Story) -> Option<Stage> {
         self.select
             .get()
-            .and_then(|s| s.select(|state| Some(crate::board::fine_stage(story, &state.board))))
-            .unwrap_or_else(|| {
-                crate::board::fine_stage(story, &crate::board::BoardPlacements::default())
-            })
+            .and_then(|s| s.select(|state| Some(board::fine_stage(story, &state.board))))
+            .unwrap_or_else(|| board::fine_stage(story, &board::BoardPlacements::default()))
     }
 
     pub(super) fn read_story_held_stage(&self, story: &Story) -> Option<workflow::StageId> {
         self.select
             .get()
-            .and_then(|s| s.select(|state| Some(crate::board::held_stage(story, &state.board))))
-            .unwrap_or_else(|| {
-                crate::board::held_stage(story, &crate::board::BoardPlacements::default())
-            })
+            .and_then(|s| s.select(|state| Some(board::held_stage(story, &state.board))))
+            .unwrap_or_else(|| board::held_stage(story, &board::BoardPlacements::default()))
     }
 
     pub(super) fn read_store_is_empty(&self) -> bool {

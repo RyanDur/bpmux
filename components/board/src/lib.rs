@@ -80,7 +80,7 @@ pub fn react_to_story(state: &BoardPlacements, action: &StoryAction) -> Option<B
     reduce(state, &placement_edge(state, action)?)
 }
 
-pub(crate) fn placement_edge(state: &BoardPlacements, action: &StoryAction) -> Option<BoardAction> {
+pub fn placement_edge(state: &BoardPlacements, action: &StoryAction) -> Option<BoardAction> {
     let (id, placement) = match action {
         StoryAction::Event(event) => match &event.kind {
             StoryEventKind::StateTransitioned { placement, .. } => (event.id, placement),
@@ -184,3 +184,21 @@ pub use arrangement::{Column, board_columns, column_of, group_by_column};
 
 mod decision;
 pub use decision::{Decision, advance};
+
+#[cfg(test)]
+#[allow(clippy::expect_used)]
+pub mod test_support {
+    use std::path::Path;
+
+    use workflow::WorkflowConfig;
+
+    pub fn repo_workflow() -> WorkflowConfig {
+        let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let repo_root = manifest
+            .parent()
+            .and_then(Path::parent)
+            .expect("crate lives two levels under the repo root");
+        workflow::load_workflow(repo_root)
+            .expect("the repo's .bpmux/workflow.toml is the team config and must load")
+    }
+}

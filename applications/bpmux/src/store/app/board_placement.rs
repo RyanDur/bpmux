@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use crate::board::{BoardAction, BoardPlacements, placed_story_ids};
+use board::{BoardAction, BoardPlacements, placed_story_ids};
 use product_management::story::slice::Stories;
 use product_management::story::{StoryId, Work};
 
@@ -68,7 +68,7 @@ impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for Board
         let placements = reaction.current.board.clone();
         let dir = self.hub.dir.clone();
         Box::pin(async move {
-            if let Err(e) = crate::board::persistence::save(&dir, &placements) {
+            if let Err(e) = board::persistence::save(&dir, &placements) {
                 diag::log_diag(&format!("board: placement persist failed: {e}"));
             }
         })

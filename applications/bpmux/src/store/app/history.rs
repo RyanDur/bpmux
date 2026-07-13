@@ -59,7 +59,7 @@ impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for Local
         let history = reaction.current.local_history.clone();
         let dir = self.hub.dir.clone();
         Box::pin(async move {
-            if let Err(e) = crate::board::history_persistence::save(&dir, &history) {
+            if let Err(e) = board::history_persistence::save(&dir, &history) {
                 diag::log_diag(&format!("history: placement-history persist failed: {e}"));
             }
         })

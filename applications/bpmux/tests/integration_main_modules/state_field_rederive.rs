@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use bpmux::board::{Column, column_of};
+use board::{Column, column_of};
 use bpmux::integrations::github::mapper::state_from_labels;
 use chrono::Utc;
 use product_management::iteration::{Iteration, IterationId};

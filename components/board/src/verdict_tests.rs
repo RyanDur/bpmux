@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use super::{Decision, advance};
-use crate::workflow_test_support::repo_workflow;
+use crate::test_support::repo_workflow;
 use product_management::story::{Stage, Verdict, Work};
 use workflow::bundled_default::bundled_default;
 

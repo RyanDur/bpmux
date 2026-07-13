@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::board_placement::unplace_departed;
-use crate::board::{BoardAction, BoardPlacements, placement_edge, reduce};
+use board::{BoardAction, BoardPlacements, placement_edge, reduce};
 use chrono::{TimeZone, Utc};
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::slice::{Stories, StoryAction};
@@ -220,10 +220,10 @@ fn a_cold_start_hydrates_the_desk_check_placement_from_the_file() {
         },
     )
     .unwrap();
-    crate::board::persistence::save(&dir, &placed).unwrap();
-    let state = crate::store::AppState::with_board(crate::board::persistence::load(&dir));
+    board::persistence::save(&dir, &placed).unwrap();
+    let state = crate::store::AppState::with_board(board::persistence::load(&dir));
     assert_eq!(
-        crate::board::placement_of(&state.board, StoryId::new(9)),
+        board::placement_of(&state.board, StoryId::new(9)),
         Some(Stage::DeskCheck.id()),
         "a backend restart recovers the fine desk-check stage from placements.json, with no GitHub label involved"
     );

@@ -391,7 +391,7 @@ async fn board_placement_reconciler_worker_reentrant_dispatch_unplaces_a_departe
     store.add_listener(Arc::new(app::BoardPlacementReconciler));
 
     let story = product_management::story::StoryId::new(1);
-    store.dispatch(AppAction::Board(crate::board::BoardAction::StoryPlaced {
+    store.dispatch(AppAction::Board(board::BoardAction::StoryPlaced {
         story,
         stage: workflow::StageId::from("desk-check"),
     }));
@@ -401,7 +401,7 @@ async fn board_placement_reconciler_worker_reentrant_dispatch_unplaces_a_departe
 
     crate::store::test_support::eventually(
         "the reconciler worker re-dispatches StoryUnplaced and the board reflects it",
-        || store.select(|state| crate::board::placement_of(&state.board, story).is_none()),
+        || store.select(|state| board::placement_of(&state.board, story).is_none()),
     )
     .await;
 }
@@ -413,15 +413,15 @@ async fn a_board_placement_burst_persists_the_final_board_with_no_placement_lost
     store.add_listener(Arc::new(app::BoardPlacementPersister::new(hub.clone())));
 
     for id in [1u64, 2, 3] {
-        store.dispatch(AppAction::Board(crate::board::BoardAction::StoryPlaced {
+        store.dispatch(AppAction::Board(board::BoardAction::StoryPlaced {
             story: product_management::story::StoryId::new(id),
             stage: workflow::StageId::from("desk-check"),
         }));
     }
 
     let placed = |id: u64| {
-        crate::board::placement_of(
-            &crate::board::persistence::load(&hub.dir),
+        board::placement_of(
+            &board::persistence::load(&hub.dir),
             product_management::story::StoryId::new(id),
         )
         .is_some()

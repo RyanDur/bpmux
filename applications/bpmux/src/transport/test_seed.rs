@@ -195,7 +195,7 @@ pub async fn post_seed_stories(
         }
         if s.initial_state == "desk-check" {
             dispatcher.dispatch(crate::store::AppAction::Board(
-                crate::board::BoardAction::StoryPlaced {
+                board::BoardAction::StoryPlaced {
                     story: product_management::story::StoryId::new(s.id),
                     stage: product_management::story::Stage::DeskCheck.id(),
                 },

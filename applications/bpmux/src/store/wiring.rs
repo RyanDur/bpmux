@@ -37,7 +37,7 @@ impl Store {
         let reactions_listeners: app::ReactionsListeners = Arc::new(Mutex::new(Vec::new()));
         let ci_listeners: app::CiListeners = Arc::new(Mutex::new(Vec::new()));
         let app_store = kernel::Store::new(
-            app::AppState::with_board(crate::board::persistence::load(&hub.dir))
+            app::AppState::with_board(board::persistence::load(&hub.dir))
                 .with_reactions(crate::store::reactions::from_store(
                     &crate::reactions::load(&hub.dir),
                 ))
@@ -45,7 +45,7 @@ impl Store {
                     &product_management::evidence::load(&hub.dir),
                 ))
                 .with_shared_history(product_management::history_persistence::load(&hub.dir))
-                .with_local_history(crate::board::history_persistence::load(&hub.dir))
+                .with_local_history(board::history_persistence::load(&hub.dir))
                 .with_routing(crate::store::routing::from_users(
                     &hub.storage.load_users().unwrap_or_default(),
                 ))

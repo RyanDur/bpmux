@@ -11,7 +11,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         items: Vec<product_management::story::Story>,
         placements: Vec<(product_management::story::StoryId, workflow::StageId)>,
     ) {
-        let board_actions = crate::board::placements_for_ingest(&items, &placements);
+        let board_actions = board::placements_for_ingest(&items, &placements);
         self.dispatch_story(product_management::story::slice::StoryAction::Seeded(items));
         for action in board_actions {
             self.dispatch_board(crate::store::AppAction::Board(action));

@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use bpmux::board::{Column, column_of};
+use board::{Column, column_of};
 use chrono::Utc;
 use product_management::iteration::{Iteration, IterationId};
 use product_management::story::{Stage, Story, StoryId, Work};

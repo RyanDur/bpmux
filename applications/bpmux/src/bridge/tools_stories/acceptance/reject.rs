@@ -72,10 +72,10 @@ pub(crate) async fn reject_via_canonical_store(
     let transition = workflow
         .transition_by_id("reject")
         .ok_or("workflow has no 'reject' transition")?;
-    let crate::board::Decision {
+    let board::Decision {
         coarse: new_state,
         placement,
-    } = crate::board::advance(
+    } = board::advance(
         &product_management::story::Verdict::Fail {
             step: transition.from.as_str().into(),
         },

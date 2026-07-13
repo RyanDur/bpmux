@@ -85,10 +85,10 @@ pub(crate) async fn handle_pass_desk_check(
     };
     if let Some(r) = refresh {
         let meta = meta_for(agent_name, actor_id);
-        let crate::board::Decision {
+        let board::Decision {
             coarse: new_state,
             placement,
-        } = crate::board::advance(
+        } = board::advance(
             &product_management::story::Verdict::Succeed {
                 step: transition.from.as_str().into(),
             },

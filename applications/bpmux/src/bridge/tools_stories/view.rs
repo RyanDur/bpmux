@@ -70,8 +70,8 @@ pub(crate) async fn handle_view_board(
     ))
 }
 
-fn parse_state(s: &str, middle: &[workflow::StageId]) -> Option<crate::board::Column> {
-    use crate::board::Column;
+fn parse_state(s: &str, middle: &[workflow::StageId]) -> Option<board::Column> {
+    use board::Column;
     let lower = s.to_ascii_lowercase();
     match lower.as_str() {
         "icebox" => return Some(Column::Icebox),
