@@ -62,12 +62,12 @@ pub async fn get_messages(
         .map(|peer| select.select(|s| crate::store::routing::resolve(&s.routing, short_name(peer))))
         .unwrap_or_default();
     let claimed_owner_nonce =
-        select.select(|s| crate::store::owner_session::claimed_nonce(&s.owner_session));
+        select.select(|s| crate::owner_session::claimed_nonce(&s.owner_session));
     let presented_owner_nonce = headers
         .get(OWNER_NONCE_HEADER)
         .and_then(|value| value.to_str().ok());
     let is_owner = as_peer.as_deref().is_some_and(|peer| {
-        crate::store::owner_session::resolve_owner_mark(
+        crate::owner_session::resolve_owner_mark(
             claimed_owner_nonce.as_deref(),
             presented_owner_nonce,
             peer,

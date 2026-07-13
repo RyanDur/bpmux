@@ -136,7 +136,7 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
             }
         }
         AppAction::OwnerSession(action) => {
-            match crate::store::owner_session::reduce(&state.owner_session, action) {
+            match crate::owner_session::reduce(&state.owner_session, action) {
                 Some(owner_session) => AppState {
                     owner_session: Arc::new(owner_session),
                     ..state.clone()

@@ -5,7 +5,6 @@ use tokio_util::sync::CancellationToken;
 use crate::hub;
 
 pub use crate::ci::slice as ci;
-pub use crate::owner_session;
 pub use crate::reactions::slice as reactions;
 pub use crate::roster;
 pub use board;

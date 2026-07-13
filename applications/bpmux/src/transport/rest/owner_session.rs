@@ -4,7 +4,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use crate::store::owner_session::OwnerSessionAction;
+use crate::owner_session::OwnerSessionAction;
 
 #[derive(Deserialize)]
 pub struct ClaimOwnerSessionRequest {

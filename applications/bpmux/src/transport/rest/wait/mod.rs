@@ -38,12 +38,12 @@ pub async fn wait_for_event(
     let resolved_ids =
         select.select(|s| crate::store::routing::resolve(&s.routing, short_name(&role)));
     let claimed_owner_nonce =
-        select.select(|s| crate::store::owner_session::claimed_nonce(&s.owner_session));
+        select.select(|s| crate::owner_session::claimed_nonce(&s.owner_session));
     let presented_owner_nonce = headers
         .get(OWNER_NONCE_HEADER)
         .and_then(|value| value.to_str().ok());
     let is_owner = params.as_peer.is_some()
-        && crate::store::owner_session::resolve_owner_mark(
+        && crate::owner_session::resolve_owner_mark(
             claimed_owner_nonce.as_deref(),
             presented_owner_nonce,
             &role,
