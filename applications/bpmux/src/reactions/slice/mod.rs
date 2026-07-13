@@ -2,10 +2,8 @@ use std::collections::BTreeMap;
 
 use serde::Serialize;
 
-mod listeners;
 mod persistence;
 
-pub use listeners::ReactionsHubBroadcaster;
 pub use persistence::{from_store, to_store};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]

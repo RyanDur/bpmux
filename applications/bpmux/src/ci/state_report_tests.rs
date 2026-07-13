@@ -2,7 +2,7 @@
 
 use super::state_report::*;
 use crate::ci::RunEntry;
-use crate::transport::ci_watcher::{MAX_BACKOFF, POLL_INTERVAL};
+use crate::ci::{MAX_BACKOFF, POLL_INTERVAL};
 
 fn run(status: &str, conclusion: Option<&str>, id: Option<u64>) -> RunEntry {
     RunEntry {

@@ -13,14 +13,18 @@ pub(super) fn wire_store_listeners(
     store.add_ci_listener(Arc::new(crate::store::CiStateStoreWriter::new(
         ci_state_store.clone(),
     )));
-    store.add_ci_listener(Arc::new(crate::store::CiHubBroadcaster::new(hub.clone())));
-    store.add_reactions_listener(Arc::new(crate::store::ReactionsHubBroadcaster::new(
-        hub.clone(),
-    )));
-    store.add_roster_listener(Arc::new(crate::store::RosterHubBroadcaster::new(
-        hub.clone(),
-        store.selector(),
-    )));
+    store.add_ci_listener(Arc::new(
+        crate::transport::state_delta_broadcasters::CiHubBroadcaster::new(hub.clone()),
+    ));
+    store.add_reactions_listener(Arc::new(
+        crate::transport::state_delta_broadcasters::ReactionsHubBroadcaster::new(hub.clone()),
+    ));
+    store.add_roster_listener(Arc::new(
+        crate::transport::state_delta_broadcasters::RosterHubBroadcaster::new(
+            hub.clone(),
+            store.selector(),
+        ),
+    ));
 }
 
 pub(super) async fn wire_startup_roster(

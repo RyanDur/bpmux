@@ -73,5 +73,5 @@ mod listeners;
 mod poll;
 
 pub use action::CiAction;
-pub use listeners::{CiHubBroadcaster, CiStateStoreWriter};
+pub use listeners::CiStateStoreWriter;
 pub use poll::CiPoll;

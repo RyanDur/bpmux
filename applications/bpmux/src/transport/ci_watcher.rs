@@ -3,15 +3,13 @@ use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::ci::CiStateStore;
+use crate::ci::{CiStateStore, MAX_BACKOFF, POLL_INTERVAL};
 use crate::hub::Hub;
 use crate::rate_limit::RateLimitObserver;
 use crate::store::{CiAction, CiPollFetch, CiSnapshot};
 use kernel::Dispatch;
 use message::{CiSnapshotWire, Message, MessageType, StateDeltaPayload};
 
-pub const POLL_INTERVAL: Duration = Duration::from_secs(10);
-pub const MAX_BACKOFF: Duration = Duration::from_secs(3600);
 pub const WATCHER_UNHEALTHY_THRESHOLD: Duration = Duration::from_secs(120);
 
 #[derive(Debug, Clone, PartialEq, Eq)]

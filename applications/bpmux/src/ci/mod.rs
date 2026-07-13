@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 mod broadcast;
 mod classify;
 mod state_report;
@@ -17,6 +19,9 @@ pub use classify::{RunEntry, classify_runs};
 pub(crate) use state_report::{CiStateReport, build_ci_state_report, unknown_ci_state_report};
 pub use state_store::CiStateStore;
 pub mod slice;
+
+pub const POLL_INTERVAL: Duration = Duration::from_secs(10);
+pub const MAX_BACKOFF: Duration = Duration::from_secs(3600);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]

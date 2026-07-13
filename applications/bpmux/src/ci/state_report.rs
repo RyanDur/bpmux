@@ -1,5 +1,5 @@
 use crate::ci::{CiState, RunEntry, WorkflowSummary, classify_runs, github_actions_url};
-use crate::transport::ci_watcher::{MAX_BACKOFF, POLL_INTERVAL};
+use crate::ci::{MAX_BACKOFF, POLL_INTERVAL};
 
 #[derive(Debug, Clone, serde::Serialize, PartialEq, Eq)]
 pub struct CiStateReport {

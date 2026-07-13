@@ -332,12 +332,12 @@ async fn get_ci_returns_unknown_when_store_empty() {
     );
     assert_eq!(
         json["poll_interval_secs"],
-        crate::transport::ci_watcher::POLL_INTERVAL.as_secs(),
+        crate::ci::POLL_INTERVAL.as_secs(),
         "AC #3: poll_interval_secs surfaces ci_watcher contract bound"
     );
     assert_eq!(
         json["backoff_cap_secs"],
-        crate::transport::ci_watcher::MAX_BACKOFF.as_secs(),
+        crate::ci::MAX_BACKOFF.as_secs(),
         "AC #3: backoff_cap_secs surfaces ci_watcher contract bound"
     );
 }

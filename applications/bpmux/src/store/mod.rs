@@ -35,17 +35,12 @@ pub(crate) use app::{
     ReactionsPersister, RosterBroadcast, RosterListeners, RoutingPersister, SharedHistoryPersister,
 };
 pub use ci::{
-    BoxedFuture, CiAction, CiBroadcastListener, CiHubBroadcaster, CiPollFetch, CiSnapshot,
-    CiStateStoreWriter,
+    BoxedFuture, CiAction, CiBroadcastListener, CiPollFetch, CiSnapshot, CiStateStoreWriter,
 };
 pub use commitments::CommitmentsAction;
 pub use dispatch::Dispatch;
-pub use reactions::{
-    AggregatedReaction, ReactionsAction, ReactionsBroadcastListener, ReactionsHubBroadcaster,
-};
-pub use roster::{
-    Presence, RosterAction, RosterBroadcastListener, RosterHubBroadcaster, RosterMember, RosterRole,
-};
+pub use reactions::{AggregatedReaction, ReactionsAction, ReactionsBroadcastListener};
+pub use roster::{Presence, RosterAction, RosterBroadcastListener, RosterMember, RosterRole};
 pub use select::Select;
 #[cfg(test)]
 pub(crate) use select::{SeededStore, bind_seeded_refresh};
