@@ -55,7 +55,7 @@ pub struct Store {
     parent_ct: CancellationToken,
     rate_limit_observer: crate::rate_limit::RateLimitObserver,
     ci_poll: Arc<ci::CiPoll>,
-    sync_poll: Option<Arc<sync::SyncPoll>>,
+    sync_poll: Option<Arc<crate::bridge::polling::SyncPoll>>,
     github_drain: Option<Arc<sync::GithubDrain>>,
     app_store: Arc<kernel::Store<app::AppState, app::AppAction>>,
     ci_listeners: app::CiListeners,

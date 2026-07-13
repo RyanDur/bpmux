@@ -88,7 +88,7 @@ impl Store {
         ingest_interval: Duration,
         hydration_interval: Duration,
     ) -> Self {
-        let sync_poll = Arc::new(sync::SyncPoll::new(
+        let sync_poll = Arc::new(crate::bridge::polling::SyncPoll::new(
             refresh.clone(),
             self.rate_limit_observer.clone(),
             ingest_interval,
