@@ -52,7 +52,7 @@ pub(crate) fn build_store_with_refresh(
     ingest_interval: Duration,
     hydration_interval: Duration,
 ) -> Store {
-    let mut parts = assemble(
+    let parts = assemble(
         hub,
         tracker,
         ci_state_store,
@@ -66,7 +66,7 @@ pub(crate) fn build_store_with_refresh(
         hydration_interval,
         parent_ct.clone(),
     ));
-    parts.app_store.add_listener(sync_poll.clone());
+    parts.app_store.add_listener(sync_poll);
     parts.app_store.add_listener(Arc::new(OutcomeBroadcast::new(
         parts.hub.clone(),
         refresh.clone(),
@@ -112,7 +112,6 @@ pub(crate) fn build_store_with_refresh(
     parts
         .app_store
         .add_listener(Arc::new(sync::GithubDrain::new(refresh, parent_ct)));
-    parts.sync_poll = Some(sync_poll);
     Store::from_parts(parts)
 }
 
@@ -165,7 +164,6 @@ fn assemble(
         hub,
         rate_limit_observer,
         ci_poll,
-        sync_poll: None,
         app_store,
         ci_listeners,
         roster_listeners,

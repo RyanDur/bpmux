@@ -4,9 +4,9 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use crate::rate_limit::RateLimitObserver;
-use crate::store::{AppAction, AppState, SyncAction};
+use crate::store::{AppAction, AppState, SyncAction, SyncHealthAction};
 use crate::sync::RefreshDriver;
-use kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
+use kernel::{DeliveryMode, Dispatch, Listener, ListenerFuture, Reaction};
 
 pub struct SyncPoll {
     refresh: Arc<dyn RefreshDriver>,
@@ -37,21 +37,7 @@ impl SyncPoll {
         }
     }
 
-    pub fn ingest_running(&self) -> bool {
-        self.ingest_token
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .is_some()
-    }
-
-    pub fn hydration_running(&self) -> bool {
-        self.hydration_token
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .is_some()
-    }
-
-    fn start_ingest(&self) {
+    fn start_ingest(&self, dispatch: Dispatch<AppAction>) {
         let mut guard = self
             .ingest_token
             .lock()
@@ -67,9 +53,13 @@ impl SyncPoll {
             token.clone(),
         ));
         *guard = Some(token);
+        drop(guard);
+        dispatch(AppAction::SyncHealth(
+            SyncHealthAction::IngestPollingStarted,
+        ));
     }
 
-    fn start_hydration(&self) {
+    fn start_hydration(&self, dispatch: Dispatch<AppAction>) {
         let mut guard = self
             .hydration_token
             .lock()
@@ -85,15 +75,37 @@ impl SyncPoll {
             token.clone(),
         ));
         *guard = Some(token);
+        drop(guard);
+        dispatch(AppAction::SyncHealth(
+            SyncHealthAction::HydrationPollingStarted,
+        ));
     }
 
-    fn stop(token: &Mutex<Option<CancellationToken>>) {
-        if let Some(ct) = token
+    fn stop_ingest(&self, dispatch: Dispatch<AppAction>) {
+        let taken = self
+            .ingest_token
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .take()
-        {
+            .take();
+        if let Some(ct) = taken {
             ct.cancel();
+            dispatch(AppAction::SyncHealth(
+                SyncHealthAction::IngestPollingStopped,
+            ));
+        }
+    }
+
+    fn stop_hydration(&self, dispatch: Dispatch<AppAction>) {
+        let taken = self
+            .hydration_token
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .take();
+        if let Some(ct) = taken {
+            ct.cancel();
+            dispatch(AppAction::SyncHealth(
+                SyncHealthAction::HydrationPollingStopped,
+            ));
         }
     }
 }
@@ -102,10 +114,10 @@ impl Listener<AppState, AppAction> for SyncPoll {
     fn on_action(&self, reaction: Reaction<AppState, AppAction>) -> ListenerFuture {
         if let AppAction::Sync(action) = &reaction.action {
             match action {
-                SyncAction::StartIngestPolling => self.start_ingest(),
-                SyncAction::StopIngestPolling => Self::stop(&self.ingest_token),
-                SyncAction::StartHydrationPolling => self.start_hydration(),
-                SyncAction::StopHydrationPolling => Self::stop(&self.hydration_token),
+                SyncAction::StartIngestPolling => self.start_ingest(reaction.dispatch),
+                SyncAction::StopIngestPolling => self.stop_ingest(reaction.dispatch),
+                SyncAction::StartHydrationPolling => self.start_hydration(reaction.dispatch),
+                SyncAction::StopHydrationPolling => self.stop_hydration(reaction.dispatch),
                 _ => {}
             }
         }

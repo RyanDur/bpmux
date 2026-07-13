@@ -334,3 +334,39 @@ fn removing_an_absent_id_is_a_no_op() {
         "removing an id not in the queue reports no change"
     );
 }
+
+#[test]
+fn start_ingest_polling_command_is_pure_intent_not_actuality() {
+    let state = SyncState::default();
+    assert!(
+        reduce(&state, &SyncAction::StartIngestPolling).is_none(),
+        "the command alone reports no state change until the effector reports a fact"
+    );
+}
+
+#[test]
+fn stop_ingest_polling_command_is_pure_intent_not_actuality() {
+    let state = SyncState::default();
+    assert!(
+        reduce(&state, &SyncAction::StopIngestPolling).is_none(),
+        "the command alone reports no state change until the effector reports a fact"
+    );
+}
+
+#[test]
+fn start_hydration_polling_command_is_pure_intent_not_actuality() {
+    let state = SyncState::default();
+    assert!(
+        reduce(&state, &SyncAction::StartHydrationPolling).is_none(),
+        "the command alone reports no state change until the effector reports a fact"
+    );
+}
+
+#[test]
+fn stop_hydration_polling_command_is_pure_intent_not_actuality() {
+    let state = SyncState::default();
+    assert!(
+        reduce(&state, &SyncAction::StopHydrationPolling).is_none(),
+        "the command alone reports no state change until the effector reports a fact"
+    );
+}

@@ -2,7 +2,7 @@
 
 use chrono::{TimeZone, Utc};
 
-use super::{SyncHealthAction, SyncHealthState, reduce};
+use super::{SyncHealthAction, SyncHealthState, hydration_polling, ingest_polling, reduce};
 
 fn at(secs: u32) -> chrono::DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 7, 8, 0, 0, secs).unwrap()
@@ -90,5 +90,61 @@ fn dropped_acknowledged_over_empty_is_a_noop() {
         )
         .is_none(),
         "acknowledging with nothing dropped changes no state"
+    );
+}
+
+#[test]
+fn ingest_polling_started_records_the_actual_spawn() {
+    let state = reduce(
+        &SyncHealthState::default(),
+        &SyncHealthAction::IngestPollingStarted,
+    )
+    .expect("the fact changes ingest_polling");
+    assert!(
+        ingest_polling(&state),
+        "a reported spawn flips the flag true"
+    );
+}
+
+#[test]
+fn ingest_polling_stopped_records_the_actual_cancel() {
+    let state = reduce(
+        &SyncHealthState::default(),
+        &SyncHealthAction::IngestPollingStarted,
+    )
+    .expect("the fact changes ingest_polling");
+    let state = reduce(&state, &SyncHealthAction::IngestPollingStopped)
+        .expect("the fact changes ingest_polling");
+    assert!(
+        !ingest_polling(&state),
+        "a reported cancel flips the flag false"
+    );
+}
+
+#[test]
+fn hydration_polling_started_records_the_actual_spawn() {
+    let state = reduce(
+        &SyncHealthState::default(),
+        &SyncHealthAction::HydrationPollingStarted,
+    )
+    .expect("the fact changes hydration_polling");
+    assert!(
+        hydration_polling(&state),
+        "a reported spawn flips the flag true"
+    );
+}
+
+#[test]
+fn hydration_polling_stopped_records_the_actual_cancel() {
+    let state = reduce(
+        &SyncHealthState::default(),
+        &SyncHealthAction::HydrationPollingStarted,
+    )
+    .expect("the fact changes hydration_polling");
+    let state = reduce(&state, &SyncHealthAction::HydrationPollingStopped)
+        .expect("the fact changes hydration_polling");
+    assert!(
+        !hydration_polling(&state),
+        "a reported cancel flips the flag false"
     );
 }

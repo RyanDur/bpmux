@@ -2,6 +2,10 @@ use chrono::{DateTime, Utc};
 
 #[derive(Clone, Debug)]
 pub enum SyncHealthAction {
+    IngestPollingStarted,
+    IngestPollingStopped,
+    HydrationPollingStarted,
+    HydrationPollingStopped,
     IngestSucceeded {
         at: DateTime<Utc>,
     },

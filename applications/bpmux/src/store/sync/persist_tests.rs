@@ -5,9 +5,10 @@ use std::sync::{Arc, Mutex};
 use chrono::{TimeZone, Utc};
 
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
+use crate::store::SyncHealthAction;
 use crate::store::app::{AppAction, AppState, app_reduce};
 use crate::store::test_support::eventually;
-use crate::sync::{PendingWrite, QueuedEvent};
+use crate::sync::{MutationId, PendingWrite, QueuedEvent, QueuedWrite};
 use product_management::story::StoryId;
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 
@@ -32,6 +33,38 @@ fn one_write() -> PendingWrite {
             },
         ),
     )
+}
+
+#[tokio::test]
+async fn polling_liveness_facts_never_rewrite_the_outbox() {
+    let saves: Arc<Mutex<Vec<Vec<QueuedEvent>>>> = Arc::new(Mutex::new(Vec::new()));
+    let store = kernel::Store::new(
+        AppState::default().with_outbox(vec![QueuedWrite::minted(MutationId(1), one_write())]),
+        Box::new(app_reduce),
+    );
+    store.add_listener(Arc::new(OutboxPersister::new(OutboxSink::Recording(
+        Arc::clone(&saves),
+    ))));
+
+    store.dispatch(AppAction::SyncHealth(
+        SyncHealthAction::IngestPollingStarted,
+    ));
+    store.dispatch(AppAction::SyncHealth(
+        SyncHealthAction::HydrationPollingStarted,
+    ));
+    store.dispatch(AppAction::SyncHealth(
+        SyncHealthAction::IngestPollingStopped,
+    ));
+    store.dispatch(AppAction::SyncHealth(
+        SyncHealthAction::HydrationPollingStopped,
+    ));
+
+    tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+
+    assert!(
+        saves.lock().unwrap().is_empty(),
+        "a polling-liveness fact reports effector state, not a queue change — the outbox persister must never rewrite the seeded outbox for it"
+    );
 }
 
 #[tokio::test]

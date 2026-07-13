@@ -4,6 +4,22 @@ use super::{SyncHealthAction, SyncHealthState};
 
 pub fn reduce(state: &SyncHealthState, action: &SyncHealthAction) -> Option<SyncHealthState> {
     match action {
+        SyncHealthAction::IngestPollingStarted => Some(SyncHealthState {
+            ingest_polling: true,
+            ..state.clone()
+        }),
+        SyncHealthAction::IngestPollingStopped => Some(SyncHealthState {
+            ingest_polling: false,
+            ..state.clone()
+        }),
+        SyncHealthAction::HydrationPollingStarted => Some(SyncHealthState {
+            hydration_polling: true,
+            ..state.clone()
+        }),
+        SyncHealthAction::HydrationPollingStopped => Some(SyncHealthState {
+            hydration_polling: false,
+            ..state.clone()
+        }),
         SyncHealthAction::IngestSucceeded { at } => Some(SyncHealthState {
             last_ingest_at: Some(*at),
             last_error: None,

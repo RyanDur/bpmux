@@ -10,12 +10,14 @@ use tokio_util::sync::CancellationToken;
 
 use crate::ci::CiStateStore;
 use crate::hub::Hub;
+use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::server::store_wiring::build_store_with_refresh;
 use crate::storage::StorageBackend;
-use crate::store::Store;
+use crate::store::app::AppAction;
 use crate::store::test_support::eventually;
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::store::{Store, SyncHealthAction};
+use crate::sync::{MutationId, PendingWrite, QueuedWrite, RefreshDriver, SyncOrchestrator};
 use message::Message;
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::{Story, StoryId, Work};
@@ -35,6 +37,13 @@ fn tag_added(story: u64, label: &str) -> StoryEvent {
         StoryEventKind::TagAdded {
             label: label.to_string(),
         },
+    )
+}
+
+fn seeded_write(story: u64, label: &str, id: u64) -> QueuedWrite {
+    QueuedWrite::minted(
+        MutationId(id),
+        PendingWrite::from_event(&GhLabelCodec, tag_added(story, label)),
     )
 }
 
@@ -94,6 +103,71 @@ async fn write_queued_burst_single_flights_one_drain_that_pushes_each_write_once
         store.selector().select(|state| state.sync.queue.is_empty())
     })
     .await;
+}
+
+#[tokio::test]
+async fn polling_liveness_facts_never_drain_a_seeded_outbox() {
+    let dir = TempDir::new().expect("tempdir");
+    let (tx, _rx) = broadcast::channel::<Message>(64);
+    let hub = Arc::new(Hub::with_backend(
+        dir.path().to_path_buf(),
+        "local".to_string(),
+        tx,
+        StorageBackend::Sqlite,
+    ));
+    std::mem::forget(dir);
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let refresh: Arc<dyn RefreshDriver> = orch.clone();
+
+    let store: Arc<Store> = Arc::new(build_store_with_refresh(
+        hub,
+        None,
+        CiStateStore::new(),
+        CancellationToken::new(),
+        vec![seeded_write(9101, "one", 1), seeded_write(9102, "two", 2)],
+        refresh.clone(),
+        Duration::from_secs(60),
+        Duration::from_secs(15),
+    ));
+    refresh.bind_select(store.selector());
+    refresh.bind_dispatch(store.dispatcher());
+
+    store
+        .dispatch(AppAction::SyncHealth(
+            SyncHealthAction::IngestPollingStarted,
+        ))
+        .await;
+    store
+        .dispatch(AppAction::SyncHealth(
+            SyncHealthAction::HydrationPollingStarted,
+        ))
+        .await;
+    store
+        .dispatch(AppAction::SyncHealth(
+            SyncHealthAction::IngestPollingStopped,
+        ))
+        .await;
+    store
+        .dispatch(AppAction::SyncHealth(
+            SyncHealthAction::HydrationPollingStopped,
+        ))
+        .await;
+
+    tokio::time::sleep(Duration::from_millis(250)).await;
+
+    assert!(
+        adapter.pushed_events().is_empty(),
+        "a polling-liveness fact reports effector state, not a queue change — it must never trigger a drain of the seeded outbox"
+    );
+    let pending = store
+        .selector()
+        .select(|state| crate::store::sync::pending_count(&state.sync));
+    assert_eq!(
+        pending, 2,
+        "the seeded outbox stays queued through liveness reporting — only a real drain pass may empty it"
+    );
 }
 
 #[tokio::test]

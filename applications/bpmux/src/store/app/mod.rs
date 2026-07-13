@@ -19,6 +19,7 @@ use product_management::story::slice::{Stories, StoryAction};
 
 mod action_conversions;
 mod board_placement;
+mod dispatch_log;
 mod evidence;
 mod history;
 mod listeners;
@@ -27,13 +28,13 @@ mod reactions;
 mod reduce;
 mod routing;
 pub use board_placement::{BoardPlacementPersister, BoardPlacementReconciler};
+pub(super) use dispatch_log::validate_and_log;
 pub use evidence::EvidencePersister;
 pub use history::{LocalHistoryPersister, SharedHistoryPersister};
 pub use listeners::*;
 pub use owner_park::OwnerParkListener;
 pub use reactions::ReactionsPersister;
 pub use reduce::app_reduce;
-pub(super) use reduce::validate_and_log;
 pub use routing::RoutingPersister;
 
 #[cfg(test)]

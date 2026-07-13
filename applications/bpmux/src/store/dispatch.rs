@@ -49,13 +49,11 @@ impl Store {
         match kind {
             PollKind::Ci => self.ci_poll.is_running(),
             PollKind::Ingest => self
-                .sync_poll
-                .as_ref()
-                .is_some_and(|poll| poll.ingest_running()),
+                .app_store
+                .select(|state| super::sync_health::ingest_polling(&state.sync_health)),
             PollKind::Hydration => self
-                .sync_poll
-                .as_ref()
-                .is_some_and(|poll| poll.hydration_running()),
+                .app_store
+                .select(|state| super::sync_health::hydration_polling(&state.sync_health)),
         }
     }
 }
