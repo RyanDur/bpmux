@@ -1,8 +1,8 @@
 use super::{GitHubSourceAdapter, ingest, mutation};
-use crate::bridge::tracker::{ConditionalIssue, StoryTracker};
 use crate::integrations::github::mapper::{
     decode_free_comment, decode_story_with_placement, decode_verdicts,
 };
+use crate::integrations::github::tracker::{ConditionalIssue, StoryTracker};
 use crate::sync::{ConditionalBody, Ingested, SourceAdapter, SyncError};
 use product_management::story::events::StoryEvent;
 use product_management::story::{CastVerdict, FreeComment, Story};

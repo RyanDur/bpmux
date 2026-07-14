@@ -1,5 +1,5 @@
 use super::*;
-use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
+use crate::integrations::github::tracker::{OctocrabStoryTracker, StoryTracker};
 
 impl GitHubSourceAdapter {
     pub fn new(inner: OctocrabStoryTracker) -> Self {

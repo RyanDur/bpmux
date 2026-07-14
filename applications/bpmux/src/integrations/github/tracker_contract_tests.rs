@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::test_fixtures::{author, issue};
 use super::tracker::{OctocrabStoryTracker, StoryTracker};
+use crate::bridge::test_fixtures::{author, issue};
 use httpmock::{Method, MockServer};
 use serde_json::{Value, json};
 

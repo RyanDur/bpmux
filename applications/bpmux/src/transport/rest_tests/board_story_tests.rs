@@ -21,7 +21,7 @@ use crate::hub;
 use crate::transport::rest::*;
 use message::MessageType;
 
-use crate::bridge::tracker::OctocrabStoryTracker;
+use crate::integrations::github::tracker::OctocrabStoryTracker;
 use crate::transport::rest::TrackerHandle;
 
 async fn get_json(router: axum::Router, uri: &str) -> axum::http::Response<Body> {

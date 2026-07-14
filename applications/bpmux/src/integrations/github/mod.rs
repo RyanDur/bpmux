@@ -1,6 +1,6 @@
-use crate::bridge::tracker::OctocrabStoryTracker;
 use crate::ci::ConditionalRunEntry;
 use crate::ci::slice::CiPollFetch;
+use crate::integrations::github::tracker::OctocrabStoryTracker;
 
 mod delegates;
 pub mod gh_label_codec;
@@ -11,6 +11,7 @@ mod mutation_events;
 mod relationship_block;
 pub mod relationships;
 mod source_adapter;
+pub(crate) mod tracker;
 
 #[cfg(test)]
 mod adapter_tests;
@@ -18,6 +19,10 @@ mod adapter_tests;
 mod relationship_block_tests;
 #[cfg(test)]
 mod relationships_tests;
+#[cfg(test)]
+mod tracker_contract_tests;
+#[cfg(test)]
+mod tracker_tests;
 
 pub struct GitHubSourceAdapter {
     inner: OctocrabStoryTracker,

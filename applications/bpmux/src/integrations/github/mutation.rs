@@ -1,5 +1,5 @@
-use crate::bridge::tracker::OctocrabStoryTracker;
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
+use crate::integrations::github::tracker::OctocrabStoryTracker;
 use crate::sync::SyncError;
 use product_management::label_codec::LabelCodec;
 use product_management::story::events::{StoryEvent, StoryEventKind};

@@ -9,9 +9,9 @@ use serde_json::Value;
 use tower::ServiceExt;
 
 use crate::bridge::test_fixtures::issue;
-use crate::bridge::tracker::OctocrabStoryTracker;
 use crate::hub::{self, BROADCAST_CHANNEL_CAPACITY};
 use crate::integrations::github::GitHubSourceAdapter;
+use crate::integrations::github::tracker::OctocrabStoryTracker;
 use crate::sync::OrchestratorHandle;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 

@@ -1,6 +1,6 @@
 use super::labels_refreshed;
-use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::integrations::github::mapper::is_position_label;
+use crate::integrations::github::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::sync::SyncError;
 use product_management::story::events::StoryEvent;
 

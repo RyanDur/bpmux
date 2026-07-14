@@ -18,7 +18,6 @@ mod rpc_client;
 pub(crate) mod tool_registry;
 pub(crate) mod tools;
 pub(crate) mod tools_stories;
-pub(crate) mod tracker;
 pub(crate) mod view_model;
 
 pub use tool_registry::{DISPATCHED_TOOL_NAMES, build_advertised_tools};
@@ -165,9 +164,5 @@ mod tests;
 mod tool_registry_tests;
 #[cfg(test)]
 mod tools_stories_tests;
-#[cfg(test)]
-mod tracker_contract_tests;
-#[cfg(test)]
-mod tracker_tests;
 #[cfg(test)]
 mod view_translation;

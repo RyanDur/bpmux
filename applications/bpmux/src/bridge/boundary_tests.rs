@@ -4,9 +4,9 @@ use std::path::{Path, PathBuf};
 
 const SELF_FILE: &str = "boundary_tests.rs";
 
-const VENDOR_SDK_TOKEN: &str = "octocrab";
-
-const VENDOR_ADAPTER_MARKER: &str = "tracker";
+fn vendor_sdk_token() -> String {
+    ["octo", "crab"].concat()
+}
 
 const GRAIN_FIELDS: &[&str] = &[
     "stories",
@@ -51,7 +51,7 @@ fn raw_grain_reads(contents: &str) -> Vec<String> {
 }
 
 #[test]
-fn bridge_edge_imports_the_vendor_sdk_only_in_its_tracker_adapter() {
+fn bridge_never_names_the_vendor_sdk() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/bridge");
     let mut files = Vec::new();
     collect_rs_files(&root, &mut files);
@@ -61,26 +61,24 @@ fn bridge_edge_imports_the_vendor_sdk_only_in_its_tracker_adapter() {
         root.display()
     );
 
+    let token = vendor_sdk_token();
     let mut violations: Vec<String> = Vec::new();
     for file in &files {
         if file.file_name().and_then(|n| n.to_str()) == Some(SELF_FILE) {
-            continue;
-        }
-        if file.to_string_lossy().contains(VENDOR_ADAPTER_MARKER) {
             continue;
         }
         let contents = std::fs::read_to_string(file).expect("read bridge file");
         if is_test_source(file, &contents) {
             continue;
         }
-        if contents.contains(VENDOR_SDK_TOKEN) {
+        if contents.contains(&token) {
             violations.push(file.display().to_string());
         }
     }
 
     assert!(
         violations.is_empty(),
-        "the vendor SDK (octocrab) is confined to the bridge's GitHub tracker adapter (bridge/tracker/**, the anti-corruption home of the concrete client); the rest of the bridge talks to the local bpmux server over its own reqwest RPC transport and consumes the tracker behind the OctocrabStoryTracker/RefreshDriver ports. A bridge file outside tracker/ naming octocrab is leaking the vendor mechanism into the MCP surface — take a port instead and wire the concrete adapter at the composition root. Files naming octocrab outside the tracker adapter:\n{}",
+        "the bridge never names the vendor SDK ({token}): the concrete GitHub client lives at the github integration (integrations/github/tracker/**, the anti-corruption home of the concrete client), and the bridge consumes it behind ports wired at the composition root. A bridge file naming {token} is leaking the vendor mechanism back into the MCP surface — take a port instead and let the github integration own the concrete client. Files naming {token} in the bridge:\n{}",
         violations.join("\n")
     );
 }

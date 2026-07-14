@@ -21,8 +21,8 @@ use tempfile::TempDir;
 use tokio::sync::broadcast;
 use tower::ServiceExt;
 
-use crate::bridge::tracker::OctocrabStoryTracker;
 use crate::hub;
+use crate::integrations::github::tracker::OctocrabStoryTracker;
 use crate::transport::rest::{TrackerHandle, *};
 use message::MessageType;
 

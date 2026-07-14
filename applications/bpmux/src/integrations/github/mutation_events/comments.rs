@@ -1,5 +1,5 @@
-use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::integrations::github::mapper::encode_verdict;
+use crate::integrations::github::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::sync::SyncError;
 use product_management::story::Verdict;
 use product_management::story::events::{EventMeta, StoryEvent};

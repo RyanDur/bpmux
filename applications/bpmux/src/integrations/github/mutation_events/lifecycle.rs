@@ -1,7 +1,7 @@
 use super::labels_refreshed;
-use crate::bridge::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::integrations::github::mapper::{decode_story_metadata, outbound_state_label};
+use crate::integrations::github::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::sync::SyncError;
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use product_management::story::{StoryId, Work};

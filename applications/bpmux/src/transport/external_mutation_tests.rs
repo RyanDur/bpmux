@@ -6,8 +6,8 @@ use httpmock::{Method, MockServer};
 use serde_json::{Value, json};
 
 use crate::bridge::test_fixtures::issue;
-use crate::bridge::tracker::OctocrabStoryTracker;
 use crate::integrations::github::GitHubSourceAdapter;
+use crate::integrations::github::tracker::OctocrabStoryTracker;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 
 fn comment(body: &str) -> Value {
