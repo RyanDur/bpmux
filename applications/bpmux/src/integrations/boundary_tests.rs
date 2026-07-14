@@ -56,7 +56,7 @@ fn integrations_implement_domain_ports_without_naming_the_store() {
 
     assert!(
         violations.is_empty(),
-        "integrations are adapters at the hexagonal edge: each one implements a domain port (e.g. crate::ci::slice::CiPollFetch) named at that port's DOMAIN home, never through the store composition kernel or its re-export aliases (store::ci is merely `pub use crate::ci::slice as ci`). A crate::store reference inside an adapter points the dependency arrow at the composition kernel instead of the domain that owns the port it implements — name the domain module directly. No allowlist: integrations must be store-free, period. Violations:\n{}",
+        "integrations are adapters at the hexagonal edge: each one implements a domain port (e.g. ci::slice::CiPollFetch) named at that port's DOMAIN home, never through the store composition kernel or its re-export aliases (store::ci is merely an alias of ci::slice). A crate::store reference inside an adapter points the dependency arrow at the composition kernel instead of the domain that owns the port it implements — name the domain module directly. No allowlist: integrations must be store-free, period. Violations:\n{}",
         violations.join("\n")
     );
 }
@@ -123,7 +123,7 @@ fn integrations_never_name_the_bridge() {
 
     assert!(
         violations.is_empty(),
-        "integrations are adapters at the hexagonal edge: the dependency arrow runs bridge -> integrations through domain ports, never back. An integrations prod file naming crate::bridge re-couples the adapter to the MCP surface it serves — move the shared vocabulary to its domain home (crate::ci, crate::sync, product_management) and name it there. Violations:\n{}",
+        "integrations are adapters at the hexagonal edge: the dependency arrow runs bridge -> integrations through domain ports, never back. An integrations prod file naming crate::bridge re-couples the adapter to the MCP surface it serves — move the shared vocabulary to its domain home (the ci component, crate::sync, product_management) and name it there. Violations:\n{}",
         violations.join("\n")
     );
 }

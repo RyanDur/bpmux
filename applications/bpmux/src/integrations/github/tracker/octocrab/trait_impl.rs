@@ -1,5 +1,5 @@
-use crate::ci::WorkflowRunEntry;
 use crate::integrations::github::tracker::StoryTracker;
+use ::ci::WorkflowRunEntry;
 
 use super::OctocrabStoryTracker;
 use super::json_shape::issue_to_board_json;

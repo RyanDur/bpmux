@@ -4,7 +4,7 @@ impl OctocrabStoryTracker {
     pub async fn fetch_job_status_for_run(
         &self,
         run_id: u64,
-    ) -> Result<Vec<crate::ci::CiJobRecord>, crate::ci::CiJobStatusError> {
+    ) -> Result<Vec<ci::CiJobRecord>, ci::CiJobStatusError> {
         #[derive(serde::Deserialize)]
         struct Job {
             name: String,
@@ -27,15 +27,15 @@ impl OctocrabStoryTracker {
             .get(jobs_path, None::<&()>)
             .await
             .map_err(|e| classify_jobs_error(&e.to_string(), run_id))?;
-        let records: Vec<crate::ci::CiJobRecord> = response
+        let records: Vec<ci::CiJobRecord> = response
             .jobs
             .into_iter()
-            .map(|j| crate::ci::CiJobRecord {
+            .map(|j| ci::CiJobRecord {
                 name: j.name,
                 conclusion: j
                     .conclusion
                     .unwrap_or_else(|| j.status.unwrap_or_else(|| "unknown".to_string())),
-                duration_ms: crate::ci::compute_duration_ms(
+                duration_ms: ci::compute_duration_ms(
                     j.started_at.as_deref(),
                     j.completed_at.as_deref(),
                 ),
@@ -68,16 +68,16 @@ impl OctocrabStoryTracker {
     }
 }
 
-fn classify_jobs_error(msg: &str, run_id: u64) -> crate::ci::CiJobStatusError {
+fn classify_jobs_error(msg: &str, run_id: u64) -> ci::CiJobStatusError {
     if msg.contains("404") {
-        crate::ci::CiJobStatusError::not_found(run_id)
+        ci::CiJobStatusError::not_found(run_id)
     } else if msg.contains("401") || msg.contains("403") {
-        crate::ci::CiJobStatusError::auth_failed()
+        ci::CiJobStatusError::auth_failed()
     } else if msg.contains("429") {
-        crate::ci::CiJobStatusError::rate_limit(60)
+        ci::CiJobStatusError::rate_limit(60)
     } else if msg.contains("spending limit") || msg.contains("quota") {
-        crate::ci::CiJobStatusError::quota_exhausted()
+        ci::CiJobStatusError::quota_exhausted()
     } else {
-        crate::ci::CiJobStatusError::network_error(msg.to_string())
+        ci::CiJobStatusError::network_error(msg.to_string())
     }
 }

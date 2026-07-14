@@ -1,0 +1,19 @@
+[package]
+name = "ci"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The CI domain: run/job/log vocabulary, state classification and reporting, the poll-fetch port, and the slice (actions, reduce, selectors, listeners)"
+
+[dependencies]
+message = { path = "../message" }
+rate_limit = { path = "../rate_limit" }
+workflow = { path = "../workflow" }
+serde = { workspace = true, features = ["derive"] }
+chrono = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

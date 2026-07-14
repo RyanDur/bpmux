@@ -1,5 +1,5 @@
-use crate::ci::CiStateStore;
-use crate::ci::RunEntry;
+use crate::CiStateStore;
+use crate::RunEntry;
 
 use super::{CiBroadcastListener, CiSnapshot};
 
@@ -24,7 +24,7 @@ impl CiBroadcastListener for CiStateStoreWriter {
             name: None,
             annotation_message: None,
         }];
-        let report = crate::ci::build_ci_state_report(&runs);
+        let report = crate::build_ci_state_report(&runs);
         self.store.write(report);
     }
 }

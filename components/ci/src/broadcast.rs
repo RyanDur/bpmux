@@ -4,7 +4,7 @@ use super::{CiEvent, CiState};
 use message::Message;
 use message::{DeepDetail, MultiDepthPayload};
 
-pub(crate) fn compute_broadcast_text(next: &CiEvent) -> Option<String> {
+pub fn compute_broadcast_text(next: &CiEvent) -> Option<String> {
     match next.state {
         CiState::Red => Some(format_failure_line(next)),
         CiState::Green => Some(format_success_line(next)),
@@ -13,7 +13,7 @@ pub(crate) fn compute_broadcast_text(next: &CiEvent) -> Option<String> {
     }
 }
 
-pub(crate) fn build_multi_depth_for_transition(event: &CiEvent) -> MultiDepthPayload {
+pub fn build_multi_depth_for_transition(event: &CiEvent) -> MultiDepthPayload {
     let (summary, dev_detail) = match event.state {
         CiState::Green => ("\u{1F7E2} CI green".to_string(), format_success_line(event)),
         CiState::Red => (
@@ -56,7 +56,7 @@ pub(crate) fn build_multi_depth_for_transition(event: &CiEvent) -> MultiDepthPay
     }
 }
 
-pub(crate) fn build_dev_ci_signal(text: &str) -> Message {
+pub fn build_dev_ci_signal(text: &str) -> Message {
     let dev = workflow::current_workflow()
         .role_name_for_purpose("dev")
         .map(str::to_string)

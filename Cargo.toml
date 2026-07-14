@@ -4,6 +4,7 @@ members = [
     "applications/bpmux",
     "components/awareness",
     "components/board",
+    "components/ci",
     "components/comprehension",
     "components/diag",
     "components/kernel",

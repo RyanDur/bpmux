@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-use crate::ci::WorkflowRunEntry;
+use ::ci::WorkflowRunEntry;
 
 pub(crate) fn ensure_crypto_provider_installed() {
     static INSTALLED: OnceLock<()> = OnceLock::new();

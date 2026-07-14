@@ -1,6 +1,6 @@
-use crate::ci::ConditionalRunEntry;
-use crate::ci::slice::CiPollFetch;
 use crate::integrations::github::tracker::OctocrabStoryTracker;
+use ::ci::ConditionalRunEntry;
+use ::ci::slice::CiPollFetch;
 
 mod delegates;
 mod ingest;
@@ -24,7 +24,7 @@ impl CiPollFetch for GitHubSourceAdapter {
     fn list_latest_run_on_main_conditional<'a>(
         &'a self,
         prior_etag: Option<&'a str>,
-    ) -> crate::ci::slice::BoxedFuture<'a, Result<ConditionalRunEntry, String>> {
+    ) -> ci::slice::BoxedFuture<'a, Result<ConditionalRunEntry, String>> {
         Box::pin(GitHubSourceAdapter::list_latest_run_on_main_conditional(
             self, prior_etag,
         ))

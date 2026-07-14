@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used)]
 
 use super::state_report::*;
-use crate::ci::RunEntry;
-use crate::ci::{MAX_BACKOFF, POLL_INTERVAL};
+use crate::RunEntry;
+use crate::{MAX_BACKOFF, POLL_INTERVAL};
 
 fn run(status: &str, conclusion: Option<&str>, id: Option<u64>) -> RunEntry {
     RunEntry {
@@ -21,7 +21,7 @@ fn empty_runs_reports_unknown() {
     let report = build_ci_state_report(&[]);
     assert_eq!(report.conclusion, "unknown");
     assert_eq!(report.last_run_id, None);
-    assert_eq!(report.url, crate::ci::github_actions_url());
+    assert_eq!(report.url, crate::github_actions_url());
 }
 
 #[test]
@@ -29,7 +29,7 @@ fn success_run_reports_success() {
     let report = build_ci_state_report(&[run("completed", Some("success"), Some(42))]);
     assert_eq!(report.conclusion, "success");
     assert_eq!(report.last_run_id, Some(42));
-    assert_eq!(report.url, crate::ci::github_actions_url());
+    assert_eq!(report.url, crate::github_actions_url());
 }
 
 #[test]
@@ -67,7 +67,7 @@ fn branch_is_always_main() {
 #[test]
 fn missing_run_id_points_to_actions_tab() {
     let report = build_ci_state_report(&[run("completed", Some("success"), None)]);
-    assert_eq!(report.url, crate::ci::github_actions_url());
+    assert_eq!(report.url, crate::github_actions_url());
 }
 
 #[test]
@@ -75,7 +75,7 @@ fn url_is_always_all_actions_page_even_with_run_id() {
     let report = build_ci_state_report(&[run("completed", Some("failure"), Some(9999))]);
     assert_eq!(
         report.url,
-        crate::ci::github_actions_url(),
+        crate::github_actions_url(),
         "#341 rework: URL must not embed the run_id"
     );
     assert_eq!(report.last_run_id, Some(9999));
@@ -89,10 +89,7 @@ fn report_serializes_as_json_object() {
     assert_eq!(parsed["conclusion"], "success");
     assert_eq!(parsed["last_run_id"], 1);
     assert_eq!(parsed["branch"], "main");
-    assert_eq!(
-        parsed["url"].as_str().unwrap(),
-        crate::ci::github_actions_url()
-    );
+    assert_eq!(parsed["url"].as_str().unwrap(), crate::github_actions_url());
     assert!(!parsed["url"].as_str().unwrap().contains("/runs/"));
 }
 

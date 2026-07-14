@@ -4,7 +4,7 @@ use super::{CiAction, CiSnapshot, CiState, polling, reduce, snapshot};
 
 fn snap(run_id: u64, conclusion: &'static str) -> CiSnapshot {
     CiSnapshot {
-        state: crate::ci::CiState::Green,
+        state: crate::CiState::Green,
         run_id: Some(run_id),
         head_sha: None,
         display_title: None,

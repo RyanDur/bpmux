@@ -8,6 +8,7 @@ license.workspace = true
 [dependencies]
 awareness = { path = "../../components/awareness" }
 board = { path = "../../components/board" }
+ci = { path = "../../components/ci" }
 comprehension = { path = "../../components/comprehension" }
 diag = { path = "../../components/diag" }
 kernel = { path = "../../components/kernel" }

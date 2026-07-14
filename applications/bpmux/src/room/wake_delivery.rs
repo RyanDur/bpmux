@@ -20,7 +20,7 @@ pub fn wake_committed_terminals(
     let Some((event_class, payload)) = msg
         .state_delta
         .as_ref()
-        .and_then(|delta| delta.to_subscription_event(&ts, &crate::ci_link::github_actions_url()))
+        .and_then(|delta| delta.to_subscription_event(&ts, &crate::ci::github_actions_url()))
     else {
         return held;
     };

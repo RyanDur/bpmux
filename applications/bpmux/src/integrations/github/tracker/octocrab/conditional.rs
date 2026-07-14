@@ -1,4 +1,4 @@
-use crate::ci::{ConditionalRunEntry, WorkflowRunEntry};
+use ::ci::{ConditionalRunEntry, WorkflowRunEntry};
 
 use super::OctocrabStoryTracker;
 

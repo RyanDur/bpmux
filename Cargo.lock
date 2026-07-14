@@ -386,6 +386,7 @@ dependencies = [
  "base64",
  "board",
  "chrono",
+ "ci",
  "clap",
  "comprehension",
  "diag",
@@ -583,6 +584,18 @@ dependencies = [
  "serde",
  "wasm-bindgen",
  "windows-link",
+]
+
+[[package]]
+name = "ci"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "message",
+ "rate_limit",
+ "serde",
+ "serde_json",
+ "workflow",
 ]
 
 [[package]]

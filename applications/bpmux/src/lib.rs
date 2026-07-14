@@ -11,7 +11,6 @@ pub mod briefing;
 #[cfg(test)]
 mod briefing_tests;
 pub mod ci;
-pub(crate) mod ci_link;
 #[cfg(test)]
 mod ci_tests;
 mod cli;
