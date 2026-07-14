@@ -287,9 +287,12 @@ NOT part of this relocation.
 ## Fitness functions
 
 - Extend the wire goldens (slice 3) — they refuse a silent `StoryView` reshape.
-- `product_management::boundary_tests` already forbids `crate::rate_limit`/`octocrab` in the
-  domain; the CODEC/MAPPER move (slice 5) is *toward* that boundary (out of the domain
-  edge-ward), so it strengthens, never weakens, the existing lock.
+- `product_management::boundary_tests` once forbade `crate::rate_limit`/`octocrab` in the
+  domain via an import-token grep; now that `product_management` is its own crate, the
+  crate boundary itself is the lock — its `Cargo.toml` carries no dependency edge to
+  `rate_limit` or `octocrab`, so the compiler refuses the import, no fitness test needed.
+  The CODEC/MAPPER move (slice 5) is *toward* that boundary (out of the domain
+  edge-ward), so it strengthens, never weakens, the existing (now compiler-enforced) lock.
 - Slice 8 adds a "`product_management::board` is gone" existence check (mirrors the
   storage/transport boundary-test pattern).
 

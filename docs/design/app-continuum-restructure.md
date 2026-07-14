@@ -155,8 +155,15 @@ multiple applications, one repository).
 
 ## Fitness functions — the boundary refuses regression
 
-`product_management::boundary_tests` already fails the build if the domain
-imports `octocrab` / `reqwest` / `crate::rate_limit` / `crate::bridge::tracker`.
+`product_management::boundary_tests` enforces today that the `board` god-module
+stays gone (`product_management_board_module_is_gone`) and that the story slice
+reducer does no GitHub label decode (`board_reducer_does_no_label_decode`,
+forbidding `integrations::github` / `gh_label_codec` / `_from_labels` /
+`project_labels` tokens under `src/story/slice/reducers`). The `octocrab` /
+`reqwest` / `rate_limit` / `bridge::tracker` import ban this section once
+described is now the crate boundary itself — `product_management`'s
+`Cargo.toml` carries no dependency edge to any of them, so the compiler
+refuses the import; no fitness test names them any more.
 **Each Phase 0 move extends the forbidden list** — after the orchestrator leaves,
 `crate::transport` and `crate::storage` join it. The structure doesn't just
 prompt the next agent; it refuses their regression at compile time. At Phase 2
