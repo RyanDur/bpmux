@@ -24,7 +24,10 @@ impl RosterBroadcastListener for RosterHubBroadcaster {
         broadcast_state_delta(
             &self.hub,
             StateDeltaPayload::Roster {
-                members: crate::roster::members_wire(&self.select, members),
+                members: crate::roster::members_wire(members, |routing_id| {
+                    self.select
+                        .select(|state| crate::store::routing::role_for(&state.routing, routing_id))
+                }),
             },
             "roster_listener",
         );
