@@ -17,6 +17,7 @@ message_log = { path = "../../components/message_log" }
 owner_session = { path = "../../components/owner_session" }
 persist = { path = "../../components/persist" }
 product_management = { path = "../../components/product_management" }
+rate_limit = { path = "../../components/rate_limit" }
 reactions = { path = "../../components/reactions" }
 roster = { path = "../../components/roster" }
 source_codec = { path = "../../components/source_codec" }
@@ -60,7 +61,7 @@ tower-http = { version = "0.6", features = ["cors"] }
 regex = "1"
 url = "2"
 once_cell = "1"
-http = "1"
+http = { workspace = true }
 http-body-util = "0.1"
 toml = { workspace = true }
 portable-pty = "0.9"

@@ -29,7 +29,6 @@ pub mod mcp;
 mod order_state_pin_tests;
 #[cfg(test)]
 mod pm_integration_tests;
-pub mod rate_limit;
 pub mod room;
 pub mod server;
 #[cfg(test)]

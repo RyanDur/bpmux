@@ -143,3 +143,6 @@ pub fn classify_and_decide(
     }
     Some(decide_backoff(snapshot, exponential, now))
 }
+
+#[cfg(test)]
+mod backoff_tests;

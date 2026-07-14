@@ -4,9 +4,9 @@ use tokio_util::sync::CancellationToken;
 
 use crate::ci::CiStateStore;
 use crate::hub::Hub;
-use crate::rate_limit::RateLimitObserver;
 use crate::store::{AppAction, AppState};
 use kernel::{DeliveryMode, Dispatch, Listener, ListenerFuture, Reaction};
+use rate_limit::RateLimitObserver;
 
 use super::{CiAction, CiPollFetch, CiWatchDriver};
 

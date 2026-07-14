@@ -53,7 +53,7 @@ pub use sync_health::SyncHealthAction;
 
 pub struct Store {
     hub: Arc<hub::Hub>,
-    rate_limit_observer: crate::rate_limit::RateLimitObserver,
+    rate_limit_observer: rate_limit::RateLimitObserver,
     app_store: Arc<kernel::Store<app::AppState, app::AppAction>>,
     ci_listeners: app::CiListeners,
     roster_listeners: app::RosterListeners,
@@ -62,7 +62,7 @@ pub struct Store {
 
 pub(crate) struct StoreParts {
     pub(crate) hub: Arc<hub::Hub>,
-    pub(crate) rate_limit_observer: crate::rate_limit::RateLimitObserver,
+    pub(crate) rate_limit_observer: rate_limit::RateLimitObserver,
     pub(crate) app_store: Arc<kernel::Store<app::AppState, app::AppAction>>,
     pub(crate) ci_listeners: app::CiListeners,
     pub(crate) roster_listeners: app::RosterListeners,
@@ -81,7 +81,7 @@ impl Store {
         }
     }
 
-    pub fn rate_limit_observer(&self) -> &crate::rate_limit::RateLimitObserver {
+    pub fn rate_limit_observer(&self) -> &rate_limit::RateLimitObserver {
         &self.rate_limit_observer
     }
 

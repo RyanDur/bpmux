@@ -24,11 +24,11 @@ pub struct OctocrabStoryTracker {
     client: octocrab::Octocrab,
     owner: String,
     repo: String,
-    rate_limit_observer: crate::rate_limit::RateLimitObserver,
+    rate_limit_observer: rate_limit::RateLimitObserver,
 }
 
 impl OctocrabStoryTracker {
-    pub fn rate_limit_observer(&self) -> crate::rate_limit::RateLimitObserver {
+    pub fn rate_limit_observer(&self) -> rate_limit::RateLimitObserver {
         self.rate_limit_observer.clone()
     }
 }
@@ -46,7 +46,7 @@ impl OctocrabStoryTracker {
                     client,
                     owner,
                     repo,
-                    rate_limit_observer: crate::rate_limit::RateLimitObserver::new(),
+                    rate_limit_observer: rate_limit::RateLimitObserver::new(),
                 })
             }
             TrackerSelection::OctocrabWithBaseUrl {
@@ -86,7 +86,7 @@ impl OctocrabStoryTracker {
             client,
             owner,
             repo,
-            rate_limit_observer: crate::rate_limit::RateLimitObserver::new(),
+            rate_limit_observer: rate_limit::RateLimitObserver::new(),
         })
     }
 
@@ -115,7 +115,7 @@ impl OctocrabStoryTracker {
     ) -> Result<R, String> {
         use http_body_util::BodyExt;
         let response = self.client._get(path).await.map_err(Self::classify)?;
-        crate::rate_limit::capture_headers(
+        rate_limit::capture_headers(
             response.headers(),
             &self.rate_limit_observer,
             std::time::SystemTime::now(),

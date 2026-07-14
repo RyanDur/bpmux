@@ -43,7 +43,7 @@ pub(crate) fn select_stories_to_revalidate(
 pub async fn run_hydration_loop_cancellable(
     refresh: Arc<dyn crate::sync::RefreshDriver>,
     interval: std::time::Duration,
-    observer: crate::rate_limit::RateLimitObserver,
+    observer: rate_limit::RateLimitObserver,
     ct: tokio_util::sync::CancellationToken,
 ) {
     let start = tokio::time::Instant::now() + interval;
@@ -55,7 +55,7 @@ pub async fn run_hydration_loop_cancellable(
             _ = ticker.tick() => {}
         }
         let snapshot = observer.snapshot();
-        let decision = crate::rate_limit::decide_backoff(
+        let decision = rate_limit::decide_backoff(
             snapshot,
             std::time::Duration::ZERO,
             std::time::SystemTime::now(),

@@ -126,7 +126,7 @@ impl OctocrabStoryTracker {
             .build_request(builder, body.as_ref())
             .map_err(Self::classify)?;
         let response = self.client.execute(request).await.map_err(Self::classify)?;
-        crate::rate_limit::capture_headers(
+        rate_limit::capture_headers(
             response.headers(),
             &self.rate_limit_observer,
             std::time::SystemTime::now(),

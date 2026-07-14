@@ -4,7 +4,7 @@ use std::sync::Arc;
 pub(crate) async fn run_ingest_poll_loop(
     refresh: Arc<dyn crate::sync::RefreshDriver>,
     interval: std::time::Duration,
-    observer: Option<crate::rate_limit::RateLimitObserver>,
+    observer: Option<rate_limit::RateLimitObserver>,
 ) {
     run_ingest_poll_loop_cancellable(
         refresh,
@@ -18,7 +18,7 @@ pub(crate) async fn run_ingest_poll_loop(
 pub async fn run_ingest_poll_loop_cancellable(
     refresh: Arc<dyn crate::sync::RefreshDriver>,
     interval: std::time::Duration,
-    observer: Option<crate::rate_limit::RateLimitObserver>,
+    observer: Option<rate_limit::RateLimitObserver>,
     ct: tokio_util::sync::CancellationToken,
 ) {
     let start = tokio::time::Instant::now() + interval;
@@ -42,7 +42,7 @@ pub async fn run_ingest_poll_loop_cancellable(
             Err(e) => {
                 let msg = e.to_string();
                 let snapshot = observer.as_ref().map(|o| o.snapshot()).unwrap_or_default();
-                if let Some(decision) = crate::rate_limit::classify_and_decide(
+                if let Some(decision) = rate_limit::classify_and_decide(
                     &msg,
                     snapshot,
                     backoff,
@@ -50,7 +50,7 @@ pub async fn run_ingest_poll_loop_cancellable(
                 ) {
                     diag::log_diag(&format!(
                         "bridge: ingest rate-limited; backoff signal={} wait={}s",
-                        crate::rate_limit::signal_label(decision.signal),
+                        rate_limit::signal_label(decision.signal),
                         decision.wait.as_secs()
                     ));
                     tokio::time::sleep(decision.wait).await;

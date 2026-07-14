@@ -3,10 +3,10 @@ use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::rate_limit::RateLimitObserver;
 use crate::store::{AppAction, AppState, SyncAction, SyncHealthAction};
 use crate::sync::RefreshDriver;
 use kernel::{DeliveryMode, Dispatch, Listener, ListenerFuture, Reaction};
+use rate_limit::RateLimitObserver;
 
 pub struct SyncPoll {
     refresh: Arc<dyn RefreshDriver>,

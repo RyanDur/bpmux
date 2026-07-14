@@ -6,10 +6,10 @@ use tokio_util::sync::CancellationToken;
 use crate::ci::slice::CiWatchDriver;
 use crate::ci::{CiStateStore, MAX_BACKOFF, POLL_INTERVAL};
 use crate::hub::Hub;
-use crate::rate_limit::RateLimitObserver;
 use crate::store::{AppAction, CiAction, CiPollFetch, CiSnapshot};
 use kernel::Dispatch;
 use message::{CiSnapshotWire, Message, MessageType, StateDeltaPayload};
+use rate_limit::RateLimitObserver;
 
 pub const WATCHER_UNHEALTHY_THRESHOLD: Duration = Duration::from_secs(120);
 
@@ -95,7 +95,7 @@ pub fn spawn<A>(
                 }
                 Err(e) => {
                     broadcast_ci_poll(&hub, last_snapshot.as_ref(), poll_time(&ci_state_store));
-                    if let Some(decision) = crate::rate_limit::classify_and_decide(
+                    if let Some(decision) = rate_limit::classify_and_decide(
                         &e,
                         observer.snapshot(),
                         backoff,
@@ -103,7 +103,7 @@ pub fn spawn<A>(
                     ) {
                         diag::log_diag(&format!(
                             "ci_watcher: rate-limited; backoff signal={} wait={}s",
-                            crate::rate_limit::signal_label(decision.signal),
+                            rate_limit::signal_label(decision.signal),
                             decision.wait.as_secs()
                         ));
                         tokio::select! {

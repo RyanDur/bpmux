@@ -13,6 +13,7 @@ members = [
     "components/owner_session",
     "components/persist",
     "components/product_management",
+    "components/rate_limit",
     "components/reactions",
     "components/roster",
     "components/source_codec",
@@ -30,6 +31,7 @@ license = "BUSL-1.1"
 
 [workspace.dependencies]
 tokio = "1"
+http = "1"
 serde = "1"
 serde_json = "1"
 chrono = "0.4"

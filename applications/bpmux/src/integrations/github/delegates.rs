@@ -59,7 +59,7 @@ impl GitHubSourceAdapter {
         self.inner.fetch_job_status_for_run(run_id).await
     }
 
-    pub fn rate_limit_observer(&self) -> crate::rate_limit::RateLimitObserver {
+    pub fn rate_limit_observer(&self) -> rate_limit::RateLimitObserver {
         self.inner.rate_limit_observer()
     }
 
