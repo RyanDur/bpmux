@@ -9,7 +9,9 @@ use super::AppAction;
 pub fn validate_and_log(action: &AppAction) {
     let label = match action {
         AppAction::Ci(CiAction::StartPolling) => "Ci.StartPolling",
+        AppAction::Ci(CiAction::PollingStarted) => "Ci.PollingStarted",
         AppAction::Ci(CiAction::StopPolling) => "Ci.StopPolling",
+        AppAction::Ci(CiAction::PollingStopped) => "Ci.PollingStopped",
         AppAction::Ci(CiAction::Updated(_)) => "Ci.Updated",
         AppAction::Sync(SyncAction::StartIngestPolling) => "Sync.StartIngestPolling",
         AppAction::Sync(SyncAction::StopIngestPolling) => "Sync.StopIngestPolling",

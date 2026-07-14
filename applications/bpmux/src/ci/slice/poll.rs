@@ -40,13 +40,6 @@ impl CiPoll {
         }
     }
 
-    pub fn is_running(&self) -> bool {
-        self.token
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .is_some()
-    }
-
     fn start(&self, dispatch: Dispatch<AppAction>) {
         let Some(tracker) = self.tracker.clone() else {
             return;
@@ -60,7 +53,7 @@ impl CiPoll {
         }
         let token = self.parent_ct.child_token();
         self.watch_driver.spawn_watch(
-            dispatch,
+            dispatch.clone(),
             tracker,
             self.ci_state_store.clone(),
             self.hub.clone(),
@@ -68,16 +61,19 @@ impl CiPoll {
             token.clone(),
         );
         *guard = Some(token);
+        drop(guard);
+        dispatch(AppAction::Ci(CiAction::PollingStarted));
     }
 
-    fn stop(&self) {
-        if let Some(token) = self
+    fn stop(&self, dispatch: Dispatch<AppAction>) {
+        let taken = self
             .token
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .take()
-        {
+            .take();
+        if let Some(token) = taken {
             token.cancel();
+            dispatch(AppAction::Ci(CiAction::PollingStopped));
         }
     }
 }
@@ -86,7 +82,7 @@ impl Listener<AppState, AppAction> for CiPoll {
     fn on_action(&self, reaction: Reaction<AppState, AppAction>) -> ListenerFuture {
         match reaction.action {
             AppAction::Ci(CiAction::StartPolling) => self.start(reaction.dispatch),
-            AppAction::Ci(CiAction::StopPolling) => self.stop(),
+            AppAction::Ci(CiAction::StopPolling) => self.stop(reaction.dispatch),
             _ => {}
         }
         Box::pin(async {})

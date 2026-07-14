@@ -64,6 +64,7 @@ pub trait CiBroadcastListener: Send + Sync {
 pub struct CiState {
     last_seen: Option<(Option<u64>, &'static str)>,
     snapshot: Option<CiSnapshot>,
+    polling: bool,
 }
 
 pub fn reduce(state: &CiState, action: &CiAction) -> Option<CiState> {
@@ -76,14 +77,27 @@ pub fn reduce(state: &CiState, action: &CiAction) -> Option<CiState> {
             Some(CiState {
                 last_seen: Some(key),
                 snapshot: Some(snap.clone()),
+                ..state.clone()
             })
         }
+        CiAction::PollingStarted => Some(CiState {
+            polling: true,
+            ..state.clone()
+        }),
+        CiAction::PollingStopped => Some(CiState {
+            polling: false,
+            ..state.clone()
+        }),
         CiAction::StartPolling | CiAction::StopPolling => None,
     }
 }
 
 pub fn snapshot(state: &CiState) -> Option<CiSnapshot> {
     state.snapshot.clone()
+}
+
+pub fn polling(state: &CiState) -> bool {
+    state.polling
 }
 
 pub fn snapshot_key(state: &CiState) -> Option<(Option<u64>, &'static str)> {
@@ -96,6 +110,9 @@ pub fn snapshot_key(state: &CiState) -> Option<(Option<u64>, &'static str)> {
 mod action;
 mod listeners;
 mod poll;
+
+#[cfg(test)]
+mod reduce_tests;
 
 pub use action::CiAction;
 pub use listeners::CiStateStoreWriter;

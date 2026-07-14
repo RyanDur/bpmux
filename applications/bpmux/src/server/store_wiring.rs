@@ -158,12 +158,11 @@ fn assemble(
         rate_limit_observer.clone(),
         Arc::new(crate::transport::ci_watcher::CiWatcherDriver),
     ));
-    app_store.add_listener(ci_poll.clone());
+    app_store.add_listener(ci_poll);
     app_store.add_listener(Arc::new(RoutingPersister::new(hub.storage.clone())));
     StoreParts {
         hub,
         rate_limit_observer,
-        ci_poll,
         app_store,
         ci_listeners,
         roster_listeners,

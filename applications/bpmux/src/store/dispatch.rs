@@ -47,7 +47,7 @@ impl Store {
 
     pub async fn is_running(&self, kind: PollKind) -> bool {
         match kind {
-            PollKind::Ci => self.ci_poll.is_running(),
+            PollKind::Ci => self.app_store.select(|state| super::ci::polling(&state.ci)),
             PollKind::Ingest => self
                 .app_store
                 .select(|state| super::sync_health::ingest_polling(&state.sync_health)),
