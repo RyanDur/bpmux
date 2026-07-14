@@ -27,7 +27,7 @@ impl FileStorage {
         if let Some(p) = &self.outbox_path {
             return Ok(p.clone());
         }
-        crate::sync::default_outbox_path()
+        file_outbox::default_outbox_path()
     }
 
     fn write_users(&self, records: &[UserRecord]) -> Result<(), PersistError> {
@@ -49,6 +49,8 @@ mod file_outbox;
 mod file_state;
 mod file_surfaced_topics;
 mod file_users;
+#[cfg(test)]
+pub(crate) use file_outbox::load_outbox_from_disk;
 
 mod sqlite;
 mod sqlite_engine;
@@ -63,6 +65,10 @@ mod migrate;
 pub use migrate::*;
 #[cfg(test)]
 mod migrate_tests;
+#[cfg(test)]
+mod outbox_capture_tests;
+#[cfg(test)]
+mod outbox_format_tests;
 #[cfg(test)]
 mod sqlite_engine_behavior;
 #[cfg(test)]

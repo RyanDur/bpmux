@@ -7,11 +7,10 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
+use crate::storage::{FileStorage, load_outbox_from_disk};
 use crate::store::test_support::eventually;
 use crate::store::{AppAction, SeededStore};
-use crate::sync::{
-    OutboxSink, PendingWrite, QueuedWrite, RefreshDriver, SyncOrchestrator, load_outbox_from_disk,
-};
+use crate::sync::{OutboxSink, PendingWrite, QueuedWrite, RefreshDriver, SyncOrchestrator};
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::slice::StoryAction;
 use product_management::story::{Stage, Story, StoryId, Work};
@@ -73,7 +72,14 @@ mod outbox_persistence {
         let loaded = load_outbox_from_disk(&path).unwrap();
         assert!(loaded.is_empty(), "a missing outbox file hydrates empty");
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let (orch, _handle) = wire(&adapter, OutboxSink::Path(path), Vec::new(), Vec::new());
+        let (orch, _handle) = wire(
+            &adapter,
+            OutboxSink::Storage(Arc::new(
+                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path),
+            )),
+            Vec::new(),
+            Vec::new(),
+        );
         assert_eq!(orch.snapshot_status().pending_events, 0);
     }
 
@@ -84,7 +90,9 @@ mod outbox_persistence {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (orch, _handle) = wire(
             &adapter,
-            OutboxSink::Path(path.clone()),
+            OutboxSink::Storage(Arc::new(
+                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
+            )),
             Vec::new(),
             vec![seed_story(10, Work::NotStarted)],
         );
@@ -100,7 +108,9 @@ mod outbox_persistence {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (orch, _handle) = wire(
             &adapter,
-            OutboxSink::Path(path.clone()),
+            OutboxSink::Storage(Arc::new(
+                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
+            )),
             Vec::new(),
             vec![seed_story(20, Work::NotStarted)],
         );
@@ -148,7 +158,9 @@ mod outbox_persistence {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (orch, _handle) = wire(
             &adapter,
-            OutboxSink::Path(path.clone()),
+            OutboxSink::Storage(Arc::new(
+                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
+            )),
             Vec::new(),
             vec![seed_story(30, Work::NotStarted)],
         );
@@ -167,7 +179,9 @@ mod outbox_persistence {
         let adapter_a = Arc::new(InMemorySourceAdapter::new());
         let (orch_a, handle_a) = wire(
             &adapter_a,
-            OutboxSink::Path(path.clone()),
+            OutboxSink::Storage(Arc::new(
+                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
+            )),
             Vec::new(),
             vec![seed_story(40, Work::NotStarted)],
         );
@@ -198,7 +212,9 @@ mod outbox_persistence {
         let adapter_b = Arc::new(InMemorySourceAdapter::new());
         let (orch_b, _handle_b) = wire(
             &adapter_b,
-            OutboxSink::Path(path.clone()),
+            OutboxSink::Storage(Arc::new(
+                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
+            )),
             hydrated,
             Vec::new(),
         );
@@ -215,7 +231,9 @@ mod outbox_persistence {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (orch, _handle) = wire(
             &adapter,
-            OutboxSink::Path(path.clone()),
+            OutboxSink::Storage(Arc::new(
+                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
+            )),
             Vec::new(),
             vec![seed_story(60, Work::NotStarted)],
         );
@@ -234,7 +252,9 @@ mod outbox_persistence {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (orch, _handle) = wire(
             &adapter,
-            OutboxSink::Path(path.clone()),
+            OutboxSink::Storage(Arc::new(
+                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
+            )),
             Vec::new(),
             vec![seed_story(65, Work::NotStarted)],
         );
@@ -254,7 +274,9 @@ mod outbox_persistence {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (orch, _handle) = wire(
             &adapter,
-            OutboxSink::Path(path.clone()),
+            OutboxSink::Storage(Arc::new(
+                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
+            )),
             Vec::new(),
             vec![seed_story(66, Work::NotStarted)],
         );
@@ -275,7 +297,9 @@ mod outbox_persistence {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (orch, _handle) = wire(
             &adapter,
-            OutboxSink::Path(path.clone()),
+            OutboxSink::Storage(Arc::new(
+                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
+            )),
             Vec::new(),
             vec![
                 seed_story(70, Work::NotStarted),
@@ -297,7 +321,9 @@ mod outbox_persistence {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (orch, _handle) = wire(
             &adapter,
-            OutboxSink::Path(path.clone()),
+            OutboxSink::Storage(Arc::new(
+                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
+            )),
             Vec::new(),
             vec![seed_story(80, Work::NotStarted)],
         );
@@ -319,7 +345,9 @@ mod outbox_persistence {
         let adapter_a = Arc::new(InMemorySourceAdapter::new());
         let (orch_a, handle_a) = wire(
             &adapter_a,
-            OutboxSink::Path(path.clone()),
+            OutboxSink::Storage(Arc::new(
+                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
+            )),
             Vec::new(),
             vec![
                 seed_story(50, Work::NotStarted),
@@ -351,7 +379,9 @@ mod outbox_persistence {
         let adapter_b = Arc::new(InMemorySourceAdapter::new());
         let (orch_b, _handle_b) = wire(
             &adapter_b,
-            OutboxSink::Path(path.clone()),
+            OutboxSink::Storage(Arc::new(
+                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
+            )),
             hydrated,
             Vec::new(),
         );

@@ -15,7 +15,6 @@ mod driver;
 mod driver_ops;
 mod fetch;
 mod ingest;
-mod outbox;
 mod outbox_persister;
 mod port;
 mod race_window;
@@ -28,8 +27,6 @@ pub(crate) use backfill::backfill_shared_history;
 use coalesce::stale_state_labels_for;
 pub(crate) use drain::GithubDrain;
 pub use driver::*;
-pub(crate) use outbox::persist_outbox_to_disk;
-pub use outbox::{default_outbox_path, load_outbox_from_disk};
 pub use outbox_persister::{OutboxPersister, OutboxSink};
 pub use port::*;
 pub use race_window::*;
@@ -138,9 +135,5 @@ mod builder;
 mod boundary_tests;
 #[cfg(test)]
 mod orchestrator_tests;
-#[cfg(test)]
-mod outbox_capture_tests;
-#[cfg(test)]
-mod outbox_format_tests;
 #[cfg(test)]
 mod outbox_persister_tests;

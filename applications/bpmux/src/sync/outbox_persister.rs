@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::store::sync::queue_snapshot;
@@ -9,7 +8,6 @@ use kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
 #[derive(Clone)]
 pub enum OutboxSink {
     Storage(Arc<dyn crate::storage::Storage>),
-    Path(PathBuf),
     #[cfg(test)]
     Recording(Arc<std::sync::Mutex<Vec<Vec<QueuedEvent>>>>),
 }
@@ -18,7 +16,6 @@ impl OutboxSink {
     fn save(&self, events: &[QueuedEvent]) {
         let result = match self {
             OutboxSink::Storage(storage) => storage.save_outbox(events),
-            OutboxSink::Path(path) => crate::sync::persist_outbox_to_disk(path, events),
             #[cfg(test)]
             OutboxSink::Recording(log) => {
                 log.lock()

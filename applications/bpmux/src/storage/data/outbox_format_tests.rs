@@ -2,7 +2,8 @@
 
 use chrono::{TimeZone, Utc};
 
-use crate::sync::{QueuedEvent, load_outbox_from_disk};
+use super::load_outbox_from_disk;
+use crate::sync::QueuedEvent;
 use product_management::epic::EpicId;
 use product_management::story::events::{
     EventMeta, LabelDerivedFields, StoryEvent, StoryEventKind,
