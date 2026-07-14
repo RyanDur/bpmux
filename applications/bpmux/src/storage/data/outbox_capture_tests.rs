@@ -3,9 +3,9 @@
 use chrono::{TimeZone, Utc};
 
 use super::load_outbox_from_disk;
-use crate::sync::QueuedEvent;
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::{StoryId, Work};
+use source_sync::QueuedEvent;
 
 fn meta() -> EventMeta {
     EventMeta {

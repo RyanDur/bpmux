@@ -3,10 +3,10 @@ use std::time::Instant;
 use super::InstrumentedStorage;
 use crate::storage::Storage;
 
-impl<S: Storage> crate::sync::OutboxRepo for InstrumentedStorage<S> {
+impl<S: Storage> source_sync::OutboxRepo for InstrumentedStorage<S> {
     fn load_outbox(
         &self,
-    ) -> Result<std::collections::VecDeque<crate::sync::QueuedEvent>, persist::PersistError> {
+    ) -> Result<std::collections::VecDeque<source_sync::QueuedEvent>, persist::PersistError> {
         let start = Instant::now();
         let result = self.inner.load_outbox();
         if let Ok(ref queue) = result {
@@ -21,7 +21,7 @@ impl<S: Storage> crate::sync::OutboxRepo for InstrumentedStorage<S> {
 
     fn save_outbox(
         &self,
-        events: &[crate::sync::QueuedEvent],
+        events: &[source_sync::QueuedEvent],
     ) -> Result<(), persist::PersistError> {
         let start = Instant::now();
         let result = self.inner.save_outbox(events);

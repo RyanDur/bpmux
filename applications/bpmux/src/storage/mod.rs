@@ -9,7 +9,7 @@ pub trait Storage:
     awareness::SurfacedTopicsRepo
     + message_log::MessageLog
     + memory::lessons::LessonRepo
-    + crate::sync::OutboxRepo
+    + source_sync::OutboxRepo
     + user_routing::UserRepo
     + Send
     + Sync

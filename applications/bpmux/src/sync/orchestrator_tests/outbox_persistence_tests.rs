@@ -10,7 +10,9 @@ use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::storage::{FileStorage, load_outbox_from_disk};
 use crate::store::test_support::eventually;
 use crate::store::{AppAction, SeededStore};
-use crate::sync::{OutboxSink, PendingWrite, QueuedWrite, RefreshDriver, SyncOrchestrator};
+use source_sync::{PendingWrite, QueuedWrite};
+
+use crate::sync::{OutboxSink, RefreshDriver, SyncOrchestrator};
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::slice::StoryAction;
 use product_management::story::{Stage, Story, StoryId, Work};
@@ -124,7 +126,7 @@ mod outbox_persistence {
     #[tokio::test]
     async fn drain_drops_pushed_event_from_storage_outbox() {
         use crate::storage::{SqliteStorage, Storage};
-        use crate::sync::OutboxRepo;
+        use source_sync::OutboxRepo;
         let dir = tempfile::tempdir().unwrap();
         let storage: Arc<dyn Storage> =
             Arc::new(SqliteStorage::new(dir.path().to_path_buf()).unwrap());

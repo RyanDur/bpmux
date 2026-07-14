@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use crate::sync::QueuedWrite;
+use crate::QueuedWrite;
 
 #[derive(Clone)]
 pub struct SyncState {

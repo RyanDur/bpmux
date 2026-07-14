@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 
-use crate::sync::DroppedEvent;
+use crate::DroppedEvent;
 
 #[derive(Default, Clone)]
 pub struct SyncHealthState {

@@ -6,10 +6,10 @@ pub use crate::ci::slice as ci;
 pub use board;
 pub use reactions::slice as reactions;
 pub use roster;
+pub use source_sync::health as sync_health;
+pub use source_sync::queue as sync;
 pub use user_routing::slice as routing;
 pub mod commitments;
-pub mod sync;
-pub mod sync_health;
 
 mod action;
 mod app;
@@ -19,11 +19,15 @@ mod slice_access;
 mod snapshot;
 
 #[cfg(test)]
+mod boundary_tests;
+#[cfg(test)]
 mod ci_tests;
 #[cfg(test)]
 mod listeners_tests;
 #[cfg(test)]
 mod stores_tests;
+#[cfg(test)]
+mod sync_reduce_tests;
 #[cfg(test)]
 pub(crate) mod test_support;
 

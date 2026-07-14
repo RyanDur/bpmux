@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 
-use crate::sync::{MutationId, SourceAdapter, SyncError, is_permanent_push_failure};
+use source_sync::MutationId;
+
+use crate::sync::{SourceAdapter, SyncError, is_permanent_push_failure};
 
 use super::super::SyncOrchestrator;
 

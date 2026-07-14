@@ -26,7 +26,7 @@ pub(crate) async fn run_drain_loop(
 
 pub(crate) fn broadcast_sync_status_heartbeat(
     hub: &crate::hub::Hub,
-    snapshot: &crate::sync::SyncStatus,
+    snapshot: &source_sync::SyncStatus,
 ) {
     let status = serde_json::to_value(snapshot).unwrap_or(serde_json::Value::Null);
     let msg = message::Message {

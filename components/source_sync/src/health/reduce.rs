@@ -1,4 +1,4 @@
-use crate::sync::DroppedEvent;
+use crate::DroppedEvent;
 
 use super::{SyncHealthAction, SyncHealthState};
 

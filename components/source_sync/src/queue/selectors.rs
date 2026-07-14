@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::sync::{MutationId, QueuedEvent, QueuedWrite};
+use crate::{MutationId, QueuedEvent, QueuedWrite};
 use product_management::story::StoryId;
 
 use super::SyncState;

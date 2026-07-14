@@ -53,7 +53,7 @@ const FIX_QUEUED_VERDICT_ROW: &str = r#"{"id":0,"event":{"VerdictCast":{"meta":{
 
 #[test]
 fn an_outbox_row_round_trips_byte_identically_through_the_real_store() {
-    use crate::sync::OutboxRepo;
+    use source_sync::OutboxRepo;
     let dir = tempfile::TempDir::new().unwrap();
     let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
     let raw = rusqlite::Connection::open(dir.path().join("data.db")).unwrap();
@@ -65,7 +65,7 @@ fn an_outbox_row_round_trips_byte_identically_through_the_real_store() {
 
     let loaded = storage.load_outbox().unwrap();
     assert_eq!(loaded.len(), 1);
-    let entries: Vec<crate::sync::QueuedEvent> = loaded.into_iter().collect();
+    let entries: Vec<source_sync::QueuedEvent> = loaded.into_iter().collect();
     storage.save_outbox(&entries).unwrap();
 
     let stored: String = raw

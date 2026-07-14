@@ -11,11 +11,11 @@ use super::sqlite_meta as meta;
 use super::sqlite_outbox as outbox;
 use super::sqlite_surfaced_topics as surfaced_topics;
 use super::sqlite_users as users;
-use crate::sync::QueuedEvent;
 use memory::lessons::LessonIndex;
 use message::Message;
 use message_log::LogError;
 use persist::PersistError;
+use source_sync::QueuedEvent;
 use user_routing::{UserRecord, UserRepo};
 
 pub struct SqliteStorage {
@@ -148,7 +148,7 @@ impl UserRepo for SqliteStorage {
     }
 }
 
-impl crate::sync::OutboxRepo for SqliteStorage {
+impl source_sync::OutboxRepo for SqliteStorage {
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError> {
         outbox::load(&self.lock())
     }

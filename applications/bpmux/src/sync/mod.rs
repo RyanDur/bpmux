@@ -1,11 +1,10 @@
-use std::collections::VecDeque;
 use std::sync::Arc;
 
 use chrono::Utc;
 
-pub use persist::PersistError;
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use product_management::story::{CastVerdict, FreeComment};
+use source_sync::{SyncStatus, is_stale, is_startup_fail, staleness_threshold_secs};
 
 mod backfill;
 mod coalesce;
@@ -19,7 +18,6 @@ mod outbox_persister;
 mod port;
 mod race_window;
 mod slice_readers;
-mod status;
 mod types;
 mod write_through;
 
@@ -30,13 +28,7 @@ pub use driver::*;
 pub use outbox_persister::{OutboxPersister, OutboxSink};
 pub use port::*;
 pub use race_window::*;
-pub use status::{DroppedEvent, SyncStatus, is_stale, is_startup_fail, staleness_threshold_secs};
 pub use types::*;
-
-pub trait OutboxRepo: Send + Sync {
-    fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, persist::PersistError>;
-    fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), persist::PersistError>;
-}
 
 pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     pub(super) dispatch: std::sync::OnceLock<crate::store::Dispatch>,

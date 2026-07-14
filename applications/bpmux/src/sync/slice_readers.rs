@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 
 use super::SyncOrchestrator;
-use crate::sync::{MutationId, QueuedWrite, SourceAdapter};
+use source_sync::{MutationId, QueuedWrite};
+
+use crate::sync::SourceAdapter;
 use product_management::epic::{self, Epic};
 use product_management::iteration::{self, Iteration};
 use product_management::outcome::{self, Outcome};

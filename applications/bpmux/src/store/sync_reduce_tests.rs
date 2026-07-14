@@ -3,11 +3,11 @@
 use chrono::{TimeZone, Utc};
 
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::sync::{MutationId, PendingWrite, QueuedWrite};
 use product_management::story::StoryId;
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use source_sync::{MutationId, PendingWrite, QueuedWrite};
 
-use super::{SyncAction, SyncState, reduce};
+use crate::store::sync::{SyncAction, SyncState, reduce};
 
 fn meta() -> EventMeta {
     EventMeta {

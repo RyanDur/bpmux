@@ -254,7 +254,7 @@ contract!(
     }
 );
 
-fn seed_outbox_event(number: u64, label: &str) -> crate::sync::QueuedEvent {
+fn seed_outbox_event(number: u64, label: &str) -> source_sync::QueuedEvent {
     use product_management::story::StoryId;
     use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
     let event = StoryEvent::new(
@@ -268,7 +268,7 @@ fn seed_outbox_event(number: u64, label: &str) -> crate::sync::QueuedEvent {
             label: label.to_string(),
         },
     );
-    crate::sync::QueuedEvent::new(event)
+    source_sync::QueuedEvent::new(event)
 }
 
 contract!(load_outbox_empty_when_unset, |storage: &dyn Storage| {

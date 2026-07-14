@@ -8,7 +8,9 @@ use product_management::outcome::Outcome;
 use product_management::story::events::StoryEvent;
 use product_management::story::{CastVerdict, FreeComment, Stage, Story};
 
-use super::{BoxedFuture, SyncStatus};
+use source_sync::SyncStatus;
+
+use super::BoxedFuture;
 
 pub type OrchestratorHandle = Option<Arc<dyn RefreshDriver>>;
 

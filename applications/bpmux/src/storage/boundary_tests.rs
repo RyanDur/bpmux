@@ -10,7 +10,7 @@ const COMPOSED_FEATURE_PATHS: &[&str] = &[
     "awareness::",
     "message_log",
     "memory::",
-    "crate::sync",
+    "source_sync",
     "user_routing::",
 ];
 
@@ -56,7 +56,7 @@ const PORT_OWNING_FEATURE_MODULES: &[&str] = &[
     "../../../components/awareness/src",
     "../../../components/message_log/src",
     "../../../components/memory/src",
-    "sync",
+    "../../../components/source_sync/src",
     "../../../components/user_routing/src",
 ];
 

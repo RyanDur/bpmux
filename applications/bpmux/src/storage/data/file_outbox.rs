@@ -2,8 +2,8 @@ use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 
 use super::FileStorage;
-use crate::sync::QueuedEvent;
 use persist::PersistError;
+use source_sync::QueuedEvent;
 
 pub(super) fn default_outbox_path() -> Result<PathBuf, std::io::Error> {
     if let Ok(p) = std::env::var("BPMUX_BOARD_OUTBOX_PATH")
@@ -40,7 +40,7 @@ fn persist_outbox_to_disk(path: &Path, events: &[QueuedEvent]) -> Result<(), Per
     Ok(())
 }
 
-impl crate::sync::OutboxRepo for FileStorage {
+impl source_sync::OutboxRepo for FileStorage {
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError> {
         let path = self.resolve_outbox_path()?;
         load_outbox_from_disk(&path)

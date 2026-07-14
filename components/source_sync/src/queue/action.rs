@@ -1,4 +1,4 @@
-use crate::sync::{MutationId, PendingWrite};
+use crate::{MutationId, PendingWrite};
 
 #[derive(Clone, Debug)]
 pub enum SyncAction {

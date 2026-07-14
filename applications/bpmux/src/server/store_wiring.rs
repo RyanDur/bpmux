@@ -30,7 +30,7 @@ pub(crate) fn build_store_with_outbox(
     tracker: Option<Arc<dyn CiPollFetch>>,
     ci_state_store: CiStateStore,
     parent_ct: CancellationToken,
-    initial_outbox: Vec<crate::sync::QueuedWrite>,
+    initial_outbox: Vec<source_sync::QueuedWrite>,
 ) -> Store {
     Store::from_parts(assemble(
         hub,
@@ -47,7 +47,7 @@ pub(crate) fn build_store_with_refresh(
     tracker: Option<Arc<dyn CiPollFetch>>,
     ci_state_store: CiStateStore,
     parent_ct: CancellationToken,
-    initial_outbox: Vec<crate::sync::QueuedWrite>,
+    initial_outbox: Vec<source_sync::QueuedWrite>,
     refresh: Arc<dyn RefreshDriver>,
     ingest_interval: Duration,
     hydration_interval: Duration,
@@ -120,7 +120,7 @@ fn assemble(
     tracker: Option<Arc<dyn CiPollFetch>>,
     ci_state_store: CiStateStore,
     parent_ct: CancellationToken,
-    initial_outbox: Vec<crate::sync::QueuedWrite>,
+    initial_outbox: Vec<source_sync::QueuedWrite>,
 ) -> StoreParts {
     let rate_limit_observer = tracker
         .as_ref()

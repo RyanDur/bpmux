@@ -3,7 +3,6 @@
 use chrono::{TimeZone, Utc};
 
 use super::load_outbox_from_disk;
-use crate::sync::QueuedEvent;
 use product_management::epic::EpicId;
 use product_management::story::events::{
     EventMeta, LabelDerivedFields, StoryEvent, StoryEventKind,
@@ -11,6 +10,7 @@ use product_management::story::events::{
 use product_management::story::{
     Acceptor, CastVerdict, FreeComment, Stage, Story, StoryId, StoryKind, Tag, Verdict, Work,
 };
+use source_sync::QueuedEvent;
 
 const FIX_QUEUED_TAG_ADDED: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"label":"ready"}}}"#;
 const FIX_QUEUED_TRANSITIONED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"new_state":"in-progress","placement":"desk-check"}}}"#;
@@ -111,7 +111,7 @@ fn story_event_round_trips_byte_identically() {
 fn a_legacy_disk_row_carrying_peer_id_still_deserializes() {
     let parsed: QueuedEvent =
         serde_json::from_str(FIX_LEGACY_ROW_WITH_PEER_ID).expect("legacy row deserializes");
-    assert_eq!(parsed.id, crate::sync::MutationId(0));
+    assert_eq!(parsed.id, source_sync::MutationId(0));
     assert_eq!(parsed.event.meta.actor, "dev");
     assert_eq!(
         parsed.event.meta.ts,

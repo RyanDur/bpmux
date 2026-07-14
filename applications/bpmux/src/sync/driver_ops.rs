@@ -4,7 +4,9 @@ use crate::sync::{ConditionalBody, SourceAdapter, SyncError};
 use product_management::story::events::StoryEvent;
 use product_management::story::{CastVerdict, FreeComment, Story, StoryId};
 
-use super::{BoxedFuture, RefreshDriver, SyncOrchestrator, SyncStatus};
+use source_sync::SyncStatus;
+
+use super::{BoxedFuture, RefreshDriver, SyncOrchestrator};
 
 impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
     fn refresh_story(&self, number: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>> {

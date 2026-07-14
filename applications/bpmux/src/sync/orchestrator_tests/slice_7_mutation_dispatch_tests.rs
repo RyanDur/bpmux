@@ -15,7 +15,7 @@ use product_management::story::{Stage, Story, StoryId, Work};
 
 mod slice_7_2_mutation_id_dispatch {
     use super::*;
-    use crate::sync::MutationId;
+    use source_sync::MutationId;
 
     #[tokio::test]
     async fn mutate_enqueues_writes_with_unique_ids() {

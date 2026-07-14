@@ -28,13 +28,13 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self.emit(action);
     }
 
-    pub(super) fn dispatch_write_pushed(&self, id: crate::sync::MutationId) {
+    pub(super) fn dispatch_write_pushed(&self, id: source_sync::MutationId) {
         self.dispatch_board(crate::store::AppAction::Sync(
             crate::store::SyncAction::WritePushed { id },
         ));
     }
 
-    pub(super) fn dispatch_write_dropped(&self, id: crate::sync::MutationId) {
+    pub(super) fn dispatch_write_dropped(&self, id: source_sync::MutationId) {
         self.dispatch_board(crate::store::AppAction::Sync(
             crate::store::SyncAction::WriteDropped { id },
         ));

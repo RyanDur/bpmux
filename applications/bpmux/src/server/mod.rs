@@ -27,7 +27,7 @@ pub async fn run_server(
     let ci_state_store = crate::ci::CiStateStore::new();
     let race_window_barrier = race_window_barrier_from_env();
 
-    let (orchestrator, hydrated_outbox): (OrchestratorHandle, Vec<crate::sync::QueuedWrite>) =
+    let (orchestrator, hydrated_outbox): (OrchestratorHandle, Vec<source_sync::QueuedWrite>) =
         if test_mode_enabled() {
             eprintln!(
                 "[bpmux server] BPMUX_TEST_MODE=1 — instantiating in-memory orchestrator for acceptance tests"

@@ -1,7 +1,9 @@
 use crate::sync::{SourceAdapter, SyncError};
 use product_management::story::events::{StoryEvent, StoryEventKind};
 
-use super::{PendingWrite, SyncOrchestrator};
+use source_sync::PendingWrite;
+
+use super::SyncOrchestrator;
 
 mod drain_pass;
 mod listener;

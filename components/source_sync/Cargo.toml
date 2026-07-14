@@ -1,0 +1,15 @@
+[package]
+name = "source_sync"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The sync-with-the-source domain: queued writes, sync health, the outbox port"
+
+[dependencies]
+persist = { path = "../persist" }
+product_management = { path = "../product_management" }
+serde = { workspace = true, features = ["derive"] }
+chrono = { workspace = true }
+
+[lints]
+workspace = true

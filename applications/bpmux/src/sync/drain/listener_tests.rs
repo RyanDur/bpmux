@@ -17,7 +17,9 @@ use crate::storage::StorageBackend;
 use crate::store::AppAction;
 use crate::store::test_support::eventually;
 use crate::store::{Store, SyncHealthAction};
-use crate::sync::{MutationId, PendingWrite, QueuedWrite, RefreshDriver, SyncOrchestrator};
+use source_sync::{MutationId, PendingWrite, QueuedWrite};
+
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use message::Message;
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::{Story, StoryId, Work};

@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use crate::store::sync::queue_snapshot;
 use crate::store::{AppAction, AppState};
-use crate::sync::QueuedEvent;
 use kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
+use source_sync::QueuedEvent;
 
 #[derive(Clone)]
 pub enum OutboxSink {
