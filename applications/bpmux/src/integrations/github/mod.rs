@@ -1,4 +1,5 @@
-use crate::bridge::tracker::{ConditionalRunEntry, OctocrabStoryTracker};
+use crate::bridge::tracker::OctocrabStoryTracker;
+use crate::ci::ConditionalRunEntry;
 use crate::ci::slice::CiPollFetch;
 
 mod delegates;

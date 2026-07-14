@@ -60,7 +60,7 @@ impl OctocrabStoryTracker {
     pub async fn fetch_failed_tests_for_run(
         &self,
         run_id: u64,
-    ) -> Result<crate::bridge::tools::CiRunFailures, crate::bridge::tools::CiLogError> {
+    ) -> Result<crate::ci::CiRunFailures, crate::ci::CiLogError> {
         #[derive(serde::Deserialize)]
         struct Run {
             status: Option<String>,
@@ -70,9 +70,9 @@ impl OctocrabStoryTracker {
         let run: Run = self.client.get(run_path, None::<&()>).await.map_err(|e| {
             let msg = format!("{e}");
             if msg.contains("404") {
-                crate::bridge::tools::CiLogError::RunNotFound { run_id }
+                crate::ci::CiLogError::RunNotFound { run_id }
             } else {
-                crate::bridge::tools::CiLogError::UpstreamError { detail: msg }
+                crate::ci::CiLogError::UpstreamError { detail: msg }
             }
         })?;
         let conclusion = run
@@ -80,7 +80,7 @@ impl OctocrabStoryTracker {
             .clone()
             .unwrap_or_else(|| "unknown".to_string());
         if run.status.as_deref() != Some("completed") {
-            return Err(crate::bridge::tools::CiLogError::RunInProgress {
+            return Err(crate::ci::CiLogError::RunInProgress {
                 run_id,
                 conclusion: run
                     .status
@@ -103,11 +103,11 @@ impl OctocrabStoryTracker {
             self.owner, self.repo
         );
         let jobs: JobsResponse = self.client.get(jobs_path, None::<&()>).await.map_err(|e| {
-            crate::bridge::tools::CiLogError::UpstreamError {
+            crate::ci::CiLogError::UpstreamError {
                 detail: format!("fetch jobs for run {run_id}: {e}"),
             }
         })?;
-        let mut all_failures: Vec<crate::bridge::tools::CiTestFailure> = Vec::new();
+        let mut all_failures: Vec<crate::ci::CiTestFailure> = Vec::new();
         for job in jobs.jobs {
             if job.conclusion.as_deref() != Some("failure") {
                 continue;
@@ -151,7 +151,7 @@ impl OctocrabStoryTracker {
             }
         }
         let final_failures = if all_failures.is_empty() && conclusion == "failure" {
-            vec![crate::bridge::tools::CiTestFailure {
+            vec![crate::ci::CiTestFailure {
                 shard_id: Some("(workflow)".to_string()),
                 test_name: "(workflow failure: no job reached conclusion=failure)".to_string(),
                 file: None,
@@ -168,7 +168,7 @@ impl OctocrabStoryTracker {
         } else {
             all_failures
         };
-        Ok(crate::bridge::tools::CiRunFailures {
+        Ok(crate::ci::CiRunFailures {
             run_id,
             conclusion,
             failures: final_failures,

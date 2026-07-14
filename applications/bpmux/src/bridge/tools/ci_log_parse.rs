@@ -1,4 +1,4 @@
-use super::get_ci_log_for_run::{CiRunFailures, CiTestFailure};
+use crate::ci::{CiRunFailures, CiTestFailure};
 
 pub fn parse_playwright_failures_from_log(run_id: u64, raw_log: &str) -> CiRunFailures {
     let mut failures = Vec::new();

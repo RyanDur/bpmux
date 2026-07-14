@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use crate::bridge::tools::CiRunFailures;
+use crate::ci::CiRunFailures;
 
 #[derive(Clone, Default)]
 pub struct CiLogStore {

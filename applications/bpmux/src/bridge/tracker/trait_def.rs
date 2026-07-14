@@ -1,5 +1,7 @@
 use std::sync::OnceLock;
 
+use crate::ci::WorkflowRunEntry;
+
 pub(crate) fn ensure_crypto_provider_installed() {
     static INSTALLED: OnceLock<()> = OnceLock::new();
     INSTALLED.get_or_init(|| {
@@ -16,22 +18,6 @@ pub(crate) fn log_labels_fetch_failure<E: std::fmt::Display>(
         "get_story_labels ({backend}) #{number} failed: {err}"
     ));
     Vec::new()
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Deserialize)]
-pub struct WorkflowRunEntry {
-    pub status: String,
-    pub conclusion: Option<String>,
-    #[serde(rename = "head_sha", alias = "headSha", default)]
-    pub head_sha: Option<String>,
-    #[serde(rename = "display_title", alias = "displayTitle", default)]
-    pub display_title: Option<String>,
-    #[serde(rename = "id", alias = "databaseId", default)]
-    pub database_id: Option<u64>,
-    #[serde(default)]
-    pub name: Option<String>,
-    #[serde(default, skip)]
-    pub annotation_message: Option<String>,
 }
 
 pub trait StoryTracker: Clone + Send + Sync + 'static {
@@ -126,14 +112,4 @@ pub enum ConditionalIssue {
         etag: Option<String>,
     },
     NotFound,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ConditionalRunEntry {
-    NotModified,
-    Modified {
-        entries: Vec<WorkflowRunEntry>,
-        etag: Option<String>,
-    },
-    Empty,
 }

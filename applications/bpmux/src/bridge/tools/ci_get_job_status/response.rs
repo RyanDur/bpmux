@@ -1,4 +1,5 @@
-use super::types::{CiJobRecord, CiJobStatusData, CiJobStatusResponse, CiJobTruncation};
+use super::types::{CiJobStatusData, CiJobStatusResponse, CiJobTruncation};
+use crate::ci::CiJobRecord;
 
 pub const MAX_DEFAULT_BUDGET_BYTES: usize = 2048;
 pub(super) const TRUNCATION_HINT: &str = "set verbose=true for full payload";

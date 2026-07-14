@@ -3,9 +3,9 @@
 #![allow(clippy::panic)]
 
 use super::ci_get_job_status::{
-    CiJobRecord, CiJobStatusError, MAX_DEFAULT_BUDGET_BYTES, build_ci_job_status_response,
-    compute_duration_ms,
+    MAX_DEFAULT_BUDGET_BYTES, build_ci_job_status_response, compute_duration_ms,
 };
+use crate::ci::{CiJobRecord, CiJobStatusError};
 
 fn job(name: &str, conclusion: &str, ms: Option<u64>, html: &str) -> CiJobRecord {
     CiJobRecord {

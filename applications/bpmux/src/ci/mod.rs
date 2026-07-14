@@ -2,6 +2,8 @@ use std::time::Duration;
 
 mod broadcast;
 mod classify;
+mod jobs;
+mod runs;
 mod state_report;
 #[cfg(test)]
 mod state_report_tests;
@@ -16,6 +18,8 @@ pub(crate) use broadcast::{
     build_dev_ci_signal, build_multi_depth_for_transition, compute_broadcast_text,
 };
 pub use classify::{RunEntry, classify_runs};
+pub use jobs::{CiJobRecord, CiJobStatusError};
+pub use runs::{CiLogError, CiRunFailures, CiTestFailure, ConditionalRunEntry, WorkflowRunEntry};
 pub(crate) use state_report::{CiStateReport, build_ci_state_report, unknown_ci_state_report};
 pub use state_store::CiStateStore;
 pub mod slice;

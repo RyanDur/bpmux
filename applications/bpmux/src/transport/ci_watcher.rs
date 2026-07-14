@@ -76,18 +76,18 @@ pub fn spawn<A>(
                 .list_latest_run_on_main_conditional(last_etag.as_deref())
                 .await;
             let entries = match conditional {
-                Ok(crate::bridge::tracker::ConditionalRunEntry::NotModified) => {
+                Ok(crate::ci::ConditionalRunEntry::NotModified) => {
                     backoff = base_backoff;
                     ci_state_store.mark_poll_succeeded();
                     broadcast_ci_poll(&hub, last_snapshot.as_ref(), poll_time(&ci_state_store));
                     continue;
                 }
-                Ok(crate::bridge::tracker::ConditionalRunEntry::Modified { entries, etag }) => {
+                Ok(crate::ci::ConditionalRunEntry::Modified { entries, etag }) => {
                     backoff = base_backoff;
                     last_etag = etag;
                     entries
                 }
-                Ok(crate::bridge::tracker::ConditionalRunEntry::Empty) => {
+                Ok(crate::ci::ConditionalRunEntry::Empty) => {
                     backoff = base_backoff;
                     ci_state_store.mark_poll_succeeded();
                     broadcast_ci_poll(&hub, last_snapshot.as_ref(), poll_time(&ci_state_store));

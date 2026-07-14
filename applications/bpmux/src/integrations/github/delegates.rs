@@ -28,14 +28,14 @@ impl GitHubSourceAdapter {
 
     pub async fn list_latest_run_on_main(
         &self,
-    ) -> Result<Option<crate::bridge::tracker::WorkflowRunEntry>, String> {
+    ) -> Result<Option<crate::ci::WorkflowRunEntry>, String> {
         self.inner.list_latest_run_on_main().await
     }
 
     pub async fn list_latest_run_on_main_conditional(
         &self,
         prior_etag: Option<&str>,
-    ) -> Result<crate::bridge::tracker::ConditionalRunEntry, String> {
+    ) -> Result<crate::ci::ConditionalRunEntry, String> {
         self.inner
             .list_latest_run_on_main_conditional(prior_etag)
             .await
@@ -44,7 +44,7 @@ impl GitHubSourceAdapter {
     pub async fn fetch_failed_tests_for_run(
         &self,
         run_id: u64,
-    ) -> Result<crate::bridge::tools::CiRunFailures, crate::bridge::tools::CiLogError> {
+    ) -> Result<crate::ci::CiRunFailures, crate::ci::CiLogError> {
         self.inner.fetch_failed_tests_for_run(run_id).await
     }
 
@@ -55,8 +55,7 @@ impl GitHubSourceAdapter {
     pub async fn fetch_job_status_for_run(
         &self,
         run_id: u64,
-    ) -> Result<Vec<crate::bridge::tools::CiJobRecord>, crate::bridge::tools::CiJobStatusError>
-    {
+    ) -> Result<Vec<crate::ci::CiJobRecord>, crate::ci::CiJobStatusError> {
         self.inner.fetch_job_status_for_run(run_id).await
     }
 

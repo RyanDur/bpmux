@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::ci_log_parse::{build_non_test_failure_record, parse_playwright_failures_from_log};
-use super::get_ci_log_for_run::*;
+use crate::ci::CiLogError;
 
 #[test]
 fn empty_log_yields_zero_failures_and_success_conclusion() {

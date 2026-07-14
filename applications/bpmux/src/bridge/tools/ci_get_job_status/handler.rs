@@ -1,4 +1,5 @@
-use super::types::{CiJobStatusError, serialize_error};
+use super::types::serialize_error;
+use crate::ci::CiJobStatusError;
 
 pub(in crate::bridge) async fn handle_ci_get_job_status(
     args: &serde_json::Map<String, serde_json::Value>,

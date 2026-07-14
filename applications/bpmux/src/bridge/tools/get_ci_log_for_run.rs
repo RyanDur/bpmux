@@ -1,34 +1,3 @@
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
-pub struct CiTestFailure {
-    pub shard_id: Option<String>,
-    pub test_name: String,
-    pub file: Option<String>,
-    pub line: Option<u32>,
-    pub error_message: String,
-    #[serde(default)]
-    pub retry_count: u32,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stage: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub class: Option<String>,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
-pub struct CiRunFailures {
-    pub run_id: u64,
-    pub conclusion: String,
-    pub failures: Vec<CiTestFailure>,
-}
-
-#[derive(Debug, Clone, serde::Serialize, PartialEq, Eq)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-pub enum CiLogError {
-    RunNotFound { run_id: u64 },
-    RunInProgress { run_id: u64, conclusion: String },
-    RateLimited { wait_secs: u64 },
-    UpstreamError { detail: String },
-}
-
 pub(in crate::bridge) async fn handle_get_ci_log_for_run(
     args: &serde_json::Map<String, serde_json::Value>,
     port: u16,

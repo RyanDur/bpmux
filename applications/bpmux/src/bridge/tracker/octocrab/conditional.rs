@@ -1,6 +1,6 @@
-use crate::bridge::tracker::WorkflowRunEntry;
+use crate::ci::{ConditionalRunEntry, WorkflowRunEntry};
 
-use super::{ConditionalRunEntry, OctocrabStoryTracker};
+use super::OctocrabStoryTracker;
 
 impl OctocrabStoryTracker {
     pub async fn list_latest_run_on_main_conditional(

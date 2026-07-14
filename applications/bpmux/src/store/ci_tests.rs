@@ -12,9 +12,9 @@ use tokio_util::sync::CancellationToken;
 use super::ci::{CiBroadcastListener, CiPollFetch, CiSnapshot};
 use super::test_support::eventually;
 use super::{AppAction, CiAction, PollKind, Store, SyncAction};
-use crate::bridge::tracker::ConditionalRunEntry;
 use crate::ci::CiState;
 use crate::ci::CiStateStore;
+use crate::ci::ConditionalRunEntry;
 use crate::hub::Hub;
 use crate::rate_limit::RateLimitObserver;
 use crate::server::store_wiring::{build_store, build_store_with_refresh};
@@ -62,7 +62,7 @@ struct FakeCiTracker {
 
 fn default_modified_entry() -> ConditionalRunEntry {
     ConditionalRunEntry::Modified {
-        entries: vec![crate::bridge::tracker::WorkflowRunEntry {
+        entries: vec![crate::ci::WorkflowRunEntry {
             status: "completed".to_string(),
             conclusion: Some("success".to_string()),
             head_sha: Some("deadbeef".to_string()),

@@ -4,8 +4,7 @@ impl OctocrabStoryTracker {
     pub async fn fetch_job_status_for_run(
         &self,
         run_id: u64,
-    ) -> Result<Vec<crate::bridge::tools::CiJobRecord>, crate::bridge::tools::CiJobStatusError>
-    {
+    ) -> Result<Vec<crate::ci::CiJobRecord>, crate::ci::CiJobStatusError> {
         #[derive(serde::Deserialize)]
         struct Job {
             name: String,
@@ -28,10 +27,10 @@ impl OctocrabStoryTracker {
             .get(jobs_path, None::<&()>)
             .await
             .map_err(|e| classify_jobs_error(&e.to_string(), run_id))?;
-        let records: Vec<crate::bridge::tools::CiJobRecord> = response
+        let records: Vec<crate::ci::CiJobRecord> = response
             .jobs
             .into_iter()
-            .map(|j| crate::bridge::tools::CiJobRecord {
+            .map(|j| crate::ci::CiJobRecord {
                 name: j.name,
                 conclusion: j
                     .conclusion
@@ -69,16 +68,16 @@ impl OctocrabStoryTracker {
     }
 }
 
-fn classify_jobs_error(msg: &str, run_id: u64) -> crate::bridge::tools::CiJobStatusError {
+fn classify_jobs_error(msg: &str, run_id: u64) -> crate::ci::CiJobStatusError {
     if msg.contains("404") {
-        crate::bridge::tools::CiJobStatusError::not_found(run_id)
+        crate::ci::CiJobStatusError::not_found(run_id)
     } else if msg.contains("401") || msg.contains("403") {
-        crate::bridge::tools::CiJobStatusError::auth_failed()
+        crate::ci::CiJobStatusError::auth_failed()
     } else if msg.contains("429") {
-        crate::bridge::tools::CiJobStatusError::rate_limit(60)
+        crate::ci::CiJobStatusError::rate_limit(60)
     } else if msg.contains("spending limit") || msg.contains("quota") {
-        crate::bridge::tools::CiJobStatusError::quota_exhausted()
+        crate::ci::CiJobStatusError::quota_exhausted()
     } else {
-        crate::bridge::tools::CiJobStatusError::network_error(msg.to_string())
+        crate::ci::CiJobStatusError::network_error(msg.to_string())
     }
 }

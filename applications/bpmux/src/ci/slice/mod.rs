@@ -4,8 +4,7 @@ use std::sync::Arc;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::bridge::tracker::ConditionalRunEntry;
-use crate::ci::{CiEvent, CiStateStore};
+use crate::ci::{CiEvent, CiStateStore, ConditionalRunEntry};
 use crate::hub::Hub;
 use crate::rate_limit::RateLimitObserver;
 use crate::store::AppAction;

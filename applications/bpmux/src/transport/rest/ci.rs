@@ -45,12 +45,10 @@ pub async fn get_ci_log(
         }
         Err(err) => {
             let status = match &err {
-                crate::bridge::tools::CiLogError::RunNotFound { .. } => StatusCode::NOT_FOUND,
-                crate::bridge::tools::CiLogError::RunInProgress { .. } => StatusCode::ACCEPTED,
-                crate::bridge::tools::CiLogError::RateLimited { .. } => {
-                    StatusCode::TOO_MANY_REQUESTS
-                }
-                crate::bridge::tools::CiLogError::UpstreamError { .. } => StatusCode::BAD_GATEWAY,
+                crate::ci::CiLogError::RunNotFound { .. } => StatusCode::NOT_FOUND,
+                crate::ci::CiLogError::RunInProgress { .. } => StatusCode::ACCEPTED,
+                crate::ci::CiLogError::RateLimited { .. } => StatusCode::TOO_MANY_REQUESTS,
+                crate::ci::CiLogError::UpstreamError { .. } => StatusCode::BAD_GATEWAY,
             };
             (
                 status,

@@ -1,5 +1,6 @@
 mod ci_failures;
 mod ci_jobs;
+mod comments;
 mod conditional;
 mod errors;
 mod fetch;
@@ -16,9 +17,7 @@ mod gh_state_label_tests;
 pub(crate) use selection::FallbackReason;
 pub(crate) use selection::{TrackerSelection, select_from_env};
 
-use super::trait_def::{
-    ConditionalRunEntry, ensure_crypto_provider_installed, log_labels_fetch_failure,
-};
+use super::trait_def::{ensure_crypto_provider_installed, log_labels_fetch_failure};
 
 #[derive(Clone)]
 pub struct OctocrabStoryTracker {
