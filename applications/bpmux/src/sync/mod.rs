@@ -4,6 +4,10 @@ use chrono::Utc;
 
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use product_management::story::{CastVerdict, FreeComment};
+pub use source_sync::{
+    ConditionalBody, Ingested, PushContext, SourceAdapter, SyncError, classify_close_error,
+    is_permanent_push_failure,
+};
 use source_sync::{SyncStatus, is_stale, is_startup_fail, staleness_threshold_secs};
 
 mod backfill;
@@ -15,7 +19,6 @@ mod driver_ops;
 mod fetch;
 mod ingest;
 mod outbox_persister;
-mod port;
 mod race_window;
 mod slice_readers;
 mod types;
@@ -26,7 +29,6 @@ use coalesce::stale_state_labels_for;
 pub(crate) use drain::GithubDrain;
 pub use driver::*;
 pub use outbox_persister::{OutboxPersister, OutboxSink};
-pub use port::*;
 pub use race_window::*;
 pub use types::*;
 

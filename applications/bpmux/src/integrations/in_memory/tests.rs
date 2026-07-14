@@ -3,10 +3,10 @@
 use chrono::{TimeZone, Utc};
 
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::sync::{SourceAdapter, SyncError};
 use product_management::epic::EpicId;
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::{FreeComment, Story, StoryId, Work};
+use source_sync::{SourceAdapter, SyncError};
 
 fn meta() -> EventMeta {
     EventMeta {
@@ -97,7 +97,7 @@ async fn push_event_records_the_event() {
         },
     );
     adapter
-        .push_event(&event, &crate::sync::PushContext::default())
+        .push_event(&event, &source_sync::PushContext::default())
         .await
         .unwrap();
     let pushed = adapter.pushed_events();
@@ -118,7 +118,7 @@ async fn push_event_errs_when_configured_to_fail() {
         },
     );
     let result = adapter
-        .push_event(&event, &crate::sync::PushContext::default())
+        .push_event(&event, &source_sync::PushContext::default())
         .await;
     assert!(matches!(result, Err(SyncError::SourceUnreachable(_))));
     assert!(
@@ -147,11 +147,11 @@ async fn multiple_pushed_events_preserve_order() {
         },
     );
     adapter
-        .push_event(&e1, &crate::sync::PushContext::default())
+        .push_event(&e1, &source_sync::PushContext::default())
         .await
         .unwrap();
     adapter
-        .push_event(&e2, &crate::sync::PushContext::default())
+        .push_event(&e2, &source_sync::PushContext::default())
         .await
         .unwrap();
     let pushed = adapter.pushed_events();
@@ -205,7 +205,7 @@ async fn push_event_accepts_story_created_variant() {
         },
     );
     adapter
-        .push_event(&event, &crate::sync::PushContext::default())
+        .push_event(&event, &source_sync::PushContext::default())
         .await
         .unwrap();
     let pushed = adapter.pushed_events();
@@ -225,7 +225,7 @@ async fn parent_epic_set_surfaces_in_ingested_metadata() {
                     epic_id: EpicId::new(7),
                 },
             ),
-            &crate::sync::PushContext::default(),
+            &source_sync::PushContext::default(),
         )
         .await
         .unwrap();
@@ -257,14 +257,14 @@ async fn parent_epic_unset_clears_in_ingested_metadata() {
                     epic_id: EpicId::new(7),
                 },
             ),
-            &crate::sync::PushContext::default(),
+            &source_sync::PushContext::default(),
         )
         .await
         .unwrap();
     adapter
         .push_event(
             &StoryEvent::new(meta(), StoryId::new(42), StoryEventKind::ParentEpicUnset),
-            &crate::sync::PushContext::default(),
+            &source_sync::PushContext::default(),
         )
         .await
         .unwrap();
@@ -293,7 +293,7 @@ async fn parent_epic_event_no_ops_for_unseeded_story() {
                     epic_id: EpicId::new(1),
                 },
             ),
-            &crate::sync::PushContext::default(),
+            &source_sync::PushContext::default(),
         )
         .await
         .unwrap();

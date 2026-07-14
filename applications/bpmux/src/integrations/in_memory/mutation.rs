@@ -5,7 +5,7 @@ use product_management::story::{CastVerdict, FreeComment};
 pub(super) fn apply_push_event(
     s: &mut InnerState,
     event: &StoryEvent,
-    context: &crate::sync::PushContext,
+    context: &source_sync::PushContext,
 ) {
     match &event.kind {
         StoryEventKind::FreeCommentAppended { body } => {

@@ -8,6 +8,7 @@ description = "The sync-with-the-source domain: queued writes, sync health, the 
 [dependencies]
 persist = { path = "../persist" }
 product_management = { path = "../product_management" }
+workflow = { path = "../workflow" }
 serde = { workspace = true, features = ["derive"] }
 chrono = { workspace = true }
 

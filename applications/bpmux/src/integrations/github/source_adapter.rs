@@ -3,9 +3,9 @@ use crate::integrations::github::mapper::{
     decode_free_comment, decode_story_with_placement, decode_verdicts,
 };
 use crate::integrations::github::tracker::{ConditionalIssue, StoryTracker};
-use crate::sync::{ConditionalBody, Ingested, SourceAdapter, SyncError};
 use product_management::story::events::StoryEvent;
 use product_management::story::{CastVerdict, FreeComment, Story};
+use source_sync::{ConditionalBody, Ingested, SourceAdapter, SyncError};
 
 impl SourceAdapter for GitHubSourceAdapter {
     async fn ingest_metadata(&self) -> Result<Ingested, SyncError> {
@@ -123,7 +123,7 @@ impl SourceAdapter for GitHubSourceAdapter {
     async fn push_event(
         &self,
         event: &StoryEvent,
-        context: &crate::sync::PushContext,
+        context: &source_sync::PushContext,
     ) -> Result<Option<StoryEvent>, SyncError> {
         mutation::apply_push_event(&self.inner, event, context).await
     }

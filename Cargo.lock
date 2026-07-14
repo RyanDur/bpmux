@@ -3518,6 +3518,7 @@ dependencies = [
  "persist",
  "product_management",
  "serde",
+ "workflow",
 ]
 
 [[package]]

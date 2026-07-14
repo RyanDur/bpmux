@@ -1,8 +1,8 @@
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::integrations::github::tracker::OctocrabStoryTracker;
-use crate::sync::SyncError;
 use product_management::label_codec::LabelCodec;
 use product_management::story::events::{StoryEvent, StoryEventKind};
+use source_sync::SyncError;
 
 use super::mutation_events::{
     push_acceptor_assigned, push_body_updated, push_current_iteration_cleared,
@@ -14,7 +14,7 @@ use super::mutation_events::{
 pub(super) async fn apply_push_event(
     inner: &OctocrabStoryTracker,
     event: &StoryEvent,
-    context: &crate::sync::PushContext,
+    context: &source_sync::PushContext,
 ) -> Result<Option<StoryEvent>, SyncError> {
     match &event.kind {
         StoryEventKind::StoryCreated { .. } => Ok(None),

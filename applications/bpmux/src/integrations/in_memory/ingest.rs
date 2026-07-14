@@ -4,11 +4,11 @@ use crate::integrations::github::mapper::{
     decode_epic_from_story, decode_iteration_from_story, decode_outcome_from_story, is_epic_story,
     placement_from_labels,
 };
-use crate::sync::{Ingested, SyncError};
 use product_management::epic::Epic;
 use product_management::iteration::Iteration;
 use product_management::outcome::Outcome;
 use product_management::story::{Story, StoryId};
+use source_sync::{Ingested, SyncError};
 use workflow::StageId;
 
 pub(super) struct Classified {

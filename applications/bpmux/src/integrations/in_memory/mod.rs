@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::sync::Mutex;
 
-use crate::sync::{Ingested, SourceAdapter, SyncError};
 use product_management::story::events::StoryEvent;
 use product_management::story::{CastVerdict, FreeComment, Story, StoryId};
+use source_sync::{Ingested, SourceAdapter, SyncError};
 
 mod ingest;
 mod mutation;
@@ -116,7 +116,7 @@ impl SourceAdapter for InMemorySourceAdapter {
     async fn push_event(
         &self,
         event: &StoryEvent,
-        context: &crate::sync::PushContext,
+        context: &source_sync::PushContext,
     ) -> Result<Option<StoryEvent>, SyncError> {
         let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         if s.permanent_push_failures {

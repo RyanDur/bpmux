@@ -3,9 +3,14 @@ use std::collections::VecDeque;
 pub mod health;
 pub mod queue;
 
+mod port;
 mod status;
 mod types;
 
+pub use port::{
+    ConditionalBody, Ingested, PushContext, SourceAdapter, SyncError, classify_close_error,
+    is_permanent_push_failure,
+};
 pub use status::{DroppedEvent, SyncStatus, is_stale, is_startup_fail, staleness_threshold_secs};
 pub use types::{MutationId, PendingWrite, QueuedEvent, QueuedWrite};
 
