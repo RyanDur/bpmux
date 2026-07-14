@@ -136,11 +136,9 @@ impl OctocrabStoryTracker {
                     continue;
                 }
             };
-            let parsed =
-                crate::bridge::tools::parse_playwright_failures_from_log(run_id, &log_text);
+            let parsed = crate::ci::parse_playwright_failures_from_log(run_id, &log_text);
             if parsed.failures.is_empty() {
-                let fallback =
-                    crate::bridge::tools::build_non_test_failure_record(&job.name, &log_text);
+                let fallback = crate::ci::build_non_test_failure_record(&job.name, &log_text);
                 all_failures.push(fallback);
             } else {
                 for mut failure in parsed.failures {

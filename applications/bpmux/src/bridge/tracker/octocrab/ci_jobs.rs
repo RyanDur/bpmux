@@ -35,7 +35,7 @@ impl OctocrabStoryTracker {
                 conclusion: j
                     .conclusion
                     .unwrap_or_else(|| j.status.unwrap_or_else(|| "unknown".to_string())),
-                duration_ms: crate::bridge::tools::compute_duration_ms(
+                duration_ms: crate::ci::compute_duration_ms(
                     j.started_at.as_deref(),
                     j.completed_at.as_deref(),
                 ),

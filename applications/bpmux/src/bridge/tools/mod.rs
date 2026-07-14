@@ -6,9 +6,6 @@ mod capture_electron_window;
 mod ci_get_job_status;
 #[cfg(test)]
 mod ci_get_job_status_tests;
-#[cfg(test)]
-mod ci_log_for_run_parse;
-mod ci_log_parse;
 mod classifier_misfire;
 #[cfg(test)]
 mod close_iteration_tests;
@@ -118,10 +115,7 @@ pub(in crate::bridge) use add_principle::handle_add_principle;
 pub(in crate::bridge) use add_value::handle_add_value;
 pub(in crate::bridge) use capture_electron_window::handle_capture_electron_window;
 pub(crate) use ci_get_job_status::build_ci_job_status_response;
-pub(crate) use ci_get_job_status::compute_duration_ms;
 pub(in crate::bridge) use ci_get_job_status::handle_ci_get_job_status;
-pub(crate) use ci_log_parse::build_non_test_failure_record;
-pub(crate) use ci_log_parse::parse_playwright_failures_from_log;
 pub(in crate::bridge) use classifier_misfire::handle_classifier_misfire;
 pub(in crate::bridge) use dev_in_flight::handle_dev_in_flight;
 pub(in crate::bridge) use get_bookmark::handle_get_bookmark;

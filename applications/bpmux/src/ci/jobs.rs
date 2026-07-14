@@ -82,3 +82,11 @@ impl CiJobStatusError {
         }
     }
 }
+
+pub fn compute_duration_ms(started_at: Option<&str>, completed_at: Option<&str>) -> Option<u64> {
+    let start = chrono::DateTime::parse_from_rfc3339(started_at?).ok()?;
+    let end = chrono::DateTime::parse_from_rfc3339(completed_at?).ok()?;
+    let dur = end.signed_duration_since(start);
+    let ms = dur.num_milliseconds();
+    if ms >= 0 { Some(ms as u64) } else { None }
+}

@@ -2,10 +2,8 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
-use super::ci_get_job_status::{
-    MAX_DEFAULT_BUDGET_BYTES, build_ci_job_status_response, compute_duration_ms,
-};
-use crate::ci::{CiJobRecord, CiJobStatusError};
+use super::ci_get_job_status::{MAX_DEFAULT_BUDGET_BYTES, build_ci_job_status_response};
+use crate::ci::{CiJobRecord, CiJobStatusError, compute_duration_ms};
 
 fn job(name: &str, conclusion: &str, ms: Option<u64>, html: &str) -> CiJobRecord {
     CiJobRecord {
