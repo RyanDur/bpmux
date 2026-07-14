@@ -14,6 +14,7 @@ kernel = { path = "../../components/kernel" }
 memory = { path = "../../components/memory" }
 message = { path = "../../components/message" }
 message_log = { path = "../../components/message_log" }
+owner_session = { path = "../../components/owner_session" }
 persist = { path = "../../components/persist" }
 product_management = { path = "../../components/product_management" }
 reactions = { path = "../../components/reactions" }

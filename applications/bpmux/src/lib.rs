@@ -27,7 +27,6 @@ mod location_tests;
 pub mod mcp;
 #[cfg(test)]
 mod order_state_pin_tests;
-pub mod owner_session;
 #[cfg(test)]
 mod pm_integration_tests;
 pub mod rate_limit;

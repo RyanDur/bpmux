@@ -23,11 +23,11 @@ fn owner_walk_or_forbidden(
     select: &crate::store::Select,
     headers: &HeaderMap,
 ) -> Result<(), JsonResponse> {
-    let claimed = select.select(|s| crate::owner_session::claimed_nonce(&s.owner_session));
+    let claimed = select.select(|s| owner_session::claimed_nonce(&s.owner_session));
     let presented = headers
         .get(OWNER_NONCE_HEADER)
         .and_then(|value| value.to_str().ok());
-    if crate::owner_session::owner_walk_authorized(claimed.as_deref(), presented) {
+    if owner_session::owner_walk_authorized(claimed.as_deref(), presented) {
         Ok(())
     } else {
         Err((

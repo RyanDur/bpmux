@@ -1,5 +1,4 @@
 use super::AppAction;
-use crate::owner_session::OwnerSessionAction;
 use crate::store::board::BoardAction;
 use crate::store::ci::CiAction;
 use crate::store::commitments::CommitmentsAction;
@@ -8,6 +7,7 @@ use crate::store::roster::RosterAction;
 use crate::store::routing::RoutingAction;
 use crate::store::sync::SyncAction;
 use crate::store::sync_health::SyncHealthAction;
+use owner_session::OwnerSessionAction;
 use product_management::epic::EpicAction;
 use product_management::evidence::EvidenceAction;
 use product_management::history::SharedHistoryAction;

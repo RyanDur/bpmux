@@ -10,6 +10,7 @@ members = [
     "components/memory",
     "components/message",
     "components/message_log",
+    "components/owner_session",
     "components/persist",
     "components/product_management",
     "components/reactions",

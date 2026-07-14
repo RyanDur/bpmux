@@ -1,4 +1,4 @@
-use crate::store::RosterRole;
+use roster::RosterRole;
 
 #[derive(Default, Clone)]
 pub struct OwnerSessionState {

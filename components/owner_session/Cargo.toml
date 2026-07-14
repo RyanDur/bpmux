@@ -1,0 +1,12 @@
+[package]
+name = "owner_session"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Owner-session authority: launch-nonce claims, owner-mark resolution, walk authorization"
+
+[dependencies]
+roster = { path = "../roster" }
+
+[lints]
+workspace = true

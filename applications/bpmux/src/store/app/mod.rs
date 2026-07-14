@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use crate::owner_session::{OwnerSessionAction, OwnerSessionState};
 use crate::store::board::history::PlacementHistory;
 use crate::store::board::{BoardAction, BoardPlacements};
 use crate::store::ci::{CiAction, CiState};
@@ -10,6 +9,7 @@ use crate::store::roster::{RosterAction, RosterState};
 use crate::store::routing::{RoutingAction, RoutingState};
 use crate::store::sync::{SyncAction, SyncState};
 use crate::store::sync_health::{SyncHealthAction, SyncHealthState};
+use owner_session::{OwnerSessionAction, OwnerSessionState};
 use product_management::epic::{EpicAction, EpicState};
 use product_management::evidence::{EvidenceAction, EvidenceState};
 use product_management::history::{SharedHistory, SharedHistoryAction};
