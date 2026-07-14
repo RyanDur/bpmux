@@ -8,7 +8,8 @@ use tokio::sync::broadcast;
 use super::app::OwnerParkListener;
 use super::app::{self, AppAction, AppState, RosterBroadcast};
 use super::{
-    AggregatedReaction, Presence, ReactionsBroadcastListener, RosterBroadcastListener, RosterMember,
+    AggregatedReaction, CiAction, Presence, ReactionsBroadcastListener, RosterBroadcastListener,
+    RosterMember,
 };
 use crate::ci::CiState;
 use crate::hub::Hub;
@@ -58,6 +59,96 @@ fn drain_state_delta(rx: &mut broadcast::Receiver<Message>) -> StateDeltaPayload
                 .expect("StateDelta message missing state_delta payload");
         }
     }
+}
+
+fn ci_snap(run_id: u64, conclusion: &'static str) -> CiSnapshot {
+    CiSnapshot {
+        state: CiState::Green,
+        run_id: Some(run_id),
+        head_sha: None,
+        display_title: None,
+        conclusion,
+        workflows: Vec::new(),
+    }
+}
+
+#[derive(Default)]
+struct RecordingCiListener {
+    received: std::sync::Mutex<Vec<CiSnapshot>>,
+}
+
+impl CiBroadcastListener for RecordingCiListener {
+    fn on_changed(&self, snap: &CiSnapshot) {
+        self.received
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .push(snap.clone());
+    }
+}
+
+#[tokio::test]
+async fn ci_broadcast_fires_once_when_an_updated_lands_a_new_snapshot_key() {
+    let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));
+    let recorder = Arc::new(RecordingCiListener::default());
+    let listeners: app::CiListeners = Arc::new(std::sync::Mutex::new(vec![
+        recorder.clone() as Arc<dyn CiBroadcastListener>
+    ]));
+    store.add_listener(Arc::new(app::CiBroadcast::new(listeners)));
+
+    store.dispatch(AppAction::Ci(CiAction::Updated(ci_snap(42, "success"))));
+
+    crate::store::test_support::eventually("a new snapshot key still reaches the fan-out", || {
+        recorder
+            .received
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .len()
+            == 1
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn ci_broadcast_ignores_a_ci_slice_change_that_keeps_the_snapshot_key() {
+    use kernel::Listener;
+
+    let recorder = Arc::new(RecordingCiListener::default());
+    let listeners: app::CiListeners = Arc::new(std::sync::Mutex::new(vec![
+        recorder.clone() as Arc<dyn CiBroadcastListener>
+    ]));
+    let broadcast = app::CiBroadcast::new(listeners);
+
+    let seeded = crate::store::ci::reduce(
+        &crate::store::ci::CiState::default(),
+        &CiAction::Updated(ci_snap(42, "success")),
+    )
+    .expect("a first Updated lands the snapshot");
+    let previous = Arc::new(AppState {
+        ci: Arc::new(seeded.clone()),
+        ..AppState::default()
+    });
+    let current = Arc::new(AppState {
+        ci: Arc::new(seeded),
+        ..AppState::default()
+    });
+
+    broadcast
+        .on_action(kernel::Reaction {
+            action: AppAction::Ci(CiAction::StartPolling),
+            previous,
+            current,
+            dispatch: Arc::new(|_| {}),
+        })
+        .await;
+
+    assert!(
+        recorder
+            .received
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .is_empty(),
+        "a ci-slice change that keeps the snapshot key must not re-broadcast — the trigger asks whether the snapshot changed, not whether the Arc changed"
+    );
 }
 
 #[tokio::test]

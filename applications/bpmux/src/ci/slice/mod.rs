@@ -86,6 +86,13 @@ pub fn snapshot(state: &CiState) -> Option<CiSnapshot> {
     state.snapshot.clone()
 }
 
+pub fn snapshot_key(state: &CiState) -> Option<(Option<u64>, &'static str)> {
+    state
+        .snapshot
+        .as_ref()
+        .map(|snap| (snap.run_id, snap.conclusion))
+}
+
 mod action;
 mod listeners;
 mod poll;

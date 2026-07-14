@@ -91,7 +91,7 @@ impl CiBroadcast {
 
 impl Listener<AppState, AppAction> for CiBroadcast {
     fn on_action(&self, reaction: Reaction<AppState, AppAction>) -> ListenerFuture {
-        if Arc::ptr_eq(&reaction.previous.ci, &reaction.current.ci) {
+        if ci::snapshot_key(&reaction.previous.ci) == ci::snapshot_key(&reaction.current.ci) {
             return Box::pin(async {});
         }
         let Some(snapshot) = ci::snapshot(&reaction.current.ci) else {
