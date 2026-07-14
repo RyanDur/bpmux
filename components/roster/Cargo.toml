@@ -1,0 +1,18 @@
+[package]
+name = "roster"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The roster domain: members, presence, roles, wire projection"
+
+[dependencies]
+message = { path = "../message" }
+user_routing = { path = "../user_routing" }
+workflow = { path = "../workflow" }
+serde = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[lints]
+workspace = true

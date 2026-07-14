@@ -253,10 +253,7 @@ async fn roster_member_upserted_fires_listener() {
 
     let members = orch.roster_members();
     assert_eq!(members.len(), 1);
-    assert_eq!(
-        crate::roster::role_of(&members[0].identity),
-        RosterRole::Owner
-    );
+    assert_eq!(roster::role_of(&members[0].identity), RosterRole::Owner);
     assert_eq!(members[0].presence, Presence::Online);
 
     eventually("roster upsert fires listener once", || {
@@ -289,14 +286,11 @@ async fn roster_upsert_keys_by_routing_id_so_register_renames_the_default_in_pla
         "the default and the set-display are ONE row (same routing-id), not two — the dup in owner's screenshot is structurally impossible; got {members:?}"
     );
     assert_eq!(
-        crate::roster::display_name(&members[0].identity),
+        roster::display_name(&members[0].identity),
         "designer",
         "register REPLACES the dir-name default with the set display name in place"
     );
-    assert_eq!(
-        crate::roster::role_of(&members[0].identity),
-        RosterRole::Designer
-    );
+    assert_eq!(roster::role_of(&members[0].identity), RosterRole::Designer);
 }
 
 #[tokio::test]
@@ -581,12 +575,9 @@ async fn ws_dispatch_roster_join_populates_store_with_identity() {
     let members = orch.roster_members();
     assert_eq!(members.len(), 1);
     assert_eq!(members[0].routing_id, "sess-dev");
-    assert_eq!(crate::roster::display_name(&members[0].identity), "dev");
+    assert_eq!(roster::display_name(&members[0].identity), "dev");
     assert_eq!(members[0].identity, "dev:claude-code");
-    assert_eq!(
-        crate::roster::role_of(&members[0].identity),
-        RosterRole::Dev
-    );
+    assert_eq!(roster::role_of(&members[0].identity), RosterRole::Dev);
     assert_eq!(members[0].presence, Presence::Online);
 
     eventually("join dispatches -> listener fires", || {
@@ -632,11 +623,8 @@ async fn ws_dispatch_roster_join_role_mapping_covers_known_short_names() {
         crate::transport::ws::dispatch_roster_join(&orch, "sess-x", identity).await;
         let members = orch.roster_members();
         assert_eq!(members.len(), 1, "identity {identity}: 1 member");
-        assert_eq!(
-            crate::roster::display_name(&members[0].identity),
-            expected_name
-        );
-        assert_eq!(crate::roster::role_of(&members[0].identity), expected_role);
+        assert_eq!(roster::display_name(&members[0].identity), expected_name);
+        assert_eq!(roster::role_of(&members[0].identity), expected_role);
         assert_eq!(members[0].identity, identity);
     }
 }

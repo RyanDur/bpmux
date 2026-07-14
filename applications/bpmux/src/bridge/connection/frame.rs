@@ -77,8 +77,8 @@ pub(super) async fn handle_message_frame(
         &current_name,
     );
     drop(current_name);
-    let sender_is_owner = crate::roster::roster_role_for_identity_prefix(from_short)
-        == crate::store::RosterRole::Owner;
+    let sender_is_owner =
+        roster::roster_role_for_identity_prefix(from_short) == crate::store::RosterRole::Owner;
     let declared = subscriptions.declared_chat_classes().await;
     if !crate::bridge::chat_relevance::chat_class_reaches_live_stream(
         message_type.as_deref().unwrap_or("chat"),

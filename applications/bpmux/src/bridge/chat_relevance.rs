@@ -37,7 +37,7 @@ pub(crate) fn scope_reaches_live_stream(
     recipient_short: &str,
 ) -> bool {
     if matches!(
-        crate::roster::roster_role_for_identity_prefix(recipient_short),
+        roster::roster_role_for_identity_prefix(recipient_short),
         crate::store::RosterRole::Owner
     ) {
         return true;

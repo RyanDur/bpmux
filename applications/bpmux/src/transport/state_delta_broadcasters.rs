@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use crate::ci::slice::{CiBroadcastListener, CiSnapshot};
 use crate::hub;
-use crate::roster::{RosterBroadcastListener, RosterMember};
 use crate::store::Select;
 use crate::transport::state_delta::broadcast_state_delta;
 use message::{CiSnapshotWire, ReactionAggregateWire, StateDeltaPayload};
 use reactions::slice::{AggregatedReaction, ReactionsBroadcastListener};
+use roster::{RosterBroadcastListener, RosterMember};
 
 pub struct RosterHubBroadcaster {
     hub: Arc<hub::Hub>,
@@ -24,7 +24,7 @@ impl RosterBroadcastListener for RosterHubBroadcaster {
         broadcast_state_delta(
             &self.hub,
             StateDeltaPayload::Roster {
-                members: crate::roster::members_wire(members, |routing_id| {
+                members: roster::members_wire(members, |routing_id| {
                     self.select
                         .select(|state| crate::store::routing::role_for(&state.routing, routing_id))
                 }),

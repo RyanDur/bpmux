@@ -502,7 +502,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
 fn dev_presence(state: &AppState) -> Option<Presence> {
     crate::store::roster::members(&state.roster)
         .into_iter()
-        .find(|member| crate::roster::display_name(&member.identity) == "dev")
+        .find(|member| roster::display_name(&member.identity) == "dev")
         .map(|member| member.presence)
 }
 

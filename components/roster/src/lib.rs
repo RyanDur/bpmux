@@ -4,9 +4,12 @@ use user_routing::short_name;
 
 mod wire;
 
-pub(crate) use wire::members_wire;
+#[cfg(test)]
+mod wire_mirror_tests;
 
-pub(crate) fn roster_role_for_identity_prefix(prefix: &str) -> RosterRole {
+pub use wire::members_wire;
+
+pub fn roster_role_for_identity_prefix(prefix: &str) -> RosterRole {
     let workflow = workflow::current_workflow();
     let purpose = workflow
         .role
@@ -22,18 +25,18 @@ pub(crate) fn roster_role_for_identity_prefix(prefix: &str) -> RosterRole {
     }
 }
 
-pub(crate) fn is_reserved_display(identity: &str) -> bool {
+pub fn is_reserved_display(identity: &str) -> bool {
     matches!(
         roster_role_for_identity_prefix(short_name(identity)),
         RosterRole::Owner
     )
 }
 
-pub(crate) fn display_name(identity: &str) -> &str {
+pub fn display_name(identity: &str) -> &str {
     short_name(identity)
 }
 
-pub(crate) fn role_of(identity: &str) -> RosterRole {
+pub fn role_of(identity: &str) -> RosterRole {
     roster_role_for_identity_prefix(short_name(identity))
 }
 

@@ -7,7 +7,7 @@ fn roster_role_for_user(assigned: Option<&str>, identity: &str) -> RosterRole {
     }
 }
 
-pub(crate) fn members_wire(
+pub fn members_wire(
     members: &[RosterMember],
     assigned_role: impl Fn(&str) -> Option<String>,
 ) -> Vec<message::RosterMemberWire> {

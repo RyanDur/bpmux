@@ -24,7 +24,7 @@ pub enum Delivering {
 fn delivering_matches(delivering: &Delivering, member: &RosterMember) -> bool {
     match delivering {
         Delivering::ById(id) => &member.routing_id == id,
-        Delivering::ByDisplay(display) => crate::roster::display_name(&member.identity) == display,
+        Delivering::ByDisplay(display) => roster::display_name(&member.identity) == display,
     }
 }
 

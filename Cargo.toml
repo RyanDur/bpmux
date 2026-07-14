@@ -13,6 +13,7 @@ members = [
     "components/persist",
     "components/product_management",
     "components/reactions",
+    "components/roster",
     "components/user_routing",
     "components/view",
     "components/workflow",

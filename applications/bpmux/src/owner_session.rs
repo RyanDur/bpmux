@@ -30,7 +30,7 @@ pub fn claimed_nonce(state: &OwnerSessionState) -> Option<String> {
 pub fn resolve_owner_mark(claimed: Option<&str>, presented: Option<&str>, identity: &str) -> bool {
     match claimed {
         Some(claim) => presented == Some(claim),
-        None => matches!(crate::roster::role_of(identity), RosterRole::Owner),
+        None => matches!(roster::role_of(identity), RosterRole::Owner),
     }
 }
 

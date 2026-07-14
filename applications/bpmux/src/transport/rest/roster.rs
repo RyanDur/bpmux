@@ -20,7 +20,7 @@ pub async fn get_roster(
         .roster_members()
         .into_iter()
         .map(|member| RosterEntry {
-            role: crate::roster::display_name(&member.identity).to_string(),
+            role: roster::display_name(&member.identity).to_string(),
             identity: member.identity,
             presence: member.presence,
         })

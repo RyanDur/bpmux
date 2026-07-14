@@ -34,7 +34,7 @@ impl Store {
             url: Some(crate::ci::github_actions_url()),
         });
         let selector = self.selector();
-        let roster = crate::roster::members_wire(&self.roster_members(), |routing_id| {
+        let roster = roster::members_wire(&self.roster_members(), |routing_id| {
             selector.select(|state| crate::store::routing::role_for(&state.routing, routing_id))
         });
         StateSnapshotPayload {

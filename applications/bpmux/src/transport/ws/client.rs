@@ -66,7 +66,7 @@ pub(crate) async fn handle_client_message(
             send_json(tx, &ServerMessage::Pong).await?;
         }
         Ok(ClientMessage::Rename { name }) => {
-            if crate::roster::is_reserved_display(&name) {
+            if roster::is_reserved_display(&name) {
                 send_json(
                     tx,
                     &ServerMessage::Error {

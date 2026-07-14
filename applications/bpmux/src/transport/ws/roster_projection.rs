@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use super::roster::*;
-use crate::roster::is_reserved_display;
+use roster::is_reserved_display;
 
 #[test]
 fn is_reserved_display_blocks_the_owner_identity_but_allows_agent_roles() {

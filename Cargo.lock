@@ -410,6 +410,7 @@ dependencies = [
  "reqwest",
  "ring",
  "rmcp",
+ "roster",
  "rusqlite",
  "rustls",
  "serde",
@@ -2945,6 +2946,17 @@ dependencies = [
  "quote",
  "serde_json",
  "syn",
+]
+
+[[package]]
+name = "roster"
+version = "0.1.0"
+dependencies = [
+ "message",
+ "serde",
+ "serde_json",
+ "user_routing",
+ "workflow",
 ]
 
 [[package]]
