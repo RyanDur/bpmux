@@ -33,6 +33,13 @@ const BINDING_SEAM_FILES: &[&str] = &[
     "drain/mod.rs",
 ];
 
+const GITHUB_CONCRETION_TOKENS: &[&str] = &[
+    "integrations::github",
+    "gh_label_codec",
+    "stage_github_label",
+    "LEGACY_STATE_LABELS",
+];
+
 fn collect_rs_files(dir: &Path, out: &mut Vec<PathBuf>) {
     for entry in std::fs::read_dir(dir).expect("read sync dir") {
         let path = entry.expect("dir entry").path();
@@ -86,6 +93,40 @@ fn sync_names_the_store_only_through_its_binding_seam() {
     assert!(
         violations.is_empty(),
         "the synchronization engine reaches the redux store ONLY through its store-binding seam: driver.rs / driver_ops.rs receive the bound Select and the single Dispatch (bind_select / bind_dispatch), slice_readers.rs reads domain selectors through the bound Select, and dispatch.rs / ingest.rs / backfill.rs / drain/mod.rs / mod.rs carry and emit crate::store::AppAction into that store. Any OTHER sync file naming crate::store:: is deepening the coupling — route reads through a slice_reader and writes through dispatch_board on the Orchestrator's bound handle, never by naming the store composition directly. Files reaching crate::store:: outside the binding seam:\n{}",
+        violations.join("\n")
+    );
+}
+
+#[test]
+fn sync_names_no_github_concretions() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/sync");
+    let mut files = Vec::new();
+    collect_rs_files(&root, &mut files);
+    assert!(
+        !files.is_empty(),
+        "expected sync source files under {}",
+        root.display()
+    );
+
+    let mut violations: Vec<String> = Vec::new();
+    for file in &files {
+        if file.file_name().and_then(|n| n.to_str()) == Some(SELF_FILE) {
+            continue;
+        }
+        let contents = std::fs::read_to_string(file).expect("read sync file");
+        if is_test_source(file, &contents) {
+            continue;
+        }
+        for token in GITHUB_CONCRETION_TOKENS {
+            if contents.contains(token) {
+                violations.push(format!("{}: {token}", file.display()));
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "the synchronization engine speaks provider vocabulary ONLY through the domain-owned LabelCodec port: coalesce asks codec.stage_label / codec.is_legacy_state_label, and the composition root (server/setup.rs) supplies the provider impl to SyncOrchestrator::new. A sync prod file naming a github concretion is the port bypass this lock retired — route the question through the LabelCodec trait instead. Violations:\n{}",
         violations.join("\n")
     );
 }

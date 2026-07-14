@@ -20,7 +20,10 @@ mod slice_7_2_mutation_id_dispatch {
     #[tokio::test]
     async fn mutate_enqueues_writes_with_unique_ids() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch = Arc::new(SyncOrchestrator::new(
+            adapter,
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
@@ -60,7 +63,10 @@ mod slice_7_2_mutation_id_dispatch {
     async fn mutate_without_board_dispatch_bound_does_not_panic() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.seed_stories(vec![seed_story(201, Work::NotStarted)]);
-        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch = Arc::new(SyncOrchestrator::new(
+            adapter,
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
         orch.ingest_once().await.unwrap();
@@ -78,7 +84,10 @@ mod slice_7_2_mutation_id_dispatch {
     #[tokio::test]
     async fn queued_write_carries_allocated_id() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch = Arc::new(SyncOrchestrator::new(
+            adapter,
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
@@ -111,7 +120,10 @@ mod slice_7_3_drain_pass {
     #[tokio::test]
     async fn drain_pass_pushes_clean_event() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+        let orch = Arc::new(SyncOrchestrator::new(
+            Arc::clone(&adapter),
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
@@ -138,7 +150,10 @@ mod slice_7_3_drain_pass {
     #[tokio::test]
     async fn drain_pass_transient_error_leaves_entry_in_outbox() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+        let orch = Arc::new(SyncOrchestrator::new(
+            Arc::clone(&adapter),
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
@@ -165,7 +180,10 @@ mod slice_7_3_drain_pass {
     #[tokio::test]
     async fn drain_pass_over_empty_queue_is_a_noop() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = SyncOrchestrator::new(adapter);
+        let orch = SyncOrchestrator::new(
+            adapter,
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        );
         let drained = orch.drain_pass().await.unwrap();
         assert_eq!(drained, 0);
     }
@@ -177,7 +195,10 @@ mod slice_7_4_drain_pass_falsifiers {
     #[tokio::test]
     async fn permanent_push_failure_drops_entry() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+        let orch = Arc::new(SyncOrchestrator::new(
+            Arc::clone(&adapter),
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
@@ -205,7 +226,10 @@ mod slice_7_4_drain_pass_falsifiers {
     #[tokio::test]
     async fn single_flight_drain_pass_pushes_every_queued_write_once() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+        let orch = Arc::new(SyncOrchestrator::new(
+            Arc::clone(&adapter),
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
@@ -246,7 +270,10 @@ mod slice_7_4_drain_pass_falsifiers {
     #[tokio::test]
     async fn drain_pass_drains_in_request_order_for_same_issue() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+        let orch = Arc::new(SyncOrchestrator::new(
+            Arc::clone(&adapter),
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);

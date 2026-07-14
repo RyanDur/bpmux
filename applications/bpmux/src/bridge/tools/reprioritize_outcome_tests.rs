@@ -109,7 +109,10 @@ async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDrive
         adapter.seed_labels(story.id.value(), labels.clone());
     }
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orch, outcomes_from(&seeds), vec![], vec![]);
     orch.refresh_all().await.unwrap();
     orch
@@ -117,7 +120,10 @@ async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDrive
 
 async fn refresh_with_outcomes(outcomes: Vec<Outcome>) -> Arc<dyn RefreshDriver> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orch, outcomes, vec![], vec![]);
     orch.refresh_all().await.unwrap();
     orch

@@ -79,7 +79,10 @@ async fn store_with_current_members(
         adapter.seed_labels(story.id.value(), labels.clone());
     }
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let epics: Vec<Epic> = seeds
         .iter()
         .filter(|(story, labels)| is_epic_story(story, labels))

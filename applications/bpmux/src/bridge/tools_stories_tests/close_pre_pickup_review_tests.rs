@@ -33,7 +33,10 @@ async fn build_orchestrator(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn Refresh
         adapter.seed_labels(story.id.value(), labels.clone());
     }
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let iterations: Vec<Iteration> = seeds
         .iter()
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))

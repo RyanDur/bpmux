@@ -85,7 +85,10 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
     seed_story(&adapter, 42, "fixture story");
-    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(bpmux::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let refresh: Arc<dyn RefreshDriver> = orch.clone();
     let test_refresh: Option<Arc<dyn RefreshDriver>> = Some(Arc::clone(&refresh));
 

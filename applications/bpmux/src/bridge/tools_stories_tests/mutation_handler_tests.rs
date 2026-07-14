@@ -24,8 +24,10 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
@@ -73,8 +75,10 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
@@ -124,8 +128,10 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
@@ -196,8 +202,11 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         "dev".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orch_concrete = SyncOrchestrator::new(Arc::clone(&adapter))
-        .with_ci_state_store(test_ci_state_store_green());
+    let orch_concrete = SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    )
+    .with_ci_state_store(test_ci_state_store_green());
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
@@ -283,8 +292,10 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(202, vec!["desk-check".to_string()]);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 

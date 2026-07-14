@@ -22,7 +22,10 @@ fn seed(state: Work, number: u64) -> Story {
 async fn driver(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(stories);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
     orch

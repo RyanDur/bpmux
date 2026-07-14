@@ -58,8 +58,10 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     );
     let seeded = vec![(child, Vec::new()), (epic, vec!["epic".to_string()])];
     seed_adapter(&adapter, &seeded);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     bind_epics(&orchestrator, &seeded);
     orchestrator.refresh_all().await.unwrap();
 
@@ -106,8 +108,10 @@ async fn set_parent_epic_rejects_non_existent_epic() {
         "pm".into(),
     );
     adapter.seed_stories(vec![child]);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
@@ -146,8 +150,10 @@ async fn set_parent_epic_rejects_non_epic_parent() {
     );
     adapter.seed_stories(vec![child, not_epic]);
     adapter.seed_labels(458, vec!["feature".to_string()]);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
@@ -181,8 +187,10 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(301, vec!["parent-epic-#457".to_string()]);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
     assert_eq!(
@@ -253,8 +261,10 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
     );
     let seeded = vec![(epic, vec!["epic".to_string()])];
     seed_adapter(&adapter, &seeded);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     bind_epics(&orchestrator, &seeded);
     orchestrator.refresh_all().await.unwrap();
 
@@ -316,8 +326,10 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
     );
     adapter.seed_stories(vec![not_epic]);
     adapter.seed_labels(501, vec!["feature".to_string()]);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
@@ -394,7 +406,10 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
         (child_c, member_labels),
     ];
     seed_adapter(&adapter, &seeded);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     bind_epics(&orch, &seeded);
     orch.refresh_all().await.unwrap();
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
@@ -438,7 +453,10 @@ async fn view_board_omits_epic_section_when_no_epics_present() {
         "pm".into(),
     );
     adapter.seed_stories(vec![plain]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
@@ -470,7 +488,10 @@ async fn view_board_filters_epic_stories_out_of_state_lanes() {
     );
     let seeded = vec![(epic, vec!["epic".to_string()])];
     seed_adapter(&adapter, &seeded);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     bind_epics(&orch, &seeded);
     orch.refresh_all().await.unwrap();
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
@@ -543,7 +564,10 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
         (b, member_labels),
     ];
     seed_adapter(&adapter, &seeded);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     bind_epics(&orch, &seeded);
     orch.refresh_all().await.unwrap();
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
@@ -586,7 +610,10 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
         (a, vec!["parent-epic-#730".to_string()]),
     ];
     seed_adapter(&adapter, &seeded);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     bind_epics(&orch, &seeded);
     orch.refresh_all().await.unwrap();
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
@@ -607,7 +634,10 @@ async fn create_story_for_epic_title_dispatches_epic_upsert_and_stays_out_of_sto
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 

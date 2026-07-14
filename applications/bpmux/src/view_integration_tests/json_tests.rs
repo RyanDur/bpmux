@@ -373,6 +373,12 @@ impl product_management::label_codec::LabelCodec for StubLabelCodec {
             product_management::story::Acceptor::Dev => "stub-dev",
         }
     }
+    fn stage_label(&self, _stage: product_management::story::Stage) -> &'static str {
+        "stub-stage"
+    }
+    fn is_legacy_state_label(&self, _label: &str) -> bool {
+        false
+    }
 }
 
 #[test]

@@ -18,7 +18,10 @@ async fn build_orchestrator() -> Arc<dyn RefreshDriver> {
         "pm".into(),
     );
     adapter.seed_stories(vec![story]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
     orch

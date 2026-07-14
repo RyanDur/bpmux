@@ -366,8 +366,10 @@ async fn label_story_rejects_invalid_operation_in_migrated_path() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 

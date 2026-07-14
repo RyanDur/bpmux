@@ -20,7 +20,10 @@ fn meta() -> EventMeta {
 
 fn bound_orchestrator() -> (SeededStore, Arc<dyn RefreshDriver>) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let handle = SeededStore::new(Vec::new(), Vec::new(), Vec::new());
     handle.bind_refresh(&orch);
     (handle, orch)
@@ -120,7 +123,10 @@ fn seed_remove_and_clear_act_on_the_bound_central_store() {
 #[test]
 fn an_unbound_orchestrator_drops_writes_and_reads_come_back_empty() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     orch.mutate_sync(created(1, "dropped")).unwrap();
     assert!(
         orch.story(1).is_none(),

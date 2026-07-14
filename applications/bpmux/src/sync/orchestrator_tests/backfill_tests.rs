@@ -25,7 +25,10 @@ async fn a_cache_fill_leaves_the_shared_grain_empty_but_the_boot_sweep_fills_it_
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(11, Work::InProgress)]);
     adapter.seed_verdicts(11, vec![ready_verdict(9, "dev")]);
-    let orchestrator = Arc::new(SyncOrchestrator::new(adapter));
+    let orchestrator = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
@@ -70,7 +73,10 @@ async fn the_boot_sweep_replaces_each_storys_records_per_story() {
     ]);
     adapter.seed_verdicts(11, vec![ready_verdict(9, "dev")]);
     adapter.seed_verdicts(12, vec![ready_verdict(10, "owner")]);
-    let orchestrator = Arc::new(SyncOrchestrator::new(adapter));
+    let orchestrator = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);

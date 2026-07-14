@@ -30,7 +30,10 @@ mod outbox_persistence {
         initial: Vec<QueuedWrite>,
         stories: Vec<Story>,
     ) -> (Arc<SyncOrchestrator<InMemorySourceAdapter>>, SeededStore) {
-        let orch = Arc::new(SyncOrchestrator::new(Arc::clone(adapter)));
+        let orch = Arc::new(SyncOrchestrator::new(
+            Arc::clone(adapter),
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new_wired_outbox(sink, initial);
         handle.bind_refresh(&orch_dyn);
@@ -363,7 +366,10 @@ mod outbox_persistence {
     #[tokio::test]
     async fn mutate_silent_no_op_when_story_not_in_store_pins_reducer_shape() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch = Arc::new(SyncOrchestrator::new(
+            adapter,
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
@@ -380,7 +386,10 @@ mod outbox_persistence {
     async fn refresh_story_populates_store_so_subsequent_mutate_lands() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.seed_stories(vec![seed_story(777, Work::NotStarted)]);
-        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch = Arc::new(SyncOrchestrator::new(
+            adapter,
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);

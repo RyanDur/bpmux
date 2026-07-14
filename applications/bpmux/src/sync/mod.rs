@@ -107,7 +107,7 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 Err(_) => continue,
             };
             let fine = self.read_story_fine_stage(&story);
-            let stale = stale_state_labels_for(&story, &labels, fine, &iterations);
+            let stale = stale_state_labels_for(&*self.codec, &story, &labels, fine, &iterations);
             for stale_label in stale {
                 let meta = product_management::story::events::EventMeta {
                     actor: "bpmux:reconcile".to_string(),

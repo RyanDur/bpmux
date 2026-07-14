@@ -1,5 +1,5 @@
 use crate::iteration::label::IterationLabelParts;
-use crate::story::{Acceptor, Tag};
+use crate::story::{Acceptor, Stage, Tag};
 
 pub trait LabelCodec {
     fn decode_iteration(&self, label: &str) -> Option<IterationLabelParts>;
@@ -19,4 +19,8 @@ pub trait LabelCodec {
     fn encode_tag(&self, tag: Tag) -> &'static str;
 
     fn encode_acceptor(&self, acceptor: Acceptor) -> &'static str;
+
+    fn stage_label(&self, stage: Stage) -> &'static str;
+
+    fn is_legacy_state_label(&self, label: &str) -> bool;
 }

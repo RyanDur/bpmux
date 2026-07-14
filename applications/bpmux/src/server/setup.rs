@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::hub;
+use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::sync::{PendingWrite, QueuedWrite, RefreshDriver, SyncOrchestrator};
 
 fn hydrate_outbox(storage: &Arc<dyn crate::storage::Storage>) -> Vec<QueuedWrite> {
@@ -63,7 +64,7 @@ pub(super) async fn build_test_orchestrator(
 ) -> (Arc<dyn RefreshDriver>, Vec<QueuedWrite>) {
     let adapter = Arc::new(crate::integrations::in_memory::InMemorySourceAdapter::new());
     let hydrated = hydrate_outbox(&hub.storage);
-    let orch_concrete = SyncOrchestrator::new(adapter);
+    let orch_concrete = SyncOrchestrator::new(adapter, Arc::new(GhLabelCodec));
     seed_ci_green_for_tests(&ci_state_store);
     let mut orch_concrete = orch_concrete.with_ci_state_store(ci_state_store);
     if let Some(barrier) = race_window_barrier {
@@ -83,7 +84,7 @@ pub(super) fn build_prod_orchestrator(
         "server: board-outbox hydrated via storage ({} pending events)",
         hydrated.len()
     ));
-    let orch_concrete = SyncOrchestrator::new(adapter);
+    let orch_concrete = SyncOrchestrator::new(adapter, Arc::new(GhLabelCodec));
     seed_ci_green_for_tests(&ci_state_store);
     let mut orch_concrete = orch_concrete.with_ci_state_store(ci_state_store);
     if let Some(barrier) = race_window_barrier {

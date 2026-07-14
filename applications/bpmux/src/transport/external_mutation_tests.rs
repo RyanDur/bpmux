@@ -50,7 +50,10 @@ async fn fixture_orchestrator(server: &MockServer) -> Arc<dyn RefreshDriver> {
     )
     .expect("build tracker against mock");
     let adapter = Arc::new(GitHubSourceAdapter::new(tracker));
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.expect("seed-empty ingest");
     orch

@@ -19,7 +19,10 @@ async fn orchestrator(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver
         adapter.seed_labels(story.id.value(), labels.clone());
     }
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let seeded: Vec<_> = seeds
         .iter()
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("outcome")))
@@ -155,7 +158,10 @@ fn flagged_iteration(id: u64, is_current: bool, complete: bool, stories: Vec<u64
 async fn board_ready_order(stories: Vec<Story>, iterations: Vec<Iteration>) -> Vec<u64> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(stories);
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&refresh, vec![], iterations, vec![]);
     refresh.refresh_all().await.unwrap();
     ordered_board_stories(&refresh)
@@ -209,7 +215,10 @@ async fn an_optimistic_reject_is_visible_on_the_board_snapshot_before_it_reaches
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     )]);
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let current = Iteration {
         id: IterationId::new(9000),
         title: "Iteration Vela".to_string(),

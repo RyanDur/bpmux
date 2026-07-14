@@ -29,8 +29,10 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(203, vec!["chore".to_string()]);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
@@ -115,8 +117,10 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(204, vec!["chore".to_string()]);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
@@ -194,8 +198,10 @@ async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
         "dev".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
@@ -288,7 +294,10 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
             "desk-check".to_string(),
         ],
     );
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 
@@ -348,8 +357,10 @@ async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
         "dev".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let current = product_management::iteration::Iteration {
         id: product_management::iteration::IterationId::new(9000),
         title: String::new(),
@@ -433,8 +444,10 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     )]);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
@@ -524,8 +537,10 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(207, vec!["chore".to_string()]);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
@@ -596,8 +611,10 @@ async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
             payload: Some(reason.into()),
         }],
     );
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
@@ -676,8 +693,10 @@ async fn start_story_leads_with_the_latest_reject_not_an_older_one() {
             },
         ],
     );
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
@@ -712,7 +731,10 @@ mod classify_for_pass_desk_check_tests {
     async fn orchestrator_with_seed(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.seed_stories(stories);
-        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+            Arc::clone(&adapter),
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
         orch.refresh_all().await.unwrap();
         orch

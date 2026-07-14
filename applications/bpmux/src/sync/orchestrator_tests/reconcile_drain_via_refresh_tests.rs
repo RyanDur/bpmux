@@ -34,8 +34,10 @@ fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
 async fn drain_pending_via_refresh_driver_drains_the_pending_queue() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(1, Work::NotStarted)]);
-    let orchestrator: Arc<dyn RefreshDriver> =
-        Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
     orchestrator
@@ -66,7 +68,10 @@ async fn reconcile_dual_state_labels_emits_tag_remove_for_stale_in_progress_labe
             "bug".to_string(),
         ],
     );
-    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
     bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
     orch.ingest_once().await.unwrap();
@@ -90,7 +95,10 @@ async fn reconcile_dual_state_labels_is_no_op_when_labels_match_state() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(451, Work::Acceptance)]);
     adapter.seed_labels(451, vec!["delivered".to_string(), "feature".to_string()]);
-    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
     bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
     orch.ingest_once().await.unwrap();
@@ -104,7 +112,10 @@ async fn reconcile_keeps_the_ready_label_for_a_current_iteration_member() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(452, Work::NotStarted)]);
     adapter.seed_labels(452, vec!["ready".to_string(), "feature".to_string()]);
-    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
     bind_seeded_refresh(&orch_dyn, vec![], current_iteration_of(&[452]), vec![]);
     orch.ingest_once().await.unwrap();
@@ -121,7 +132,10 @@ async fn reconcile_marks_the_ready_label_stale_for_a_not_started_non_member() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(453, Work::NotStarted)]);
     adapter.seed_labels(453, vec!["ready".to_string(), "feature".to_string()]);
-    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
     bind_seeded_refresh(&orch_dyn, vec![], current_iteration_of(&[]), vec![]);
     orch.ingest_once().await.unwrap();

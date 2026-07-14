@@ -12,9 +12,10 @@ async fn stories_delta_wakes_subscribers_but_is_not_persisted_durably() {
     let dir = tempfile::tempdir().expect("tempdir");
     let (wake_tx, _wake_rx) = tokio::sync::broadcast::channel(BROADCAST_CHANNEL_CAPACITY);
     let hub = hub::Hub::new(dir.path().to_path_buf(), "test:owner".to_string(), wake_tx);
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::new(
-        InMemorySourceAdapter::new(),
-    )));
+    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::new(InMemorySourceAdapter::new()),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&refresh, vec![], vec![], vec![]);
     refresh.refresh_all().await.expect("seed-empty ingest");
 

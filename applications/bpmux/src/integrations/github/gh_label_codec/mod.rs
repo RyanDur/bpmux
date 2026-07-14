@@ -1,6 +1,8 @@
 use product_management::iteration::label::IterationLabelParts;
 use product_management::label_codec::LabelCodec;
-use product_management::story::{Acceptor, Tag};
+use product_management::story::{Acceptor, Stage, Tag};
+
+use super::mapper::stage_github_label;
 
 mod iteration;
 mod outcome;
@@ -56,11 +58,19 @@ impl LabelCodec for GhLabelCodec {
             Acceptor::Dev => ACCEPTOR_DEV_LABEL,
         }
     }
+
+    fn stage_label(&self, stage: Stage) -> &'static str {
+        stage_github_label(stage)
+    }
+
+    fn is_legacy_state_label(&self, label: &str) -> bool {
+        LEGACY_STATE_LABELS.contains(&label)
+    }
 }
 
 pub const CURRENT_ITERATION_LABEL: &str = "current-iteration";
 pub const DESK_CHECK_FAIL_LABEL: &str = "desk-check-fail";
-pub const LEGACY_STATE_LABELS: &[&str] = &["ready for accept", "needs fixes", "rejected"];
+const LEGACY_STATE_LABELS: &[&str] = &["ready for accept", "needs fixes", "rejected"];
 pub const WORKFLOW_STATE_LABELS: &[&str] = &[
     "icebox",
     "ready",

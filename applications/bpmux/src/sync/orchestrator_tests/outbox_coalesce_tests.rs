@@ -36,7 +36,10 @@ mod outbox_coalesce_1339_step_2e {
     async fn rapid_drag_sequence_coalesces_to_first_remove_plus_last_add_per_class() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let seed = seed_story(7011, Work::NotStarted);
-        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch = Arc::new(SyncOrchestrator::new(
+            adapter,
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
@@ -105,7 +108,10 @@ mod outbox_coalesce_1339_step_2e {
     #[tokio::test]
     async fn coalesce_per_class_keeps_distinct_iteration_namespaces_apart() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch = Arc::new(SyncOrchestrator::new(
+            adapter,
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
@@ -153,7 +159,10 @@ mod outbox_coalesce_1339_step_2e {
     #[tokio::test]
     async fn coalesce_does_not_collapse_across_stories() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch = Arc::new(SyncOrchestrator::new(
+            adapter,
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
@@ -208,7 +217,10 @@ mod outbox_coalesce_1339_step_2e {
     #[tokio::test]
     async fn coalesce_does_not_touch_non_iteration_labels() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch = Arc::new(SyncOrchestrator::new(
+            adapter,
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
@@ -253,7 +265,10 @@ mod outbox_coalesce_1339_step_2e {
     #[tokio::test]
     async fn coalesce_handles_add_only_sequence_keeping_last_add() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch = Arc::new(SyncOrchestrator::new(
+            adapter,
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);

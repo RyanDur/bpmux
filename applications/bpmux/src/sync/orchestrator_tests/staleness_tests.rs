@@ -68,7 +68,10 @@ mod staleness {
     #[tokio::test]
     async fn snapshot_status_default_threshold_keeps_fresh_ingest_not_stale() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch = Arc::new(SyncOrchestrator::new(
+            adapter,
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
         orch.ingest_once().await.unwrap();
@@ -110,7 +113,10 @@ mod staleness {
     async fn snapshot_status_surfaces_startup_fail_when_ingest_fails_with_no_prior_success() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.set_ingest_failures(true);
-        let orch = Arc::new(SyncOrchestrator::new(adapter));
+        let orch = Arc::new(SyncOrchestrator::new(
+            adapter,
+            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
         let _ = orch.ingest_once().await;

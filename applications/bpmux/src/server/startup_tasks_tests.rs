@@ -19,7 +19,10 @@ async fn ingest_runs_in_background_not_inline() {
         chrono::Utc::now(),
         "test".to_string(),
     )]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
 
     spawn_background_ingest(orch.clone(), crate::store::Dispatch::recording().0);

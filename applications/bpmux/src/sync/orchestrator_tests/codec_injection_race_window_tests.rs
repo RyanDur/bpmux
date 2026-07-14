@@ -64,6 +64,14 @@ mod codec_injection_substrate {
                 Acceptor::Dev => "STUB-awaiting-dev",
             }
         }
+
+        fn stage_label(&self, _stage: Stage) -> &'static str {
+            "STUB-stage"
+        }
+
+        fn is_legacy_state_label(&self, _label: &str) -> bool {
+            false
+        }
     }
 
     fn meta() -> EventMeta {
@@ -102,7 +110,7 @@ mod codec_injection_substrate {
     #[tokio::test]
     async fn coalescer_uses_injected_codec_classification() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(adapter).with_codec(Arc::new(StubLabelCodec)));
+        let orch = Arc::new(SyncOrchestrator::new(adapter, Arc::new(StubLabelCodec)));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
@@ -138,7 +146,7 @@ mod codec_injection_substrate {
     #[tokio::test]
     async fn coalescer_keeps_distinct_stub_iteration_namespaces_apart() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(adapter).with_codec(Arc::new(StubLabelCodec)));
+        let orch = Arc::new(SyncOrchestrator::new(adapter, Arc::new(StubLabelCodec)));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);

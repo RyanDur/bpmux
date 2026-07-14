@@ -27,7 +27,11 @@ mod stage_verb_behavior {
         adapter.seed_labels(id, labels.iter().map(|l| l.to_string()).collect());
         adapter.seed_stories(vec![story]);
         let orch: Arc<dyn RefreshDriver> = Arc::new(
-            SyncOrchestrator::new(adapter).with_ci_state_store(super::test_ci_state_store_green()),
+            SyncOrchestrator::new(
+                adapter,
+                Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+            )
+            .with_ci_state_store(super::test_ci_state_store_green()),
         );
         crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
         orch.refresh_all().await.unwrap();

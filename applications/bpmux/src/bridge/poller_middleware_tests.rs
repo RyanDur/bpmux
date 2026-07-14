@@ -43,7 +43,10 @@ fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
 async fn get_story_canonical_only_returns_placeholder_when_body_missing() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.set_ingest_failures(true);
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let seed = SeededStore::new(vec![], vec![], vec![]);
     seed.bind_refresh(&refresh);
     seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
@@ -75,7 +78,10 @@ async fn get_story_serves_cached_body_from_canonical_store() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut story = seed_minimal(8002, Work::NotStarted);
     story.body = Some("# real body\n\ncached body content from prior hydrate".to_string());
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let seed = SeededStore::new(vec![], vec![], vec![]);
     seed.bind_refresh(&refresh);
     seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![story])));
@@ -98,7 +104,10 @@ async fn get_story_serves_cached_body_from_canonical_store() {
 async fn get_story_does_not_call_adapter_fetch_body_when_body_missing() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.set_ingest_failures(true);
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let seed = SeededStore::new(vec![], vec![], vec![]);
     seed.bind_refresh(&refresh);
     seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
@@ -170,7 +179,10 @@ async fn select_stories_to_hydrate_returns_empty_when_all_hydrated() {
 async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
     use product_management::story::events::{StoryEvent, StoryEventKind};
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let seed = SeededStore::new(vec![], vec![], vec![]);
     seed.bind_refresh(&orch);
     seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
@@ -194,7 +206,10 @@ async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
 async fn local_body_mutate_invalidates_prior_etag() {
     use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch);
     let mut seed = seed_minimal(9100, Work::NotStarted);
@@ -226,7 +241,10 @@ async fn local_body_mutate_invalidates_prior_etag() {
 async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh() {
     use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch);
     let seed = seed_minimal(9200, Work::InProgress);
@@ -258,7 +276,10 @@ async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_minimal(9001, Work::NotStarted)]);
     adapter.seed_body(9001, "real body".into());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
     let result = orch
@@ -326,7 +347,10 @@ async fn select_stories_to_revalidate_caps_at_limit() {
 #[tokio::test]
 async fn get_story_returns_hydrated_flag_in_response() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let seed = SeededStore::new(vec![], current_iteration_of(&[8004]), vec![]);
     seed.bind_refresh(&refresh);
     seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(

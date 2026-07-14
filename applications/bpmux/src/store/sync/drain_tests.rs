@@ -60,7 +60,10 @@ async fn write_queued_burst_single_flights_one_drain_that_pushes_each_write_once
     std::mem::forget(dir);
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let refresh: Arc<dyn RefreshDriver> = orch.clone();
 
     let store: Arc<Store> = Arc::new(build_store_with_refresh(
@@ -118,7 +121,10 @@ async fn polling_liveness_facts_never_drain_a_seeded_outbox() {
     std::mem::forget(dir);
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let refresh: Arc<dyn RefreshDriver> = orch.clone();
 
     let store: Arc<Store> = Arc::new(build_store_with_refresh(
@@ -183,7 +189,10 @@ async fn a_mutated_write_is_selectable_the_moment_mutate_returns() {
     std::mem::forget(dir);
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let refresh: Arc<dyn RefreshDriver> = orch.clone();
 
     let store: Arc<Store> = Arc::new(build_store_with_refresh(
@@ -231,7 +240,10 @@ async fn an_ingested_upsert_is_selectable_the_moment_refresh_returns() {
         "pm".to_string(),
     )]);
     adapter.seed_labels(8001, vec!["outcome".to_string()]);
-    let orch = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let refresh: Arc<dyn RefreshDriver> = orch.clone();
 
     let store: Arc<Store> = Arc::new(build_store_with_refresh(

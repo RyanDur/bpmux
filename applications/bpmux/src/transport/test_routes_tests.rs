@@ -21,7 +21,10 @@ fn fresh_test_hub() -> Arc<hub::Hub> {
 
 async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.expect("seed-empty ingest");
     let orchestrator: OrchestratorHandle = Some(orch.clone());
@@ -219,7 +222,10 @@ async fn rest_get_board_auto_reingests_when_orchestrator_store_is_empty() {
         ts,
         "dev".into(),
     )]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(adapter));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        adapter,
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     let orchestrator: OrchestratorHandle = Some(orch.clone());
     let none_tracker: super::rest::TrackerHandle = None;

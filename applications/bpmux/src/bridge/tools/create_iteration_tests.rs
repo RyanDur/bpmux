@@ -52,7 +52,10 @@ async fn build_refresh_with_stories(
         }
     }
     adapter.seed_stories(seeds.iter().map(|(s, _, _)| s.clone()).collect());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
     let iterations: Vec<Iteration> = seeds
         .iter()
         .filter(|(_, labels, _)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))

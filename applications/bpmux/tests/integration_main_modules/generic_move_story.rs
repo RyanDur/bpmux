@@ -43,7 +43,10 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
         "dev".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(Arc::clone(&adapter)));
+    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        Arc::clone(&adapter),
+        Arc::new(bpmux::integrations::github::gh_label_codec::GhLabelCodec),
+    ));
 
     let hub_dir = tempfile::tempdir().expect("hub dir");
     let (wake_tx, _) = broadcast::channel(64);
