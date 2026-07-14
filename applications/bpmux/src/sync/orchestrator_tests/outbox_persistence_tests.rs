@@ -7,11 +7,10 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::store::sync::OutboxSink;
 use crate::store::test_support::eventually;
 use crate::store::{AppAction, SeededStore};
 use crate::sync::{
-    PendingWrite, QueuedWrite, RefreshDriver, SyncOrchestrator, load_outbox_from_disk,
+    OutboxSink, PendingWrite, QueuedWrite, RefreshDriver, SyncOrchestrator, load_outbox_from_disk,
 };
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::slice::StoryAction;

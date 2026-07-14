@@ -1,11 +1,10 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::store::app::{AppAction, AppState};
+use crate::store::sync::queue_snapshot;
+use crate::store::{AppAction, AppState};
 use crate::sync::QueuedEvent;
 use kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
-
-use super::queue_snapshot;
 
 #[derive(Clone)]
 pub enum OutboxSink {

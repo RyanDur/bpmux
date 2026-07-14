@@ -14,7 +14,7 @@ use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::server::store_wiring::build_store_with_refresh;
 use crate::storage::StorageBackend;
-use crate::store::app::AppAction;
+use crate::store::AppAction;
 use crate::store::test_support::eventually;
 use crate::store::{Store, SyncHealthAction};
 use crate::sync::{MutationId, PendingWrite, QueuedWrite, RefreshDriver, SyncOrchestrator};

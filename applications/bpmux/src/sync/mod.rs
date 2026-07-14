@@ -16,6 +16,7 @@ mod driver_ops;
 mod fetch;
 mod ingest;
 mod outbox;
+mod outbox_persister;
 mod port;
 mod race_window;
 mod slice_readers;
@@ -25,9 +26,11 @@ mod write_through;
 
 pub(crate) use backfill::backfill_shared_history;
 use coalesce::stale_state_labels_for;
+pub(crate) use drain::GithubDrain;
 pub use driver::*;
 pub(crate) use outbox::persist_outbox_to_disk;
 pub use outbox::{default_outbox_path, load_outbox_from_disk};
+pub use outbox_persister::{OutboxPersister, OutboxSink};
 pub use port::*;
 pub use race_window::*;
 pub use status::{DroppedEvent, SyncStatus, is_stale, is_startup_fail, staleness_threshold_secs};
@@ -139,3 +142,5 @@ mod orchestrator_tests;
 mod outbox_capture_tests;
 #[cfg(test)]
 mod outbox_format_tests;
+#[cfg(test)]
+mod outbox_persister_tests;

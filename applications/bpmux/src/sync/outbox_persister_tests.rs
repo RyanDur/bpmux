@@ -5,14 +5,14 @@ use std::sync::{Arc, Mutex};
 use chrono::{TimeZone, Utc};
 
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::store::SyncHealthAction;
-use crate::store::app::{AppAction, AppState, app_reduce};
+use crate::store::sync::SyncAction;
 use crate::store::test_support::eventually;
+use crate::store::{AppAction, AppState, SyncHealthAction, app_reduce};
 use crate::sync::{MutationId, PendingWrite, QueuedEvent, QueuedWrite};
 use product_management::story::StoryId;
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 
-use super::{OutboxPersister, OutboxSink, SyncAction};
+use super::{OutboxPersister, OutboxSink};
 
 fn meta() -> EventMeta {
     EventMeta {

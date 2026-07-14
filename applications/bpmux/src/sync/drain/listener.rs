@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::store::app::{AppAction, AppState};
+use crate::store::{AppAction, AppState};
 use crate::sync::RefreshDriver;
 use kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
 

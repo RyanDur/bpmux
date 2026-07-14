@@ -4,6 +4,12 @@ use product_management::story::events::{StoryEvent, StoryEventKind};
 use super::{PendingWrite, SyncOrchestrator};
 
 mod drain_pass;
+mod listener;
+
+#[cfg(test)]
+mod listener_tests;
+
+pub use listener::GithubDrain;
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub fn mutate(&self, event: StoryEvent) -> Result<(), SyncError> {

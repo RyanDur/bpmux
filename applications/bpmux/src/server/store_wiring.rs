@@ -9,9 +9,9 @@ use crate::store::{
     AppState, BoardPlacementPersister, BoardPlacementReconciler, CiBroadcast, CiListeners,
     CiPollFetch, EvidencePersister, LocalHistoryPersister, OwnerParkListener, ReactionsBroadcast,
     ReactionsListeners, ReactionsPersister, RosterBroadcast, RosterListeners, RoutingPersister,
-    SharedHistoryPersister, Store, StoreParts, app_reduce, ci, sync,
+    SharedHistoryPersister, Store, StoreParts, app_reduce, ci,
 };
-use crate::sync::RefreshDriver;
+use crate::sync::{self, RefreshDriver};
 use crate::transport::rest::broadcast_listeners::{
     EpicBroadcast, IterationBroadcast, OutcomeBroadcast, StoryBroadcast,
 };
