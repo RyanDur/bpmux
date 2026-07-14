@@ -1,0 +1,32 @@
+[package]
+name = "storage"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The persistence edge: SQLite and file backends implementing the feature-owned repo ports"
+
+[dependencies]
+awareness = { path = "../awareness" }
+diag = { path = "../diag" }
+memory = { path = "../memory" }
+message = { path = "../message" }
+message_log = { path = "../message_log" }
+persist = { path = "../persist" }
+product_management = { path = "../product_management" }
+source_sync = { path = "../source_sync" }
+user_routing = { path = "../user_routing" }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+dirs = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+thiserror = { workspace = true }
+rusqlite = { version = "0.32", features = ["bundled"] }
+refinery = { version = "0.8", features = ["rusqlite"] }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt"] }
+
+[lints]
+workspace = true

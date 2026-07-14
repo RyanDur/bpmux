@@ -1,10 +1,10 @@
-use crate::storage::StorageBackend;
-use crate::storage::{FileStorage, SqliteStorage, Storage};
 use chrono::{TimeZone, Utc};
 use memory::lessons::LessonIndex;
 use message::Message;
 use message_log::MessageLog;
 use std::sync::Arc;
+use storage::StorageBackend;
+use storage::{FileStorage, SqliteStorage, Storage};
 
 fn fresh_message(text: &str) -> Message {
     let mut msg = Message {

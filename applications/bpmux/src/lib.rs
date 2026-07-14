@@ -32,7 +32,6 @@ mod pm_integration_tests;
 pub mod rate_limit;
 pub mod room;
 pub mod server;
-pub mod storage;
 #[cfg(test)]
 mod storage_tests;
 pub mod store;

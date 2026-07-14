@@ -75,7 +75,7 @@ async fn register_cli_holds_a_stable_id_in_the_data_home_registry_and_makes_it_r
         "registering twice in the same dir RECLAIMS the same id — id stability is the observable behavior, not any storage filename"
     );
 
-    use bpmux::storage::StorageBackend;
+    use storage::StorageBackend;
     let session_dir = bpmux.sessions_base_path().join("current");
     let storage = StorageBackend::resolve().build(&session_dir);
     let users = storage

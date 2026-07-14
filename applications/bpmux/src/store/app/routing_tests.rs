@@ -8,6 +8,7 @@ use super::routing::RoutingPersister;
 use crate::store::routing::{RoutingAction, from_users};
 use crate::store::{AppAction, AppState, app_reduce};
 use kernel::{Dispatch, Listener, Reaction};
+use storage::SqliteStorage;
 use user_routing::UserRepo;
 
 fn no_op_dispatch() -> Dispatch<AppAction> {
@@ -15,7 +16,7 @@ fn no_op_dispatch() -> Dispatch<AppAction> {
 }
 
 fn repo(dir: &TempDir) -> Arc<dyn UserRepo> {
-    crate::storage::sqlite_test_storage(dir.path())
+    Arc::new(SqliteStorage::new(dir.path().to_path_buf()).expect("sqlite test storage"))
 }
 
 async fn drive(

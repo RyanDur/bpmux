@@ -16,8 +16,8 @@ const COMPOSED_FEATURE_PATHS: &[&str] = &[
 
 #[test]
 fn storage_composes_feature_ports_only_in_the_super_trait_bound() {
-    let mod_rs = src_root().join("storage/mod.rs");
-    let text = std::fs::read_to_string(&mod_rs).expect("read storage/mod.rs");
+    let mod_rs = src_root().join("lib.rs");
+    let text = std::fs::read_to_string(&mod_rs).expect("read storage/lib.rs");
 
     let trait_start = text
         .find("pub trait Storage")
@@ -53,11 +53,11 @@ fn storage_composes_feature_ports_only_in_the_super_trait_bound() {
 const STORAGE_MECHANISM_TOKENS: &[&str] = &["rusqlite", "refinery"];
 
 const PORT_OWNING_FEATURE_MODULES: &[&str] = &[
-    "../../../components/awareness/src",
-    "../../../components/message_log/src",
-    "../../../components/memory/src",
-    "../../../components/source_sync/src",
-    "../../../components/user_routing/src",
+    "../../awareness/src",
+    "../../message_log/src",
+    "../../memory/src",
+    "../../source_sync/src",
+    "../../user_routing/src",
 ];
 
 fn collect_rs_files(path: &Path, out: &mut Vec<PathBuf>) {

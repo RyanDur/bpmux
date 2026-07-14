@@ -49,8 +49,7 @@ mod file_outbox;
 mod file_state;
 mod file_surfaced_topics;
 mod file_users;
-#[cfg(test)]
-pub(crate) use file_outbox::load_outbox_from_disk;
+pub use file_outbox::load_outbox_from_disk;
 
 mod sqlite;
 mod sqlite_engine;

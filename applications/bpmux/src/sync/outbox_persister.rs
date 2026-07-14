@@ -7,7 +7,7 @@ use source_sync::QueuedEvent;
 
 #[derive(Clone)]
 pub enum OutboxSink {
-    Storage(Arc<dyn crate::storage::Storage>),
+    Storage(Arc<dyn storage::Storage>),
     #[cfg(test)]
     Recording(Arc<std::sync::Mutex<Vec<Vec<QueuedEvent>>>>),
 }

@@ -1,5 +1,5 @@
 use super::InstrumentedStorage;
-use crate::storage::Storage;
+use crate::Storage;
 
 impl<S: Storage> Storage for InstrumentedStorage<S> {
     fn load_state(&self, key: &str) -> Option<String> {

@@ -20,9 +20,3 @@ pub trait Storage:
 
 #[cfg(test)]
 mod boundary_tests;
-
-#[cfg(test)]
-#[allow(clippy::expect_used)]
-pub(crate) fn sqlite_test_storage(dir: &std::path::Path) -> std::sync::Arc<dyn Storage> {
-    std::sync::Arc::new(SqliteStorage::new(dir.to_path_buf()).expect("sqlite test storage"))
-}

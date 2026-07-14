@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use super::InstrumentedStorage;
-use crate::storage::Storage;
+use crate::Storage;
 
 impl<S: Storage> user_routing::UserRepo for InstrumentedStorage<S> {
     fn load_users(&self) -> Result<Vec<user_routing::UserRecord>, persist::PersistError> {

@@ -13,11 +13,11 @@ use crate::hub::Hub;
 use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::server::store_wiring::build_store_with_refresh;
-use crate::storage::StorageBackend;
 use crate::store::AppAction;
 use crate::store::test_support::eventually;
 use crate::store::{Store, SyncHealthAction};
 use source_sync::{MutationId, PendingWrite, QueuedWrite};
+use storage::StorageBackend;
 
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use message::Message;

@@ -5,9 +5,9 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::broadcast;
 
-use crate::storage::{Storage, StorageBackend};
 use message::Message;
 use message_log::LogError;
+use storage::{Storage, StorageBackend};
 
 mod awareness_host;
 #[cfg(test)]

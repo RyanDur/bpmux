@@ -1,5 +1,5 @@
 use super::FileStorage;
-use crate::storage::Storage;
+use crate::Storage;
 
 impl Storage for FileStorage {
     fn load_state(&self, key: &str) -> Option<String> {

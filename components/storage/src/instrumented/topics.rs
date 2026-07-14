@@ -1,5 +1,5 @@
 use super::InstrumentedStorage;
-use crate::storage::Storage;
+use crate::Storage;
 
 impl<S: Storage> awareness::SurfacedTopicsRepo for InstrumentedStorage<S> {
     fn load_surfaced_topics(&self) -> std::collections::HashSet<String> {

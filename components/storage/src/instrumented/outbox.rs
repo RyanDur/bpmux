@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use super::InstrumentedStorage;
-use crate::storage::Storage;
+use crate::Storage;
 
 impl<S: Storage> source_sync::OutboxRepo for InstrumentedStorage<S> {
     fn load_outbox(

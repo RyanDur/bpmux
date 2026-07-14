@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use super::InstrumentedStorage;
-use crate::storage::Storage;
+use crate::Storage;
 use memory::lessons::LessonIndex;
 
 impl<S: Storage> memory::lessons::LessonRepo for InstrumentedStorage<S> {

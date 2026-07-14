@@ -17,7 +17,7 @@ pub(super) fn default_outbox_path() -> Result<PathBuf, std::io::Error> {
     Ok(base.join(".bpmux").join("board-outbox.json"))
 }
 
-pub(crate) fn load_outbox_from_disk(path: &Path) -> Result<VecDeque<QueuedEvent>, PersistError> {
+pub fn load_outbox_from_disk(path: &Path) -> Result<VecDeque<QueuedEvent>, PersistError> {
     if !path.exists() {
         return Ok(VecDeque::new());
     }

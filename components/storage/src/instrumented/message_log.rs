@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use super::InstrumentedStorage;
-use crate::storage::Storage;
+use crate::Storage;
 use message::Message;
 use message_log::LogError;
 

@@ -6,7 +6,7 @@ use source_sync::{PendingWrite, QueuedWrite};
 
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 
-fn hydrate_outbox(storage: &Arc<dyn crate::storage::Storage>) -> Vec<QueuedWrite> {
+fn hydrate_outbox(storage: &Arc<dyn storage::Storage>) -> Vec<QueuedWrite> {
     let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
     match storage.load_outbox() {
         Ok(rows) => rows
