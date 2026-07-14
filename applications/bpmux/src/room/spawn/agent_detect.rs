@@ -6,7 +6,7 @@ use tokio::sync::broadcast;
 use super::Osc7CwdParser;
 use crate::location::register_dir_user;
 use crate::room::LivePtyRegistry;
-use crate::store::{Dispatch, Select};
+use crate::store::{AppAction, Dispatch, Presence, RosterAction, Select};
 
 const AGENT_RUN_GATE: Duration = Duration::from_millis(1000);
 const DETECTOR_POLL: Duration = Duration::from_millis(200);
@@ -73,8 +73,6 @@ impl AgentRunDetector {
     }
 }
 
-type DetectorStore = Arc<crate::store::Store>;
-
 pub fn spawn_agent_run_detector(
     terminal_id: String,
     mut output: broadcast::Receiver<Vec<u8>>,
@@ -82,7 +80,6 @@ pub fn spawn_agent_run_detector(
     dispatch: Dispatch,
     select: Select,
     hub: Arc<crate::hub::Hub>,
-    store: Option<DetectorStore>,
 ) {
     tokio::spawn(async move {
         let mut detector = AgentRunDetector::new(AGENT_RUN_GATE);
@@ -133,14 +130,11 @@ pub fn spawn_agent_run_detector(
                             &dir_user.name,
                             &mint.job_start_ts,
                         );
-                        if let Some(store) = &store {
-                            crate::transport::ws::dispatch_roster_join(
-                                store,
-                                &dir_user.id,
-                                &dir_user.name,
-                            )
-                            .await;
-                        }
+                        dispatch.dispatch(AppAction::Roster(RosterAction::RosterMemberUpserted {
+                            routing_id: dir_user.id.clone(),
+                            identity: dir_user.name.clone(),
+                            presence: Presence::Online,
+                        }));
                     }
                     if foreground {
                         present = present
@@ -148,22 +142,23 @@ pub fn spawn_agent_run_detector(
                                 crate::store::routing::is_terminal_linked(&s.routing, &terminal_id)
                             });
                     } else if present {
-                        leave_terminal(&store, &select, &terminal_id).await;
+                        leave_terminal(&dispatch, &select, &terminal_id);
                         present = false;
                         detector.on_left();
                     }
                 }
             }
         }
-        leave_terminal(&store, &select, &terminal_id).await;
+        leave_terminal(&dispatch, &select, &terminal_id);
     });
 }
 
-async fn leave_terminal(store: &Option<DetectorStore>, select: &Select, terminal_id: &str) {
-    if let (Some(store), Some(routing_id)) = (
-        store,
-        select.select(|s| crate::store::routing::user_for_terminal(&s.routing, terminal_id)),
-    ) {
-        crate::transport::ws::dispatch_roster_leave(store, &routing_id).await;
+fn leave_terminal(dispatch: &Dispatch, select: &Select, terminal_id: &str) {
+    if let Some(routing_id) =
+        select.select(|s| crate::store::routing::user_for_terminal(&s.routing, terminal_id))
+    {
+        dispatch.dispatch(AppAction::Roster(RosterAction::RosterMemberRemoved {
+            routing_id,
+        }));
     }
 }

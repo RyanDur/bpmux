@@ -192,7 +192,6 @@ async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless()
         store.dispatcher(),
         store.select(),
         empty_message_hub(),
-        None,
     );
 
     registry.write_to(&terminal_id, format!("cd {work_path}\n").as_bytes());
@@ -256,7 +255,6 @@ async fn a_cd_through_a_dir_without_running_an_agent_mints_no_id() {
         store.dispatcher(),
         store.select(),
         empty_message_hub(),
-        None,
     );
 
     registry.write_to(&terminal_id, format!("cd {passed_path}\n").as_bytes());
@@ -309,7 +307,6 @@ async fn an_agent_started_in_place_with_no_cd_registers_via_the_startup_emit() {
         store.dispatcher(),
         store.select(),
         empty_message_hub(),
-        None,
     );
 
     registry.write_to(&terminal_id, b"sleep 4\n");

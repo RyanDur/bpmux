@@ -20,7 +20,6 @@ pub async fn post_terminal_spawn(
     Extension(port): Extension<u16>,
     Extension(dispatch): Extension<Dispatch>,
     Extension(select): Extension<Select>,
-    store: Option<Extension<Arc<crate::store::Store>>>,
     State(hub): State<Arc<crate::hub::Hub>>,
 ) -> impl IntoResponse {
     let room_agent = std::env::var("BPMUX_ROOM_AGENT").ok();
@@ -75,7 +74,6 @@ pub async fn post_terminal_spawn(
                     dispatch.clone(),
                     select.clone(),
                     hub.clone(),
-                    store.as_ref().map(|Extension(o)| o.clone()),
                 );
             }
             (
