@@ -121,7 +121,7 @@ async fn start_story_stamps_actor_id_from_the_threaded_identify_user_id() {
     adapter.seed_labels(886, vec!["chore".to_string()]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();

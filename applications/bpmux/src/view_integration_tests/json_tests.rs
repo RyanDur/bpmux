@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use product_management::epic::EpicId;
 use product_management::story::{Story, StoryId, StoryKind, Work};
+use source_codec::gh_label_codec::GhLabelCodec;
 use view::board::story_to_board_json;
 
 fn sample_story(state: Work, story_type: StoryKind) -> Story {
@@ -257,8 +257,7 @@ fn a_legacy_ready_order_label_ingested_does_not_resurface_on_the_board_wire() {
         "created_at": "2026-07-07T00:00:00Z",
         "user": {"login": "pm"},
     });
-    let story = crate::integrations::github::mapper::decode_story_metadata(&json)
-        .expect("issue JSON must decode");
+    let story = source_codec::mapper::decode_story_metadata(&json).expect("issue JSON must decode");
     assert!(
         story.tags().is_empty(),
         "a legacy ready-order label must never land in the typed tags surface"

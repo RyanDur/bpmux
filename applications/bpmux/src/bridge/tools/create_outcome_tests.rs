@@ -2,7 +2,6 @@
 #![allow(clippy::expect_used)]
 
 use crate::bridge::tools_stories::{handle_create_outcome, handle_map_iteration_to_outcome};
-use crate::integrations::github::mapper::{decode_iteration_from_story, decode_outcome_from_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::{AppAction, Dispatch};
 use crate::sync::RefreshDriver;
@@ -12,6 +11,7 @@ use product_management::iteration::{Iteration, IterationAction, IterationId};
 use product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
 use product_management::story::{Horizon, Story, StoryId, StoryKind, Work};
 use serde_json::{Map, Value, json};
+use source_codec::mapper::{decode_iteration_from_story, decode_outcome_from_story};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -44,7 +44,7 @@ async fn build_empty_refresh() -> Arc<dyn RefreshDriver> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
@@ -62,7 +62,7 @@ fn typed_seed(id: u64, story_type: StoryKind, label: &str) -> (Story, Vec<String
     s.story_type = story_type;
     let labels = vec![
         label.to_string(),
-        crate::integrations::github::gh_label_codec::GhLabelCodec.encode_story_type(story_type),
+        source_codec::gh_label_codec::GhLabelCodec.encode_story_type(story_type),
     ];
     (s, labels)
 }
@@ -86,7 +86,7 @@ async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDrive
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let seeded: Vec<Outcome> = seeds
         .iter()

@@ -4,7 +4,6 @@
 #![allow(unsafe_code)]
 
 use crate::bridge::tools_stories::handle_create_iteration;
-use crate::integrations::github::mapper::decode_iteration_from_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::{AppAction, Dispatch};
 use crate::sync::RefreshDriver;
@@ -13,6 +12,7 @@ use chrono::{TimeZone, Utc};
 use product_management::iteration::{Iteration, IterationAction};
 use product_management::story::{Story, StoryId, Work};
 use serde_json::{Map, Value, json};
+use source_codec::mapper::decode_iteration_from_story;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -54,7 +54,7 @@ async fn build_refresh_with_stories(
     adapter.seed_stories(seeds.iter().map(|(s, _, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let iterations: Vec<Iteration> = seeds
         .iter()

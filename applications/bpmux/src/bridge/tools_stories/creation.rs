@@ -74,7 +74,7 @@ pub(crate) async fn handle_create_story(
         acceptor,
     )
     .await?;
-    if crate::integrations::github::mapper::is_epic_title(title) {
+    if source_codec::mapper::is_epic_title(title) {
         dispatch.dispatch(crate::store::AppAction::Epic(
             product_management::epic::EpicAction::Upserted(vec![product_management::epic::Epic {
                 id: product_management::epic::EpicId::new(id),

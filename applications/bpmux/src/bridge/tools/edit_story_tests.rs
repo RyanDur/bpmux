@@ -33,7 +33,7 @@ async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
     adapter.seed_stories(stories);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
@@ -143,7 +143,7 @@ async fn edit_story_body_returns_optimistically_and_pushes_via_the_drain() {
     adapter.seed_stories(vec![seed_story(1234, "[Feature] t", "old body")]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();

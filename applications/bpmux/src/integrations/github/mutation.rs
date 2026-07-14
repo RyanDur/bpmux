@@ -1,7 +1,7 @@
-use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::integrations::github::tracker::OctocrabStoryTracker;
 use product_management::label_codec::LabelCodec;
 use product_management::story::events::{StoryEvent, StoryEventKind};
+use source_codec::gh_label_codec::GhLabelCodec;
 use source_sync::SyncError;
 
 use super::mutation_events::{

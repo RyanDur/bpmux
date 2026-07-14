@@ -23,7 +23,7 @@ async fn handler_errors_when_story_not_in_board() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
@@ -63,7 +63,7 @@ async fn handler_reads_gates_from_canonical_store() {
     }]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let handle = crate::store::SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orchestrator);
@@ -107,7 +107,7 @@ async fn handler_returns_filed_only_with_unhydrated_flag_when_verdicts_missing()
     );
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let handle = crate::store::SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orchestrator);
@@ -254,7 +254,7 @@ async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
     );
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();

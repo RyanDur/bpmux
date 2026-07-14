@@ -11,12 +11,12 @@ pub(super) fn issue_to_board_json(issue: &octocrab::models::issues::Issue) -> se
     use product_management::story::Work;
     let labels: Vec<String> = issue.labels.iter().map(|l| l.name.clone()).collect();
     let is_closed = matches!(issue.state, octocrab::models::IssueState::Closed);
-    let state = match crate::integrations::github::mapper::state_from_labels(&labels, is_closed) {
+    let state = match source_codec::mapper::state_from_labels(&labels, is_closed) {
         Work::NotStarted => ProjectedState::Icebox.as_str(),
         other => other.as_str(),
     };
     let gh_state = gh_state_label(&issue.state);
-    let parent_epic = crate::integrations::github::mapper::parent_epic_from_labels(&labels);
+    let parent_epic = source_codec::mapper::parent_epic_from_labels(&labels);
     serde_json::json!({
         "number": issue.number,
         "title": issue.title,

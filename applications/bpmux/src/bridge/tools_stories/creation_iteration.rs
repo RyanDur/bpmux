@@ -71,8 +71,7 @@ pub(crate) async fn handle_create_iteration(
         meta,
         StoryId::new(id),
         product_management::story::events::StoryEventKind::TagAdded {
-            label: crate::integrations::github::gh_label_codec::GhLabelCodec
-                .encode_iteration_order(next_order),
+            label: source_codec::gh_label_codec::GhLabelCodec.encode_iteration_order(next_order),
         },
     ))
     .map_err(|e| format!("#{id} iteration-order label enqueue failed: {e}"))?;

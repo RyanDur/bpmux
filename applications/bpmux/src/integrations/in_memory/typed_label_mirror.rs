@@ -1,7 +1,7 @@
 use super::InnerState;
-use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use product_management::label_codec::LabelCodec;
 use product_management::story::{Acceptor, Tag, Work};
+use source_codec::gh_label_codec::GhLabelCodec;
 
 pub(super) fn tag_set(s: &mut InnerState, number: u64, tag: Tag) {
     let label = GhLabelCodec.encode_tag(tag);
@@ -61,10 +61,7 @@ pub(super) fn state_transitioned(
     new_state: Work,
     member_of_current_iteration: bool,
 ) {
-    let keep = crate::integrations::github::mapper::outbound_state_label(
-        &new_state,
-        member_of_current_iteration,
-    );
+    let keep = source_codec::mapper::outbound_state_label(&new_state, member_of_current_iteration);
     let keep_or_other = |l: &String| {
         !GhLabelCodec.is_workflow_state_label(l) || keep.is_some_and(|k| l.eq_ignore_ascii_case(k))
     };

@@ -4,7 +4,6 @@
 #![allow(unsafe_code)]
 
 mod canonical_via_gh_1300 {
-    use crate::integrations::github::mapper::decode_iteration_from_story;
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::store::{AppAction, Dispatch};
     use crate::sync::RefreshDriver;
@@ -13,6 +12,7 @@ mod canonical_via_gh_1300 {
     use chrono::{TimeZone, Utc};
     use product_management::iteration::{Iteration, IterationAction, IterationId};
     use product_management::story::{Story, StoryId, Work};
+    use source_codec::mapper::decode_iteration_from_story;
     use std::sync::Arc;
     use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -68,7 +68,7 @@ mod canonical_via_gh_1300 {
         name: &str,
         members: &[u64],
     ) -> (Story, Vec<String>) {
-        use crate::integrations::github::relationships::{IterationRelationships, Relationships};
+        use source_codec::relationships::{IterationRelationships, Relationships};
         let mut s = Story::new_minimal(
             StoryId::new(id),
             format!("Iteration {name}"),
@@ -99,7 +99,7 @@ mod canonical_via_gh_1300 {
         adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
         let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
             Arc::clone(&adapter),
-            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+            Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
         let iterations: Vec<Iteration> = seeds
             .iter()

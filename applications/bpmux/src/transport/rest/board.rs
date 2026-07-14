@@ -5,7 +5,7 @@ pub(crate) fn ordered_board_stories(
 ) -> Vec<serde_json::Value> {
     let all = refresh.all_stories();
     let iterations = refresh.iterations();
-    let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
+    let codec = source_codec::gh_label_codec::GhLabelCodec;
     let items: Vec<serde_json::Value> = all
         .iter()
         .map(|s| {

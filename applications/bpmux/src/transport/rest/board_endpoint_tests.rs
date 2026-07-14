@@ -1,16 +1,14 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::board::{board_iterations, board_outcomes, ordered_board_stories};
-use crate::integrations::github::mapper::{decode_iteration_from_story, decode_outcome_from_story};
-use crate::integrations::github::relationships::{
-    IterationRelationships, OutcomeRelationships, Relationships,
-};
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
 use product_management::iteration::{Iteration, IterationId};
 use product_management::outcome::OutcomeId;
 use product_management::story::{Story, StoryId, Work};
+use source_codec::mapper::{decode_iteration_from_story, decode_outcome_from_story};
+use source_codec::relationships::{IterationRelationships, OutcomeRelationships, Relationships};
 use std::sync::Arc;
 
 async fn orchestrator(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
@@ -21,7 +19,7 @@ async fn orchestrator(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let seeded: Vec<_> = seeds
         .iter()
@@ -160,7 +158,7 @@ async fn board_ready_order(stories: Vec<Story>, iterations: Vec<Iteration>) -> V
     adapter.seed_stories(stories);
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(&refresh, vec![], iterations, vec![]);
     refresh.refresh_all().await.unwrap();
@@ -217,7 +215,7 @@ async fn an_optimistic_reject_is_visible_on_the_board_snapshot_before_it_reaches
     )]);
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let current = Iteration {
         id: IterationId::new(9000),

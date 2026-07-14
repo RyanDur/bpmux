@@ -70,7 +70,7 @@ mod staleness {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let orch = Arc::new(SyncOrchestrator::new(
             adapter,
-            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+            Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
@@ -115,7 +115,7 @@ mod staleness {
         adapter.set_ingest_failures(true);
         let orch = Arc::new(SyncOrchestrator::new(
             adapter,
-            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+            Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);

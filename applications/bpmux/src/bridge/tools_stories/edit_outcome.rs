@@ -1,6 +1,6 @@
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
-use crate::integrations::github::mapper::outcome_with_body;
 use crate::sync::RefreshDriver;
+use source_codec::mapper::outcome_with_body;
 use std::sync::Arc;
 
 pub(crate) async fn handle_edit_outcome(

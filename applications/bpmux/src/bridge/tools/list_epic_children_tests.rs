@@ -1,10 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::list_epic_children::handle_list_epic_children;
-use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::integrations::github::mapper::{
-    decode_epic_from_story, decode_story_metadata, is_epic_story,
-};
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use chrono::{TimeZone, Utc};
@@ -12,6 +8,8 @@ use product_management::epic::Epic;
 use product_management::iteration::{Iteration, IterationId};
 use product_management::story::{Story, StoryId, StoryKind, Work};
 use serde_json::json;
+use source_codec::gh_label_codec::GhLabelCodec;
+use source_codec::mapper::{decode_epic_from_story, decode_story_metadata, is_epic_story};
 use std::sync::Arc;
 
 fn decoded(number: u64, title: &str, labels: &[&str]) -> (Story, Vec<String>) {
@@ -81,7 +79,7 @@ async fn store_with_current_members(
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let epics: Vec<Epic> = seeds
         .iter()

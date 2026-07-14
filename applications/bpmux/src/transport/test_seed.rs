@@ -211,7 +211,7 @@ pub async fn post_seed_stories(
         } else if is_epic_seed {
             "epic".to_string()
         } else {
-            crate::integrations::github::gh_label_codec::GhLabelCodec.encode_story_type(story_type)
+            source_codec::gh_label_codec::GhLabelCodec.encode_story_type(story_type)
         };
         if let Err(e) = refresh.mutate_sync(product_management::story::events::StoryEvent::new(
             type_label_meta,
@@ -229,7 +229,7 @@ pub async fn post_seed_stories(
                 actor_id: None,
                 ts: chrono::Utc::now(),
             };
-            let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
+            let codec = source_codec::gh_label_codec::GhLabelCodec;
             if codec.is_iteration_label_loose(label) {
                 continue;
             }
@@ -278,7 +278,7 @@ pub async fn post_seed_stories(
             if is_iteration_seed {
                 dispatcher.dispatch(crate::store::AppAction::Iteration(
                     product_management::iteration::IterationAction::Upserted(vec![
-                        crate::integrations::github::mapper::decode_iteration_from_story(
+                        source_codec::mapper::decode_iteration_from_story(
                             &carrier,
                             &s.labels,
                             s.is_closed,
@@ -288,10 +288,7 @@ pub async fn post_seed_stories(
             } else {
                 dispatcher.dispatch(crate::store::AppAction::Epic(
                     product_management::epic::EpicAction::Upserted(vec![
-                        crate::integrations::github::mapper::decode_epic_from_story(
-                            &carrier,
-                            s.is_closed,
-                        ),
+                        source_codec::mapper::decode_epic_from_story(&carrier, s.is_closed),
                     ]),
                 ));
             }

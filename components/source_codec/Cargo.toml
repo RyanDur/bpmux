@@ -1,0 +1,17 @@
+[package]
+name = "source_codec"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The codec family for the story-source dialect: labels + body blocks that encode PM state"
+
+[dependencies]
+diag = { path = "../diag" }
+product_management = { path = "../product_management" }
+workflow = { path = "../workflow" }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+
+[lints]
+workspace = true

@@ -23,7 +23,7 @@ pub(super) fn labels_refreshed(number: u64, labels: Vec<String>) -> StoryEvent {
         crate::sync::cache_fill_meta(),
         product_management::story::StoryId::new(number),
         StoryEventKind::LabelsRefreshed {
-            fields: crate::integrations::github::mapper::project_labels(&labels),
+            fields: source_codec::mapper::project_labels(&labels),
         },
     )
 }

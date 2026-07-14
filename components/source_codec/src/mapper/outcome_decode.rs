@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 
 use super::story_decode::extract_label_names;
-use crate::integrations::github::relationships::{OutcomeRelationships, Relationships};
+use crate::relationships::{OutcomeRelationships, Relationships};
 use product_management::outcome::{Outcome, OutcomeId, OutcomeLifecycle};
 use product_management::story::{Story, Work};
 

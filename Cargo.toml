@@ -15,6 +15,7 @@ members = [
     "components/product_management",
     "components/reactions",
     "components/roster",
+    "components/source_codec",
     "components/source_sync",
     "components/storage",
     "components/user_routing",

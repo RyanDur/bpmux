@@ -29,7 +29,7 @@ mod stage_verb_behavior {
         let orch: Arc<dyn RefreshDriver> = Arc::new(
             SyncOrchestrator::new(
                 adapter,
-                Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+                Arc::new(source_codec::gh_label_codec::GhLabelCodec),
             )
             .with_ci_state_store(super::test_ci_state_store_green()),
         );

@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use crate::integrations::github::mapper::decode_epic_from_story;
 use chrono::{TimeZone, Utc};
 use product_management::epic::{EpicAction, EpicState, reduce};
 use product_management::story::{Story, StoryId, Work};
+use source_codec::mapper::decode_epic_from_story;
 
 #[test]
 fn epic_own_state_label_change_is_not_an_epic_change() {

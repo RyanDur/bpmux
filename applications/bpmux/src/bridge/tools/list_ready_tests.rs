@@ -41,7 +41,7 @@ async fn ready_ids(stories: Vec<Story>, iterations: Vec<Iteration>) -> Vec<u64> 
     adapter.seed_stories(stories);
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(&refresh, vec![], iterations, vec![]);
     refresh.refresh_all().await.unwrap();

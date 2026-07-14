@@ -438,7 +438,7 @@ fn refresh_for_tests() -> Arc<dyn crate::sync::RefreshDriver> {
     let adapter = Arc::new(crate::integrations::in_memory::InMemorySourceAdapter::new());
     Arc::new(crate::sync::SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ))
 }
 

@@ -33,7 +33,7 @@ async fn accept_rejects_unknown_role_via_handler() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let args = serde_json::json!({"id": 1, "would_file_bug": false});
     let result = handle_accept_story(
@@ -182,7 +182,7 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
     )]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
@@ -255,7 +255,7 @@ async fn reject_rejects_unknown_role_via_handler() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let args = serde_json::json!({"id": 1, "reason": "test"});
     let result = handle_reject_story(

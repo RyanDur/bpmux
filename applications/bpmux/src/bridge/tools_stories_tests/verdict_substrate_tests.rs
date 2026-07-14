@@ -36,7 +36,7 @@ mod verdict_substrate_integration_1407 {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
             adapter,
-            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+            Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
         let store = SeededStore::new(vec![], vec![], vec![]);
         store.bind_refresh(&orch);
@@ -48,7 +48,7 @@ mod verdict_substrate_integration_1407 {
         adapter.seed_stories(vec![seeded]);
         let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
             Arc::clone(&adapter),
-            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+            Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
         let store = SeededStore::new(vec![], vec![], vec![]);
         store.bind_refresh(&orch);

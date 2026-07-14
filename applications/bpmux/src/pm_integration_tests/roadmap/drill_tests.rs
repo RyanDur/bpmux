@@ -1,15 +1,13 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::integrations::github::mapper::decode_outcome_from_story;
-use crate::integrations::github::relationships::{
-    IterationRelationships, OutcomeRelationships, Relationships,
-};
 use chrono::Utc;
 use product_management::iteration::IterationId;
 use product_management::outcome::{Outcome, OutcomeId};
 use product_management::roadmap::drill::*;
 use product_management::story::{Story, StoryId, Work};
+use source_codec::gh_label_codec::GhLabelCodec;
+use source_codec::mapper::decode_outcome_from_story;
+use source_codec::relationships::{IterationRelationships, OutcomeRelationships, Relationships};
 use workflow::bundled_default::bundled_default;
 
 fn iteration(id: u64, outcome_id: u64) -> (Story, Vec<String>) {
@@ -55,11 +53,7 @@ fn decode_iterations(
         .iter()
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
         .map(|(story, labels)| {
-            crate::integrations::github::mapper::decode_iteration_from_story(
-                story,
-                labels,
-                story.is_concluded(),
-            )
+            source_codec::mapper::decode_iteration_from_story(story, labels, story.is_concluded())
         })
         .collect()
 }

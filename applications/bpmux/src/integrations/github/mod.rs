@@ -3,22 +3,14 @@ use crate::ci::slice::CiPollFetch;
 use crate::integrations::github::tracker::OctocrabStoryTracker;
 
 mod delegates;
-pub mod gh_label_codec;
 mod ingest;
-pub mod mapper;
 mod mutation;
 mod mutation_events;
-mod relationship_block;
-pub mod relationships;
 mod source_adapter;
 pub(crate) mod tracker;
 
 #[cfg(test)]
 mod adapter_tests;
-#[cfg(test)]
-mod relationship_block_tests;
-#[cfg(test)]
-mod relationships_tests;
 #[cfg(test)]
 mod tracker_contract_tests;
 #[cfg(test)]

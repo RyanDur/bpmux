@@ -1,9 +1,9 @@
 use super::labels_refreshed;
-use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::integrations::github::mapper::{decode_story_metadata, outbound_state_label};
 use crate::integrations::github::tracker::{OctocrabStoryTracker, StoryTracker};
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use product_management::story::{StoryId, Work};
+use source_codec::gh_label_codec::GhLabelCodec;
+use source_codec::mapper::{decode_story_metadata, outbound_state_label};
 use source_sync::SyncError;
 
 async fn strip_state_labels(

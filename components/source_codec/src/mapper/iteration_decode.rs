@@ -5,7 +5,7 @@ use super::label_fields::{
     iteration_review_closers_from_labels,
 };
 use super::story_decode::extract_label_names;
-use crate::integrations::github::relationships::{IterationRelationships, Relationships};
+use crate::relationships::{IterationRelationships, Relationships};
 use product_management::iteration::{Iteration, IterationId};
 use product_management::story::Story;
 

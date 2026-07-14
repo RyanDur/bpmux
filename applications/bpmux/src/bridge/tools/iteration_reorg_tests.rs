@@ -6,9 +6,6 @@ use crate::bridge::tools_stories::{
     handle_move_iteration_member, handle_remove_iteration_member, handle_rename_iteration,
     handle_reorder_iteration,
 };
-use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::integrations::github::mapper::decode_iteration_from_story;
-use crate::integrations::github::relationships::{IterationRelationships, Relationships};
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::{AppAction, Dispatch};
 use crate::sync::RefreshDriver;
@@ -17,6 +14,9 @@ use chrono::{TimeZone, Utc};
 use product_management::iteration::{Iteration, IterationAction, IterationId};
 use product_management::story::{Story, StoryId, Work};
 use serde_json::{Map, Value, json};
+use source_codec::gh_label_codec::GhLabelCodec;
+use source_codec::mapper::decode_iteration_from_story;
+use source_codec::relationships::{IterationRelationships, Relationships};
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -96,7 +96,7 @@ async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDrive
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let iterations: Vec<Iteration> = seeds
         .iter()

@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
-use crate::integrations::github::mapper::decode_story_metadata;
+use crate::mapper::decode_story_metadata;
 use product_management::epic::EpicId;
 use product_management::story::{Story, StoryId};
 
@@ -106,23 +106,22 @@ fn assert_metadata_axis_complete(decoded: &Story, labels: &[String]) {
         "acceptor must decode from the 'awaiting owner' label into the stored domain field at ingest"
     );
     assert_eq!(
-        crate::integrations::github::mapper::iteration_review_closers_from_labels(labels)
-            .as_slice(),
+        crate::mapper::iteration_review_closers_from_labels(labels).as_slice(),
         ["designer".to_string()],
         "iteration_review_closed_by must decode the closer role from the review-close label"
     );
     assert_eq!(
-        crate::integrations::github::mapper::iteration_dev_ok_by_from_labels(labels).as_slice(),
+        crate::mapper::iteration_dev_ok_by_from_labels(labels).as_slice(),
         ["dev".to_string()],
         "iteration_dev_ok_by must decode the approver role from the dev-ok label"
     );
     assert_eq!(
-        crate::integrations::github::mapper::horizon_from_labels(labels),
+        crate::mapper::horizon_from_labels(labels),
         Some(product_management::story::Horizon::Next),
         "horizon must decode from the horizon.next label"
     );
     assert_eq!(
-        crate::integrations::github::mapper::outcome_membership_from_labels(labels),
+        crate::mapper::outcome_membership_from_labels(labels),
         Some((700, 2)),
         "outcome_membership must decode (outcome_number, position) from the parent-outcome label"
     );
@@ -145,7 +144,7 @@ fn epic_issue_recognized_by_label_at_ingest_not_by_story_type() {
         "user": {"login": "pm"},
     });
     assert!(
-        crate::integrations::github::mapper::is_epic_issue(&json),
+        crate::mapper::is_epic_issue(&json),
         "the epic label routes the issue to the epic aggregate at ingest, not to a story_type"
     );
 }

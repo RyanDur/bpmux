@@ -56,7 +56,7 @@ async fn edit_story_replaces_body_at_canonical_store() {
     seed_story(&adapter, 99);
     let orch = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
-        Arc::new(bpmux::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let refresh: Arc<dyn RefreshDriver> = orch.clone();
     let test_refresh: Option<Arc<dyn RefreshDriver>> = Some(Arc::clone(&refresh));

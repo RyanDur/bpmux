@@ -46,7 +46,7 @@ async fn backlog_summary_via_dispatch(
     adapter.seed_stories(stories);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(&orch, vec![], iterations, vec![]);
     orch.refresh_all().await.unwrap();

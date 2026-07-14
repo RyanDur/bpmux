@@ -59,8 +59,7 @@ pub(crate) async fn handle_create_outcome(
         meta,
         StoryId::new(id),
         product_management::story::events::StoryEventKind::TagAdded {
-            label: crate::integrations::github::gh_label_codec::GhLabelCodec
-                .encode_horizon(horizon),
+            label: source_codec::gh_label_codec::GhLabelCodec.encode_horizon(horizon),
         },
     ))
     .map_err(|e| format!("#{id} outcome horizon label enqueue failed: {e}"))?;

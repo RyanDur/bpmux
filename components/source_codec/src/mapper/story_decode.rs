@@ -91,7 +91,7 @@ pub(super) fn extract_label_names(v: &serde_json::Value) -> Vec<String> {
 }
 
 pub fn tags_from_labels(labels: &[String]) -> Vec<Tag> {
-    use crate::integrations::github::gh_label_codec::GhLabelCodec;
+    use crate::gh_label_codec::GhLabelCodec;
     let mut out = Vec::new();
     for l in labels {
         if let Some(tag) = GhLabelCodec.decode_tag(l)

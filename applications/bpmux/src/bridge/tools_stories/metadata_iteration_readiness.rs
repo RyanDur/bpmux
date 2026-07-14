@@ -85,8 +85,7 @@ pub(crate) async fn handle_close_pre_pickup_review(
     let r = refresh.ok_or("close_pre_pickup_review requires refresh (RefreshDriver)")?;
     let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
     let role = role.to_string();
-    let label = crate::integrations::github::gh_label_codec::GhLabelCodec
-        .encode_iteration_review_closed(&role);
+    let label = source_codec::gh_label_codec::GhLabelCodec.encode_iteration_review_closed(&role);
     let meta = meta_for(agent_name, actor_id);
     r.mutate_sync(product_management::story::events::StoryEvent::new(
         meta,
@@ -132,8 +131,7 @@ pub(crate) async fn handle_dev_ok_iteration(
     let r = refresh.ok_or("dev_ok_iteration requires refresh (RefreshDriver)")?;
     let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
     let role = role.to_string();
-    let label =
-        crate::integrations::github::gh_label_codec::GhLabelCodec.encode_iteration_dev_ok(&role);
+    let label = source_codec::gh_label_codec::GhLabelCodec.encode_iteration_dev_ok(&role);
     let meta = meta_for(agent_name, actor_id);
     r.mutate_sync(product_management::story::events::StoryEvent::new(
         meta,

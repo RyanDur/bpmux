@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use chrono::{TimeZone, Utc};
 use product_management::story::{Story, StoryId, Work};
+use source_codec::gh_label_codec::GhLabelCodec;
 use view::board::StoryView;
 
 fn story(id: u64, title: &str, state: Work) -> Story {

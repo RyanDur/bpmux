@@ -1,10 +1,8 @@
 use super::{GitHubSourceAdapter, ingest, mutation};
-use crate::integrations::github::mapper::{
-    decode_free_comment, decode_story_with_placement, decode_verdicts,
-};
 use crate::integrations::github::tracker::{ConditionalIssue, StoryTracker};
 use product_management::story::events::StoryEvent;
 use product_management::story::{CastVerdict, FreeComment, Story};
+use source_codec::mapper::{decode_free_comment, decode_story_with_placement, decode_verdicts};
 use source_sync::{ConditionalBody, Ingested, SourceAdapter, SyncError};
 
 impl SourceAdapter for GitHubSourceAdapter {

@@ -1,11 +1,11 @@
-use crate::integrations::github::mapper::{
-    decode_epic, decode_iteration, decode_outcome, decode_story_with_placement, is_epic_issue,
-    is_iteration_issue, is_outcome_issue,
-};
 use product_management::epic::Epic;
 use product_management::iteration::Iteration;
 use product_management::outcome::Outcome;
 use product_management::story::{Story, StoryId};
+use source_codec::mapper::{
+    decode_epic, decode_iteration, decode_outcome, decode_story_with_placement, is_epic_issue,
+    is_iteration_issue, is_outcome_issue,
+};
 use workflow::StageId;
 
 pub(super) struct Classified {

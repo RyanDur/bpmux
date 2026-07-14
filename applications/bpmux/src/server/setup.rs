@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
 use crate::hub;
-use crate::integrations::github::gh_label_codec::GhLabelCodec;
+use source_codec::gh_label_codec::GhLabelCodec;
 use source_sync::{PendingWrite, QueuedWrite};
 
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 
 fn hydrate_outbox(storage: &Arc<dyn storage::Storage>) -> Vec<QueuedWrite> {
-    let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
+    let codec = source_codec::gh_label_codec::GhLabelCodec;
     match storage.load_outbox() {
         Ok(rows) => rows
             .into_iter()

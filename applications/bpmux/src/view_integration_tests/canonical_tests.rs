@@ -1,8 +1,6 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
-use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::integrations::github::mapper::decode_story_metadata;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::{AppAction, SeededStore};
 use crate::sync::{RefreshDriver, SyncOrchestrator};
@@ -11,6 +9,8 @@ use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::slice::StoryAction;
 use product_management::story::{Story, StoryId, StoryKind, Work};
 use serde_json::json;
+use source_codec::gh_label_codec::GhLabelCodec;
+use source_codec::mapper::decode_story_metadata;
 use std::sync::Arc;
 
 fn meta() -> EventMeta {
@@ -74,7 +74,7 @@ fn iteration_label_decoder_does_not_populate_a_story_field() {
 fn create_story_event_does_not_seed_iteration_membership() {
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::new(InMemorySourceAdapter::new()),
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch);

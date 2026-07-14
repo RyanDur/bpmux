@@ -1,10 +1,10 @@
 use super::helpers::{
     ensure_iteration_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
 };
-use crate::integrations::github::relationships::{IterationRelationships, Relationships};
 use crate::sync::RefreshDriver;
 use product_management::iteration::Iteration;
 use product_management::story::{Story, StoryId, Work};
+use source_codec::relationships::{IterationRelationships, Relationships};
 use std::sync::Arc;
 
 async fn member_of(

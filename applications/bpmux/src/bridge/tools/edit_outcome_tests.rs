@@ -2,7 +2,6 @@
 #![allow(clippy::expect_used)]
 
 use crate::bridge::tools_stories::handle_edit_outcome;
-use crate::integrations::github::mapper::decode_outcome_from_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::{AppAction, Dispatch};
 use crate::sync::RefreshDriver;
@@ -11,6 +10,7 @@ use chrono::{TimeZone, Utc};
 use product_management::outcome::{Outcome, OutcomeAction, OutcomeId};
 use product_management::story::{Horizon, Story, StoryId, StoryKind, Work};
 use serde_json::{Map, Value, json};
+use source_codec::mapper::decode_outcome_from_story;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -38,9 +38,7 @@ fn seed(id: u64, title: &str, story_type: StoryKind, labels: &[&str]) -> (Story,
     );
     s.story_type = story_type;
     let mut seed_labels: Vec<String> = labels.iter().map(ToString::to_string).collect();
-    seed_labels.push(
-        crate::integrations::github::gh_label_codec::GhLabelCodec.encode_story_type(story_type),
-    );
+    seed_labels.push(source_codec::gh_label_codec::GhLabelCodec.encode_story_type(story_type));
     (s, seed_labels)
 }
 
@@ -63,7 +61,7 @@ async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDrive
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let seeded: Vec<Outcome> = seeds
         .iter()

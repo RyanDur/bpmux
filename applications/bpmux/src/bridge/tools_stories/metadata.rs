@@ -4,7 +4,7 @@ use product_management::story::StoryId;
 
 pub(crate) fn is_retired_iteration_label_axis(label: &str) -> bool {
     use product_management::label_codec::LabelCodec;
-    crate::integrations::github::gh_label_codec::GhLabelCodec
+    source_codec::gh_label_codec::GhLabelCodec
         .decode_iteration(label)
         .is_some()
 }
@@ -51,7 +51,7 @@ pub(crate) async fn handle_label_story(
     if let Some(r) = refresh {
         ensure_story_in_canonical_store(r, id).await?;
         let meta = meta_for(agent_name, actor_id);
-        let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
+        let codec = source_codec::gh_label_codec::GhLabelCodec;
         let tag = codec.decode_tag(label);
         let (event, ok_msg) = match operation {
             "add" => (

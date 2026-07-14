@@ -2,10 +2,6 @@
 #![allow(clippy::expect_used)]
 
 use super::board::{board_iterations, board_roadmap, sort_ready_by_membership};
-use crate::integrations::github::mapper::{decode_iteration_from_story, decode_outcome_from_story};
-use crate::integrations::github::relationships::{
-    IterationRelationships, OutcomeRelationships, Relationships,
-};
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
@@ -13,6 +9,8 @@ use chrono::{TimeZone, Utc};
 use product_management::iteration::{Iteration, IterationId};
 use product_management::outcome::OutcomeId;
 use product_management::story::{Story, StoryId, Work};
+use source_codec::mapper::{decode_iteration_from_story, decode_outcome_from_story};
+use source_codec::relationships::{IterationRelationships, OutcomeRelationships, Relationships};
 use std::sync::Arc;
 
 fn iteration_seed(id: u64, title: &str) -> (Story, Vec<String>) {
@@ -45,7 +43,7 @@ async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDrive
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let seeded: Vec<_> = seeds
         .iter()

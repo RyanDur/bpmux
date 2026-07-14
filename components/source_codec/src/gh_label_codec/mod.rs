@@ -2,7 +2,7 @@ use product_management::iteration::label::IterationLabelParts;
 use product_management::label_codec::LabelCodec;
 use product_management::story::{Acceptor, Stage, Tag};
 
-use super::mapper::stage_github_label;
+use crate::mapper::stage_github_label;
 
 mod iteration;
 mod outcome;

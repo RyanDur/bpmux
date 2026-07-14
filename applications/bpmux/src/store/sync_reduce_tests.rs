@@ -2,9 +2,9 @@
 
 use chrono::{TimeZone, Utc};
 
-use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use product_management::story::StoryId;
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use source_codec::gh_label_codec::GhLabelCodec;
 use source_sync::{MutationId, PendingWrite, QueuedWrite};
 
 use crate::store::sync::{SyncAction, SyncState, reduce};

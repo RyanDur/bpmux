@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use product_management::story::events::EventMeta;
 use product_management::story::{CastVerdict, FreeComment, Verdict};
 
-pub(crate) fn decode_free_comment(v: &serde_json::Value) -> Option<FreeComment> {
+pub fn decode_free_comment(v: &serde_json::Value) -> Option<FreeComment> {
     let body = v.get("body").and_then(|x| x.as_str())?.to_string();
     let author = v
         .get("author")
@@ -19,7 +19,7 @@ pub(crate) fn decode_free_comment(v: &serde_json::Value) -> Option<FreeComment> 
     Some(FreeComment { body, author, ts })
 }
 
-pub(crate) fn encode_verdict(verdict: &Verdict, meta: &EventMeta, payload: Option<&str>) -> String {
+pub fn encode_verdict(verdict: &Verdict, meta: &EventMeta, payload: Option<&str>) -> String {
     let (marker, tag) = match verdict {
         Verdict::Succeed { step } => match step.as_str() {
             "ready" => ("pickup_paraphrase", "dev pickup-gate"),

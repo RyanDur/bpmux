@@ -19,6 +19,7 @@ persist = { path = "../../components/persist" }
 product_management = { path = "../../components/product_management" }
 reactions = { path = "../../components/reactions" }
 roster = { path = "../../components/roster" }
+source_codec = { path = "../../components/source_codec" }
 source_sync = { path = "../../components/source_sync" }
 storage = { path = "../../components/storage" }
 user_routing = { path = "../../components/user_routing" }

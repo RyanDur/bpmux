@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use crate::integrations::github::mapper::decode_outcome_from_story;
 use chrono::{TimeZone, Utc};
 use product_management::outcome::{Outcome, OutcomeAction, OutcomeState, all, reduce};
 use product_management::story::{Story, StoryId, Work};
+use source_codec::mapper::decode_outcome_from_story;
 
 fn outcome(id: u64, title: &str) -> Outcome {
     let story = Story::new_minimal(

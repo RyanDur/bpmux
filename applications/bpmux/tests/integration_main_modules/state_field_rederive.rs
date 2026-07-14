@@ -1,10 +1,10 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use board::{Column, column_of};
-use bpmux::integrations::github::mapper::state_from_labels;
 use chrono::Utc;
 use product_management::iteration::{Iteration, IterationId};
 use product_management::story::{Stage, Story, StoryId, Work};
+use source_codec::mapper::state_from_labels;
 
 fn story_in(state: Work) -> Story {
     Story::new_minimal(

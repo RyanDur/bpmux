@@ -1,15 +1,13 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::integrations::github::mapper::{decode_iteration_from_story, decode_outcome_from_story};
-use crate::integrations::github::relationships::{
-    IterationRelationships, OutcomeRelationships, Relationships,
-};
 use chrono::Utc;
 use product_management::iteration::IterationId;
 use product_management::iteration::readiness::*;
 use product_management::outcome::{Outcome, OutcomeId};
 use product_management::story::{Story, StoryId, Work};
+use source_codec::gh_label_codec::GhLabelCodec;
+use source_codec::mapper::{decode_iteration_from_story, decode_outcome_from_story};
+use source_codec::relationships::{IterationRelationships, OutcomeRelationships, Relationships};
 use workflow::bundled_default::bundled_default;
 use workflow::config::WorkflowConfig;
 

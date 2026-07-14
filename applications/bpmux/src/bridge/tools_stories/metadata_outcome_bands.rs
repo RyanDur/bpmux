@@ -1,8 +1,8 @@
-use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::sync::RefreshDriver;
 use product_management::outcome::Outcome;
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::{Horizon, StoryId};
+use source_codec::gh_label_codec::GhLabelCodec;
 use std::sync::Arc;
 
 pub(super) fn push_band_change(

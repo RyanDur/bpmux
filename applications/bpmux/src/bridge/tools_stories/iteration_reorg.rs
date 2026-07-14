@@ -1,10 +1,10 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_iteration_in_canonical_store, require_purpose};
-use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::sync::RefreshDriver;
 use product_management::iteration::Iteration;
 use product_management::story::StoryId;
 use product_management::story::events::{StoryEvent, StoryEventKind};
+use source_codec::gh_label_codec::GhLabelCodec;
 use std::sync::Arc;
 
 pub(crate) async fn handle_reorder_iteration(

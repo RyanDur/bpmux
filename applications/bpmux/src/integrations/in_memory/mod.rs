@@ -63,10 +63,8 @@ impl SourceAdapter for InMemorySourceAdapter {
         if let Some(body) = s.bodies.get(&number) {
             story.body = Some(body.clone());
         }
-        let placement = crate::integrations::github::mapper::placement_from_labels(
-            &labels,
-            s.closed.contains(&number),
-        );
+        let placement =
+            source_codec::mapper::placement_from_labels(&labels, s.closed.contains(&number));
         Ok(Some((story, placement)))
     }
 

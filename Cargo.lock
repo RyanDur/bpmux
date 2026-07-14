@@ -414,6 +414,7 @@ dependencies = [
  "rustls",
  "serde",
  "serde_json",
+ "source_codec",
  "source_sync",
  "storage",
  "strip-ansi-escapes",
@@ -3508,6 +3509,18 @@ checksum = "3a766e1110788c36f4fa1c2b71b387a7815aa65f88ce0229841826633d93723e"
 dependencies = [
  "libc",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "source_codec"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "diag",
+ "product_management",
+ "serde",
+ "serde_json",
+ "workflow",
 ]
 
 [[package]]

@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::integrations::github::mapper::decode_outcome_from_story;
 use product_management::outcome::OutcomeLifecycle;
 use product_management::story::{Horizon, Story, StoryId, Work};
+use source_codec::gh_label_codec::GhLabelCodec;
+use source_codec::mapper::decode_outcome_from_story;
 
 fn outcome_story(state: Work) -> Story {
     Story::new_minimal(

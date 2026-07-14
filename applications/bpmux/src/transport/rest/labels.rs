@@ -50,7 +50,7 @@ pub async fn post_story_labels(
     for op in reorder_label_ops(&payload) {
         let meta = crate::sync::cache_fill_meta();
         let story_id = product_management::story::StoryId::new(id);
-        let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
+        let codec = source_codec::gh_label_codec::GhLabelCodec;
         let (event, descriptor) = match op {
             LabelOp::Add(label) => {
                 let descriptor = format!("TagAdded {label} on #{id}");
@@ -105,7 +105,7 @@ pub async fn post_story_labels(
     if let Some(mut iteration) =
         refresh.iteration(product_management::iteration::IterationId::new(id))
     {
-        let codec = crate::integrations::github::gh_label_codec::GhLabelCodec;
+        let codec = source_codec::gh_label_codec::GhLabelCodec;
         for label in &payload.add {
             if let Some(order) = codec.decode_iteration_order(label) {
                 iteration.iteration_order = Some(order);

@@ -45,7 +45,7 @@ async fn get_story_canonical_only_returns_placeholder_when_body_missing() {
     adapter.set_ingest_failures(true);
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let seed = SeededStore::new(vec![], vec![], vec![]);
     seed.bind_refresh(&refresh);
@@ -80,7 +80,7 @@ async fn get_story_serves_cached_body_from_canonical_store() {
     story.body = Some("# real body\n\ncached body content from prior hydrate".to_string());
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let seed = SeededStore::new(vec![], vec![], vec![]);
     seed.bind_refresh(&refresh);
@@ -106,7 +106,7 @@ async fn get_story_does_not_call_adapter_fetch_body_when_body_missing() {
     adapter.set_ingest_failures(true);
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let seed = SeededStore::new(vec![], vec![], vec![]);
     seed.bind_refresh(&refresh);
@@ -181,7 +181,7 @@ async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let seed = SeededStore::new(vec![], vec![], vec![]);
     seed.bind_refresh(&orch);
@@ -208,7 +208,7 @@ async fn local_body_mutate_invalidates_prior_etag() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch);
@@ -243,7 +243,7 @@ async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh(
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch);
@@ -258,7 +258,7 @@ async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh(
         },
         StoryId::new(9200),
         StoryEventKind::LabelsRefreshed {
-            fields: crate::integrations::github::mapper::project_labels(&labels),
+            fields: source_codec::mapper::project_labels(&labels),
         },
     ))));
     let after = orch.story(9200).expect("story present");
@@ -278,7 +278,7 @@ async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
     adapter.seed_body(9001, "real body".into());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
@@ -349,7 +349,7 @@ async fn get_story_returns_hydrated_flag_in_response() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let seed = SeededStore::new(vec![], current_iteration_of(&[8004]), vec![]);
     seed.bind_refresh(&refresh);

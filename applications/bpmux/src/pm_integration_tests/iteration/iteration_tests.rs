@@ -1,11 +1,11 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use crate::integrations::github::gh_label_codec::GhLabelCodec;
-use crate::integrations::github::mapper::decode_iteration_from_story;
-use crate::integrations::github::relationships::{IterationRelationships, Relationships};
 use product_management::iteration::IterationId;
 use product_management::outcome::OutcomeId;
 use product_management::story::{Story, StoryId, Work};
+use source_codec::gh_label_codec::GhLabelCodec;
+use source_codec::mapper::decode_iteration_from_story;
+use source_codec::relationships::{IterationRelationships, Relationships};
 
 fn iteration_story(body: Option<String>) -> Story {
     let mut story = Story::new_minimal(

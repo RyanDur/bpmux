@@ -2,16 +2,14 @@
 
 use chrono::{TimeZone, Utc};
 
-use crate::integrations::github::mapper::is_iteration_position_label_for_test as is_iteration_position_label;
-use crate::integrations::github::mapper::is_position_label_for_test as is_position_label;
-use crate::integrations::github::mapper::{
-    classify_verdict, decode_story_metadata, decode_verdicts, is_epic_issue, is_epic_story,
-    iteration_order_from_labels, outbound_state_label, parent_epic_from_labels, state_from_labels,
-    story_type_from_labels, story_type_from_labels_or_title, tags_from_labels,
-    warn_on_inconsistent_state_labels,
-};
 use product_management::epic::EpicId;
 use product_management::story::{StoryId, StoryKind, Tag, Verdict, Work};
+use source_codec::mapper::{
+    classify_verdict, decode_story_metadata, decode_verdicts, is_epic_issue, is_epic_story,
+    is_iteration_position_label, is_position_label, iteration_order_from_labels,
+    outbound_state_label, parent_epic_from_labels, state_from_labels, story_type_from_labels,
+    story_type_from_labels_or_title, tags_from_labels, warn_on_inconsistent_state_labels,
+};
 use source_sync::{SyncError, classify_close_error};
 
 #[test]
@@ -708,8 +706,7 @@ fn decode_iteration_from_story_sets_iteration_order_from_label_1735() {
         "iteration-Fornax.100".to_string(),
         "iteration-order.200".to_string(),
     ];
-    let iteration =
-        crate::integrations::github::mapper::decode_iteration_from_story(&story, &labels, false);
+    let iteration = source_codec::mapper::decode_iteration_from_story(&story, &labels, false);
     assert_eq!(iteration.iteration_order, Some(200));
 }
 

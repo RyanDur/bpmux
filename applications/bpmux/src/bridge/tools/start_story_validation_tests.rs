@@ -27,16 +27,13 @@ mod gate_retire_1348 {
         );
         adapter.seed_labels(
             id,
-            vec![
-                crate::integrations::github::gh_label_codec::GhLabelCodec
-                    .encode_story_type(story_type),
-            ],
+            vec![source_codec::gh_label_codec::GhLabelCodec.encode_story_type(story_type)],
         );
         adapter.seed_stories(vec![seeded]);
         adapter.seed_body(id, body.into());
         let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
             adapter,
-            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+            Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
         crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
         orch.refresh_all().await.unwrap();

@@ -31,11 +31,11 @@ const WAIT_PRESENCE_TIMEOUT: Duration = Duration::from_secs(30);
 /// "only octocrab as test-double" directive.
 #[test]
 fn view_board_response_exposes_story_fields_for_agent_assertions() {
-    use bpmux::integrations::github::relationships::{IterationRelationships, Relationships};
     use harness::mock_gh::issue_json;
     use httpmock::{Method, MockServer};
     use product_management::story::StoryId;
     use serde_json::Value;
+    use source_codec::relationships::{IterationRelationships, Relationships};
 
     let server = MockServer::start();
     let base_url = format!("{}/", server.base_url());

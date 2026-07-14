@@ -5,12 +5,12 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use super::get_story::handle_get_story;
-use crate::integrations::github::mapper::decode_iteration_from_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::SeededStore;
 use crate::sync::{RefreshDriver, SyncOrchestrator};
 use product_management::iteration::{Iteration, IterationId};
 use product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
+use source_codec::mapper::decode_iteration_from_story;
 
 fn current_iteration_of(members: &[u64]) -> Iteration {
     Iteration {
@@ -56,7 +56,7 @@ async fn seeded_orchestrator_membered(
     }
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let mut iterations: Vec<Iteration> = seeds
         .iter()
@@ -425,7 +425,7 @@ async fn cache_miss_eagerly_fetches_body_via_refresh_driver() {
     );
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
@@ -478,7 +478,7 @@ async fn cache_hit_does_not_refetch_when_body_already_present() {
     );
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
@@ -512,7 +512,7 @@ fn make_iteration_with_members(
     body: &str,
     members: Vec<u64>,
 ) -> (Story, Vec<String>) {
-    use crate::integrations::github::relationships::{IterationRelationships, Relationships};
+    use source_codec::relationships::{IterationRelationships, Relationships};
     let (mut s, labels) = make_iteration(id, name, body);
     s.body = Some(
         IterationRelationships {
@@ -695,7 +695,7 @@ async fn rejected_story_hydrates_latest_reject_verbatim_via_read_through() {
     adapter.seed_verdicts(1524, gates);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(
         &orchestrator,
@@ -732,7 +732,7 @@ async fn non_rejected_story_carries_no_latest_reject() {
     adapter.seed_stories(vec![story]);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
@@ -819,7 +819,7 @@ async fn get_story_stays_unhydrated_when_gate_fetch_fails() {
     adapter.set_ingest_failures(true);
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orchestrator);
@@ -872,7 +872,7 @@ async fn carried_reject_workflow_state_derives_rework_not_phantom_accepted() {
     adapter.seed_verdicts(1700, gates);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
@@ -934,7 +934,7 @@ async fn re_accepted_after_reject_workflow_state_stays_accepted() {
     adapter.seed_verdicts(1701, gates);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
@@ -959,14 +959,14 @@ async fn epic_view_workflow_state_derives_from_children_not_the_epics_own_shed_l
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    let epic = crate::integrations::github::mapper::decode_epic_from_story(&epic_story, false);
+    let epic = source_codec::mapper::decode_epic_from_story(&epic_story, false);
     let mut child = make_story(701, Work::InProgress, None);
     child.parent_epic = Some(product_management::epic::EpicId::new(700));
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![child]);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
-        Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![epic]);
     orch.refresh_all().await.unwrap();

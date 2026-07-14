@@ -32,7 +32,7 @@ mod outbox_persistence {
     ) -> (Arc<SyncOrchestrator<InMemorySourceAdapter>>, SeededStore) {
         let orch = Arc::new(SyncOrchestrator::new(
             Arc::clone(adapter),
-            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+            Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new_wired_outbox(sink, initial);
@@ -204,7 +204,7 @@ mod outbox_persistence {
                 QueuedWrite::minted(
                     row.id,
                     PendingWrite::from_event(
-                        &crate::integrations::github::gh_label_codec::GhLabelCodec,
+                        &source_codec::gh_label_codec::GhLabelCodec,
                         row.event,
                     ),
                 )
@@ -371,7 +371,7 @@ mod outbox_persistence {
                 QueuedWrite::minted(
                     row.id,
                     PendingWrite::from_event(
-                        &crate::integrations::github::gh_label_codec::GhLabelCodec,
+                        &source_codec::gh_label_codec::GhLabelCodec,
                         row.event,
                     ),
                 )
@@ -399,7 +399,7 @@ mod outbox_persistence {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let orch = Arc::new(SyncOrchestrator::new(
             adapter,
-            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+            Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
@@ -419,7 +419,7 @@ mod outbox_persistence {
         adapter.seed_stories(vec![seed_story(777, Work::NotStarted)]);
         let orch = Arc::new(SyncOrchestrator::new(
             adapter,
-            Arc::new(crate::integrations::github::gh_label_codec::GhLabelCodec),
+            Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);

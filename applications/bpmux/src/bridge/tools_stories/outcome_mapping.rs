@@ -1,13 +1,11 @@
 use super::helpers::{
     ensure_iteration_in_canonical_store, ensure_outcome_in_canonical_store, require_purpose,
 };
-use crate::integrations::github::mapper::outcome_with_body;
-use crate::integrations::github::relationships::{
-    IterationRelationships, OutcomeRelationships, Relationships,
-};
 use crate::sync::RefreshDriver;
 use product_management::iteration::IterationId;
 use product_management::outcome::Outcome;
+use source_codec::mapper::outcome_with_body;
+use source_codec::relationships::{IterationRelationships, OutcomeRelationships, Relationships};
 use std::sync::Arc;
 
 async fn verify_iteration_mapped(

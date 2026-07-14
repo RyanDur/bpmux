@@ -4,12 +4,12 @@ use std::sync::{Arc, Mutex};
 
 use chrono::{TimeZone, Utc};
 
-use crate::integrations::github::gh_label_codec::GhLabelCodec;
 use crate::store::sync::SyncAction;
 use crate::store::test_support::eventually;
 use crate::store::{AppAction, AppState, SyncHealthAction, app_reduce};
 use product_management::story::StoryId;
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use source_codec::gh_label_codec::GhLabelCodec;
 use source_sync::{MutationId, PendingWrite, QueuedEvent, QueuedWrite};
 
 use super::{OutboxPersister, OutboxSink};
