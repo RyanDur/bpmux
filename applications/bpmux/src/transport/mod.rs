@@ -3,7 +3,6 @@ pub mod ci_log_store;
 pub mod ci_watcher;
 
 pub(crate) mod delivery_ids;
-pub mod peer;
 pub mod rest;
 pub mod rpc_routes;
 pub(crate) mod state_delta;
@@ -11,7 +10,6 @@ pub(crate) mod state_delta_broadcasters;
 pub mod test_routes;
 pub mod test_seed;
 pub mod unfurl;
-pub mod webrtc;
 pub mod ws;
 
 #[cfg(test)]
@@ -24,8 +22,6 @@ mod ci_log_persistence;
 mod ci_watcher_tests;
 #[cfg(test)]
 mod external_mutation_tests;
-#[cfg(test)]
-mod peer_tests;
 #[cfg(test)]
 mod rest_tests;
 #[cfg(test)]
