@@ -2,7 +2,7 @@ mod screenshot;
 mod window;
 
 #[cfg(test)]
-mod tests;
+mod capture_tests;
 
 pub use screenshot::{
     build_capture_filename, capture_window_to_path, captures_dir, classify_screencapture_failure,

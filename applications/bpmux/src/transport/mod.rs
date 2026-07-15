@@ -3,7 +3,6 @@ pub mod ci_log_store;
 pub mod ci_watcher;
 
 pub(crate) mod delivery_ids;
-pub mod electron_capture;
 pub mod peer;
 pub mod rest;
 pub mod rpc_routes;

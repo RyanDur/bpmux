@@ -14,7 +14,6 @@ pub async fn get_electron_capture(
     axum::Extension(lock): axum::Extension<std::sync::Arc<tokio::sync::Mutex<()>>>,
     Query(params): Query<ElectronCaptureQuery>,
 ) -> impl IntoResponse {
-    use crate::transport::electron_capture;
     let _guard = lock.lock().await;
     let dir = match electron_capture::captures_dir() {
         Ok(d) => d,
@@ -47,13 +46,13 @@ pub async fn get_electron_capture(
 }
 
 fn error_response(
-    err: &crate::transport::electron_capture::CaptureError,
+    err: &electron_capture::CaptureError,
 ) -> (
     StatusCode,
     [(axum::http::HeaderName, &'static str); 1],
     String,
 ) {
-    use crate::transport::electron_capture::CaptureError;
+    use electron_capture::CaptureError;
     let status = match err {
         CaptureError::ElectronNotRunning | CaptureError::NoWindow => StatusCode::NOT_FOUND,
         CaptureError::WindowMinimized => StatusCode::CONFLICT,

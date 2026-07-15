@@ -7,6 +7,7 @@ members = [
     "components/ci",
     "components/comprehension",
     "components/diag",
+    "components/electron_capture",
     "components/integrations",
     "components/kernel",
     "components/local_url",

@@ -1,0 +1,19 @@
+[package]
+name = "electron_capture"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "macOS Electron-window discovery and screenshot capture — window lookup, capture files, failure classification"
+
+[dependencies]
+chrono = { workspace = true }
+dirs = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["io-util", "process", "rt"] }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

@@ -2,7 +2,7 @@
 
 #[cfg(target_os = "macos")]
 mod live {
-    use bpmux::transport::electron_capture::{
+    use electron_capture::{
         CaptureError, build_capture_filename, capture_window_to_path, captures_dir,
         find_bpmux_window,
     };
