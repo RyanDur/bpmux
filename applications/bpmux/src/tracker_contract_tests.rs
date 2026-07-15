@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::tracker::{OctocrabStoryTracker, StoryTracker};
 use crate::bridge::test_fixtures::{author, issue};
 use httpmock::{Method, MockServer};
+use integrations::github::tracker::{OctocrabStoryTracker, StoryTracker};
 use serde_json::{Value, json};
 
 fn mock_tracker(server: &MockServer) -> OctocrabStoryTracker {
@@ -233,7 +233,7 @@ async fn get_story_title_returns_title_on_200() {
 
 #[tokio::test]
 async fn fetch_board_stories_concatenates_six_pages_full_repo_scale() {
-    use super::tracker::StoryTracker;
+    use integrations::github::tracker::StoryTracker;
 
     let server = MockServer::start();
 
@@ -301,7 +301,7 @@ async fn fetch_board_stories_concatenates_six_pages_full_repo_scale() {
 
 #[tokio::test]
 async fn fetch_board_stories_follows_next_link_until_exhaustion() {
-    use super::tracker::StoryTracker;
+    use integrations::github::tracker::StoryTracker;
 
     let server = MockServer::start();
 
@@ -363,7 +363,7 @@ async fn fetch_board_stories_follows_next_link_until_exhaustion() {
 
 #[tokio::test]
 async fn fetch_board_stories_seeds_rate_limit_observer_on_retry_after_header() {
-    use super::tracker::StoryTracker;
+    use integrations::github::tracker::StoryTracker;
     use std::time::SystemTime;
 
     let server = MockServer::start();
@@ -396,7 +396,7 @@ async fn fetch_board_stories_seeds_rate_limit_observer_on_retry_after_header() {
 
 #[tokio::test]
 async fn fetch_board_stories_state_open_query_volume_reduction() {
-    use super::tracker::StoryTracker;
+    use integrations::github::tracker::StoryTracker;
 
     let server = MockServer::start();
     let open_mock = server.mock(|when, then| {
@@ -441,7 +441,7 @@ async fn fetch_board_stories_state_open_query_volume_reduction() {
 
 #[tokio::test]
 async fn get_story_conditional_returns_modified_with_etag_when_no_prior_etag() {
-    use super::tracker::ConditionalIssue;
+    use integrations::github::tracker::ConditionalIssue;
     let server = MockServer::start();
     let issue_v = issue(42, "[Feature] etag-test", "open", vec![]);
     let m = server.mock(|when, then| {
@@ -468,7 +468,7 @@ async fn get_story_conditional_returns_modified_with_etag_when_no_prior_etag() {
 
 #[tokio::test]
 async fn get_story_conditional_sends_if_none_match_and_returns_not_modified_on_304() {
-    use super::tracker::ConditionalIssue;
+    use integrations::github::tracker::ConditionalIssue;
     let server = MockServer::start();
     let m = server.mock(|when, then| {
         when.method(Method::GET)
@@ -490,7 +490,7 @@ async fn get_story_conditional_sends_if_none_match_and_returns_not_modified_on_3
 
 #[tokio::test]
 async fn get_story_conditional_returns_modified_with_new_etag_when_content_changed() {
-    use super::tracker::ConditionalIssue;
+    use integrations::github::tracker::ConditionalIssue;
     let server = MockServer::start();
     let issue_v = issue(99, "[Feature] changed", "open", vec![]);
     let m = server.mock(|when, then| {
@@ -649,7 +649,7 @@ async fn fetch_board_stories_paginates_closed_until_short_page() {
 
 #[tokio::test]
 async fn get_story_conditional_returns_not_found_on_404() {
-    use super::tracker::ConditionalIssue;
+    use integrations::github::tracker::ConditionalIssue;
     let server = MockServer::start();
     let m = server.mock(|when, then| {
         when.method(Method::GET)

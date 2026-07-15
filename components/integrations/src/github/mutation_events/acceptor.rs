@@ -1,12 +1,12 @@
 use super::labels_refreshed;
-use crate::integrations::github::tracker::{OctocrabStoryTracker, StoryTracker};
+use crate::github::tracker::{OctocrabStoryTracker, StoryTracker};
 use product_management::label_codec::LabelCodec;
 use product_management::story::Acceptor;
 use product_management::story::events::StoryEvent;
 use source_codec::gh_label_codec::GhLabelCodec;
 use source_sync::SyncError;
 
-pub(in crate::integrations::github) async fn push_acceptor_assigned(
+pub(in crate::github) async fn push_acceptor_assigned(
     inner: &OctocrabStoryTracker,
     number: u64,
     acceptor: Acceptor,

@@ -1,5 +1,5 @@
 use super::{GitHubSourceAdapter, ingest, mutation};
-use crate::integrations::github::tracker::{ConditionalIssue, StoryTracker};
+use crate::github::tracker::{ConditionalIssue, StoryTracker};
 use product_management::story::events::StoryEvent;
 use product_management::story::{CastVerdict, FreeComment, Story};
 use source_codec::mapper::{decode_free_comment, decode_story_with_placement, decode_verdicts};

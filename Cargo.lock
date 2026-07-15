@@ -396,11 +396,11 @@ dependencies = [
  "http",
  "http-body-util",
  "httpmock",
+ "integrations",
  "kernel",
  "memory",
  "message",
  "message_log",
- "octocrab",
  "once_cell",
  "owner_session",
  "persist",
@@ -1761,6 +1761,28 @@ checksum = "879f10e63c20629ecabbb64a8010319738c66a5cd0c29b02d63d272b03751d01"
 dependencies = [
  "block-padding",
  "generic-array",
+]
+
+[[package]]
+name = "integrations"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "ci",
+ "diag",
+ "http",
+ "http-body-util",
+ "octocrab",
+ "product_management",
+ "rate_limit",
+ "rustls",
+ "serde",
+ "serde_json",
+ "source_codec",
+ "source_sync",
+ "tempfile",
+ "tokio",
+ "workflow",
 ]
 
 [[package]]

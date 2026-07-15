@@ -1,4 +1,4 @@
-use crate::integrations::github::tracker::StoryTracker;
+use crate::github::tracker::StoryTracker;
 use ::ci::WorkflowRunEntry;
 
 use super::OctocrabStoryTracker;

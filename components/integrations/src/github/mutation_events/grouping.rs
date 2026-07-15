@@ -1,10 +1,10 @@
 use super::labels_refreshed;
-use crate::integrations::github::tracker::{OctocrabStoryTracker, StoryTracker};
+use crate::github::tracker::{OctocrabStoryTracker, StoryTracker};
 use product_management::epic::EpicId;
 use product_management::story::events::StoryEvent;
 use source_sync::SyncError;
 
-pub(in crate::integrations::github) async fn push_parent_epic_set(
+pub(in crate::github) async fn push_parent_epic_set(
     inner: &OctocrabStoryTracker,
     number: u64,
     epic_id: EpicId,
@@ -17,7 +17,7 @@ pub(in crate::integrations::github) async fn push_parent_epic_set(
     Ok(Some(labels_refreshed(number, labels)))
 }
 
-pub(in crate::integrations::github) async fn push_parent_epic_unset(
+pub(in crate::github) async fn push_parent_epic_unset(
     inner: &OctocrabStoryTracker,
     number: u64,
 ) -> Result<Option<StoryEvent>, SyncError> {
@@ -33,7 +33,7 @@ pub(in crate::integrations::github) async fn push_parent_epic_unset(
     Ok(last_response.map(|labels| labels_refreshed(number, labels)))
 }
 
-pub(in crate::integrations::github) async fn push_current_iteration_designated(
+pub(in crate::github) async fn push_current_iteration_designated(
     inner: &OctocrabStoryTracker,
     number: u64,
 ) -> Result<Option<StoryEvent>, SyncError> {
@@ -47,7 +47,7 @@ pub(in crate::integrations::github) async fn push_current_iteration_designated(
     Ok(Some(labels_refreshed(number, labels)))
 }
 
-pub(in crate::integrations::github) async fn push_current_iteration_cleared(
+pub(in crate::github) async fn push_current_iteration_cleared(
     inner: &OctocrabStoryTracker,
     number: u64,
 ) -> Result<Option<StoryEvent>, SyncError> {

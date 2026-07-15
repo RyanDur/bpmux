@@ -2,7 +2,7 @@
 
 use chrono::{TimeZone, Utc};
 
-use crate::integrations::in_memory::InMemorySourceAdapter;
+use crate::in_memory::InMemorySourceAdapter;
 use product_management::epic::EpicId;
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::{FreeComment, Story, StoryId, Work};

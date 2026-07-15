@@ -1,10 +1,10 @@
-use crate::integrations::github::tracker::{OctocrabStoryTracker, StoryTracker};
+use crate::github::tracker::{OctocrabStoryTracker, StoryTracker};
 use product_management::story::Verdict;
 use product_management::story::events::{EventMeta, StoryEvent};
 use source_codec::mapper::encode_verdict;
 use source_sync::SyncError;
 
-pub(in crate::integrations::github) async fn push_verdict_cast(
+pub(in crate::github) async fn push_verdict_cast(
     inner: &OctocrabStoryTracker,
     number: u64,
     meta: &EventMeta,
@@ -19,7 +19,7 @@ pub(in crate::integrations::github) async fn push_verdict_cast(
     Ok(None)
 }
 
-pub(in crate::integrations::github) async fn push_free_comment_appended(
+pub(in crate::github) async fn push_free_comment_appended(
     inner: &OctocrabStoryTracker,
     number: u64,
     body: &str,

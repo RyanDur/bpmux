@@ -17,7 +17,7 @@ mod cli;
 pub mod hub;
 #[cfg(test)]
 mod hub_tests;
-pub mod integrations;
+pub use ::integrations;
 pub mod location;
 #[cfg(test)]
 mod location_migration_tests;
@@ -37,6 +37,8 @@ pub mod sync;
 #[cfg(test)]
 mod team_roster_tests;
 pub mod telemetry;
+#[cfg(test)]
+mod tracker_contract_tests;
 pub mod transport;
 #[cfg(test)]
 mod user_id_pin_tests;

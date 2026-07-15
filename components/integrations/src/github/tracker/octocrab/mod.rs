@@ -71,11 +71,7 @@ impl OctocrabStoryTracker {
         }
     }
 
-    pub(crate) fn with_base_url(
-        base_url: &str,
-        owner: String,
-        repo: String,
-    ) -> Result<Self, String> {
+    pub fn with_base_url(base_url: &str, owner: String, repo: String) -> Result<Self, String> {
         ensure_crypto_provider_installed();
         let client = octocrab::OctocrabBuilder::new()
             .base_uri(base_url)

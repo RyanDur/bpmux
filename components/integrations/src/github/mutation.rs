@@ -1,4 +1,4 @@
-use crate::integrations::github::tracker::OctocrabStoryTracker;
+use crate::github::tracker::OctocrabStoryTracker;
 use product_management::label_codec::LabelCodec;
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use source_codec::gh_label_codec::GhLabelCodec;

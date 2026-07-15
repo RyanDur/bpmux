@@ -1,10 +1,10 @@
 use super::labels_refreshed;
-use crate::integrations::github::tracker::{OctocrabStoryTracker, StoryTracker};
+use crate::github::tracker::{OctocrabStoryTracker, StoryTracker};
 use product_management::story::events::StoryEvent;
 use source_codec::mapper::is_position_label;
 use source_sync::SyncError;
 
-pub(in crate::integrations::github) async fn push_tag_added(
+pub(in crate::github) async fn push_tag_added(
     inner: &OctocrabStoryTracker,
     number: u64,
     label: &str,
@@ -20,7 +20,7 @@ pub(in crate::integrations::github) async fn push_tag_added(
     }
 }
 
-pub(in crate::integrations::github) async fn push_tag_removed(
+pub(in crate::github) async fn push_tag_removed(
     inner: &OctocrabStoryTracker,
     number: u64,
     label: &str,

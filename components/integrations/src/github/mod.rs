@@ -1,4 +1,4 @@
-use crate::integrations::github::tracker::OctocrabStoryTracker;
+use crate::github::tracker::OctocrabStoryTracker;
 use ::ci::ConditionalRunEntry;
 use ::ci::slice::CiPollFetch;
 
@@ -7,12 +7,10 @@ mod ingest;
 mod mutation;
 mod mutation_events;
 mod source_adapter;
-pub(crate) mod tracker;
+pub mod tracker;
 
 #[cfg(test)]
 mod adapter_tests;
-#[cfg(test)]
-mod tracker_contract_tests;
 #[cfg(test)]
 mod tracker_tests;
 

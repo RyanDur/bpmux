@@ -1,5 +1,5 @@
 use super::labels_refreshed;
-use crate::integrations::github::tracker::{OctocrabStoryTracker, StoryTracker};
+use crate::github::tracker::{OctocrabStoryTracker, StoryTracker};
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use product_management::story::{StoryId, Work};
 use source_codec::gh_label_codec::GhLabelCodec;
@@ -24,7 +24,7 @@ async fn strip_state_labels(
     Ok(())
 }
 
-pub(in crate::integrations::github) async fn push_state_transitioned(
+pub(in crate::github) async fn push_state_transitioned(
     inner: &OctocrabStoryTracker,
     number: u64,
     new_state: Work,
@@ -43,7 +43,7 @@ pub(in crate::integrations::github) async fn push_state_transitioned(
     Ok(Some(labels_refreshed(number, labels)))
 }
 
-pub(in crate::integrations::github) async fn push_story_closed(
+pub(in crate::github) async fn push_story_closed(
     inner: &OctocrabStoryTracker,
     number: u64,
     reason: &Option<String>,
@@ -77,7 +77,7 @@ pub(in crate::integrations::github) async fn push_story_closed(
     }
 }
 
-pub(in crate::integrations::github) async fn push_story_reopened(
+pub(in crate::github) async fn push_story_reopened(
     inner: &OctocrabStoryTracker,
     number: u64,
 ) -> Result<Option<StoryEvent>, SyncError> {
@@ -93,7 +93,7 @@ pub(in crate::integrations::github) async fn push_story_reopened(
     }))
 }
 
-pub(in crate::integrations::github) async fn push_body_updated(
+pub(in crate::github) async fn push_body_updated(
     inner: &OctocrabStoryTracker,
     number: u64,
     body: &str,
@@ -105,7 +105,7 @@ pub(in crate::integrations::github) async fn push_body_updated(
     Ok(None)
 }
 
-pub(in crate::integrations::github) async fn push_title_updated(
+pub(in crate::github) async fn push_title_updated(
     inner: &OctocrabStoryTracker,
     number: u64,
     title: &str,
