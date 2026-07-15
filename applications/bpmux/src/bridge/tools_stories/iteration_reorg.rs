@@ -14,6 +14,7 @@ pub(crate) async fn handle_reorder_iteration(
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     require_purpose(role, &["pm"], "reorder iterations")?;
     let iteration_id = args
@@ -27,7 +28,7 @@ pub(crate) async fn handle_reorder_iteration(
         as u32;
 
     let r = refresh.ok_or("reorder_iteration requires refresh (RefreshDriver)")?;
-    ensure_iteration_in_canonical_store(r, iteration_id).await?;
+    ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
 
     let band_size =
         renumber_iteration_order(r, dispatch, agent_name, actor_id, iteration_id, position)?;
@@ -109,6 +110,7 @@ pub(crate) async fn handle_rename_iteration(
     role: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     require_purpose(role, &["pm"], "edit an iteration name")?;
     let iteration_id = args
@@ -122,7 +124,7 @@ pub(crate) async fn handle_rename_iteration(
         .ok_or("iteration rename needs --name <N>")?;
 
     let r = refresh.ok_or("rename_iteration requires refresh (RefreshDriver)")?;
-    let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
+    let iteration = ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
     let title = format!("Iteration {name}");
     r.update_title(iteration_id, title.clone())
         .await

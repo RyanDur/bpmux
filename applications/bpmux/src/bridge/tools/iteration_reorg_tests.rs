@@ -88,7 +88,13 @@ fn member_story(id: u64, state: Work) -> (Story, Vec<String>) {
     (s, vec!["feature".to_string()])
 }
 
-async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
+async fn build_refresh(
+    seeds: Vec<(Story, Vec<String>)>,
+) -> (
+    crate::store::SeededStore,
+    Arc<dyn RefreshDriver>,
+    crate::store::Select,
+) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     for (story, labels) in &seeds {
         adapter.seed_labels(story.id.value(), labels.clone());
@@ -103,9 +109,11 @@ async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDrive
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
         .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
         .collect();
-    crate::store::bind_seeded_refresh(&orch, vec![], iterations, vec![]);
+    let store = crate::store::SeededStore::new(vec![], iterations, vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
-    orch
+    let select = store.select();
+    (store, orch, select)
 }
 
 fn remove_args(iteration: u64, story: u64, reason: Option<&str>) -> Map<String, Value> {
@@ -120,7 +128,7 @@ fn remove_args(iteration: u64, story: u64, reason: Option<&str>) -> Map<String, 
 
 #[tokio::test]
 async fn remove_member_clears_membership_so_the_board_no_longer_shows_it_1762() {
-    let refresh = build_refresh(vec![
+    let (_store, refresh, select) = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710]),
         member_story(710, Work::NotStarted),
     ])
@@ -131,6 +139,7 @@ async fn remove_member_clears_membership_so_the_board_no_longer_shows_it_1762() 
         "pm",
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("pm removes the member");
@@ -148,7 +157,7 @@ async fn remove_member_clears_membership_so_the_board_no_longer_shows_it_1762() 
 
 #[tokio::test]
 async fn remove_member_flags_an_in_flight_story_state_not_a_silent_scope_cut_1762() {
-    let refresh = build_refresh(vec![
+    let (_store, refresh, select) = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710]),
         member_story(710, Work::InProgress),
     ])
@@ -159,6 +168,7 @@ async fn remove_member_flags_an_in_flight_story_state_not_a_silent_scope_cut_176
         "pm",
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("pm removes an in-flight member");
@@ -170,7 +180,7 @@ async fn remove_member_flags_an_in_flight_story_state_not_a_silent_scope_cut_176
 
 #[tokio::test]
 async fn remove_member_with_no_reason_is_rejected_1762() {
-    let refresh = build_refresh(vec![
+    let (_store, refresh, select) = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710]),
         member_story(710, Work::NotStarted),
     ])
@@ -181,6 +191,7 @@ async fn remove_member_with_no_reason_is_rejected_1762() {
         "pm",
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("remove is destructive — a reason is required");
@@ -200,7 +211,7 @@ async fn remove_member_with_no_reason_is_rejected_1762() {
 
 #[tokio::test]
 async fn remove_member_is_pm_lane_non_pm_refused_1762() {
-    let refresh = build_refresh(vec![
+    let (_store, refresh, select) = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710]),
         member_story(710, Work::NotStarted),
     ])
@@ -211,6 +222,7 @@ async fn remove_member_is_pm_lane_non_pm_refused_1762() {
         "dev",
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("dev cannot remove a member (pm-lane)");
@@ -219,7 +231,7 @@ async fn remove_member_is_pm_lane_non_pm_refused_1762() {
 
 #[tokio::test]
 async fn remove_member_rejects_a_non_member_1762() {
-    let refresh = build_refresh(vec![
+    let (_store, refresh, select) = build_refresh(vec![
         iteration(1700, "Circinus"),
         member_story(710, Work::NotStarted),
     ])
@@ -230,6 +242,7 @@ async fn remove_member_rejects_a_non_member_1762() {
         "pm",
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("a story not in the iteration cannot be removed from it");
@@ -241,7 +254,7 @@ async fn remove_member_rejects_a_non_member_1762() {
 
 #[tokio::test]
 async fn move_member_reorders_within_the_iteration_1762() {
-    let refresh = build_refresh(vec![
+    let (_store, refresh, select) = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710, 720]),
         member_story(710, Work::NotStarted),
         member_story(720, Work::NotStarted),
@@ -252,7 +265,7 @@ async fn move_member_reorders_within_the_iteration_1762() {
         .as_object()
         .cloned()
         .unwrap();
-    handle_move_iteration_member(&args, "pm", Some(&refresh), &dispatch)
+    handle_move_iteration_member(&args, "pm", Some(&refresh), &dispatch, &select)
         .await
         .expect("pm reorders the member");
     assert_eq!(
@@ -264,7 +277,7 @@ async fn move_member_reorders_within_the_iteration_1762() {
 
 #[tokio::test]
 async fn reorder_iteration_insert_shifts_the_planning_order_1762() {
-    let refresh = build_refresh(vec![
+    let (_store, refresh, select) = build_refresh(vec![
         iteration_at(1700, "Circinus", 100),
         iteration_at(1710, "Dorado", 200),
         iteration_at(1720, "Eridanus", 300),
@@ -282,6 +295,7 @@ async fn reorder_iteration_insert_shifts_the_planning_order_1762() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("pm reorders the iteration to the front");
@@ -300,7 +314,7 @@ async fn reorder_iteration_insert_shifts_the_planning_order_1762() {
 
 #[tokio::test]
 async fn reorder_iteration_is_pm_lane_non_pm_refused_1762() {
-    let refresh = build_refresh(vec![iteration_at(1700, "Circinus", 100)]).await;
+    let (_store, refresh, select) = build_refresh(vec![iteration_at(1700, "Circinus", 100)]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_reorder_iteration(
         &json!({ "iteration_id": 1700, "position": 1 })
@@ -312,6 +326,7 @@ async fn reorder_iteration_is_pm_lane_non_pm_refused_1762() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("dev cannot reorder iterations (pm-lane)");
@@ -320,13 +335,13 @@ async fn reorder_iteration_is_pm_lane_non_pm_refused_1762() {
 
 #[tokio::test]
 async fn rename_updates_the_iteration_title_1762() {
-    let refresh = build_refresh(vec![iteration(1700, "Circinus")]).await;
+    let (_store, refresh, select) = build_refresh(vec![iteration(1700, "Circinus")]).await;
     let (dispatch, mut rx) = dispatch_channel();
     let args = json!({ "iteration_id": 1700, "name": "Vela" })
         .as_object()
         .cloned()
         .unwrap();
-    handle_rename_iteration(&args, "pm", Some(&refresh), &dispatch)
+    handle_rename_iteration(&args, "pm", Some(&refresh), &dispatch, &select)
         .await
         .expect("pm renames the iteration");
     assert_eq!(
@@ -338,7 +353,7 @@ async fn rename_updates_the_iteration_title_1762() {
 
 #[tokio::test]
 async fn renaming_a_current_iteration_preserves_its_current_designation() {
-    let refresh = build_refresh(vec![current_iteration(1700, "Vela")]).await;
+    let (_store, refresh, select) = build_refresh(vec![current_iteration(1700, "Vela")]).await;
     assert!(
         refresh
             .iteration(IterationId::new(1700))
@@ -351,7 +366,7 @@ async fn renaming_a_current_iteration_preserves_its_current_designation() {
         .as_object()
         .cloned()
         .unwrap();
-    handle_rename_iteration(&rename, "pm", Some(&refresh), &dispatch)
+    handle_rename_iteration(&rename, "pm", Some(&refresh), &dispatch, &select)
         .await
         .expect("pm renames the iteration");
     let dispatched = upserted_iterations(&mut rx);
@@ -375,13 +390,14 @@ async fn iteration_reorg_verbs_teach_the_boundary_on_a_non_iteration_1762() {
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    let refresh = build_refresh(vec![(feature, vec!["feature".to_string()])]).await;
+    let (_store, refresh, select) =
+        build_refresh(vec![(feature, vec!["feature".to_string()])]).await;
     let (dispatch, _rx) = dispatch_channel();
     let args = json!({ "iteration_id": 700, "name": "X" })
         .as_object()
         .cloned()
         .unwrap();
-    let err = handle_rename_iteration(&args, "pm", Some(&refresh), &dispatch)
+    let err = handle_rename_iteration(&args, "pm", Some(&refresh), &dispatch, &select)
         .await
         .expect_err("a non-iteration is not name-editable");
     assert!(

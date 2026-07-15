@@ -176,6 +176,7 @@ pub async fn post_test_designate_current_iteration(
         None,
         Some(refresh_ref),
         &dispatcher,
+        &select,
     )
     .await
     {
@@ -218,6 +219,7 @@ pub async fn post_test_move_story(
     axum::Extension(select): axum::Extension<crate::store::Select>,
     Json(req): Json<MoveStoryReq>,
 ) -> impl IntoResponse {
+    let select_for_dispatch = select.clone();
     run_test_route(hub, refresh, select, |refresh, _hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "id", req.id);
@@ -228,7 +230,16 @@ pub async fn post_test_move_story(
         }
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
         let role = bridge::tools_stories::role_from_name(&agent);
-        bridge::dispatch_move_story(args, &agent, role, None, Some(&refresh), &dispatcher).await
+        bridge::dispatch_move_story(
+            args,
+            &agent,
+            role,
+            None,
+            Some(&refresh),
+            &dispatcher,
+            &select_for_dispatch,
+        )
+        .await
     })
     .await
 }

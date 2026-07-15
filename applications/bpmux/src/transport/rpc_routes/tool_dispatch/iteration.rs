@@ -25,8 +25,14 @@ pub(super) async fn route(
                 .await
         }
         "add_story_to_iteration" => {
-            bridge::dispatch_add_story_to_iteration(args, cx.role, cx.refresh_ref, cx.dispatcher)
-                .await
+            bridge::dispatch_add_story_to_iteration(
+                args,
+                cx.role,
+                cx.refresh_ref,
+                cx.dispatcher,
+                cx.select,
+            )
+            .await
         }
         "designate_current_iteration" => {
             bridge::dispatch_designate_current_iteration(
@@ -36,6 +42,7 @@ pub(super) async fn route(
                 cx.actor_id,
                 cx.refresh_ref,
                 cx.dispatcher,
+                cx.select,
             )
             .await
         }
@@ -47,6 +54,7 @@ pub(super) async fn route(
                 cx.actor_id,
                 cx.refresh_ref,
                 cx.dispatcher,
+                cx.select,
             )
             .await
         }
@@ -58,19 +66,39 @@ pub(super) async fn route(
                 cx.actor_id,
                 cx.refresh_ref,
                 cx.dispatcher,
+                cx.select,
             )
             .await
         }
         "remove_iteration_member" => {
-            bridge::dispatch_remove_iteration_member(args, cx.role, cx.refresh_ref, cx.dispatcher)
-                .await
+            bridge::dispatch_remove_iteration_member(
+                args,
+                cx.role,
+                cx.refresh_ref,
+                cx.dispatcher,
+                cx.select,
+            )
+            .await
         }
         "move_iteration_member" => {
-            bridge::dispatch_move_iteration_member(args, cx.role, cx.refresh_ref, cx.dispatcher)
-                .await
+            bridge::dispatch_move_iteration_member(
+                args,
+                cx.role,
+                cx.refresh_ref,
+                cx.dispatcher,
+                cx.select,
+            )
+            .await
         }
         "rename_iteration" => {
-            bridge::dispatch_rename_iteration(args, cx.role, cx.refresh_ref, cx.dispatcher).await
+            bridge::dispatch_rename_iteration(
+                args,
+                cx.role,
+                cx.refresh_ref,
+                cx.dispatcher,
+                cx.select,
+            )
+            .await
         }
         _ => return Routed::Unhandled(args),
     };

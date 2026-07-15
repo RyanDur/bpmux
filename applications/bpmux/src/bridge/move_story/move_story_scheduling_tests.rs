@@ -91,7 +91,8 @@ async fn move_story(
         serde_json::json!("R-3.1: scheduling is current-iteration membership"),
     );
     let (dispatch, mut rx) = Dispatch::recording();
-    let result = dispatch_move_story(args, "pm", "pm", None, Some(orch), &dispatch).await;
+    let select = seed.select();
+    let result = dispatch_move_story(args, "pm", "pm", None, Some(orch), &dispatch, &select).await;
     merge_dispatched(seed, &mut rx);
     result
 }

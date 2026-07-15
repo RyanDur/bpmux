@@ -15,7 +15,7 @@ async fn verify_iteration_mapped(
     iteration_id: u64,
 ) -> Result<Outcome, String> {
     let outcome = ensure_outcome_in_canonical_store(r, select, outcome_id).await?;
-    ensure_iteration_in_canonical_store(r, iteration_id).await?;
+    ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
     if !outcome.iterations.contains(&IterationId::new(iteration_id)) {
         return Err(format!(
             "iteration #{iteration_id} is not mapped to outcome #{outcome_id}"
@@ -61,7 +61,7 @@ pub(crate) async fn handle_unmap_outcome_iteration(
         product_management::outcome::OutcomeAction::Upserted(vec![optimistic]),
     ));
 
-    let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
+    let iteration = ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
     let mut child = iteration
         .body
         .as_deref()

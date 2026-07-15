@@ -26,7 +26,13 @@ fn iteration_upserted(rx: &mut UnboundedReceiver<AppAction>) -> Vec<Iteration> {
     found
 }
 
-async fn build_orchestrator(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
+async fn build_orchestrator(
+    seeds: Vec<(Story, Vec<String>)>,
+) -> (
+    crate::store::SeededStore,
+    Arc<dyn RefreshDriver>,
+    crate::store::Select,
+) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     for (story, labels) in &seeds {
         adapter.seed_labels(story.id.value(), labels.clone());
@@ -41,9 +47,11 @@ async fn build_orchestrator(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn Refresh
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
         .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
         .collect();
-    crate::store::bind_seeded_refresh(&orch, vec![], iterations, vec![]);
+    let store = crate::store::SeededStore::new(vec![], iterations, vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
-    orch
+    let select = store.select();
+    (store, orch, select)
 }
 
 fn iteration_seed(id: u64, name: &str) -> (Story, Vec<String>) {
@@ -82,7 +90,7 @@ fn args(iteration_id: u64) -> serde_json::Map<String, serde_json::Value> {
 
 #[tokio::test]
 async fn pm_designates_current_iteration_sets_is_current_1540() {
-    let orch = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
+    let (_store, orch, select) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let (dispatch, mut rx) = dispatch_channel();
     handle_designate_current_iteration(
         &args(1552),
@@ -91,6 +99,7 @@ async fn pm_designates_current_iteration_sets_is_current_1540() {
         None,
         Some(&orch),
         &dispatch,
+        &select,
     )
     .await
     .expect("designate should succeed");
@@ -107,7 +116,7 @@ async fn pm_designates_current_iteration_sets_is_current_1540() {
 
 #[tokio::test]
 async fn designate_clears_prior_current_holder_replace_semantic_1540() {
-    let orch = build_orchestrator(vec![
+    let (_store, orch, select) = build_orchestrator(vec![
         current_iteration_seed(1398, "Microscopium"),
         iteration_seed(1552, "Carina"),
     ])
@@ -120,6 +129,7 @@ async fn designate_clears_prior_current_holder_replace_semantic_1540() {
         None,
         Some(&orch),
         &dispatch,
+        &select,
     )
     .await
     .expect("designate");
@@ -144,7 +154,7 @@ async fn designate_clears_prior_current_holder_replace_semantic_1540() {
 
 #[tokio::test]
 async fn designate_rejects_non_iteration_story_1540() {
-    let orch = build_orchestrator(vec![feature_seed(1500)]).await;
+    let (_store, orch, select) = build_orchestrator(vec![feature_seed(1500)]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_designate_current_iteration(
         &args(1500),
@@ -153,6 +163,7 @@ async fn designate_rejects_non_iteration_story_1540() {
         None,
         Some(&orch),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("a non-Iteration story must be rejected");
@@ -164,7 +175,7 @@ async fn designate_rejects_non_iteration_story_1540() {
 
 #[tokio::test]
 async fn designate_rejected_for_non_pm_1540() {
-    let orch = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
+    let (_store, orch, select) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let (dispatch, _rx) = dispatch_channel();
     handle_designate_current_iteration(
         &args(1552),
@@ -173,6 +184,7 @@ async fn designate_rejected_for_non_pm_1540() {
         None,
         Some(&orch),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("designate is PM-lane; non-pm is rejected");

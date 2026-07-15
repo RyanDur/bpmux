@@ -8,6 +8,10 @@ fn no_dispatch() -> Dispatch {
     Dispatch::recording().0
 }
 
+fn no_select() -> crate::store::Select {
+    crate::store::Select::new(std::sync::Weak::new())
+}
+
 #[test]
 fn role_from_name_extracts_short_role() {
     assert_eq!(role_from_name("dev:claude-code"), "dev");
@@ -201,6 +205,7 @@ async fn move_story_bare_column_move_is_pm_only_1548() {
             None,
             None,
             &no_dispatch(),
+            &no_select(),
         )
         .await
         .expect_err(&format!("{caller}: bare column-move must be role-rejected"));
@@ -222,6 +227,7 @@ async fn move_story_positioned_move_is_pm_only_1548() {
             None,
             None,
             &no_dispatch(),
+            &no_select(),
         )
         .await
         .expect_err(&format!("{caller}: positioned move must be role-rejected"));
@@ -243,6 +249,7 @@ async fn move_story_pm_passes_role_gate_on_both_paths_1548() {
             None,
             None,
             &no_dispatch(),
+            &no_select(),
         )
         .await
         .expect_err("pm passes the role-gate then hits refresh-absent");

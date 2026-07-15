@@ -76,13 +76,16 @@ fn not_an_outcome_message(id: u64) -> String {
 
 pub(crate) async fn ensure_iteration_in_canonical_store(
     refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    select: &crate::store::Select,
     id: u64,
 ) -> Result<product_management::iteration::Iteration, String> {
-    if let Some(iteration) = refresh.iteration(product_management::iteration::IterationId::new(id))
+    let iteration_id = product_management::iteration::IterationId::new(id);
+    if let Some(iteration) =
+        select.select(|s| product_management::iteration::get(&s.iterations, iteration_id))
     {
         return Ok(iteration);
     }
-    if refresh.backing_story(id).is_some() {
+    if backing_story_via_select(select, id).is_some() {
         return Err(not_an_iteration_message(id));
     }
     refresh.refresh_story(id).await.map_err(|e| {
@@ -91,11 +94,12 @@ pub(crate) async fn ensure_iteration_in_canonical_store(
              cannot proceed with an iteration operation against unknown state"
         )
     })?;
-    if let Some(iteration) = refresh.iteration(product_management::iteration::IterationId::new(id))
+    if let Some(iteration) =
+        select.select(|s| product_management::iteration::get(&s.iterations, iteration_id))
     {
         return Ok(iteration);
     }
-    if refresh.backing_story(id).is_some() {
+    if backing_story_via_select(select, id).is_some() {
         return Err(not_an_iteration_message(id));
     }
     Err(format!(

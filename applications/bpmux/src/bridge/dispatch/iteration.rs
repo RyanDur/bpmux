@@ -75,8 +75,9 @@ pub(crate) async fn dispatch_add_story_to_iteration(
     role: &str,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
-    tools_stories::handle_add_story_to_iteration(&args, role, refresh, dispatch).await
+    tools_stories::handle_add_story_to_iteration(&args, role, refresh, dispatch, select).await
 }
 
 pub(crate) async fn dispatch_designate_current_iteration(
@@ -86,9 +87,10 @@ pub(crate) async fn dispatch_designate_current_iteration(
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     tools_stories::handle_designate_current_iteration(
-        &args, agent_name, role, actor_id, refresh, dispatch,
+        &args, agent_name, role, actor_id, refresh, dispatch, select,
     )
     .await
 }
@@ -100,9 +102,10 @@ pub(crate) async fn dispatch_close_pre_pickup_review(
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     tools_stories::handle_close_pre_pickup_review(
-        &args, agent_name, role, actor_id, refresh, dispatch,
+        &args, agent_name, role, actor_id, refresh, dispatch, select,
     )
     .await
 }
@@ -114,9 +117,12 @@ pub(crate) async fn dispatch_dev_ok_iteration(
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
-    tools_stories::handle_dev_ok_iteration(&args, agent_name, role, actor_id, refresh, dispatch)
-        .await
+    tools_stories::handle_dev_ok_iteration(
+        &args, agent_name, role, actor_id, refresh, dispatch, select,
+    )
+    .await
 }
 
 pub(crate) async fn dispatch_remove_iteration_member(
@@ -124,8 +130,9 @@ pub(crate) async fn dispatch_remove_iteration_member(
     role: &str,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
-    tools_stories::handle_remove_iteration_member(&args, role, refresh, dispatch).await
+    tools_stories::handle_remove_iteration_member(&args, role, refresh, dispatch, select).await
 }
 
 pub(crate) async fn dispatch_move_iteration_member(
@@ -133,8 +140,9 @@ pub(crate) async fn dispatch_move_iteration_member(
     role: &str,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
-    tools_stories::handle_move_iteration_member(&args, role, refresh, dispatch).await
+    tools_stories::handle_move_iteration_member(&args, role, refresh, dispatch, select).await
 }
 
 pub(crate) async fn dispatch_rename_iteration(
@@ -142,8 +150,9 @@ pub(crate) async fn dispatch_rename_iteration(
     role: &str,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
-    tools_stories::handle_rename_iteration(&args, role, refresh, dispatch).await
+    tools_stories::handle_rename_iteration(&args, role, refresh, dispatch, select).await
 }
 
 pub(crate) async fn dispatch_reorder_iteration(
@@ -153,7 +162,10 @@ pub(crate) async fn dispatch_reorder_iteration(
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
-    tools_stories::handle_reorder_iteration(&args, agent_name, role, actor_id, refresh, dispatch)
-        .await
+    tools_stories::handle_reorder_iteration(
+        &args, agent_name, role, actor_id, refresh, dispatch, select,
+    )
+    .await
 }

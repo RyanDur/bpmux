@@ -9,10 +9,11 @@ use std::sync::Arc;
 
 async fn member_of(
     r: &Arc<dyn RefreshDriver>,
+    select: &crate::store::Select,
     iteration_id: u64,
     story_id: u64,
 ) -> Result<(Iteration, Story), String> {
-    let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
+    let iteration = ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
     let story = ensure_story_in_canonical_store(r, story_id).await?;
     if !iteration.stories.contains(&StoryId::new(story_id)) {
         return Err(format!(
@@ -50,13 +51,14 @@ async fn rewrite_members(
 
 pub(crate) async fn set_member_position(
     r: &Arc<dyn RefreshDriver>,
+    select: &crate::store::Select,
     dispatch: &crate::store::Dispatch,
     iteration_id: u64,
     story_id: u64,
     position: u32,
 ) -> Result<(), String> {
     let target = StoryId::new(story_id);
-    let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
+    let iteration = ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
     for other in r.iterations() {
         let other_id = other.id.value();
         if other_id == iteration_id || !other.stories.contains(&target) {
@@ -95,6 +97,7 @@ pub(crate) async fn handle_remove_iteration_member(
     role: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     require_purpose(role, &["pm"], "remove an iteration member")?;
     let iteration_id = args
@@ -112,7 +115,7 @@ pub(crate) async fn handle_remove_iteration_member(
         .ok_or("remove-member needs --reason <R> (destructive scope-cut; the reason is the audit-trail)")?;
 
     let r = refresh.ok_or("remove_iteration_member requires refresh (RefreshDriver)")?;
-    let (iteration, story) = member_of(r, iteration_id, story_id).await?;
+    let (iteration, story) = member_of(r, select, iteration_id, story_id).await?;
 
     let mut stories = iteration.stories.clone();
     stories.retain(|n| *n != StoryId::new(story_id));
@@ -132,6 +135,7 @@ pub(crate) async fn handle_move_iteration_member(
     role: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     require_purpose(role, &["pm"], "reorder an iteration member")?;
     let iteration_id = args
@@ -148,7 +152,7 @@ pub(crate) async fn handle_move_iteration_member(
             .ok_or("move-member needs --to <P> (the new 1-indexed position)")? as u32;
 
     let r = refresh.ok_or("move_iteration_member requires refresh (RefreshDriver)")?;
-    let (iteration, _) = member_of(r, iteration_id, story_id).await?;
+    let (iteration, _) = member_of(r, select, iteration_id, story_id).await?;
 
     let mut stories = iteration.stories.clone();
     stories.retain(|n| *n != StoryId::new(story_id));

@@ -103,6 +103,7 @@ pub(super) async fn handle_reorder_iteration(
         ctx.routing_user_id.as_deref(),
         ctx.orchestrator.as_ref(),
         ctx.dispatch,
+        &ctx.store.selector(),
     )
     .await
     {
@@ -138,6 +139,7 @@ pub(super) async fn handle_add_story_to_iteration(
         role,
         ctx.orchestrator.as_ref(),
         ctx.dispatch,
+        &ctx.store.selector(),
     )
     .await
     {

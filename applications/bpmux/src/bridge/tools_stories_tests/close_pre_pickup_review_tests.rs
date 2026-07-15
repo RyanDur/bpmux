@@ -27,7 +27,13 @@ fn iteration_upserted(rx: &mut UnboundedReceiver<AppAction>) -> Vec<Iteration> {
     found
 }
 
-async fn build_orchestrator(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
+async fn build_orchestrator(
+    seeds: Vec<(Story, Vec<String>)>,
+) -> (
+    crate::store::SeededStore,
+    Arc<dyn RefreshDriver>,
+    crate::store::Select,
+) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     for (story, labels) in &seeds {
         adapter.seed_labels(story.id.value(), labels.clone());
@@ -42,9 +48,11 @@ async fn build_orchestrator(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn Refresh
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
         .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
         .collect();
-    crate::store::bind_seeded_refresh(&orch, vec![], iterations, vec![]);
+    let store = crate::store::SeededStore::new(vec![], iterations, vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
-    orch
+    let select = store.select();
+    (store, orch, select)
 }
 
 fn iteration_seed(id: u64, name: &str) -> (Story, Vec<String>) {
@@ -77,7 +85,7 @@ fn args(iteration_id: u64) -> serde_json::Map<String, serde_json::Value> {
 
 #[tokio::test]
 async fn designer_close_records_act_and_flips_review_readiness_1703() {
-    let orch = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
+    let (_store, orch, select) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let (dispatch, mut rx) = dispatch_channel();
     handle_close_pre_pickup_review(
         &args(1552),
@@ -86,6 +94,7 @@ async fn designer_close_records_act_and_flips_review_readiness_1703() {
         None,
         Some(&orch),
         &dispatch,
+        &select,
     )
     .await
     .expect("a configured iteration-reviewer can close the pre-pickup review");
@@ -107,7 +116,7 @@ async fn designer_close_records_act_and_flips_review_readiness_1703() {
 
 #[tokio::test]
 async fn no_close_on_record_means_review_not_ready_1703() {
-    let orch = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
+    let (_store, orch, _select) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let iteration = orch.iteration(IterationId::new(1552)).unwrap();
     assert!(
         !iteration_readiness(&iteration, &bundled_default()).review_closed,
@@ -117,7 +126,7 @@ async fn no_close_on_record_means_review_not_ready_1703() {
 
 #[tokio::test]
 async fn non_reviewer_role_is_refused_1703() {
-    let orch = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
+    let (_store, orch, select) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_close_pre_pickup_review(
         &args(1552),
@@ -126,6 +135,7 @@ async fn non_reviewer_role_is_refused_1703() {
         None,
         Some(&orch),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("dev is not a configured iteration-reviewer");
@@ -137,7 +147,7 @@ async fn non_reviewer_role_is_refused_1703() {
 
 #[tokio::test]
 async fn non_iteration_story_is_refused_1703() {
-    let orch = build_orchestrator(vec![feature_seed(1552)]).await;
+    let (_store, orch, select) = build_orchestrator(vec![feature_seed(1552)]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_close_pre_pickup_review(
         &args(1552),
@@ -146,6 +156,7 @@ async fn non_iteration_story_is_refused_1703() {
         None,
         Some(&orch),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("only an Iteration's pre-pickup review can be closed");

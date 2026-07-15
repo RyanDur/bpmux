@@ -23,6 +23,7 @@ pub(in crate::bridge) async fn handle_move_story(
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     let id = args
         .get("id")
@@ -149,7 +150,16 @@ pub(in crate::bridge) async fn handle_move_story(
         }
     }
 
-    scheduling::apply_scheduling(r, dispatch, id, &target, position, scheduling_target).await?;
+    scheduling::apply_scheduling(
+        r,
+        select,
+        dispatch,
+        id,
+        &target,
+        position,
+        scheduling_target,
+    )
+    .await?;
 
     let body = audit_comment_body(&actor_short, &from_display, &target, position, &rationale);
     r.mutate_sync(StoryEvent::new(

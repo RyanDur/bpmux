@@ -28,6 +28,7 @@ pub(super) fn resolve_scheduling_target(
 
 pub(super) async fn apply_scheduling(
     r: &Arc<dyn RefreshDriver>,
+    select: &crate::store::Select,
     dispatch: &crate::store::Dispatch,
     id: u64,
     target: &TargetState,
@@ -56,6 +57,7 @@ pub(super) async fn apply_scheduling(
     if let Some(pos) = join_position {
         crate::bridge::tools_stories::iteration_members::set_member_position(
             r,
+            select,
             dispatch,
             iteration_id.value(),
             id,
