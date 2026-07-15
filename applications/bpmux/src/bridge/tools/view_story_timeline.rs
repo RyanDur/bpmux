@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::sync::RefreshDriver;
-use product_management::story::{CastVerdict, Story, Verdict};
+use product_management::story::{CastVerdict, Story, StoryId, Verdict};
 
 pub fn verdict_as_str(verdict: &Verdict) -> &'static str {
     match verdict {
@@ -45,20 +45,21 @@ pub fn build_timeline_from_board(story: &Story, gates: &[CastVerdict]) -> Vec<se
 pub(in crate::bridge) async fn handle_view_story_timeline(
     args: &serde_json::Map<String, serde_json::Value>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     let id = args
         .get("id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'id' argument")?;
     let r = refresh.ok_or("view_story_timeline requires refresh (canonical-store)")?;
-    let mut story = r
-        .story(id)
+    let mut story = select
+        .select(|s| product_management::story::slice::get(&s.stories, StoryId::new(id)))
         .ok_or_else(|| format!("story #{id} not found in board"))?;
     if story.verdicts.is_none() {
         match r.fetch_verdicts(id).await {
             Ok(_) => {
-                story = r
-                    .story(id)
+                story = select
+                    .select(|s| product_management::story::slice::get(&s.stories, StoryId::new(id)))
                     .ok_or_else(|| format!("story #{id} not found in board after gate fetch"))?;
             }
             Err(e) => {

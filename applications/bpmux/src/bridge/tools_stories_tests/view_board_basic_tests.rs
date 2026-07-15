@@ -7,7 +7,8 @@ use protocol::ClientMessage;
 
 #[tokio::test]
 async fn view_board_requires_refresh_after_5l_fallback_retirement() {
-    let result = handle_view_board(&serde_json::Map::new(), None).await;
+    let select = crate::store::Select::new(std::sync::Weak::new());
+    let result = handle_view_board(&serde_json::Map::new(), None, &select).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -34,13 +35,15 @@ async fn view_board_auto_reingests_when_store_is_empty() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
+    let select = store.select();
     assert!(
         orch.all_stories().is_empty(),
         "store must start empty (simulates post-restart cache-loss); got: {:?}",
         orch.all_stories()
     );
-    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch), &select)
         .await
         .unwrap();
     assert!(
@@ -65,9 +68,11 @@ async fn view_board_handles_refresh_succeeding_with_empty_result_without_errors(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
+    let select = store.select();
 
-    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch), &select)
         .await
         .expect(
             "view_board must return Ok even when adapter source-of-truth has 0 stories — \
@@ -97,9 +102,11 @@ async fn view_board_handles_refresh_failing_returns_honest_empty_with_diag_log()
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
+    let select = store.select();
 
-    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch), &select)
         .await
         .expect("view_board must return Ok even when adapter ingest fails — fail-soft");
 
@@ -181,10 +188,12 @@ async fn view_board_buckets_stories_by_story_state() {
         is_current: true,
         complete: false,
     };
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![current], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![current], vec![]);
+    store.bind_refresh(&orch);
+    let select = store.select();
     orch.refresh_all().await.unwrap();
 
-    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch), &select)
         .await
         .unwrap();
 
@@ -236,10 +245,12 @@ async fn view_board_buckets_concluded_stories_into_retired_or_accepted_column() 
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
+    let select = store.select();
     orch.refresh_all().await.unwrap();
 
-    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch), &select)
         .await
         .unwrap();
 

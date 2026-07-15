@@ -19,16 +19,28 @@ fn seed_adapter(adapter: &InMemorySourceAdapter, seeded: &[(Story, Vec<String>)]
     adapter.seed_stories(seeded.iter().map(|(s, _)| s.clone()).collect());
 }
 
+fn epic_list(seeded: &[(Story, Vec<String>)]) -> Vec<Epic> {
+    seeded
+        .iter()
+        .filter(|(story, labels)| is_epic_story(story, labels))
+        .map(|(story, _)| decode_epic_from_story(story, false))
+        .collect()
+}
+
 fn bind_epics(
     orch: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     seeded: &[(Story, Vec<String>)],
 ) {
-    let epics: Vec<Epic> = seeded
-        .iter()
-        .filter(|(story, labels)| is_epic_story(story, labels))
-        .map(|(story, _)| decode_epic_from_story(story, false))
-        .collect();
-    crate::store::bind_seeded_refresh(orch, vec![], vec![], epics);
+    crate::store::bind_seeded_refresh(orch, vec![], vec![], epic_list(seeded));
+}
+
+fn seeded_store_with_epics(
+    orch: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    seeded: &[(Story, Vec<String>)],
+) -> crate::store::SeededStore {
+    let store = crate::store::SeededStore::new(vec![], vec![], epic_list(seeded));
+    store.bind_refresh(orch);
+    store
 }
 
 #[tokio::test]
@@ -410,9 +422,10 @@ async fn view_board_renders_epic_summary_section_with_child_progress() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    bind_epics(&orch, &seeded);
+    let store = seeded_store_with_epics(&orch, &seeded);
+    let select = store.select();
     orch.refresh_all().await.unwrap();
-    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch), &select)
         .await
         .unwrap();
     assert!(
@@ -457,9 +470,11 @@ async fn view_board_omits_epic_section_when_no_epics_present() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
+    let select = store.select();
     orch.refresh_all().await.unwrap();
-    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch), &select)
         .await
         .unwrap();
     assert!(
@@ -492,9 +507,10 @@ async fn view_board_filters_epic_stories_out_of_state_lanes() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    bind_epics(&orch, &seeded);
+    let store = seeded_store_with_epics(&orch, &seeded);
+    let select = store.select();
     orch.refresh_all().await.unwrap();
-    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch), &select)
         .await
         .unwrap();
     assert!(
@@ -568,9 +584,10 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    bind_epics(&orch, &seeded);
+    let store = seeded_store_with_epics(&orch, &seeded);
+    let select = store.select();
     orch.refresh_all().await.unwrap();
-    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch), &select)
         .await
         .unwrap();
     assert!(
@@ -614,9 +631,10 @@ async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    bind_epics(&orch, &seeded);
+    let store = seeded_store_with_epics(&orch, &seeded);
+    let select = store.select();
     orch.refresh_all().await.unwrap();
-    let out = handle_view_board(&serde_json::Map::new(), Some(&orch))
+    let out = handle_view_board(&serde_json::Map::new(), Some(&orch), &select)
         .await
         .unwrap();
     assert!(

@@ -164,12 +164,14 @@ pub(super) async fn dispatch(
         "edit_story" => {
             bridge::dispatch_edit_story(args, agent, role, actor_id, refresh_ref, dispatcher).await
         }
-        "view_board" => bridge::dispatch_view_board(args, refresh_ref).await,
+        "view_board" => bridge::dispatch_view_board(args, refresh_ref, select).await,
         "get_story" => bridge::dispatch_get_story(args, refresh_ref).await,
         "list_ready" => bridge::dispatch_list_ready(select).await,
         "list_epic_children" => bridge::dispatch_list_epic_children(args, select).await,
         "dev_in_flight" => bridge::dispatch_dev_in_flight(select).await,
-        "view_story_timeline" => bridge::dispatch_view_story_timeline(args, refresh_ref).await,
+        "view_story_timeline" => {
+            bridge::dispatch_view_story_timeline(args, refresh_ref, select).await
+        }
         "view_comments" => bridge::dispatch_view_comments(args, select).await,
         "view_backlog" => bridge::dispatch_view_backlog(select).await,
         "submit_verdict" => {

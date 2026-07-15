@@ -164,7 +164,7 @@ async fn response_correctness_returns_503_when_test_mode_disabled() {
 
 #[tokio::test]
 async fn roundtrip_coherence_view_board_reflects_new_story() {
-    let (router, refresh, _select) = fixture_test_mode_on().await;
+    let (router, refresh, select) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] roundtrip-marker-A",
         "user_job":"When testing, dev needs roundtrip verification.",
@@ -173,7 +173,7 @@ async fn roundtrip_coherence_view_board_reflects_new_story() {
     let resp = post_create_story(router, body).await;
     assert_eq!(resp.status(), StatusCode::OK);
 
-    let view = bridge::dispatch_view_board(serde_json::Map::new(), Some(&refresh))
+    let view = bridge::dispatch_view_board(serde_json::Map::new(), Some(&refresh), &select)
         .await
         .expect("view_board returns Ok");
     assert!(
