@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
-use super::unfurl::extract_from_html;
-use super::unfurl::*;
+use crate::extract_from_html;
+use crate::*;
 use std::time::Duration;
 
 #[test]

@@ -25,6 +25,7 @@ members = [
     "components/source_codec",
     "components/source_sync",
     "components/storage",
+    "components/unfurl",
     "components/user_routing",
     "components/view",
     "components/workflow",
@@ -48,6 +49,8 @@ tempfile = "3"
 aho-corasick = "1.1.4"
 dirs = "6"
 tokio-util = "0.7.18"
+url = "2"
+reqwest = "0.13.2"
 
 [workspace.lints.rust]
 dead_code = "deny"

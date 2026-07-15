@@ -29,6 +29,4 @@ mod test_routes_mock_octocrab_tests;
 #[cfg(test)]
 mod test_routes_tests;
 #[cfg(test)]
-mod unfurl_tests;
-#[cfg(test)]
 mod ws_tests;
