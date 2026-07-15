@@ -80,6 +80,7 @@ pub async fn post_reset_messages(State(hub): State<Arc<hub::Hub>>) -> impl IntoR
 pub async fn post_reset_stories(
     State(hub): State<Arc<hub::Hub>>,
     axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
+    axum::Extension(select): axum::Extension<crate::store::Select>,
 ) -> impl IntoResponse {
     let Some(refresh) = orchestrator.as_ref() else {
         return (
@@ -103,7 +104,7 @@ pub async fn post_reset_stories(
             "post_reset_stories: board_invalidated state-delta broadcast failed: {e}"
         ));
     }
-    crate::transport::rest::shared::broadcast_stories(&hub, refresh);
+    crate::transport::rest::shared::broadcast_stories(&hub, &select);
     (StatusCode::OK, "reset stories".to_string())
 }
 
@@ -147,6 +148,7 @@ pub async fn post_seed_stories(
     State(hub): State<Arc<hub::Hub>>,
     axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
     axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
+    axum::Extension(select): axum::Extension<crate::store::Select>,
     Json(body): Json<SeedStoriesBody>,
 ) -> impl IntoResponse {
     let Some(refresh) = orchestrator.as_ref() else {
@@ -309,7 +311,7 @@ pub async fn post_seed_stories(
             "post_seed_stories: board_invalidated state-delta broadcast failed: {e}"
         ));
     }
-    crate::transport::rest::shared::broadcast_stories(&hub, refresh);
+    crate::transport::rest::shared::broadcast_stories(&hub, &select);
     (
         StatusCode::CREATED,
         format!("seeded {} stories", body.stories.len()),

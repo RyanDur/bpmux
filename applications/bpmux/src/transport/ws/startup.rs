@@ -25,33 +25,34 @@ pub(super) async fn send_startup_frames(
     send_json(tx, &ServerMessage::Welcome {}).await?;
     let snapshot_msg = build_state_snapshot_message(store);
     send_json(tx, &ServerMessage::from(snapshot_msg)).await?;
-    if let Some(refresh) = orchestrator.as_ref() {
-        let stories = serde_json::Value::Array(crate::transport::rest::board_stories(refresh));
+    if orchestrator.as_ref().is_some() {
+        let select = store.selector();
+        let stories = serde_json::Value::Array(crate::transport::rest::board_stories(&select));
         send_json(
             tx,
             &ServerMessage::from(crate::transport::rest::stories_message(stories)),
         )
         .await?;
-        let epics = serde_json::Value::Array(crate::transport::rest::board_epics(refresh));
+        let epics = serde_json::Value::Array(crate::transport::rest::board_epics(&select));
         send_json(
             tx,
             &ServerMessage::from(crate::transport::rest::epics_message(epics)),
         )
         .await?;
-        let outcomes = serde_json::Value::Array(crate::transport::rest::board_outcomes(refresh));
+        let outcomes = serde_json::Value::Array(crate::transport::rest::board_outcomes(&select));
         send_json(
             tx,
             &ServerMessage::from(crate::transport::rest::outcomes_message(outcomes)),
         )
         .await?;
         let iterations =
-            serde_json::Value::Array(crate::transport::rest::board_iterations(refresh));
+            serde_json::Value::Array(crate::transport::rest::board_iterations(&select));
         send_json(
             tx,
             &ServerMessage::from(crate::transport::rest::iterations_message(iterations)),
         )
         .await?;
-        let roadmap = serde_json::Value::Array(crate::transport::rest::board_roadmap(refresh));
+        let roadmap = serde_json::Value::Array(crate::transport::rest::board_roadmap(&select));
         send_json(
             tx,
             &ServerMessage::from(crate::transport::rest::roadmap_message(roadmap)),

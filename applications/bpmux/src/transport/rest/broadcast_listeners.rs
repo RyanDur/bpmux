@@ -5,12 +5,12 @@ use kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
 
 pub struct OutcomeBroadcast {
     hub: Arc<crate::hub::Hub>,
-    refresh: Arc<dyn crate::sync::RefreshDriver>,
+    select: crate::store::Select,
 }
 
 impl OutcomeBroadcast {
-    pub fn new(hub: Arc<crate::hub::Hub>, refresh: Arc<dyn crate::sync::RefreshDriver>) -> Self {
-        Self { hub, refresh }
+    pub fn new(hub: Arc<crate::hub::Hub>, select: crate::store::Select) -> Self {
+        Self { hub, select }
     }
 }
 
@@ -20,10 +20,10 @@ impl Listener<AppState, AppAction> for OutcomeBroadcast {
             return Box::pin(async {});
         }
         let hub = Arc::clone(&self.hub);
-        let refresh = Arc::clone(&self.refresh);
+        let select = self.select.clone();
         Box::pin(async move {
-            super::shared::broadcast_outcomes(&hub, &refresh);
-            super::shared::broadcast_roadmap(&hub, &refresh);
+            super::shared::broadcast_outcomes(&hub, &select);
+            super::shared::broadcast_roadmap(&hub, &select);
         })
     }
 
@@ -34,12 +34,12 @@ impl Listener<AppState, AppAction> for OutcomeBroadcast {
 
 pub struct IterationBroadcast {
     hub: Arc<crate::hub::Hub>,
-    refresh: Arc<dyn crate::sync::RefreshDriver>,
+    select: crate::store::Select,
 }
 
 impl IterationBroadcast {
-    pub fn new(hub: Arc<crate::hub::Hub>, refresh: Arc<dyn crate::sync::RefreshDriver>) -> Self {
-        Self { hub, refresh }
+    pub fn new(hub: Arc<crate::hub::Hub>, select: crate::store::Select) -> Self {
+        Self { hub, select }
     }
 }
 
@@ -49,11 +49,11 @@ impl Listener<AppState, AppAction> for IterationBroadcast {
             return Box::pin(async {});
         }
         let hub = Arc::clone(&self.hub);
-        let refresh = Arc::clone(&self.refresh);
+        let select = self.select.clone();
         Box::pin(async move {
-            super::shared::broadcast_iterations(&hub, &refresh);
-            super::shared::broadcast_outcomes(&hub, &refresh);
-            super::shared::broadcast_roadmap(&hub, &refresh);
+            super::shared::broadcast_iterations(&hub, &select);
+            super::shared::broadcast_outcomes(&hub, &select);
+            super::shared::broadcast_roadmap(&hub, &select);
         })
     }
 
@@ -64,12 +64,12 @@ impl Listener<AppState, AppAction> for IterationBroadcast {
 
 pub struct EpicBroadcast {
     hub: Arc<crate::hub::Hub>,
-    refresh: Arc<dyn crate::sync::RefreshDriver>,
+    select: crate::store::Select,
 }
 
 impl EpicBroadcast {
-    pub fn new(hub: Arc<crate::hub::Hub>, refresh: Arc<dyn crate::sync::RefreshDriver>) -> Self {
-        Self { hub, refresh }
+    pub fn new(hub: Arc<crate::hub::Hub>, select: crate::store::Select) -> Self {
+        Self { hub, select }
     }
 }
 
@@ -79,9 +79,9 @@ impl Listener<AppState, AppAction> for EpicBroadcast {
             return Box::pin(async {});
         }
         let hub = Arc::clone(&self.hub);
-        let refresh = Arc::clone(&self.refresh);
+        let select = self.select.clone();
         Box::pin(async move {
-            super::shared::broadcast_epics(&hub, &refresh);
+            super::shared::broadcast_epics(&hub, &select);
         })
     }
 
@@ -92,12 +92,12 @@ impl Listener<AppState, AppAction> for EpicBroadcast {
 
 pub struct StoryBroadcast {
     hub: Arc<crate::hub::Hub>,
-    refresh: Arc<dyn crate::sync::RefreshDriver>,
+    select: crate::store::Select,
 }
 
 impl StoryBroadcast {
-    pub fn new(hub: Arc<crate::hub::Hub>, refresh: Arc<dyn crate::sync::RefreshDriver>) -> Self {
-        Self { hub, refresh }
+    pub fn new(hub: Arc<crate::hub::Hub>, select: crate::store::Select) -> Self {
+        Self { hub, select }
     }
 }
 
@@ -107,13 +107,13 @@ impl Listener<AppState, AppAction> for StoryBroadcast {
             return Box::pin(async {});
         }
         let hub = Arc::clone(&self.hub);
-        let refresh = Arc::clone(&self.refresh);
+        let select = self.select.clone();
         Box::pin(async move {
-            super::shared::broadcast_stories(&hub, &refresh);
-            super::shared::broadcast_epics(&hub, &refresh);
-            super::shared::broadcast_outcomes(&hub, &refresh);
-            super::shared::broadcast_iterations(&hub, &refresh);
-            super::shared::broadcast_roadmap(&hub, &refresh);
+            super::shared::broadcast_stories(&hub, &select);
+            super::shared::broadcast_epics(&hub, &select);
+            super::shared::broadcast_outcomes(&hub, &select);
+            super::shared::broadcast_iterations(&hub, &select);
+            super::shared::broadcast_roadmap(&hub, &select);
         })
     }
 

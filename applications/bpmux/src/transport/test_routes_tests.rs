@@ -25,8 +25,11 @@ async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>) {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.expect("seed-empty ingest");
+    let select = store.select();
+    std::mem::forget(store);
     let orchestrator: OrchestratorHandle = Some(orch.clone());
     let none_tracker: super::rest::TrackerHandle = None;
     let router = axum::Router::new()
@@ -46,7 +49,8 @@ async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>) {
         .with_state(fresh_test_hub())
         .layer(axum::Extension(orchestrator))
         .layer(axum::Extension(none_tracker))
-        .layer(axum::Extension(crate::store::Dispatch::recording().0));
+        .layer(axum::Extension(crate::store::Dispatch::recording().0))
+        .layer(axum::Extension(select));
     (router, orch)
 }
 
@@ -60,6 +64,9 @@ fn fixture_test_mode_off() -> axum::Router {
         .with_state(fresh_test_hub())
         .layer(axum::Extension(none_refresh))
         .layer(axum::Extension(crate::store::Dispatch::recording().0))
+        .layer(axum::Extension(crate::store::Select::new(
+            std::sync::Weak::new(),
+        )))
 }
 
 async fn post_create_story(router: axum::Router, body: &str) -> axum::http::Response<Body> {
@@ -226,14 +233,16 @@ async fn rest_get_board_auto_reingests_when_orchestrator_store_is_empty() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
     let orchestrator: OrchestratorHandle = Some(orch.clone());
     let none_tracker: super::rest::TrackerHandle = None;
     let router = axum::Router::new()
         .route("/api/board", axum::routing::get(super::rest::get_board))
         .with_state(fresh_test_hub())
         .layer(axum::Extension(orchestrator))
-        .layer(axum::Extension(none_tracker));
+        .layer(axum::Extension(none_tracker))
+        .layer(axum::Extension(store.select()));
 
     assert!(
         orch.all_stories().is_empty(),

@@ -35,7 +35,7 @@ fn seed_outcome(id: u64, title: &str, labels: &[&str]) -> (Story, Vec<String>) {
     (s, labels.iter().map(ToString::to_string).collect())
 }
 
-async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
+async fn seeded_store(seeds: Vec<(Story, Vec<String>)>) -> crate::store::SeededStore {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     for (story, labels) in &seeds {
         adapter.seed_labels(story.id.value(), labels.clone());
@@ -55,20 +55,21 @@ async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDrive
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
         .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
         .collect();
-    crate::store::bind_seeded_refresh(&orch, seeded, iterations, vec![]);
+    let store = crate::store::SeededStore::new(seeded, iterations, vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
-    orch
+    store
 }
 
 #[tokio::test]
 async fn board_roadmap_serves_flat_priority_cards_carrying_the_enriched_state() {
-    let refresh = build_refresh(vec![
+    let store = seeded_store(vec![
         seed_outcome(710, "Later thing", &["outcome", "horizon.later"]),
         seed_outcome(700, "Now thing", &["outcome", "horizon.now"]),
     ])
     .await;
 
-    let cards = board_roadmap(&refresh);
+    let cards = board_roadmap(&store.select());
 
     assert_eq!(cards.len(), 2, "both non-retired outcomes reach the wire");
     assert_eq!(
@@ -108,13 +109,13 @@ async fn board_iterations_carry_the_outcome_membership_join_key_for_the_drill() 
         }
         .write_into_body("## Outcome\n"),
     );
-    let refresh = build_refresh(vec![
+    let store = seeded_store(vec![
         (outcome, outcome_labels),
         (iteration, iteration_labels),
     ])
     .await;
 
-    let iterations = board_iterations(&refresh);
+    let iterations = board_iterations(&store.select());
     let mapped = iterations
         .iter()
         .find(|i| i["id"] == 810)

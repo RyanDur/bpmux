@@ -67,23 +67,24 @@ pub(crate) fn build_store_with_refresh(
         parent_ct.clone(),
     ));
     parts.app_store.add_listener(sync_poll);
+    let board_select = crate::store::Select::new(std::sync::Arc::downgrade(&parts.app_store));
     parts.app_store.add_listener(Arc::new(OutcomeBroadcast::new(
         parts.hub.clone(),
-        refresh.clone(),
+        board_select.clone(),
     )));
     parts
         .app_store
         .add_listener(Arc::new(IterationBroadcast::new(
             parts.hub.clone(),
-            refresh.clone(),
+            board_select.clone(),
         )));
     parts.app_store.add_listener(Arc::new(EpicBroadcast::new(
         parts.hub.clone(),
-        refresh.clone(),
+        board_select.clone(),
     )));
     parts.app_store.add_listener(Arc::new(StoryBroadcast::new(
         parts.hub.clone(),
-        refresh.clone(),
+        board_select.clone(),
     )));
     parts.app_store.add_listener(Arc::new(OwnerParkListener));
     parts

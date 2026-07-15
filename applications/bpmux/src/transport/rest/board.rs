@@ -1,24 +1,23 @@
-use std::sync::Arc;
-
-pub(crate) fn ordered_board_stories(
-    refresh: &Arc<dyn crate::sync::RefreshDriver>,
-) -> Vec<serde_json::Value> {
-    let all = refresh.all_stories();
-    let iterations = refresh.iterations();
-    let codec = source_codec::gh_label_codec::GhLabelCodec;
-    let items: Vec<serde_json::Value> = all
-        .iter()
-        .map(|s| {
-            let projected = product_management::scheduling::projected_state(s, &iterations);
-            let state = board::wire_state(&projected, refresh.story_held_stage(s).as_ref());
-            view::board::story_to_board_json(&codec, s, &state)
-        })
-        .collect();
-    let current_order: Vec<u64> =
-        product_management::iteration::label::current_iteration(&iterations)
-            .map(|iteration| iteration.stories.iter().map(|id| id.value()).collect())
-            .unwrap_or_default();
-    sort_ready_by_membership(items, &current_order)
+pub(crate) fn ordered_board_stories(select: &crate::store::Select) -> Vec<serde_json::Value> {
+    select.select(|state| {
+        let all = product_management::story::slice::all(&state.stories);
+        let iterations = product_management::iteration::all(&state.iterations);
+        let codec = source_codec::gh_label_codec::GhLabelCodec;
+        let items: Vec<serde_json::Value> = all
+            .iter()
+            .map(|story| {
+                let projected = product_management::scheduling::projected_state(story, &iterations);
+                let wire =
+                    board::wire_state(&projected, board::held_stage(story, &state.board).as_ref());
+                view::board::story_to_board_json(&codec, story, &wire)
+            })
+            .collect();
+        let current_order: Vec<u64> =
+            product_management::iteration::label::current_iteration(&iterations)
+                .map(|iteration| iteration.stories.iter().map(|id| id.value()).collect())
+                .unwrap_or_default();
+        sort_ready_by_membership(items, &current_order)
+    })
 }
 
 pub(crate) fn sort_ready_by_membership(
@@ -48,10 +47,8 @@ pub(crate) fn sort_ready_by_membership(
     by_state.into_iter().flat_map(|(_, list)| list).collect()
 }
 
-pub(crate) fn board_stories(
-    refresh: &Arc<dyn crate::sync::RefreshDriver>,
-) -> Vec<serde_json::Value> {
-    ordered_board_stories(refresh)
+pub(crate) fn board_stories(select: &crate::store::Select) -> Vec<serde_json::Value> {
+    ordered_board_stories(select)
 }
 
 pub(crate) fn board_columns_json() -> Vec<serde_json::Value> {
@@ -91,72 +88,71 @@ fn title_case(id: &str) -> String {
         .join(" ")
 }
 
-pub(crate) fn board_epics(refresh: &Arc<dyn crate::sync::RefreshDriver>) -> Vec<serde_json::Value> {
-    let stories = refresh.all_stories();
-    let iterations = refresh.iterations();
-    refresh
-        .epics()
-        .iter()
-        .map(|epic| {
-            let children = product_management::epic::children_of(&stories, epic.id);
-            let derived = product_management::epic::derive_epic_state(&children, &iterations);
-            serde_json::json!({
-                "id": epic.id.value(),
-                "title": epic.title,
-                "state": derived.as_str(),
-                "closed": epic.is_closed,
-                "labels": ["epic"],
-                "assignees": [],
-                "created_at": epic.filed_at.to_rfc3339(),
-                "body": epic.body.clone().unwrap_or_default(),
-                "parent_epic": serde_json::Value::Null,
+pub(crate) fn board_epics(select: &crate::store::Select) -> Vec<serde_json::Value> {
+    select.select(|state| {
+        let stories = product_management::story::slice::all(&state.stories);
+        let iterations = product_management::iteration::all(&state.iterations);
+        product_management::epic::all(&state.epics)
+            .iter()
+            .map(|epic| {
+                let children = product_management::epic::children_of(&stories, epic.id);
+                let derived = product_management::epic::derive_epic_state(&children, &iterations);
+                serde_json::json!({
+                    "id": epic.id.value(),
+                    "title": epic.title,
+                    "state": derived.as_str(),
+                    "closed": epic.is_closed,
+                    "labels": ["epic"],
+                    "assignees": [],
+                    "created_at": epic.filed_at.to_rfc3339(),
+                    "body": epic.body.clone().unwrap_or_default(),
+                    "parent_epic": serde_json::Value::Null,
+                })
             })
-        })
-        .collect()
+            .collect()
+    })
 }
 
-pub(crate) fn board_iterations(
-    refresh: &Arc<dyn crate::sync::RefreshDriver>,
-) -> Vec<serde_json::Value> {
+pub(crate) fn board_iterations(select: &crate::store::Select) -> Vec<serde_json::Value> {
     use view::board::IterationView;
-    let outcomes = refresh.outcomes();
-    let workflow = workflow::current_workflow();
-    refresh
-        .iterations()
+    select.select(|state| {
+        let outcomes = product_management::outcome::all(&state.outcomes);
+        let workflow = workflow::current_workflow();
+        product_management::iteration::all(&state.iterations)
+            .iter()
+            .map(|iteration| {
+                serde_json::to_value(IterationView::project(iteration, &outcomes, workflow))
+                    .unwrap_or_default()
+            })
+            .collect()
+    })
+}
+
+pub(crate) fn board_roadmap(select: &crate::store::Select) -> Vec<serde_json::Value> {
+    select.select(|state| {
+        product_management::roadmap::selectors::roadmap_cards(
+            &product_management::outcome::all(&state.outcomes),
+            &product_management::iteration::all(&state.iterations),
+            workflow::current_workflow(),
+        )
         .iter()
-        .map(|iteration| {
-            serde_json::to_value(IterationView::project(iteration, &outcomes, workflow))
-                .unwrap_or_default()
-        })
+        .filter_map(|card| serde_json::to_value(card).ok())
         .collect()
+    })
 }
 
-pub(crate) fn board_roadmap(
-    refresh: &Arc<dyn crate::sync::RefreshDriver>,
-) -> Vec<serde_json::Value> {
-    product_management::roadmap::selectors::roadmap_cards(
-        &refresh.outcomes(),
-        &refresh.iterations(),
-        workflow::current_workflow(),
-    )
-    .iter()
-    .filter_map(|card| serde_json::to_value(card).ok())
-    .collect()
-}
-
-pub(crate) fn board_outcomes(
-    refresh: &Arc<dyn crate::sync::RefreshDriver>,
-) -> Vec<serde_json::Value> {
+pub(crate) fn board_outcomes(select: &crate::store::Select) -> Vec<serde_json::Value> {
     use view::board::OutcomeView;
-    let all_iterations = refresh.iterations();
-    let workflow = workflow::current_workflow();
-    refresh
-        .outcomes()
-        .iter()
-        .filter(|outcome| !outcome.is_retired())
-        .map(|outcome| {
-            serde_json::to_value(OutcomeView::project(outcome, &all_iterations, workflow))
-                .unwrap_or_default()
-        })
-        .collect()
+    select.select(|state| {
+        let all_iterations = product_management::iteration::all(&state.iterations);
+        let workflow = workflow::current_workflow();
+        product_management::outcome::all(&state.outcomes)
+            .iter()
+            .filter(|outcome| !outcome.is_retired())
+            .map(|outcome| {
+                serde_json::to_value(OutcomeView::project(outcome, &all_iterations, workflow))
+                    .unwrap_or_default()
+            })
+            .collect()
+    })
 }

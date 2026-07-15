@@ -98,7 +98,7 @@ pub async fn post_rpc_tool(
                 fire_view_backlog_marker(&hub);
             } else if !is_read_only_tool(&tool) {
                 fire_board_invalidate(&hub);
-                fire_stories(&hub, &refresh);
+                fire_stories(&hub, &select);
                 if let (Some(id), Some(from_state)) = (transition_id, prior_state)
                     && let Some(target_state) =
                         declared_target_state.or_else(|| story_state_label(&refresh, id))

@@ -33,6 +33,7 @@ pub async fn post_close_iteration(
     State(hub): State<Arc<hub::Hub>>,
     axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
     axum::Extension(dispatch): axum::Extension<crate::store::Dispatch>,
+    axum::Extension(select): axum::Extension<crate::store::Select>,
     body: Option<axum::Json<CloseIterationRequest>>,
 ) -> impl IntoResponse {
     let Some(iteration_id) = body.and_then(|b| b.0.iteration_id) else {
@@ -54,7 +55,7 @@ pub async fn post_close_iteration(
     match close_iteration(&hub, refresh, &dispatch, iteration_id).await {
         Ok(()) => {
             broadcast_board_invalidate(&hub);
-            broadcast_stories(&hub, refresh);
+            broadcast_stories(&hub, &select);
             let body = serde_json::json!({
                 "promoted": Vec::<u64>::new(),
                 "deleted_marker_id": serde_json::Value::Null,

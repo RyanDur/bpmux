@@ -37,6 +37,7 @@ pub async fn post_story_labels(
     State(hub): State<Arc<hub::Hub>>,
     axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
     axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
+    axum::Extension(select): axum::Extension<crate::store::Select>,
     axum::extract::Path(id): axum::extract::Path<u64>,
     Json(payload): Json<LabelMutationPayload>,
 ) -> impl IntoResponse {
@@ -139,7 +140,7 @@ pub async fn post_story_labels(
         ));
     }
     broadcast_board_invalidate(&hub);
-    broadcast_stories(&hub, &refresh);
+    broadcast_stories(&hub, &select);
     (
         StatusCode::OK,
         json_headers(),

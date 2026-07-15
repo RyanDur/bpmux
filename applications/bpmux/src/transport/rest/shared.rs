@@ -53,8 +53,8 @@ pub(crate) fn stories_message(stories: serde_json::Value) -> message::Message {
     }
 }
 
-pub(crate) fn broadcast_stories(hub: &hub::Hub, refresh: &Arc<dyn crate::sync::RefreshDriver>) {
-    let stories = serde_json::Value::Array(super::board::ordered_board_stories(refresh));
+pub(crate) fn broadcast_stories(hub: &hub::Hub, select: &crate::store::Select) {
+    let stories = serde_json::Value::Array(super::board::ordered_board_stories(select));
     hub.broadcast_ephemeral(&stories_message(stories));
 }
 
@@ -69,8 +69,8 @@ pub(crate) fn epics_message(epics: serde_json::Value) -> message::Message {
     }
 }
 
-pub(crate) fn broadcast_epics(hub: &hub::Hub, refresh: &Arc<dyn crate::sync::RefreshDriver>) {
-    let epics = serde_json::Value::Array(super::board::board_epics(refresh));
+pub(crate) fn broadcast_epics(hub: &hub::Hub, select: &crate::store::Select) {
+    let epics = serde_json::Value::Array(super::board::board_epics(select));
     hub.broadcast_ephemeral(&epics_message(epics));
 }
 
@@ -85,8 +85,8 @@ pub(crate) fn outcomes_message(outcomes: serde_json::Value) -> message::Message 
     }
 }
 
-pub(crate) fn broadcast_outcomes(hub: &hub::Hub, refresh: &Arc<dyn crate::sync::RefreshDriver>) {
-    let outcomes = serde_json::Value::Array(super::board::board_outcomes(refresh));
+pub(crate) fn broadcast_outcomes(hub: &hub::Hub, select: &crate::store::Select) {
+    let outcomes = serde_json::Value::Array(super::board::board_outcomes(select));
     hub.broadcast_ephemeral(&outcomes_message(outcomes));
 }
 
@@ -101,8 +101,8 @@ pub(crate) fn iterations_message(iterations: serde_json::Value) -> message::Mess
     }
 }
 
-pub(crate) fn broadcast_iterations(hub: &hub::Hub, refresh: &Arc<dyn crate::sync::RefreshDriver>) {
-    let iterations = serde_json::Value::Array(super::board::board_iterations(refresh));
+pub(crate) fn broadcast_iterations(hub: &hub::Hub, select: &crate::store::Select) {
+    let iterations = serde_json::Value::Array(super::board::board_iterations(select));
     hub.broadcast_ephemeral(&iterations_message(iterations));
 }
 
@@ -117,7 +117,7 @@ pub(crate) fn roadmap_message(roadmap: serde_json::Value) -> message::Message {
     }
 }
 
-pub(crate) fn broadcast_roadmap(hub: &hub::Hub, refresh: &Arc<dyn crate::sync::RefreshDriver>) {
-    let roadmap = serde_json::Value::Array(super::board::board_roadmap(refresh));
+pub(crate) fn broadcast_roadmap(hub: &hub::Hub, select: &crate::store::Select) {
+    let roadmap = serde_json::Value::Array(super::board::board_roadmap(select));
     hub.broadcast_ephemeral(&roadmap_message(roadmap));
 }

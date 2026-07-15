@@ -30,7 +30,8 @@ async fn reordering_a_member_through_the_label_endpoint_never_orphans_it_1524() 
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&refresh, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&refresh);
     refresh.refresh_all().await.unwrap();
     assert!(
         adapter
@@ -56,6 +57,7 @@ async fn reordering_a_member_through_the_label_endpoint_never_orphans_it_1524() 
         State(hub),
         axum::Extension(Some(Arc::clone(&refresh))),
         axum::Extension(crate::store::Dispatch::recording().0),
+        axum::Extension(store.select()),
         Path(1687),
         Json(payload),
     )

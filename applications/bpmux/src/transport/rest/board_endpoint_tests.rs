@@ -11,7 +11,7 @@ use source_codec::mapper::{decode_iteration_from_story, decode_outcome_from_stor
 use source_codec::relationships::{IterationRelationships, OutcomeRelationships, Relationships};
 use std::sync::Arc;
 
-async fn orchestrator(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
+async fn seeded_store(seeds: Vec<(Story, Vec<String>)>) -> crate::store::SeededStore {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     for (story, labels) in &seeds {
         adapter.seed_labels(story.id.value(), labels.clone());
@@ -31,9 +31,10 @@ async fn orchestrator(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
         .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
         .collect();
-    crate::store::bind_seeded_refresh(&orch, seeded, iterations, vec![]);
+    let store = crate::store::SeededStore::new(seeded, iterations, vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
-    orch
+    store
 }
 
 fn iteration(id: u64) -> (Story, Vec<String>) {
@@ -160,9 +161,10 @@ async fn board_ready_order(stories: Vec<Story>, iterations: Vec<Iteration>) -> V
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&refresh, vec![], iterations, vec![]);
+    let store = crate::store::SeededStore::new(vec![], iterations, vec![]);
+    store.bind_refresh(&refresh);
     refresh.refresh_all().await.unwrap();
-    ordered_board_stories(&refresh)
+    ordered_board_stories(&store.select())
         .iter()
         .filter(|s| s["state"].as_str() == Some("ready"))
         .map(|s| s["id"].as_u64().expect("ready story id is numeric"))
@@ -231,7 +233,8 @@ async fn an_optimistic_reject_is_visible_on_the_board_snapshot_before_it_reaches
         is_current: true,
         complete: false,
     };
-    crate::store::bind_seeded_refresh(&refresh, vec![], vec![current], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![current], vec![]);
+    store.bind_refresh(&refresh);
     refresh.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -250,7 +253,7 @@ async fn an_optimistic_reject_is_visible_on_the_board_snapshot_before_it_reaches
     .await
     .expect("pm rejects the story");
 
-    let stories = ordered_board_stories(&refresh);
+    let stories = ordered_board_stories(&store.select());
     assert_eq!(
         find_story(&stories, 9100)["state"].as_str(),
         Some("ready"),
@@ -265,12 +268,12 @@ async fn an_optimistic_reject_is_visible_on_the_board_snapshot_before_it_reaches
 
 #[tokio::test]
 async fn outcomes_delta_carries_rolled_up_readiness_and_building_iterations_1738() {
-    let orch = orchestrator(vec![
+    let store = seeded_store(vec![
         outcome(3000, vec![3010]),
         building_iteration(3010, 3000, vec![3011]),
     ])
     .await;
-    let outcomes = board_outcomes(&orch);
+    let outcomes = board_outcomes(&store.select());
     let outcome = find(&outcomes, 3000);
     let rolled = &outcome["outcome_readiness"];
     assert_eq!(
@@ -299,8 +302,8 @@ async fn outcomes_delta_carries_rolled_up_readiness_and_building_iterations_1738
 
 #[tokio::test]
 async fn outcomes_never_ride_in_the_board_story_collection_1738() {
-    let orch = orchestrator(vec![outcome(3000, vec![])]).await;
-    let stories = ordered_board_stories(&orch);
+    let store = seeded_store(vec![outcome(3000, vec![])]).await;
+    let stories = ordered_board_stories(&store.select());
     assert!(
         !stories.iter().any(|s| s["id"].as_u64() == Some(3000)),
         "an outcome is not a story — it never appears in the board story collection"
@@ -309,8 +312,8 @@ async fn outcomes_never_ride_in_the_board_story_collection_1738() {
 
 #[tokio::test]
 async fn iteration_readiness_rides_the_iterations_wire_1703() {
-    let orch = orchestrator(vec![iteration_with_stories(2000, vec![2001])]).await;
-    let iterations = board_iterations(&orch);
+    let store = seeded_store(vec![iteration_with_stories(2000, vec![2001])]).await;
+    let iterations = board_iterations(&store.select());
     let readiness = &find(&iterations, 2000)["readiness"];
     assert_eq!(
         readiness["review_closed"].as_bool(),
@@ -328,8 +331,8 @@ async fn iteration_readiness_rides_the_iterations_wire_1703() {
 
 #[tokio::test]
 async fn iterations_never_ride_in_the_board_story_collection_1703() {
-    let orch = orchestrator(vec![iteration(2000)]).await;
-    let stories = ordered_board_stories(&orch);
+    let store = seeded_store(vec![iteration(2000)]).await;
+    let stories = ordered_board_stories(&store.select());
     assert!(
         !stories.iter().any(|s| s["id"].as_u64() == Some(2000)),
         "an iteration is a planning container, not a story — it never appears in the board story collection (readiness rides the iterations wire)"
@@ -338,8 +341,8 @@ async fn iterations_never_ride_in_the_board_story_collection_1703() {
 
 #[tokio::test]
 async fn non_iteration_story_has_no_readiness_key_1703() {
-    let orch = orchestrator(vec![member(2001, 2000, 100)]).await;
-    let stories = ordered_board_stories(&orch);
+    let store = seeded_store(vec![member(2001, 2000, 100)]).await;
+    let stories = ordered_board_stories(&store.select());
     assert!(
         find_story(&stories, 2001).get("readiness").is_none(),
         "readiness is an iteration-only concern; feature stories carry no readiness key"

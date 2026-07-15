@@ -38,8 +38,8 @@ pub(crate) fn fire_board_invalidate(hub: &Arc<hub::Hub>) {
     }
 }
 
-pub(crate) fn fire_stories(hub: &Arc<hub::Hub>, refresh: &Arc<dyn RefreshDriver>) {
-    crate::transport::rest::shared::broadcast_stories(hub, refresh);
+pub(crate) fn fire_stories(hub: &Arc<hub::Hub>, select: &crate::store::Select) {
+    crate::transport::rest::shared::broadcast_stories(hub, select);
 }
 
 pub(crate) fn story_state_label(

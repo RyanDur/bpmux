@@ -7,19 +7,25 @@ use super::shared::{TrackerHandle, err_body, json_headers};
 pub async fn get_board(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
     axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
+    axum::Extension(select): axum::Extension<crate::store::Select>,
 ) -> impl IntoResponse {
     if let Some(refresh) = orchestrator.as_ref() {
-        if refresh.store_is_empty() {
+        if select.select(|s| product_management::story::slice::is_empty(&s.stories)) {
             match refresh.refresh_all().await {
                 Ok(()) => {
-                    if refresh.all_stories().is_empty() {
+                    if select
+                        .select(|s| product_management::story::slice::all(&s.stories))
+                        .is_empty()
+                    {
                         diag::log_diag(
                             "rest get_board: empty store; refresh_all returned Ok with 0 stories — ingest succeeded but source-of-truth empty OR decode dropped all rows",
                         );
                     } else {
                         diag::log_diag(&format!(
                             "rest get_board: empty store; refresh_all recovered {} stories",
-                            refresh.all_stories().len()
+                            select
+                                .select(|s| product_management::story::slice::all(&s.stories))
+                                .len()
                         ));
                     }
                 }
@@ -31,7 +37,7 @@ pub async fn get_board(
             }
         }
         let body = serde_json::json!({
-            "stories": ordered_board_stories(refresh),
+            "stories": ordered_board_stories(&select),
             "columns": super::board::board_columns_json(),
             "fetched_at": chrono::Utc::now().to_rfc3339(),
         });
@@ -64,6 +70,7 @@ pub async fn get_board(
 
 pub async fn get_iterations(
     axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
+    axum::Extension(select): axum::Extension<crate::store::Select>,
 ) -> impl IntoResponse {
     let Some(refresh) = orchestrator.as_ref() else {
         return (
@@ -72,11 +79,11 @@ pub async fn get_iterations(
             err_body("iterations view requires the canonical store"),
         );
     };
-    if refresh.store_is_empty() {
+    if select.select(|s| product_management::story::slice::is_empty(&s.stories)) {
         let _ = refresh.refresh_all().await;
     }
     let body = serde_json::json!({
-        "iterations": board_iterations(refresh),
+        "iterations": board_iterations(&select),
         "fetched_at": chrono::Utc::now().to_rfc3339(),
     });
     (StatusCode::OK, json_headers(), body.to_string())

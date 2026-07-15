@@ -99,7 +99,7 @@ pub async fn post_accept_story(
     {
         Ok(()) => {
             broadcast_board_invalidate(&hub);
-            broadcast_stories(&hub, &refresh);
+            broadcast_stories(&hub, &select);
             (
                 StatusCode::OK,
                 json_headers(),
@@ -156,7 +156,7 @@ pub async fn post_reject_story(
     {
         Ok(()) => {
             broadcast_board_invalidate(&hub);
-            broadcast_stories(&hub, &refresh);
+            broadcast_stories(&hub, &select);
             (
                 StatusCode::OK,
                 json_headers(),

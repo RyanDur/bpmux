@@ -16,11 +16,12 @@ async fn stories_delta_wakes_subscribers_but_is_not_persisted_durably() {
         Arc::new(InMemorySourceAdapter::new()),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&refresh, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&refresh);
     refresh.refresh_all().await.expect("seed-empty ingest");
 
     let mut subscriber = hub.subscribe();
-    super::shared::broadcast_stories(&hub, &refresh);
+    super::shared::broadcast_stories(&hub, &store.select());
 
     let woken = subscriber
         .try_recv()
