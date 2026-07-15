@@ -1,7 +1,6 @@
 pub mod auth;
 pub mod ci_log_store;
 pub mod ci_watcher;
-pub mod crypto;
 
 pub(crate) mod delivery_ids;
 pub mod electron_capture;
@@ -25,8 +24,6 @@ mod boundary_tests;
 mod ci_log_persistence;
 #[cfg(test)]
 mod ci_watcher_tests;
-#[cfg(test)]
-mod crypto_tests;
 #[cfg(test)]
 mod external_mutation_tests;
 #[cfg(test)]
