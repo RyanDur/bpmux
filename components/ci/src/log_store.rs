@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use crate::ci::CiRunFailures;
+use crate::CiRunFailures;
 
 #[derive(Clone, Default)]
 pub struct CiLogStore {
@@ -24,5 +24,3 @@ impl CiLogStore {
         guard.get(&run_id).cloned()
     }
 }
-
-pub type CiLogStoreHandle = CiLogStore;

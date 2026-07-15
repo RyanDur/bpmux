@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
+use crate::ci::CiLogStore;
 use crate::ci::CiStateStore;
 use crate::hub;
 use crate::room::LivePtyRegistry;
 use crate::store::Store;
 use crate::transport;
 use crate::transport::auth::AuthState;
-use crate::transport::ci_log_store::CiLogStore;
 
 use crate::sync::OrchestratorHandle;
 

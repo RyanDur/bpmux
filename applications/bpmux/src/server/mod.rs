@@ -58,7 +58,7 @@ pub async fn run_server(
             crate::bridge::drain_interval_from_env(),
         ));
     }
-    let ci_log_store = crate::transport::ci_log_store::CiLogStore::new();
+    let ci_log_store = crate::ci::CiLogStore::new();
     let electron_capture_lock: std::sync::Arc<tokio::sync::Mutex<()>> =
         std::sync::Arc::new(tokio::sync::Mutex::new(()));
     let pty_registry = std::sync::Arc::new(crate::room::LivePtyRegistry::new());

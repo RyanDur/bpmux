@@ -9,6 +9,9 @@ mod jobs;
 mod log_parse;
 #[cfg(test)]
 mod log_parse_tests;
+mod log_store;
+#[cfg(test)]
+mod log_store_tests;
 mod runs;
 mod state_report;
 #[cfg(test)]
@@ -24,6 +27,7 @@ pub use broadcast::{
 pub use classify::{RunEntry, classify_runs};
 pub use jobs::{CiJobRecord, CiJobStatusError, compute_duration_ms};
 pub use log_parse::{build_non_test_failure_record, parse_playwright_failures_from_log};
+pub use log_store::CiLogStore;
 pub use runs::{CiLogError, CiRunFailures, CiTestFailure, ConditionalRunEntry, WorkflowRunEntry};
 pub use state_report::{CiStateReport, build_ci_state_report, unknown_ci_state_report};
 pub use state_store::CiStateStore;

@@ -1,5 +1,4 @@
 pub mod auth;
-pub mod ci_log_store;
 pub mod ci_watcher;
 
 pub(crate) mod delivery_ids;
@@ -16,8 +15,6 @@ pub mod ws;
 mod auth_tests;
 #[cfg(test)]
 mod boundary_tests;
-#[cfg(test)]
-mod ci_log_persistence;
 #[cfg(test)]
 mod ci_watcher_tests;
 #[cfg(test)]

@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::ci_log_store::*;
-use crate::ci::{CiRunFailures, CiTestFailure};
+use super::log_store::*;
+use crate::{CiRunFailures, CiTestFailure};
 
 fn sample(run_id: u64, test_name: &'static str) -> CiRunFailures {
     CiRunFailures {

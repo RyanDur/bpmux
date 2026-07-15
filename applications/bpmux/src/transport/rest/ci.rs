@@ -17,7 +17,7 @@ pub async fn get_ci(
 
 pub async fn get_ci_log(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
-    axum::Extension(ci_log_store): axum::Extension<crate::transport::ci_log_store::CiLogStore>,
+    axum::Extension(ci_log_store): axum::Extension<crate::ci::CiLogStore>,
     axum::extract::Path(run_id): axum::extract::Path<u64>,
 ) -> impl IntoResponse {
     if let Some(cached) = ci_log_store.read(run_id) {
