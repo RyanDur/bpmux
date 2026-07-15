@@ -114,13 +114,13 @@ pub fn run_bridge(
     })?;
     workflow::install_workflow(workflow);
     let ct = tokio_util::sync::CancellationToken::new();
-    let restart_signal = crate::transport::self_update::RestartSignal::new();
+    let restart_signal = self_update::RestartSignal::new();
     let rt = tokio::runtime::Runtime::new()?;
     let service_result: anyhow::Result<()> = rt.block_on({
         let ct = ct.clone();
         let restart_signal = restart_signal.clone();
         async move {
-            crate::transport::self_update::spawn_binary_watcher(ct.clone(), restart_signal);
+            self_update::spawn_binary_watcher(ct.clone(), restart_signal);
             let user_id = std::env::current_dir()
                 .ok()
                 .and_then(|cwd| crate::resolve_registered_user_id(&cwd));
@@ -139,9 +139,9 @@ pub fn run_bridge(
     if restart_signal.was_fired() {
         eprintln!(
             "[bpmux bridge] binary changed on disk; exiting with code {} so Claude Code respawns the MCP server with refreshed tools",
-            crate::transport::self_update::RESTART_EXIT_CODE
+            self_update::RESTART_EXIT_CODE
         );
-        std::process::exit(crate::transport::self_update::RESTART_EXIT_CODE);
+        std::process::exit(self_update::RESTART_EXIT_CODE);
     }
     service_result
 }

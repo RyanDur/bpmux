@@ -1,0 +1,24 @@
+[package]
+name = "self_update"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Binary-replacement watch and graceful restart vocabulary — restart signal, loop guard, restart history"
+
+[dependencies]
+diag = { path = "../diag" }
+chrono = { workspace = true, features = ["serde"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+dirs = { workspace = true }
+tokio = { workspace = true, features = ["rt", "time", "macros"] }
+tokio-util = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt", "time"] }
+tokio-util = { workspace = true }
+
+[lints]
+workspace = true

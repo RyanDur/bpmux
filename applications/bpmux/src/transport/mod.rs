@@ -7,7 +7,6 @@ pub mod electron_capture;
 pub mod peer;
 pub mod rest;
 pub mod rpc_routes;
-pub mod self_update;
 pub(crate) mod state_delta;
 pub(crate) mod state_delta_broadcasters;
 pub mod test_routes;
@@ -30,8 +29,6 @@ mod external_mutation_tests;
 mod peer_tests;
 #[cfg(test)]
 mod rest_tests;
-#[cfg(test)]
-mod self_update_tests;
 #[cfg(test)]
 mod test_routes_mock_octocrab_tests;
 #[cfg(test)]

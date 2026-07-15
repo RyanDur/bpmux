@@ -20,6 +20,7 @@ members = [
     "components/rate_limit",
     "components/reactions",
     "components/roster",
+    "components/self_update",
     "components/source_codec",
     "components/source_sync",
     "components/storage",
@@ -45,6 +46,7 @@ toml = "0.8"
 tempfile = "3"
 aho-corasick = "1.1.4"
 dirs = "6"
+tokio-util = "0.7.18"
 
 [workspace.lints.rust]
 dead_code = "deny"

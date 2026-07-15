@@ -415,6 +415,7 @@ dependencies = [
  "rmcp",
  "roster",
  "rustls",
+ "self_update",
  "serde",
  "serde_json",
  "source_codec",
@@ -3299,6 +3300,20 @@ checksum = "6ce2691df843ecc5d231c0b14ece2acc3efb62c0a398c7e1d875f3983ce020e3"
 dependencies = [
  "core-foundation-sys",
  "libc",
+]
+
+[[package]]
+name = "self_update"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "diag",
+ "dirs",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]

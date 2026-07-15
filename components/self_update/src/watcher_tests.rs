@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::self_update::resolve_watch_path_with_override;
-use super::self_update::*;
+use super::resolve_watch_path_with_override;
+use super::*;
 use chrono::TimeZone;
 use std::fs;
 use std::time::Duration;

@@ -4,7 +4,7 @@ use clap::Parser;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
-use crate::{bridge, cli, hub, location, server, transport};
+use crate::{bridge, cli, hub, location, server};
 
 mod resolve;
 mod room;
@@ -75,14 +75,14 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
     let hub = Arc::new(hub::Hub::new(data_dir, cli.name.clone(), wake_tx));
     let port = cli.mcp_port;
     let ct = CancellationToken::new();
-    let restart_signal = transport::self_update::RestartSignal::new();
+    let restart_signal = self_update::RestartSignal::new();
     let rt = tokio::runtime::Runtime::new()?;
     let server_result = rt.block_on({
         let ct = ct.clone();
         let restart_signal = restart_signal.clone();
         async move {
             awareness::spawn(hub.clone(), hub.owner_name.clone());
-            transport::self_update::spawn_binary_watcher(ct.clone(), restart_signal);
+            self_update::spawn_binary_watcher(ct.clone(), restart_signal);
             spawn_shutdown_signal_listener(ct.clone());
             server::run_server(hub, port, ct)
                 .await
@@ -92,9 +92,9 @@ fn run_server_only(cli: &Cli) -> anyhow::Result<()> {
     if restart_signal.was_fired() {
         eprintln!(
             "[bpmux] binary changed on disk; exiting with code {} so the supervisor respawns",
-            transport::self_update::RESTART_EXIT_CODE
+            self_update::RESTART_EXIT_CODE
         );
-        std::process::exit(transport::self_update::RESTART_EXIT_CODE);
+        std::process::exit(self_update::RESTART_EXIT_CODE);
     }
     server_result
 }

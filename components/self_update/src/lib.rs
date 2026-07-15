@@ -55,7 +55,7 @@ fn resolve_watch_path() -> Result<PathBuf, String> {
     resolve_watch_path_with_override(override_path)
 }
 
-pub(super) fn resolve_watch_path_with_override(
+pub(crate) fn resolve_watch_path_with_override(
     env_value: Option<String>,
 ) -> Result<PathBuf, String> {
     if let Some(override_path) = env_value {
@@ -167,3 +167,6 @@ pub fn save_restart_history(path: &Path, history: &RestartHistory) -> std::io::R
     let bytes = serde_json::to_vec_pretty(history)?;
     std::fs::write(path, bytes)
 }
+
+#[cfg(test)]
+mod watcher_tests;
