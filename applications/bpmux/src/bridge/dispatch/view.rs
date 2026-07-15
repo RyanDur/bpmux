@@ -39,8 +39,9 @@ pub(crate) async fn dispatch_view_board(
 pub(crate) async fn dispatch_get_story(
     args: serde_json::Map<String, serde_json::Value>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
-    tools::handle_get_story(&args, refresh).await
+    tools::handle_get_story(&args, refresh, select).await
 }
 
 pub(crate) async fn dispatch_list_ready(select: &crate::store::Select) -> Result<String, String> {

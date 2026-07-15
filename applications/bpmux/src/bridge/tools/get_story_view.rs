@@ -11,12 +11,18 @@ pub(super) const NOT_HYDRATED_PLACEHOLDER: &str =
 pub(super) async fn render_iteration_detail(
     r: &Arc<dyn RefreshDriver>,
     iteration: &product_management::iteration::Iteration,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     let id = iteration.id.value();
     let mut body = iteration.body.clone();
     if body.is_none() && r.fetch_body(id).await.is_ok() {
-        body = r
-            .iteration(product_management::iteration::IterationId::new(id))
+        body = select
+            .select(|s| {
+                product_management::iteration::get(
+                    &s.iterations,
+                    product_management::iteration::IterationId::new(id),
+                )
+            })
             .and_then(|it| it.body);
     }
     let body_hydrated = body.is_some();
@@ -26,7 +32,13 @@ pub(super) async fn render_iteration_detail(
             .stories
             .iter()
             .filter_map(|n| {
-                r.story(n.value())
+                select
+                    .select(|s| {
+                        product_management::story::slice::get(
+                            &s.stories,
+                            product_management::story::StoryId::new(n.value()),
+                        )
+                    })
                     .filter(|s| !s.is_concluded())
                     .map(|s| (n.value(), s.title.clone()))
             })
@@ -50,6 +62,7 @@ pub(super) async fn render_iteration_detail(
 pub(super) async fn render_epic_detail(
     refresh: Option<&Arc<dyn RefreshDriver>>,
     epic: &product_management::epic::Epic,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     let id = epic.id.value();
     let mut body = epic.body.clone();
@@ -57,17 +70,19 @@ pub(super) async fn render_epic_detail(
         && let Some(r) = refresh
         && r.fetch_body(id).await.is_ok()
     {
-        body = r
-            .epic(product_management::epic::EpicId::new(id))
+        body = select
+            .select(|s| {
+                product_management::epic::get(&s.epics, product_management::epic::EpicId::new(id))
+            })
             .and_then(|e| e.body);
     }
     let body_hydrated = body.is_some();
     let body_out = body.unwrap_or_else(|| NOT_HYDRATED_PLACEHOLDER.to_string());
     let workflow_state = match refresh {
-        Some(r) => {
-            let stories = r.all_stories();
+        Some(_) => {
+            let stories = select.select(|s| product_management::story::slice::all(&s.stories));
             let children = product_management::epic::children_of(&stories, epic.id);
-            let iterations = r.iterations();
+            let iterations = select.select(|s| product_management::iteration::all(&s.iterations));
             product_management::epic::derive_epic_state(&children, &iterations).as_str()
         }
         None => product_management::scheduling::ProjectedState::Icebox.as_str(),

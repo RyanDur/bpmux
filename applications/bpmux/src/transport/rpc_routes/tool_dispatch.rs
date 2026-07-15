@@ -165,7 +165,7 @@ pub(super) async fn dispatch(
             bridge::dispatch_edit_story(args, agent, role, actor_id, refresh_ref, dispatcher).await
         }
         "view_board" => bridge::dispatch_view_board(args, refresh_ref, select).await,
-        "get_story" => bridge::dispatch_get_story(args, refresh_ref).await,
+        "get_story" => bridge::dispatch_get_story(args, refresh_ref, select).await,
         "list_ready" => bridge::dispatch_list_ready(select).await,
         "list_epic_children" => bridge::dispatch_list_epic_children(args, select).await,
         "dev_in_flight" => bridge::dispatch_dev_in_flight(select).await,

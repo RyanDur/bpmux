@@ -58,26 +58,44 @@ fn latest_reject_json(gates: &[CastVerdict]) -> Option<serde_json::Value> {
 pub(in crate::bridge) async fn handle_get_story(
     args: &serde_json::Map<String, serde_json::Value>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     let id = args
         .get("id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'id' argument")?;
     let r = refresh.ok_or("get_story requires refresh (canonical-store)")?;
-    if let Some(iteration) = r.iteration(product_management::iteration::IterationId::new(id)) {
-        return render_iteration_detail(r, &iteration).await;
+    if let Some(iteration) = select.select(|s| {
+        product_management::iteration::get(
+            &s.iterations,
+            product_management::iteration::IterationId::new(id),
+        )
+    }) {
+        return render_iteration_detail(r, &iteration, select).await;
     }
-    if let Some(epic) = r.epic(product_management::epic::EpicId::new(id)) {
-        return render_epic_detail(refresh, &epic).await;
+    if let Some(epic) = select.select(|s| {
+        product_management::epic::get(&s.epics, product_management::epic::EpicId::new(id))
+    }) {
+        return render_epic_detail(refresh, &epic, select).await;
     }
-    let mut story = r
-        .story(id)
+    let mut story = select
+        .select(|s| {
+            product_management::story::slice::get(
+                &s.stories,
+                product_management::story::StoryId::new(id),
+            )
+        })
         .ok_or_else(|| format!("story #{id} not found in board"))?;
     if story.body.is_none() {
         match r.fetch_body(id).await {
             Ok(_) => {
-                story = r
-                    .story(id)
+                story = select
+                    .select(|s| {
+                        product_management::story::slice::get(
+                            &s.stories,
+                            product_management::story::StoryId::new(id),
+                        )
+                    })
                     .ok_or_else(|| format!("story #{id} not found in board after fetch"))?;
             }
             Err(e) => {
@@ -87,8 +105,8 @@ pub(in crate::bridge) async fn handle_get_story(
             }
         }
     }
-    let fine = r.story_fine_stage(&story);
-    let iterations = r.iterations();
+    let fine = select.select(|s| board::fine_stage(&story, &s.board));
+    let iterations = select.select(|s| product_management::iteration::all(&s.iterations));
     let projected = product_management::scheduling::projected_state(&story, &iterations);
     let needs_gates = matches!(projected, ProjectedState::Ready)
         || fine == Some(Stage::Dev)
@@ -96,8 +114,13 @@ pub(in crate::bridge) async fn handle_get_story(
     if needs_gates && story.verdicts.is_none() {
         match r.fetch_verdicts(id).await {
             Ok(_) => {
-                story = r
-                    .story(id)
+                story = select
+                    .select(|s| {
+                        product_management::story::slice::get(
+                            &s.stories,
+                            product_management::story::StoryId::new(id),
+                        )
+                    })
                     .ok_or_else(|| format!("story #{id} not found in board after gate fetch"))?;
             }
             Err(e) => {
@@ -110,7 +133,7 @@ pub(in crate::bridge) async fn handle_get_story(
     let body_cached = story.body.as_deref();
     let mut body_out = body_cached.unwrap_or(NOT_HYDRATED_PLACEHOLDER).to_string();
     let latest_reject = story.verdicts.as_deref().and_then(latest_reject_json);
-    let held = r.story_held_stage(&story);
+    let held = select.select(|s| board::held_stage(&story, &s.board));
     let workflow_state = story
         .verdicts
         .as_deref()

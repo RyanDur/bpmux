@@ -3,7 +3,7 @@ pub mod readiness;
 pub mod section;
 
 mod slice;
-pub use slice::{IterationAction, IterationState, all, reduce};
+pub use slice::{IterationAction, IterationState, all, get, reduce};
 
 use chrono::{DateTime, Utc};
 
@@ -38,3 +38,5 @@ impl Iteration {
 mod label_tests;
 #[cfg(test)]
 mod section_tests;
+#[cfg(test)]
+mod slice_tests;

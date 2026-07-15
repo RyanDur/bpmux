@@ -32,7 +32,7 @@ fn current_iteration_of(members: &[u64]) -> Iteration {
 async fn seeded_orchestrator(
     seeds: Vec<(Story, Vec<String>)>,
     gates: Vec<(u64, Vec<CastVerdict>)>,
-) -> (SeededStore, Arc<dyn RefreshDriver>) {
+) -> (SeededStore, Arc<dyn RefreshDriver>, crate::store::Select) {
     seeded_orchestrator_membered(seeds, gates, &[]).await
 }
 
@@ -40,7 +40,7 @@ async fn seeded_orchestrator_membered(
     mut seeds: Vec<(Story, Vec<String>)>,
     gates: Vec<(u64, Vec<CastVerdict>)>,
     members: &[u64],
-) -> (SeededStore, Arc<dyn RefreshDriver>) {
+) -> (SeededStore, Arc<dyn RefreshDriver>, crate::store::Select) {
     for (n, gs) in &gates {
         if let Some((s, _)) = seeds.iter_mut().find(|(s, _)| s.id == StoryId::new(*n)) {
             s.verdicts = Some(gs.clone());
@@ -69,7 +69,8 @@ async fn seeded_orchestrator_membered(
     let handle = SeededStore::new(vec![], iterations, vec![]);
     handle.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
-    (handle, orchestrator)
+    let select = handle.select();
+    (handle, orchestrator, select)
 }
 
 fn make_story(id: u64, state: Work, body: Option<&str>) -> Story {
@@ -89,7 +90,8 @@ fn make_story(id: u64, state: Work, body: Option<&str>) -> Story {
 #[tokio::test]
 async fn handler_requires_refresh_as_the_canonical_read_handle() {
     let args = serde_json::json!({"id": 443});
-    let result = handle_get_story(args.as_object().unwrap(), None).await;
+    let select = crate::store::Select::new(std::sync::Weak::new());
+    let result = handle_get_story(args.as_object().unwrap(), None, &select).await;
     assert!(result.is_err());
     assert!(
         result.unwrap_err().contains("requires refresh"),
@@ -99,9 +101,9 @@ async fn handler_requires_refresh_as_the_canonical_read_handle() {
 
 #[tokio::test]
 async fn handler_errors_when_story_not_in_board() {
-    let (_store, orch) = seeded_orchestrator(vec![], vec![]).await;
+    let (_store, orch, select) = seeded_orchestrator(vec![], vec![]).await;
     let args = serde_json::json!({"id": 9999});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch)).await;
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("not found in board"));
 }
@@ -127,10 +129,10 @@ async fn enriches_body_for_rejected_story_via_typed_gates() {
             payload: Some("channelKeyRef is not legitimate".into()),
         },
     ];
-    let (_store, orch) =
+    let (_store, orch, select) =
         seeded_orchestrator_membered(vec![(story, Vec::new())], vec![(443, gates)], &[443]).await;
     let args = serde_json::json!({"id": 443});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -152,9 +154,10 @@ async fn enriches_body_for_needs_fixes_story_via_typed_gates() {
         actor: "designer".into(),
         payload: Some("failed spec".into()),
     }];
-    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![(200, gates)]).await;
+    let (_store, orch, select) =
+        seeded_orchestrator(vec![(story, Vec::new())], vec![(200, gates)]).await;
     let args = serde_json::json!({"id": 200});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -166,9 +169,9 @@ async fn enriches_body_for_needs_fixes_story_via_typed_gates() {
 #[tokio::test]
 async fn does_not_enrich_body_for_non_rework_story() {
     let story = make_story(100, Work::NotStarted, Some("original body"));
-    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
+    let (_store, orch, select) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 100});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -213,10 +216,10 @@ async fn enriches_body_for_ready_story_post_reject_via_transition_history() {
             payload: Some("user-story not satisfied; reshape needed".into()),
         },
     ];
-    let (_store, orch) =
+    let (_store, orch, select) =
         seeded_orchestrator_membered(vec![(story, Vec::new())], vec![(700, gates)], &[700]).await;
     let args = serde_json::json!({"id": 700});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -274,9 +277,10 @@ async fn does_not_enrich_body_when_most_recent_transition_is_forward() {
             payload: None,
         },
     ];
-    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![(701, gates)]).await;
+    let (_store, orch, select) =
+        seeded_orchestrator(vec![(story, Vec::new())], vec![(701, gates)]).await;
     let args = serde_json::json!({"id": 701});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -290,9 +294,10 @@ async fn does_not_enrich_body_when_most_recent_transition_is_forward() {
 #[tokio::test]
 async fn skips_enrichment_when_no_rework_verdicts() {
     let story = make_story(50, Work::NotStarted, Some("plain body"));
-    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![(50, vec![])]).await;
+    let (_store, orch, select) =
+        seeded_orchestrator(vec![(story, Vec::new())], vec![(50, vec![])]).await;
     let args = serde_json::json!({"id": 50});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -303,9 +308,9 @@ async fn skips_enrichment_when_no_rework_verdicts() {
 #[tokio::test]
 async fn output_derives_is_closed_from_workflow_conclusion() {
     let story = make_story(101, Work::Accepted, Some("body"));
-    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
+    let (_store, orch, select) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 101});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -323,10 +328,10 @@ async fn output_derives_is_closed_from_workflow_conclusion() {
 #[tokio::test]
 async fn stored_gh_mirror_never_reaches_the_wire_for_an_active_story() {
     let story = make_story(102, Work::NotStarted, Some("body"));
-    let (_store, orch) =
+    let (_store, orch, select) =
         seeded_orchestrator_membered(vec![(story, Vec::new())], vec![], &[102]).await;
     let args = serde_json::json!({"id": 102});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -340,9 +345,9 @@ async fn stored_gh_mirror_never_reaches_the_wire_for_an_active_story() {
 #[tokio::test]
 async fn concluded_story_reports_closed_while_the_gh_close_is_still_pending() {
     let story = make_story(103, Work::Accepted, Some("body"));
-    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
+    let (_store, orch, select) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 103});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -361,9 +366,10 @@ async fn surfaces_typed_label_chips_and_never_state_labels() {
         "ready".to_string(),
         "desk-check-fail".to_string(),
     ];
-    let (_store, orch) = seeded_orchestrator_membered(vec![(story, labels)], vec![], &[1207]).await;
+    let (_store, orch, select) =
+        seeded_orchestrator_membered(vec![(story, labels)], vec![], &[1207]).await;
     let args = serde_json::json!({"id": 1207});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -394,9 +400,9 @@ async fn surfaces_typed_label_chips_and_never_state_labels() {
 #[tokio::test]
 async fn labels_reencode_from_typed_fields_without_state_synthesis() {
     let story = make_story(1208, Work::NotStarted, Some("body"));
-    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
+    let (_store, orch, select) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 1208});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -427,10 +433,12 @@ async fn cache_miss_eagerly_fetches_body_via_refresh_driver() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
+    let select = store.select();
     orchestrator.refresh_all().await.unwrap();
     let args = serde_json::json!({"id": 1226});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orchestrator))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orchestrator), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -449,9 +457,9 @@ async fn cache_miss_eagerly_fetches_body_via_refresh_driver() {
 #[tokio::test]
 async fn cache_miss_returns_placeholder_when_the_fetch_cannot_hydrate() {
     let story = make_story(1226, Work::NotStarted, None);
-    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
+    let (_store, orch, select) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 1226});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -480,10 +488,12 @@ async fn cache_hit_does_not_refetch_when_body_already_present() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
+    let select = store.select();
     orchestrator.refresh_all().await.unwrap();
     let args = serde_json::json!({"id": 1226});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orchestrator))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orchestrator), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -570,9 +580,9 @@ async fn get_story_auto_derives_iteration_members_into_body_1462() {
     ];
     let mut all = vec![iteration];
     all.extend(members);
-    let (_store, orch) = seeded_orchestrator(all, vec![]).await;
+    let (_store, orch, select) = seeded_orchestrator(all, vec![]).await;
     let args = serde_json::json!({"id": 1397});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -605,9 +615,9 @@ async fn get_story_auto_derives_iteration_members_into_body_1462() {
 #[tokio::test]
 async fn get_story_preserves_placeholder_when_iteration_has_no_members_1462() {
     let iteration = make_iteration(1397, "Telescopium", ITERATION_BODY_TEMPLATE);
-    let (_store, orch) = seeded_orchestrator(vec![iteration], vec![]).await;
+    let (_store, orch, select) = seeded_orchestrator(vec![iteration], vec![]).await;
     let args = serde_json::json!({"id": 1397});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -625,9 +635,9 @@ async fn get_story_does_not_derive_members_for_non_iteration_stories_1462() {
         Work::Accepted,
         Some("## Iteration Telescopium\n\n## Member stories\n\n_(no members yet)_\n\n## Notes\n"),
     );
-    let (_store, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
+    let (_store, orch, select) = seeded_orchestrator(vec![(story, Vec::new())], vec![]).await;
     let args = serde_json::json!({"id": 1463});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -650,10 +660,10 @@ async fn get_story_excludes_closed_member_stories_from_derivation_1462() {
     closed_member.state = Work::Accepted;
     let closed_member = (closed_member, closed_member_labels);
     let open_member = make_member(1265, "Still open", 1397, 200);
-    let (_store, orch) =
+    let (_store, orch, select) =
         seeded_orchestrator(vec![iteration, closed_member, open_member], vec![]).await;
     let args = serde_json::json!({"id": 1397});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -697,16 +707,13 @@ async fn rejected_story_hydrates_latest_reject_verbatim_via_read_through() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(
-        &orchestrator,
-        vec![],
-        vec![current_iteration_of(&[1524])],
-        vec![],
-    );
+    let store = crate::store::SeededStore::new(vec![], vec![current_iteration_of(&[1524])], vec![]);
+    store.bind_refresh(&orchestrator);
+    let select = store.select();
     orchestrator.refresh_all().await.unwrap();
 
     let args = serde_json::json!({"id": 1524});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orchestrator))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orchestrator), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -734,11 +741,13 @@ async fn non_rejected_story_carries_no_latest_reject() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
+    let select = store.select();
     orchestrator.refresh_all().await.unwrap();
 
     let args = serde_json::json!({"id": 500});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orchestrator))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orchestrator), &select)
         .await
         .expect("should succeed");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -764,10 +773,11 @@ async fn latest_reject_survives_an_iteration_move() {
         actor: "owner".into(),
         payload: Some(reason.into()),
     }];
-    let (handle, orch) = seeded_orchestrator(vec![(story, Vec::new())], vec![(1524, gates)]).await;
+    let (handle, orch, select) =
+        seeded_orchestrator(vec![(story, Vec::new())], vec![(1524, gates)]).await;
     let args = serde_json::json!({"id": 1524});
 
-    let before = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let before = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .unwrap();
     let before_json: serde_json::Value = serde_json::from_str(&before).unwrap();
@@ -801,7 +811,7 @@ async fn latest_reject_survives_an_iteration_move() {
         ),
     ));
 
-    let after = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let after = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .unwrap();
     let after_json: serde_json::Value = serde_json::from_str(&after).unwrap();
@@ -826,8 +836,9 @@ async fn get_story_stays_unhydrated_when_gate_fetch_fails() {
     handle.dispatch(crate::store::AppAction::Story(
         product_management::story::slice::StoryAction::Seeded(vec![story]),
     ));
+    let select = handle.select();
     let args = serde_json::json!({"id": 442});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orchestrator))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orchestrator), &select)
         .await
         .expect("handler degrades gracefully when the gate read-through fails");
     let parsed: serde_json::Value = serde_json::from_str(&result).expect("valid json");
@@ -874,11 +885,13 @@ async fn carried_reject_workflow_state_derives_rework_not_phantom_accepted() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
+    let select = store.select();
     orch.refresh_all().await.unwrap();
 
     let args = serde_json::json!({"id": 1700});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
@@ -936,11 +949,13 @@ async fn re_accepted_after_reject_workflow_state_stays_accepted() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
+    let select = store.select();
     orch.refresh_all().await.unwrap();
 
     let args = serde_json::json!({"id": 1701});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
@@ -968,11 +983,13 @@ async fn epic_view_workflow_state_derives_from_children_not_the_epics_own_shed_l
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![epic]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![epic]);
+    store.bind_refresh(&orch);
+    let select = store.select();
     orch.refresh_all().await.unwrap();
 
     let args = serde_json::json!({"id": 700});
-    let result = handle_get_story(args.as_object().unwrap(), Some(&orch))
+    let result = handle_get_story(args.as_object().unwrap(), Some(&orch), &select)
         .await
         .unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();

@@ -1,4 +1,4 @@
-use super::Iteration;
+use super::{Iteration, IterationId};
 
 #[derive(Default, Clone)]
 pub struct IterationState {
@@ -44,4 +44,12 @@ pub fn reduce(state: &IterationState, action: &IterationAction) -> Option<Iterat
 
 pub fn all(state: &IterationState) -> Vec<Iteration> {
     state.iterations.clone()
+}
+
+pub fn get(state: &IterationState, id: IterationId) -> Option<Iteration> {
+    state
+        .iterations
+        .iter()
+        .find(|iteration| iteration.id == id)
+        .cloned()
 }
