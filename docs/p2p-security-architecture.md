@@ -6,7 +6,8 @@
 
 **Phase 1 ships connect + presence only.** The trust authorization layer described in this document is the TARGET architecture, not the current state. See each section for "Phase 1 reality" callouts that distinguish target from implementation.
 
-- ✅ **Implemented**: encrypted data channel (WebRTC DTLS + passphrase-derived AES-256-GCM), session isolation, peer presence, disconnect propagation
+- ✅ **Implemented**: encrypted data channel (WebRTC DTLS), session isolation, peer presence, disconnect propagation
+- 🚫 **Not in the code**: the passphrase-derived AES-256-GCM SDP/offer-code encryption described below — its utility module was unreachable from any command and was retired (git: parent of `aea2b11b` has it); re-derive from history when this arc resumes
 - ⏸ **Deferred to story 2** (shape TBD, awaiting real-world usage data): trust state field, grant/revoke, data-flow gating by trust
 - 📦 **Icebox**: hot-reload resilience, agent sandboxing, visualization layer
 
