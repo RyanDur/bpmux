@@ -53,7 +53,13 @@ fn seed_outcome(id: u64, title: &str, labels: &[&str]) -> (Story, Vec<String>) {
     (s, labels.iter().map(ToString::to_string).collect())
 }
 
-async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
+async fn build_refresh(
+    seeds: Vec<(Story, Vec<String>)>,
+) -> (
+    crate::store::SeededStore,
+    Arc<dyn RefreshDriver>,
+    crate::store::Select,
+) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     for (story, labels) in &seeds {
         adapter.seed_labels(story.id.value(), labels.clone());
@@ -68,9 +74,11 @@ async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDrive
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("outcome")))
         .map(|(story, labels)| decode_outcome_from_story(story, labels))
         .collect();
-    crate::store::bind_seeded_refresh(&orch, seeded, vec![], vec![]);
+    let store = crate::store::SeededStore::new(seeded, vec![], vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
-    orch
+    let select = store.select();
+    (store, orch, select)
 }
 
 fn args(outcome: u64, title: Option<&str>, body: Option<&str>) -> Map<String, Value> {
@@ -87,7 +95,7 @@ fn args(outcome: u64, title: Option<&str>, body: Option<&str>) -> Map<String, Va
 
 #[tokio::test]
 async fn editing_an_outcome_title_reflects_as_its_roadmap_name_1760() {
-    let refresh = build_refresh(vec![seed_outcome(
+    let (_store, refresh, select) = build_refresh(vec![seed_outcome(
         700,
         "Stale headline why",
         &["outcome", "horizon.now"],
@@ -99,6 +107,7 @@ async fn editing_an_outcome_title_reflects_as_its_roadmap_name_1760() {
         "pm",
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("pm edits the outcome title");
@@ -120,13 +129,15 @@ async fn editing_an_outcome_title_reflects_as_its_roadmap_name_1760() {
 
 #[tokio::test]
 async fn editing_an_outcome_why_persists_for_the_bpmux_story_disclosure_read_1760() {
-    let refresh = build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
+    let (_store, refresh, select) =
+        build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
     let (dispatch, mut rx) = dispatch_channel();
     handle_edit_outcome(
         &args(700, None, Some("**Benefit:** agents plan from one substrate, no drift")),
         "pm",
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("pm edits the outcome why with a plain why-body — no ATP gate, since an outcome is not acceptance-test-bearing");
@@ -144,13 +155,15 @@ async fn editing_an_outcome_why_persists_for_the_bpmux_story_disclosure_read_176
 
 #[tokio::test]
 async fn edit_outcome_is_pm_lane_non_pm_refused_1760() {
-    let refresh = build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
+    let (_store, refresh, select) =
+        build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_edit_outcome(
         &args(700, Some("Y"), None),
         "dev",
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("dev cannot edit an outcome (pm-lane)");
@@ -159,7 +172,7 @@ async fn edit_outcome_is_pm_lane_non_pm_refused_1760() {
 
 #[tokio::test]
 async fn edit_outcome_aimed_at_a_non_outcome_teaches_the_boundary_1760() {
-    let refresh = build_refresh(vec![seed(
+    let (_store, refresh, select) = build_refresh(vec![seed(
         700,
         "A story",
         StoryKind::Feature,
@@ -167,9 +180,15 @@ async fn edit_outcome_aimed_at_a_non_outcome_teaches_the_boundary_1760() {
     )])
     .await;
     let (dispatch, _rx) = dispatch_channel();
-    let err = handle_edit_outcome(&args(700, Some("Y"), None), "pm", Some(&refresh), &dispatch)
-        .await
-        .expect_err("outcome edit aimed at a non-outcome is refused");
+    let err = handle_edit_outcome(
+        &args(700, Some("Y"), None),
+        "pm",
+        Some(&refresh),
+        &dispatch,
+        &select,
+    )
+    .await
+    .expect_err("outcome edit aimed at a non-outcome is refused");
     assert!(
         err.contains("not an Outcome"),
         "the error teaches the boundary instead of editing a plain story: {err}"
@@ -178,11 +197,18 @@ async fn edit_outcome_aimed_at_a_non_outcome_teaches_the_boundary_1760() {
 
 #[tokio::test]
 async fn edit_outcome_with_no_change_is_rejected_1760() {
-    let refresh = build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
+    let (_store, refresh, select) =
+        build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
     let (dispatch, _rx) = dispatch_channel();
-    let err = handle_edit_outcome(&args(700, None, None), "pm", Some(&refresh), &dispatch)
-        .await
-        .expect_err("editing with neither --title nor --body is a no-op request");
+    let err = handle_edit_outcome(
+        &args(700, None, None),
+        "pm",
+        Some(&refresh),
+        &dispatch,
+        &select,
+    )
+    .await
+    .expect_err("editing with neither --title nor --body is a no-op request");
     assert!(
         err.contains("--title") && err.contains("--body"),
         "the error names the fix: {err}"

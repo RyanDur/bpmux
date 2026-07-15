@@ -85,7 +85,12 @@ fn iteration_for(id: u64, outcome_id: u64) -> (Story, Vec<String>) {
 
 async fn build_refresh(
     seeds: Vec<(Story, Vec<String>)>,
-) -> (Arc<dyn RefreshDriver>, Arc<InMemorySourceAdapter>) {
+) -> (
+    crate::store::SeededStore,
+    Arc<dyn RefreshDriver>,
+    Arc<InMemorySourceAdapter>,
+    crate::store::Select,
+) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     for (story, labels) in &seeds {
         adapter.seed_labels(story.id.value(), labels.clone());
@@ -100,9 +105,11 @@ async fn build_refresh(
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("outcome")))
         .map(|(story, labels)| decode_outcome_from_story(story, labels))
         .collect();
-    crate::store::bind_seeded_refresh(&orch, seeded, iterations_from(&seeds), vec![]);
+    let store = crate::store::SeededStore::new(seeded, iterations_from(&seeds), vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
-    (orch, adapter)
+    let select = store.select();
+    (store, orch, adapter, select)
 }
 
 fn args(outcome: u64, iteration: u64) -> Map<String, Value> {
@@ -152,7 +159,7 @@ async fn drill_iteration_ids(
 
 #[tokio::test]
 async fn unmap_removes_the_relation_and_the_drill_drops_the_iteration_1763() {
-    let (refresh, adapter) = build_refresh(vec![
+    let (_store, refresh, adapter, select) = build_refresh(vec![
         outcome(700, vec![710, 720]),
         iteration_for(710, 700),
         iteration_for(720, 700),
@@ -164,7 +171,7 @@ async fn unmap_removes_the_relation_and_the_drill_drops_the_iteration_1763() {
         "both iterations build the outcome before unmap"
     );
 
-    handle_unmap_outcome_iteration(&args(700, 710), "pm", Some(&refresh), &dispatch())
+    handle_unmap_outcome_iteration(&args(700, 710), "pm", Some(&refresh), &dispatch(), &select)
         .await
         .expect("pm unmaps the iteration from the outcome");
 
@@ -184,10 +191,10 @@ async fn unmap_removes_the_relation_and_the_drill_drops_the_iteration_1763() {
 
 #[tokio::test]
 async fn unmap_leaves_the_iteration_itself_untouched_1763() {
-    let (refresh, _adapter) =
+    let (_store, refresh, _adapter, select) =
         build_refresh(vec![outcome(700, vec![710]), iteration_for(710, 700)]).await;
     let (dispatch, mut rx) = dispatch_channel();
-    handle_unmap_outcome_iteration(&args(700, 710), "pm", Some(&refresh), &dispatch)
+    handle_unmap_outcome_iteration(&args(700, 710), "pm", Some(&refresh), &dispatch, &select)
         .await
         .expect("pm unmaps");
     let dispatched = iteration_upserted(&mut rx);
@@ -208,7 +215,7 @@ async fn unmap_leaves_the_iteration_itself_untouched_1763() {
 
 #[tokio::test]
 async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
-    let (refresh, adapter) = build_refresh(vec![
+    let (_store, refresh, adapter, select) = build_refresh(vec![
         outcome(700, vec![710, 720]),
         iteration_for(710, 700),
         iteration_for(720, 700),
@@ -223,7 +230,7 @@ async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
         .as_object()
         .cloned()
         .unwrap();
-    handle_reorder_outcome_iteration(&reorder, "pm", Some(&refresh), &dispatch())
+    handle_reorder_outcome_iteration(&reorder, "pm", Some(&refresh), &dispatch(), &select)
         .await
         .expect("pm reorders the iteration");
 
@@ -243,21 +250,28 @@ async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
 
 #[tokio::test]
 async fn unmap_is_pm_lane_non_pm_refused_1763() {
-    let (refresh, _adapter) =
+    let (_store, refresh, _adapter, select) =
         build_refresh(vec![outcome(700, vec![710]), iteration_for(710, 700)]).await;
-    let err = handle_unmap_outcome_iteration(&args(700, 710), "dev", Some(&refresh), &dispatch())
-        .await
-        .expect_err("dev cannot unmap (pm-lane)");
+    let err = handle_unmap_outcome_iteration(
+        &args(700, 710),
+        "dev",
+        Some(&refresh),
+        &dispatch(),
+        &select,
+    )
+    .await
+    .expect_err("dev cannot unmap (pm-lane)");
     assert!(err.contains("pm"), "the refusal names the pm-lane: {err}");
 }
 
 #[tokio::test]
 async fn unmap_rejects_an_unmapped_iteration_1763() {
-    let (refresh, _adapter) =
+    let (_store, refresh, _adapter, select) =
         build_refresh(vec![outcome(700, vec![]), iteration_for(710, 999)]).await;
-    let err = handle_unmap_outcome_iteration(&args(700, 710), "pm", Some(&refresh), &dispatch())
-        .await
-        .expect_err("an iteration not mapped to the outcome cannot be unmapped from it");
+    let err =
+        handle_unmap_outcome_iteration(&args(700, 710), "pm", Some(&refresh), &dispatch(), &select)
+            .await
+            .expect_err("an iteration not mapped to the outcome cannot be unmapped from it");
     assert!(
         err.contains("not mapped"),
         "the error explains it's not mapped: {err}"
@@ -273,14 +287,15 @@ async fn unmap_aimed_at_a_non_outcome_teaches_the_boundary_1763() {
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    let (refresh, _adapter) = build_refresh(vec![
+    let (_store, refresh, _adapter, select) = build_refresh(vec![
         (feature, vec!["feature".to_string()]),
         iteration_for(710, 700),
     ])
     .await;
-    let err = handle_unmap_outcome_iteration(&args(700, 710), "pm", Some(&refresh), &dispatch())
-        .await
-        .expect_err("a non-outcome target is refused");
+    let err =
+        handle_unmap_outcome_iteration(&args(700, 710), "pm", Some(&refresh), &dispatch(), &select)
+            .await
+            .expect_err("a non-outcome target is refused");
     assert!(
         err.contains("not an Outcome"),
         "the error teaches the boundary: {err}"

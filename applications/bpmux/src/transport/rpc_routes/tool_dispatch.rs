@@ -89,7 +89,7 @@ pub(super) async fn dispatch(
             bridge::dispatch_label_story(args, agent, role, actor_id, refresh_ref).await
         }
         "set_parent_epic" => {
-            bridge::dispatch_set_parent_epic(args, agent, role, actor_id, refresh_ref).await
+            bridge::dispatch_set_parent_epic(args, agent, role, actor_id, refresh_ref, select).await
         }
         "unset_parent_epic" => {
             bridge::dispatch_unset_parent_epic(args, agent, role, actor_id, refresh_ref).await
@@ -124,7 +124,8 @@ pub(super) async fn dispatch(
                 .await
         }
         "map_iteration_to_outcome" => {
-            bridge::dispatch_map_iteration_to_outcome(args, role, refresh_ref, dispatcher).await
+            bridge::dispatch_map_iteration_to_outcome(args, role, refresh_ref, dispatcher, select)
+                .await
         }
         "reprioritize_outcome" => {
             bridge::dispatch_reprioritize_outcome(
@@ -134,13 +135,24 @@ pub(super) async fn dispatch(
                 actor_id,
                 refresh_ref,
                 dispatcher,
+                select,
             )
             .await
         }
-        "edit_outcome" => bridge::dispatch_edit_outcome(args, role, refresh_ref, dispatcher).await,
+        "edit_outcome" => {
+            bridge::dispatch_edit_outcome(args, role, refresh_ref, dispatcher, select).await
+        }
         "retire_outcome" => {
-            bridge::dispatch_retire_outcome(args, agent, role, actor_id, refresh_ref, dispatcher)
-                .await
+            bridge::dispatch_retire_outcome(
+                args,
+                agent,
+                role,
+                actor_id,
+                refresh_ref,
+                dispatcher,
+                select,
+            )
+            .await
         }
         "remove_iteration_member" => {
             bridge::dispatch_remove_iteration_member(args, role, refresh_ref, dispatcher).await
@@ -152,10 +164,12 @@ pub(super) async fn dispatch(
             bridge::dispatch_rename_iteration(args, role, refresh_ref, dispatcher).await
         }
         "unmap_outcome_iteration" => {
-            bridge::dispatch_unmap_outcome_iteration(args, role, refresh_ref, dispatcher).await
+            bridge::dispatch_unmap_outcome_iteration(args, role, refresh_ref, dispatcher, select)
+                .await
         }
         "reorder_outcome_iteration" => {
-            bridge::dispatch_reorder_outcome_iteration(args, role, refresh_ref, dispatcher).await
+            bridge::dispatch_reorder_outcome_iteration(args, role, refresh_ref, dispatcher, select)
+                .await
         }
         "reorder_story" => bridge::dispatch_reorder_story(args, agent, refresh_ref).await,
         "move_story" => {

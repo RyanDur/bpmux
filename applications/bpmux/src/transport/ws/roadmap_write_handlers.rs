@@ -28,6 +28,7 @@ pub(super) async fn handle_set_outcome_horizon(
         ctx.routing_user_id.as_deref(),
         ctx.orchestrator.as_ref(),
         ctx.dispatch,
+        &ctx.store.selector(),
     )
     .await
     {
@@ -66,6 +67,7 @@ pub(super) async fn handle_reorder_outcome_iteration(
         role,
         ctx.orchestrator.as_ref(),
         ctx.dispatch,
+        &ctx.store.selector(),
     )
     .await
     {
@@ -171,6 +173,7 @@ pub(super) async fn handle_reprioritize_outcome(
         ctx.routing_user_id.as_deref(),
         ctx.orchestrator.as_ref(),
         ctx.dispatch,
+        &ctx.store.selector(),
     )
     .await
     {

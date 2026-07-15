@@ -78,7 +78,13 @@ fn seed_outcome(id: u64) -> (Story, Vec<String>) {
     (s, vec!["outcome".to_string()])
 }
 
-async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
+async fn build_refresh(
+    seeds: Vec<(Story, Vec<String>)>,
+) -> (
+    crate::store::SeededStore,
+    Arc<dyn RefreshDriver>,
+    crate::store::Select,
+) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     for (story, labels) in &seeds {
         adapter.seed_labels(story.id.value(), labels.clone());
@@ -98,9 +104,11 @@ async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDrive
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
         .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
         .collect();
-    crate::store::bind_seeded_refresh(&orch, seeded, iterations, vec![]);
+    let store = crate::store::SeededStore::new(seeded, iterations, vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
-    orch
+    let select = store.select();
+    (store, orch, select)
 }
 
 fn map_args(outcome: u64, iteration: u64, position: u64) -> Map<String, Value> {
@@ -192,11 +200,18 @@ async fn create_outcome_rejects_invalid_horizon_1738() {
 
 #[tokio::test]
 async fn pm_maps_an_iteration_to_an_outcome_in_order_1738() {
-    let refresh = build_refresh(vec![seed_outcome(700), seed_iteration(710)]).await;
+    let (_store, refresh, select) =
+        build_refresh(vec![seed_outcome(700), seed_iteration(710)]).await;
     let (dispatch, mut rx) = dispatch_channel();
-    handle_map_iteration_to_outcome(&map_args(700, 710, 1), "pm", Some(&refresh), &dispatch)
-        .await
-        .expect("pm maps the iteration to the outcome");
+    handle_map_iteration_to_outcome(
+        &map_args(700, 710, 1),
+        "pm",
+        Some(&refresh),
+        &dispatch,
+        &select,
+    )
+    .await
+    .expect("pm maps the iteration to the outcome");
     let mut outcomes = Vec::new();
     let mut iterations = Vec::new();
     while let Ok(action) = rx.try_recv() {
@@ -228,27 +243,38 @@ async fn pm_maps_an_iteration_to_an_outcome_in_order_1738() {
 
 #[tokio::test]
 async fn map_iteration_to_outcome_is_pm_lane_non_pm_refused_1738() {
-    let refresh = build_refresh(vec![seed_outcome(700), seed_iteration(710)]).await;
+    let (_store, refresh, select) =
+        build_refresh(vec![seed_outcome(700), seed_iteration(710)]).await;
     let (dispatch, _rx) = dispatch_channel();
-    let err =
-        handle_map_iteration_to_outcome(&map_args(700, 710, 1), "dev", Some(&refresh), &dispatch)
-            .await
-            .expect_err("dev cannot map (pm-lane)");
+    let err = handle_map_iteration_to_outcome(
+        &map_args(700, 710, 1),
+        "dev",
+        Some(&refresh),
+        &dispatch,
+        &select,
+    )
+    .await
+    .expect_err("dev cannot map (pm-lane)");
     assert!(err.contains("pm"), "refusal names pm-lane: {err}");
 }
 
 #[tokio::test]
 async fn map_rejects_non_outcome_target_1738() {
-    let refresh = build_refresh(vec![
+    let (_store, refresh, select) = build_refresh(vec![
         typed_seed(700, StoryKind::Feature, "feature"),
         seed_iteration(710),
     ])
     .await;
     let (dispatch, _rx) = dispatch_channel();
-    let err =
-        handle_map_iteration_to_outcome(&map_args(700, 710, 1), "pm", Some(&refresh), &dispatch)
-            .await
-            .expect_err("a feature is not an outcome — iterations map only to outcomes");
+    let err = handle_map_iteration_to_outcome(
+        &map_args(700, 710, 1),
+        "pm",
+        Some(&refresh),
+        &dispatch,
+        &select,
+    )
+    .await
+    .expect_err("a feature is not an outcome — iterations map only to outcomes");
     assert!(
         err.contains("not an Outcome"),
         "refusal explains the target must be an Outcome: {err}"

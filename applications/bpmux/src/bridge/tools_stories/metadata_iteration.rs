@@ -55,6 +55,7 @@ pub(crate) async fn handle_map_iteration_to_outcome(
     role: &str,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     require_purpose(role, &["pm"], "map an iteration to an outcome")?;
     let outcome_id = args
@@ -71,7 +72,7 @@ pub(crate) async fn handle_map_iteration_to_outcome(
         .ok_or("missing 'position' argument")? as u32;
     let r = refresh.ok_or("map_iteration_to_outcome requires refresh (RefreshDriver)")?;
     let iteration = ensure_iteration_in_canonical_store(r, iteration_id).await?;
-    let outcome = ensure_outcome_in_canonical_store(r, outcome_id).await?;
+    let outcome = ensure_outcome_in_canonical_store(r, select, outcome_id).await?;
 
     let mut parent = outcome
         .body

@@ -12,6 +12,7 @@ pub(crate) async fn handle_retire_outcome(
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     require_purpose(role, &["pm"], "retire an outcome")?;
     let outcome_id = args
@@ -25,7 +26,7 @@ pub(crate) async fn handle_retire_outcome(
         .ok_or("outcome retire needs --reason <R> (retire is destructive; the reason is the audit-trail)")?;
 
     let r = refresh.ok_or("retire_outcome requires refresh (RefreshDriver)")?;
-    let outcome = ensure_outcome_in_canonical_store(r, outcome_id).await?;
+    let outcome = ensure_outcome_in_canonical_store(r, select, outcome_id).await?;
 
     let meta = || meta_for(agent_name, actor_id);
     r.mutate_sync(StoryEvent::new(

@@ -8,6 +8,7 @@ pub(crate) async fn handle_edit_outcome(
     role: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     require_purpose(role, &["pm"], "edit an outcome")?;
     let outcome_id = args
@@ -21,7 +22,7 @@ pub(crate) async fn handle_edit_outcome(
     }
 
     let r = refresh.ok_or("edit_outcome requires refresh (RefreshDriver)")?;
-    let mut outcome = ensure_outcome_in_canonical_store(r, outcome_id).await?;
+    let mut outcome = ensure_outcome_in_canonical_store(r, select, outcome_id).await?;
 
     let mut updated: Vec<&str> = Vec::new();
     if let Some(t) = title {

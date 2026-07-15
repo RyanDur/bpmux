@@ -101,7 +101,13 @@ fn band_order(refresh: &Arc<dyn RefreshDriver>, horizon: Horizon) -> Vec<u64> {
         .collect()
 }
 
-async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
+async fn build_refresh(
+    seeds: Vec<(Story, Vec<String>)>,
+) -> (
+    crate::store::SeededStore,
+    Arc<dyn RefreshDriver>,
+    crate::store::Select,
+) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     for (story, labels) in &seeds {
         adapter.seed_labels(story.id.value(), labels.clone());
@@ -111,9 +117,11 @@ async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDrive
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, outcomes_from(&seeds), vec![], vec![]);
+    let store = crate::store::SeededStore::new(outcomes_from(&seeds), vec![], vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
-    orch
+    let select = store.select();
+    (store, orch, select)
 }
 
 async fn refresh_with_outcomes(outcomes: Vec<Outcome>) -> Arc<dyn RefreshDriver> {
@@ -143,7 +151,7 @@ fn args(outcome: u64, to: &str) -> Map<String, Value> {
 
 #[tokio::test]
 async fn pm_moves_an_outcome_to_a_new_band_and_the_horizon_rederives_1759() {
-    let refresh = build_refresh(vec![seed_outcome(
+    let (_store, refresh, select) = build_refresh(vec![seed_outcome(
         700,
         "Agents reason from the substrate",
         &["outcome", "horizon.next"],
@@ -157,6 +165,7 @@ async fn pm_moves_an_outcome_to_a_new_band_and_the_horizon_rederives_1759() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("pm can reprioritize an outcome");
@@ -173,7 +182,7 @@ async fn pm_moves_an_outcome_to_a_new_band_and_the_horizon_rederives_1759() {
 
 #[tokio::test]
 async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_new_band_1759() {
-    let refresh = build_refresh(vec![seed_outcome(
+    let (_store, refresh, select) = build_refresh(vec![seed_outcome(
         700,
         "Agents reason from the substrate",
         &["outcome", "horizon.later"],
@@ -195,6 +204,7 @@ async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_n
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("pm reprioritizes the outcome");
@@ -217,7 +227,8 @@ async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_n
 
 #[tokio::test]
 async fn reprioritize_outcome_is_pm_lane_non_pm_refused_1759() {
-    let refresh = build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.next"])]).await;
+    let (_store, refresh, select) =
+        build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.next"])]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_reprioritize_outcome(
         &args(700, "now"),
@@ -226,6 +237,7 @@ async fn reprioritize_outcome_is_pm_lane_non_pm_refused_1759() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("dev cannot reprioritize the roadmap (pm-lane)");
@@ -244,7 +256,7 @@ async fn reprioritize_outcome_is_pm_lane_non_pm_refused_1759() {
 
 #[tokio::test]
 async fn reprioritize_aimed_at_a_non_outcome_teaches_the_boundary_1759() {
-    let refresh = build_refresh(vec![seed(
+    let (_store, refresh, select) = build_refresh(vec![seed(
         700,
         "A plain story",
         StoryKind::Feature,
@@ -259,6 +271,7 @@ async fn reprioritize_aimed_at_a_non_outcome_teaches_the_boundary_1759() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("a roadmap-verb aimed at a non-outcome story is refused");
@@ -270,7 +283,7 @@ async fn reprioritize_aimed_at_a_non_outcome_teaches_the_boundary_1759() {
 
 #[tokio::test]
 async fn reprioritize_to_the_current_band_is_an_idempotent_noop_1759() {
-    let refresh = build_refresh(vec![seed_outcome(
+    let (_store, refresh, select) = build_refresh(vec![seed_outcome(
         700,
         "Already here",
         &["outcome", "horizon.now"],
@@ -284,6 +297,7 @@ async fn reprioritize_to_the_current_band_is_an_idempotent_noop_1759() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("re-firing to the current band is safe (idempotent)");
@@ -311,7 +325,7 @@ async fn position_reorders_an_outcome_within_its_band_observed_through_the_deriv
         seed_outcome(720, "C", &["outcome", "horizon.now"]),
     ];
     let base = outcomes_from(&seeds);
-    let refresh = build_refresh(seeds).await;
+    let (_store, refresh, select) = build_refresh(seeds).await;
     assert_eq!(
         band_order(&refresh, Horizon::Now),
         vec![700, 710, 720],
@@ -326,6 +340,7 @@ async fn position_reorders_an_outcome_within_its_band_observed_through_the_deriv
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("pm reorders C to the front of Now");
@@ -345,7 +360,7 @@ async fn position_overshoot_clamps_to_the_band_end_and_labels_it_1759() {
         seed_outcome(710, "B", &["outcome", "horizon.now"]),
     ];
     let base = outcomes_from(&seeds);
-    let refresh = build_refresh(seeds).await;
+    let (_store, refresh, select) = build_refresh(seeds).await;
     let (dispatch, mut rx) = dispatch_channel();
     let result = handle_reprioritize_outcome(
         &args_full(700, None, Some(9)),
@@ -354,6 +369,7 @@ async fn position_overshoot_clamps_to_the_band_end_and_labels_it_1759() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("an overshoot clamps, never errors");
@@ -377,7 +393,7 @@ async fn band_move_and_position_compose_in_one_verb_1759() {
         seed_outcome(720, "C", &["outcome", "horizon.next"]),
     ];
     let base = outcomes_from(&seeds);
-    let refresh = build_refresh(seeds).await;
+    let (_store, refresh, select) = build_refresh(seeds).await;
     let (dispatch, mut rx) = dispatch_channel();
     handle_reprioritize_outcome(
         &args_full(720, Some("now"), Some(1)),
@@ -386,6 +402,7 @@ async fn band_move_and_position_compose_in_one_verb_1759() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("C moves to Now AND lands at position 1");
@@ -403,7 +420,7 @@ async fn band_move_and_position_compose_in_one_verb_1759() {
 
 #[tokio::test]
 async fn band_move_resets_a_stale_within_band_position_1759() {
-    let refresh = build_refresh(vec![seed_outcome(
+    let (_store, refresh, select) = build_refresh(vec![seed_outcome(
         700,
         "A",
         &["outcome", "horizon.now", "horizon-order.5"],
@@ -417,6 +434,7 @@ async fn band_move_resets_a_stale_within_band_position_1759() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("A moves to Later");
@@ -429,7 +447,8 @@ async fn band_move_resets_a_stale_within_band_position_1759() {
 
 #[tokio::test]
 async fn reprioritize_with_neither_target_is_rejected_1759() {
-    let refresh = build_refresh(vec![seed_outcome(700, "A", &["outcome", "horizon.now"])]).await;
+    let (_store, refresh, select) =
+        build_refresh(vec![seed_outcome(700, "A", &["outcome", "horizon.now"])]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_reprioritize_outcome(
         &args_full(700, None, None),
@@ -438,6 +457,7 @@ async fn reprioritize_with_neither_target_is_rejected_1759() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("neither --to nor --position is a no-target");
@@ -449,7 +469,8 @@ async fn reprioritize_with_neither_target_is_rejected_1759() {
 
 #[tokio::test]
 async fn reprioritize_rejects_an_invalid_band_1759() {
-    let refresh = build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
+    let (_store, refresh, select) =
+        build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_reprioritize_outcome(
         &args(700, "someday"),
@@ -458,6 +479,7 @@ async fn reprioritize_rejects_an_invalid_band_1759() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("an invalid band is rejected");

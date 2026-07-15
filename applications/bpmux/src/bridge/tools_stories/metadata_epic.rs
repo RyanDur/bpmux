@@ -11,6 +11,7 @@ pub(crate) async fn handle_set_parent_epic(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     require_purpose(role, &["pm"], "set parent epic")?;
     let id = args
@@ -26,7 +27,7 @@ pub(crate) async fn handle_set_parent_epic(
     }
     let r = refresh.ok_or("set_parent_epic requires refresh (RefreshDriver)")?;
     ensure_story_in_canonical_store(r, id).await?;
-    ensure_epic_in_canonical_store(r, epic_id).await?;
+    ensure_epic_in_canonical_store(r, select, epic_id).await?;
     let meta = meta_for(agent_name, actor_id);
     r.mutate_sync(product_management::story::events::StoryEvent::new(
         meta,

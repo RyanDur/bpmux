@@ -85,7 +85,13 @@ fn outcome_with(id: u64, iterations: Vec<u64>) -> (Story, Vec<String>) {
     (s, labels)
 }
 
-async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
+async fn build_refresh(
+    seeds: Vec<(Story, Vec<String>)>,
+) -> (
+    crate::store::SeededStore,
+    Arc<dyn RefreshDriver>,
+    crate::store::Select,
+) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     for (story, labels) in &seeds {
         adapter.seed_labels(story.id.value(), labels.clone());
@@ -105,9 +111,11 @@ async fn build_refresh(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDrive
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
         .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
         .collect();
-    crate::store::bind_seeded_refresh(&orch, seeded, iterations, vec![]);
+    let store = crate::store::SeededStore::new(seeded, iterations, vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
-    orch
+    let select = store.select();
+    (store, orch, select)
 }
 
 async fn roadmap_numbers_for(outcomes: Vec<Outcome>) -> Vec<u64> {
@@ -144,7 +152,7 @@ fn band_numbers(refresh: &Arc<dyn RefreshDriver>) -> Vec<u64> {
 #[tokio::test]
 async fn retire_mutates_the_domain_and_the_outcome_drops_from_the_roadmap_view_1761() {
     let (live, live_labels) = seed_outcome(700, "Live", &["outcome", "horizon.now"]);
-    let refresh = build_refresh(vec![
+    let (_store, refresh, select) = build_refresh(vec![
         (live.clone(), live_labels.clone()),
         seed_outcome(710, "Abandoned", &["outcome", "horizon.now"]),
     ])
@@ -163,6 +171,7 @@ async fn retire_mutates_the_domain_and_the_outcome_drops_from_the_roadmap_view_1
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("pm retires the abandoned outcome");
@@ -193,7 +202,8 @@ async fn retire_mutates_the_domain_and_the_outcome_drops_from_the_roadmap_view_1
 
 #[tokio::test]
 async fn retire_with_no_reason_is_rejected_1761() {
-    let refresh = build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
+    let (_store, refresh, select) =
+        build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_retire_outcome(
         &args(700, None),
@@ -202,6 +212,7 @@ async fn retire_with_no_reason_is_rejected_1761() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("retire is destructive — a reason is required");
@@ -222,7 +233,7 @@ async fn retire_with_no_reason_is_rejected_1761() {
 
 #[tokio::test]
 async fn retire_states_the_orphaned_iteration_mapping_count_1761() {
-    let refresh = build_refresh(vec![
+    let (_store, refresh, select) = build_refresh(vec![
         outcome_with(700, vec![710, 720]),
         iteration_in_outcome(710, 700),
         iteration_in_outcome(720, 700),
@@ -236,6 +247,7 @@ async fn retire_states_the_orphaned_iteration_mapping_count_1761() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("pm retires an outcome with mapped iterations");
@@ -253,7 +265,8 @@ async fn retire_states_the_orphaned_iteration_mapping_count_1761() {
 
 #[tokio::test]
 async fn retire_outcome_is_pm_lane_non_pm_refused_1761() {
-    let refresh = build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
+    let (_store, refresh, select) =
+        build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_retire_outcome(
         &args(700, Some("r")),
@@ -262,6 +275,7 @@ async fn retire_outcome_is_pm_lane_non_pm_refused_1761() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("dev cannot retire an outcome (pm-lane)");
@@ -270,7 +284,7 @@ async fn retire_outcome_is_pm_lane_non_pm_refused_1761() {
 
 #[tokio::test]
 async fn retire_aimed_at_a_non_outcome_teaches_the_boundary_1761() {
-    let refresh = build_refresh(vec![seed(
+    let (_store, refresh, select) = build_refresh(vec![seed(
         700,
         "A story",
         StoryKind::Feature,
@@ -285,6 +299,7 @@ async fn retire_aimed_at_a_non_outcome_teaches_the_boundary_1761() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("retire aimed at a non-outcome is refused");

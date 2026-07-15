@@ -10,10 +10,11 @@ use std::sync::Arc;
 
 async fn verify_iteration_mapped(
     r: &Arc<dyn RefreshDriver>,
+    select: &crate::store::Select,
     outcome_id: u64,
     iteration_id: u64,
 ) -> Result<Outcome, String> {
-    let outcome = ensure_outcome_in_canonical_store(r, outcome_id).await?;
+    let outcome = ensure_outcome_in_canonical_store(r, select, outcome_id).await?;
     ensure_iteration_in_canonical_store(r, iteration_id).await?;
     if !outcome.iterations.contains(&IterationId::new(iteration_id)) {
         return Err(format!(
@@ -28,6 +29,7 @@ pub(crate) async fn handle_unmap_outcome_iteration(
     role: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     require_purpose(role, &["pm"], "unmap an iteration from an outcome")?;
     let outcome_id = args
@@ -40,7 +42,7 @@ pub(crate) async fn handle_unmap_outcome_iteration(
         .ok_or("missing 'iteration_id' argument")?;
 
     let r = refresh.ok_or("unmap_outcome_iteration requires refresh (RefreshDriver)")?;
-    let outcome = verify_iteration_mapped(r, outcome_id, iteration_id).await?;
+    let outcome = verify_iteration_mapped(r, select, outcome_id, iteration_id).await?;
 
     let mut parent = outcome
         .body
@@ -90,6 +92,7 @@ pub(crate) async fn handle_reorder_outcome_iteration(
     role: &str,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     require_purpose(role, &["pm"], "reorder an outcome's iterations")?;
     let outcome_id = args
@@ -107,7 +110,7 @@ pub(crate) async fn handle_reorder_outcome_iteration(
         as u32;
 
     let r = refresh.ok_or("reorder_outcome_iteration requires refresh (RefreshDriver)")?;
-    let outcome = verify_iteration_mapped(r, outcome_id, iteration_id).await?;
+    let outcome = verify_iteration_mapped(r, select, outcome_id, iteration_id).await?;
 
     let (band_size, new_body) = reorder_iterations_within_outcome(
         r,

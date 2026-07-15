@@ -14,6 +14,7 @@ pub(crate) async fn handle_reprioritize_outcome(
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     require_purpose(role, &["pm"], "reprioritize an outcome")?;
     let outcome_id = args
@@ -39,7 +40,7 @@ pub(crate) async fn handle_reprioritize_outcome(
         .transpose()?;
 
     let r = refresh.ok_or("reprioritize_outcome requires refresh (RefreshDriver)")?;
-    let outcome = ensure_outcome_in_canonical_store(r, outcome_id).await?;
+    let outcome = ensure_outcome_in_canonical_store(r, select, outcome_id).await?;
 
     let target_band = match requested_band {
         Some(band) => band,

@@ -30,8 +30,8 @@ fn epic_list(seeded: &[(Story, Vec<String>)]) -> Vec<Epic> {
 fn bind_epics(
     orch: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     seeded: &[(Story, Vec<String>)],
-) {
-    crate::store::bind_seeded_refresh(orch, vec![], vec![], epic_list(seeded));
+) -> crate::store::SeededStore {
+    seeded_store_with_epics(orch, seeded)
 }
 
 fn seeded_store_with_epics(
@@ -74,14 +74,22 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    bind_epics(&orchestrator, &seeded);
+    let store = bind_epics(&orchestrator, &seeded);
+    let select = store.select();
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(300));
     args.insert("epic_id".into(), serde_json::json!(457));
-    let result =
-        handle_set_parent_epic(&args, "pm:claude-code", "pm", None, Some(&orchestrator)).await;
+    let result = handle_set_parent_epic(
+        &args,
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&orchestrator),
+        &select,
+    )
+    .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     assert_eq!(
@@ -124,14 +132,23 @@ async fn set_parent_epic_rejects_non_existent_epic() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
+    let select = store.select();
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(310));
     args.insert("epic_id".into(), serde_json::json!(9999));
-    let result =
-        handle_set_parent_epic(&args, "pm:claude-code", "pm", None, Some(&orchestrator)).await;
+    let result = handle_set_parent_epic(
+        &args,
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&orchestrator),
+        &select,
+    )
+    .await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("not found"));
 }
@@ -166,14 +183,23 @@ async fn set_parent_epic_rejects_non_epic_parent() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
+    let select = store.select();
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(311));
     args.insert("epic_id".into(), serde_json::json!(458));
-    let result =
-        handle_set_parent_epic(&args, "pm:claude-code", "pm", None, Some(&orchestrator)).await;
+    let result = handle_set_parent_epic(
+        &args,
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&orchestrator),
+        &select,
+    )
+    .await;
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(err.contains("not an Epic"));
@@ -234,7 +260,8 @@ async fn set_parent_epic_rejects_non_pm_role() {
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(1));
     args.insert("epic_id".into(), serde_json::json!(2));
-    let result = handle_set_parent_epic(&args, "dev:claude-code", "dev", None, None).await;
+    let select = crate::store::Select::new(std::sync::Weak::new());
+    let result = handle_set_parent_epic(&args, "dev:claude-code", "dev", None, None, &select).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("restricted to pm"));
 }
@@ -244,7 +271,8 @@ async fn set_parent_epic_rejects_self_parent() {
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(42));
     args.insert("epic_id".into(), serde_json::json!(42));
-    let result = handle_set_parent_epic(&args, "pm:claude-code", "pm", None, None).await;
+    let select = crate::store::Select::new(std::sync::Weak::new());
+    let result = handle_set_parent_epic(&args, "pm:claude-code", "pm", None, None, &select).await;
     assert!(result.is_err());
     assert!(
         result
@@ -277,7 +305,7 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    bind_epics(&orchestrator, &seeded);
+    let _store = bind_epics(&orchestrator, &seeded);
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();

@@ -21,12 +21,13 @@ pub(crate) async fn ensure_story_in_canonical_store(
 
 pub(crate) async fn ensure_outcome_in_canonical_store(
     refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    select: &crate::store::Select,
     id: u64,
 ) -> Result<product_management::outcome::Outcome, String> {
-    if let Some(outcome) = find_outcome_in_store(refresh, id) {
+    if let Some(outcome) = find_outcome_in_store(select, id) {
         return Ok(outcome);
     }
-    if refresh.backing_story(id).is_some() {
+    if backing_story_via_select(select, id).is_some() {
         return Err(not_an_outcome_message(id));
     }
     refresh.refresh_story(id).await.map_err(|e| {
@@ -35,10 +36,10 @@ pub(crate) async fn ensure_outcome_in_canonical_store(
              cannot proceed with mutation against unknown outcome state"
         )
     })?;
-    if let Some(outcome) = find_outcome_in_store(refresh, id) {
+    if let Some(outcome) = find_outcome_in_store(select, id) {
         return Ok(outcome);
     }
-    if refresh.backing_story(id).is_some() {
+    if backing_story_via_select(select, id).is_some() {
         return Err(not_an_outcome_message(id));
     }
     Err(format!(
@@ -48,13 +49,25 @@ pub(crate) async fn ensure_outcome_in_canonical_store(
 }
 
 fn find_outcome_in_store(
-    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    select: &crate::store::Select,
     id: u64,
 ) -> Option<product_management::outcome::Outcome> {
-    refresh
-        .outcomes()
+    select
+        .select(|s| product_management::outcome::all(&s.outcomes))
         .into_iter()
         .find(|outcome| outcome.id == product_management::outcome::OutcomeId::new(id))
+}
+
+fn backing_story_via_select(
+    select: &crate::store::Select,
+    id: u64,
+) -> Option<product_management::story::Story> {
+    select.select(|s| {
+        product_management::story::slice::get(
+            &s.stories,
+            product_management::story::StoryId::new(id),
+        )
+    })
 }
 
 fn not_an_outcome_message(id: u64) -> String {
@@ -99,13 +112,14 @@ fn not_an_iteration_message(id: u64) -> String {
 
 pub(crate) async fn ensure_epic_in_canonical_store(
     refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    select: &crate::store::Select,
     id: u64,
 ) -> Result<product_management::epic::Epic, String> {
     let epic_id = product_management::epic::EpicId::new(id);
-    if let Some(epic) = refresh.epic(epic_id) {
+    if let Some(epic) = select.select(|s| product_management::epic::get(&s.epics, epic_id)) {
         return Ok(epic);
     }
-    if refresh.backing_story(id).is_some() {
+    if backing_story_via_select(select, id).is_some() {
         return Err(not_an_epic_message(id));
     }
     refresh.refresh_story(id).await.map_err(|e| {
@@ -114,10 +128,10 @@ pub(crate) async fn ensure_epic_in_canonical_store(
              cannot proceed with an epic operation against unknown state"
         )
     })?;
-    if let Some(epic) = refresh.epic(epic_id) {
+    if let Some(epic) = select.select(|s| product_management::epic::get(&s.epics, epic_id)) {
         return Ok(epic);
     }
-    if refresh.backing_story(id).is_some() {
+    if backing_story_via_select(select, id).is_some() {
         return Err(not_an_epic_message(id));
     }
     Err(format!(
