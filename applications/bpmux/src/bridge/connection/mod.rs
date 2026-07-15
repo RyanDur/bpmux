@@ -6,7 +6,7 @@ use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite;
 
 use super::{WsSink, event_subscription};
-use crate::transport::protocol::ServerMessage;
+use protocol::ServerMessage;
 
 mod frame;
 

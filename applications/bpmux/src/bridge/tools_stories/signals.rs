@@ -1,4 +1,4 @@
-use crate::transport::protocol::ClientMessage;
+use protocol::ClientMessage;
 
 fn role_name_for_purpose(purpose: &str) -> String {
     workflow::current_workflow()

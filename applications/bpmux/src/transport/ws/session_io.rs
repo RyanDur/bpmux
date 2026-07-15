@@ -2,7 +2,7 @@ use axum::extract::ws::{Message as WsMessage, WebSocket};
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
 
-use crate::transport::protocol::{ClientMessage, ServerMessage};
+use protocol::{ClientMessage, ServerMessage};
 
 pub(super) async fn wait_for_identify(
     tx: &mut SplitSink<WebSocket, WsMessage>,

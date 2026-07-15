@@ -16,6 +16,7 @@ members = [
     "components/owner_session",
     "components/persist",
     "components/product_management",
+    "components/protocol",
     "components/rate_limit",
     "components/reactions",
     "components/roster",

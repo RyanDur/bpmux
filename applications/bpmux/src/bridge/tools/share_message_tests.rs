@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::share_message::*;
-use crate::transport::protocol::ClientMessage;
+use protocol::ClientMessage;
 
 fn private_source() -> serde_json::Value {
     serde_json::json!({

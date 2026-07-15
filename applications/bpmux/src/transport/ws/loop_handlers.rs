@@ -8,7 +8,7 @@ use futures::stream::SplitSink;
 use tokio::sync::broadcast;
 
 use crate::hub;
-use crate::transport::protocol::ServerMessage;
+use protocol::ServerMessage;
 
 use super::{build_peer_lag_message, send_json, should_deliver};
 

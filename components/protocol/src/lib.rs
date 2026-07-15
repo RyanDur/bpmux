@@ -173,3 +173,6 @@ impl From<Message> for ServerMessage {
         }
     }
 }
+
+#[cfg(test)]
+mod frame_tests;

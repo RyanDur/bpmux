@@ -1,8 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::ws::*;
-use crate::transport::protocol::{ClientMessage, ServerMessage};
 use chrono::Utc;
+use protocol::{ClientMessage, ServerMessage};
 
 #[test]
 fn reaction_toggle_frame_deserializes_with_snake_case_fields() {

@@ -1,7 +1,7 @@
 use tokio::sync::Mutex;
 
 use super::helpers::{WsSink, urlencoding, ws_send};
-use crate::transport::protocol::ClientMessage;
+use protocol::ClientMessage;
 
 pub(in crate::bridge) fn parse_share_scope(scope: &str) -> Result<Option<Vec<String>>, String> {
     if scope.is_empty() {

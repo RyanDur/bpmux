@@ -2,8 +2,8 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::transport::protocol::ClientMessage;
 use product_management::story::StoryId;
+use protocol::ClientMessage;
 
 #[tokio::test]
 async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {

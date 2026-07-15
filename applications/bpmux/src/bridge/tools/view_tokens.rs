@@ -7,7 +7,7 @@ pub(in crate::bridge) const VIEW_TOKENS_MARKER: &str = "__BPMUX_VIEW_TOKENS__";
 pub(in crate::bridge) async fn handle_view_tokens(
     ws_tx: &Mutex<Option<WsSink>>,
 ) -> Result<String, String> {
-    let msg = crate::transport::protocol::ClientMessage::Send {
+    let msg = protocol::ClientMessage::Send {
         text: VIEW_TOKENS_MARKER.to_string(),
         to: None,
         addressee: None,

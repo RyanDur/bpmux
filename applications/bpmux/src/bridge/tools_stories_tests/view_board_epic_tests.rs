@@ -3,9 +3,9 @@
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::transport::protocol::ClientMessage;
 use product_management::epic::{Epic, EpicId};
 use product_management::story::{Story, StoryId};
+use protocol::ClientMessage;
 use source_codec::mapper::{decode_epic_from_story, is_epic_story};
 
 fn td() -> crate::store::Dispatch {

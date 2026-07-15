@@ -4,7 +4,7 @@ use axum::extract::ws::{Message as WsMessage, WebSocket};
 use futures::stream::SplitSink;
 
 use crate::hub;
-use crate::transport::protocol::ServerMessage;
+use protocol::ServerMessage;
 
 use super::snapshot::{build_state_snapshot_message, system_announcement};
 use super::{send_json, should_deliver};

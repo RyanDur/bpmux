@@ -3,9 +3,9 @@ use std::sync::Arc;
 pub(super) fn broadcast_client_msg_via_hub(
     hub: &Arc<crate::hub::Hub>,
     agent_name: &str,
-    msg: crate::transport::protocol::ClientMessage,
+    msg: protocol::ClientMessage,
 ) {
-    if let crate::transport::protocol::ClientMessage::Send {
+    if let protocol::ClientMessage::Send {
         text,
         to,
         addressee,

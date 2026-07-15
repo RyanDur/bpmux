@@ -2,8 +2,8 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::transport::protocol::ClientMessage;
 use product_management::story::{StoryId, StoryKind};
+use protocol::ClientMessage;
 
 fn td() -> crate::store::Dispatch {
     crate::store::Dispatch::recording().0

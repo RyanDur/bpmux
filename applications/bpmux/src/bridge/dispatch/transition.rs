@@ -127,7 +127,7 @@ pub(crate) async fn dispatch_pass_stage(
     broadcast_client_msg_via_hub(
         hub,
         agent_name,
-        crate::transport::protocol::ClientMessage::Send {
+        protocol::ClientMessage::Send {
             text: result.clone(),
             to: None,
             addressee: None,
@@ -150,7 +150,7 @@ pub(crate) async fn dispatch_fail_stage(
     broadcast_client_msg_via_hub(
         hub,
         agent_name,
-        crate::transport::protocol::ClientMessage::Send {
+        protocol::ClientMessage::Send {
             text: result.clone(),
             to: None,
             addressee: None,

@@ -2,7 +2,7 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::transport::protocol::ClientMessage;
+use protocol::ClientMessage;
 
 #[cfg(test)]
 mod reopen_on_state_transition_tests {

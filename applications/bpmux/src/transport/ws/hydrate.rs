@@ -3,8 +3,8 @@ use futures::stream::SplitSink;
 
 use super::client::ClientCtx;
 use super::send_json;
-use crate::transport::protocol::ServerMessage;
 use message::MessageType;
+use protocol::ServerMessage;
 
 pub(super) async fn handle_comments_hydrate(
     ctx: &ClientCtx<'_>,

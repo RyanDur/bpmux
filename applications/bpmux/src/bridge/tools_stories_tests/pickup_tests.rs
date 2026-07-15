@@ -2,7 +2,7 @@
 
 use super::super::tools_stories::*;
 use super::test_ci_state_store_green;
-use crate::transport::protocol::ClientMessage;
+use protocol::ClientMessage;
 
 #[tokio::test]
 async fn start_story_rejects_missing_pickup_paraphrase() {

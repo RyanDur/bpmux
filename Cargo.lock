@@ -407,6 +407,7 @@ dependencies = [
  "persist",
  "portable-pty",
  "product_management",
+ "protocol",
  "rate_limit",
  "reactions",
  "regex",
@@ -2547,6 +2548,17 @@ dependencies = [
  "tempfile",
  "uuid",
  "workflow",
+]
+
+[[package]]
+name = "protocol"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "message",
+ "product_management",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

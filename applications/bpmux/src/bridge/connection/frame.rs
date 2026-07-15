@@ -2,7 +2,7 @@ use serde_json::json;
 use tokio::sync::Mutex;
 
 use super::super::{event_subscription, message_type_reaches_llm_stream};
-use crate::transport::protocol::ServerMessage;
+use protocol::ServerMessage;
 
 pub(super) async fn handle_message_frame(
     msg: ServerMessage,

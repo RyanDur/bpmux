@@ -9,9 +9,9 @@ use crate::harness;
 
 use std::time::Duration;
 
-use bpmux::transport::protocol::ServerMessage;
 use harness::peer::WsPeer;
 use harness::pty::TestBpmux;
+use protocol::ServerMessage;
 use serde_json::Value;
 
 async fn roster_identities(bpmux: &TestBpmux) -> Vec<String> {

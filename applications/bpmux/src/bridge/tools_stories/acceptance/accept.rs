@@ -55,7 +55,7 @@ pub(crate) async fn handle_accept_story(
             current_head.as_deref(),
         ) {
             for role in e.expired_evidence_roles() {
-                if let crate::transport::protocol::ClientMessage::Send {
+                if let protocol::ClientMessage::Send {
                     text,
                     to,
                     addressee,

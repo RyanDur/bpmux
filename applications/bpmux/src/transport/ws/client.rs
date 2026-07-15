@@ -15,7 +15,7 @@ use super::roadmap_write_handlers::{
 };
 use super::{MAX_MESSAGE_SIZE, message_size_ok, send_json};
 use crate::hub;
-use crate::transport::protocol::{ClientMessage, ServerMessage};
+use protocol::{ClientMessage, ServerMessage};
 
 pub(crate) struct ClientCtx<'a> {
     pub hub: &'a hub::Hub,

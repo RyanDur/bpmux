@@ -6,7 +6,6 @@ pub mod crypto;
 pub(crate) mod delivery_ids;
 pub mod electron_capture;
 pub mod peer;
-pub mod protocol;
 pub mod rest;
 pub mod rpc_routes;
 pub mod self_update;
@@ -32,8 +31,6 @@ mod crypto_tests;
 mod external_mutation_tests;
 #[cfg(test)]
 mod peer_tests;
-#[cfg(test)]
-mod protocol_tests;
 #[cfg(test)]
 mod rest_tests;
 #[cfg(test)]

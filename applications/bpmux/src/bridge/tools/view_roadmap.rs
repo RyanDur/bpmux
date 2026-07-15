@@ -8,7 +8,7 @@ pub(in crate::bridge) async fn handle_view_roadmap(
     ws_tx: &Mutex<Option<WsSink>>,
     port: u16,
 ) -> Result<String, String> {
-    let msg = crate::transport::protocol::ClientMessage::Send {
+    let msg = protocol::ClientMessage::Send {
         text: VIEW_ROADMAP_MARKER.to_string(),
         to: None,
         addressee: None,

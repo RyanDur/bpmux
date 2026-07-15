@@ -5,7 +5,7 @@ use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
 
 use crate::hub;
-use crate::transport::protocol::ServerMessage;
+use protocol::ServerMessage;
 use user_routing::short_name;
 
 mod client;

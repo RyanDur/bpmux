@@ -5,9 +5,9 @@
 
 use std::time::Duration;
 
-use bpmux::transport::protocol::ServerMessage;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
+use protocol::ServerMessage;
 use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message as WsMessage,
 };

@@ -5,7 +5,7 @@ use crate::bridge::tools_stories::{
     build_pass_desk_check_pm_present_signal, build_pass_desk_check_signal, build_reject_signal,
     build_start_signal,
 };
-use crate::transport::protocol::ClientMessage;
+use protocol::ClientMessage;
 
 fn extract_text(msg: &ClientMessage) -> &str {
     match msg {

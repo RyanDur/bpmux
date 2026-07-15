@@ -34,7 +34,8 @@ mechanical abuse is the direct cause of three warts:
    `from_value(..).ok()` only because evolving wire DTOs land in the durable
    chat blob — one renamed variant would otherwise poison every history read.
 
-The wire framing compounds it: `transport/protocol.rs::ServerMessage` is the
+The wire framing compounds it: `protocol::ServerMessage` (the
+`components/protocol` crate) is the
 real envelope (serde `tag = "type"`), but chat and state both ride the ONE
 `ServerMessage::Message` variant, discriminated by an inner `message_type`
 string. A Chat message that carries a `state_delta` is representable today —

@@ -1,0 +1,19 @@
+[package]
+name = "protocol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The client<->server websocket frame vocabulary: the identify/send/pty command frames and the server envelope"
+
+[dependencies]
+message = { path = "../message" }
+product_management = { path = "../product_management" }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+chrono = { workspace = true }
+serde_json = { workspace = true }
+
+[lints]
+workspace = true
