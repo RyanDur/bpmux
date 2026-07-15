@@ -6,7 +6,7 @@ use product_management::evidence::Evidence;
 use product_management::iteration::{Iteration, IterationId};
 use product_management::outcome::Outcome;
 use product_management::story::events::StoryEvent;
-use product_management::story::{CastVerdict, FreeComment, Stage, Story};
+use product_management::story::{CastVerdict, Stage, Story};
 
 use source_sync::SyncStatus;
 
@@ -28,11 +28,9 @@ pub trait RefreshDriver: Send + Sync {
     fn mutate_sync(&self, event: StoryEvent) -> Result<(), SyncError>;
 
     fn mutate_batch_sync(&self, events: Vec<StoryEvent>) -> Result<(), SyncError>;
-    fn issue_lock(&self, issue: u64) -> BoxedFuture<'_, Arc<tokio::sync::Mutex<()>>>;
     fn snapshot_status(&self) -> SyncStatus;
     fn acknowledge_dropped(&self) -> usize;
     fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
-    fn reconcile_dual_state_labels(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
     fn fetch_body(&self, id: u64) -> BoxedFuture<'_, Result<String, SyncError>>;
     fn fetch_body_conditional(
         &self,
@@ -45,7 +43,6 @@ pub trait RefreshDriver: Send + Sync {
                 .map(|body| ConditionalBody::Modified { body, etag: None })
         })
     }
-    fn fetch_free_comments(&self, id: u64) -> BoxedFuture<'_, Result<Vec<FreeComment>, SyncError>>;
     fn fetch_verdicts(&self, id: u64) -> BoxedFuture<'_, Result<Vec<CastVerdict>, SyncError>>;
     fn create_story(
         &self,

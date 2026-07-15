@@ -42,7 +42,7 @@ fn comment(body: &str) -> Value {
     })
 }
 
-async fn fixture_orchestrator(server: &MockServer) -> Arc<dyn RefreshDriver> {
+async fn fixture_orchestrator(server: &MockServer) -> Arc<SyncOrchestrator<GitHubSourceAdapter>> {
     let tracker = OctocrabStoryTracker::with_base_url(
         &format!("{}/", server.base_url()),
         "acme".to_string(),
@@ -50,11 +50,12 @@ async fn fixture_orchestrator(server: &MockServer) -> Arc<dyn RefreshDriver> {
     )
     .expect("build tracker against mock");
     let adapter = Arc::new(GitHubSourceAdapter::new(tracker));
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+    crate::store::bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
     orch.refresh_all().await.expect("seed-empty ingest");
     orch
 }

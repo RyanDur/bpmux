@@ -1,8 +1,6 @@
-use std::sync::Arc;
-
 use crate::sync::{ConditionalBody, SourceAdapter, SyncError};
 use product_management::story::events::StoryEvent;
-use product_management::story::{CastVerdict, FreeComment, Story, StoryId};
+use product_management::story::{CastVerdict, Story, StoryId};
 
 use source_sync::SyncStatus;
 
@@ -48,10 +46,6 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.read_epics()
     }
 
-    fn issue_lock(&self, issue: u64) -> BoxedFuture<'_, Arc<tokio::sync::Mutex<()>>> {
-        Box::pin(self.issue_lock(issue))
-    }
-
     fn snapshot_status(&self) -> SyncStatus {
         self.snapshot_status()
     }
@@ -64,10 +58,6 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         Box::pin(self.drain_pass())
     }
 
-    fn reconcile_dual_state_labels(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
-        Box::pin(self.reconcile_dual_state_labels())
-    }
-
     fn fetch_body(&self, number: u64) -> BoxedFuture<'_, Result<String, SyncError>> {
         Box::pin(self.fetch_body(number))
     }
@@ -78,13 +68,6 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         prior_etag: Option<String>,
     ) -> BoxedFuture<'_, Result<ConditionalBody, SyncError>> {
         Box::pin(self.fetch_body_conditional(number, prior_etag))
-    }
-
-    fn fetch_free_comments(
-        &self,
-        number: u64,
-    ) -> BoxedFuture<'_, Result<Vec<FreeComment>, SyncError>> {
-        Box::pin(self.fetch_free_comments(number))
     }
 
     fn fetch_verdicts(&self, number: u64) -> BoxedFuture<'_, Result<Vec<CastVerdict>, SyncError>> {

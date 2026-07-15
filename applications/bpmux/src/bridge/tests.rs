@@ -335,12 +335,6 @@ mod ingest_poll_loop_tests {
         fn mutate_batch_sync(&self, _events: Vec<StoryEvent>) -> Result<(), SyncError> {
             Ok(())
         }
-        fn issue_lock(
-            &self,
-            _issue: u64,
-        ) -> BoxedFuture<'_, std::sync::Arc<tokio::sync::Mutex<()>>> {
-            Box::pin(async { std::sync::Arc::new(tokio::sync::Mutex::new(())) })
-        }
         fn snapshot_status(&self) -> SyncStatus {
             SyncStatus::default()
         }
@@ -352,18 +346,8 @@ mod ingest_poll_loop_tests {
             let n = self.drain_returns_n;
             Box::pin(async move { Ok(n) })
         }
-        fn reconcile_dual_state_labels(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
-            Box::pin(async { Ok(0) })
-        }
         fn fetch_body(&self, _n: u64) -> BoxedFuture<'_, Result<String, SyncError>> {
             Box::pin(async { Ok(String::new()) })
-        }
-        fn fetch_free_comments(
-            &self,
-            _n: u64,
-        ) -> BoxedFuture<'_, Result<Vec<product_management::story::FreeComment>, SyncError>>
-        {
-            Box::pin(async { Ok(Vec::new()) })
         }
         fn fetch_verdicts(
             &self,
