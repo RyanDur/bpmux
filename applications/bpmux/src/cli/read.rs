@@ -2,7 +2,7 @@ use super::http::{authed_get, http_get, http_get_with_query};
 
 fn fetch_board() -> anyhow::Result<serde_json::Value> {
     let port = crate::resolve_bpmux_port();
-    let url = crate::transport::local_url::api_url(port, "/api/board");
+    let url = local_url::api_url(port, "/api/board");
     let (status, body) = http_get(&url)?;
     if !status.is_success() {
         anyhow::bail!("board fetch failed ({status}): {body}");
@@ -136,8 +136,7 @@ pub(crate) fn run_capture(window: bool) -> anyhow::Result<()> {
         .ok_or_else(|| anyhow::anyhow!("cannot resolve auth-token path (HOME unset?)"))?;
     let token = crate::auth::read(&token_path)
         .map_err(|e| anyhow::anyhow!("read auth-token from {}: {e}", token_path.display()))?;
-    let url =
-        crate::transport::local_url::api_url(port, &format!("/api/electron-capture?role={role}"));
+    let url = local_url::api_url(port, &format!("/api/electron-capture?role={role}"));
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;

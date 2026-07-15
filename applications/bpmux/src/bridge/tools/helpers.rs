@@ -21,7 +21,7 @@ pub(in crate::bridge) async fn ws_send(
 }
 
 pub(super) fn urlencoding(s: &str) -> String {
-    crate::transport::local_url::percent_encode(s)
+    local_url::percent_encode(s)
 }
 
 pub(super) fn identity_success(index: &memory::identity::IdentityIndex) -> String {

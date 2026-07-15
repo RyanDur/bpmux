@@ -25,7 +25,7 @@ pub(in crate::bridge) async fn handle_view_roadmap(
 }
 
 async fn fetch_roadmap_view(port: u16) -> Result<String, String> {
-    let url = crate::transport::local_url::api_url(port, "/api/roadmap");
+    let url = local_url::api_url(port, "/api/roadmap");
     let body = reqwest::get(&url)
         .await
         .map_err(|e| format!("failed to fetch: {e}"))?

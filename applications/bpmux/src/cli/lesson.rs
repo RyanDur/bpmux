@@ -13,7 +13,7 @@ pub(crate) fn run_lesson_save(
         "author_role": role,
         "evidence": evidence,
     });
-    let url = crate::transport::local_url::api_url(port, "/api/lessons");
+    let url = local_url::api_url(port, "/api/lessons");
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
@@ -35,7 +35,7 @@ pub(crate) fn run_lesson_save(
 
 pub(crate) fn run_lesson_list(topic: &Option<String>, limit: Option<u64>) -> anyhow::Result<()> {
     let port = crate::resolve_bpmux_port();
-    let mut url = crate::transport::local_url::api_url(port, "/api/lessons");
+    let mut url = local_url::api_url(port, "/api/lessons");
     let mut has_param = false;
     if let Some(t) = topic {
         url.push_str(&format!("?topic={t}"));
@@ -55,7 +55,7 @@ pub(crate) fn run_lesson_list(topic: &Option<String>, limit: Option<u64>) -> any
 
 pub(crate) fn run_lesson_list_peer(peer: &Option<String>) -> anyhow::Result<()> {
     let port = crate::resolve_bpmux_port();
-    let mut url = crate::transport::local_url::api_url(port, "/api/peer-lessons");
+    let mut url = local_url::api_url(port, "/api/peer-lessons");
     if let Some(p) = peer {
         url.push_str(&format!("?peer={p}"));
     }

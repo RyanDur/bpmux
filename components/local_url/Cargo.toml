@@ -1,0 +1,11 @@
+[package]
+name = "local_url"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Loopback URL vocabulary for the local bpmux server — api/ws URL formatting, the default port, percent-encoding"
+
+[dependencies]
+
+[lints]
+workspace = true

@@ -6,7 +6,7 @@ pub(in crate::bridge) async fn handle_get_ci_state(
         .ok_or_else(|| "cannot resolve auth-token path (HOME unset?)".to_string())?;
     let token = crate::auth::read(&token_path)
         .map_err(|e| format!("read auth-token from {}: {e}", token_path.display()))?;
-    let url = crate::transport::local_url::api_url(port, "/api/ci");
+    let url = local_url::api_url(port, "/api/ci");
     let res = reqwest::Client::new()
         .get(&url)
         .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"))

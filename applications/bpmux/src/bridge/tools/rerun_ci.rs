@@ -10,7 +10,7 @@ pub(in crate::bridge) async fn handle_rerun_ci(
         .ok_or_else(|| "cannot resolve auth-token path (HOME unset?)".to_string())?;
     let token = crate::auth::read(&token_path)
         .map_err(|e| format!("read auth-token from {}: {e}", token_path.display()))?;
-    let url = crate::transport::local_url::api_url(port, &format!("/api/ci/rerun/{run_id}"));
+    let url = local_url::api_url(port, &format!("/api/ci/rerun/{run_id}"));
     let res = reqwest::Client::new()
         .post(&url)
         .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"))

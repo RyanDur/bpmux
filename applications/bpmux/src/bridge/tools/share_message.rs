@@ -117,10 +117,7 @@ pub(in crate::bridge) async fn handle_share_message(
     }
 
     let as_encoded = urlencoding(short);
-    let url = crate::transport::local_url::api_url(
-        port,
-        &format!("/api/messages?limit=20&as={as_encoded}"),
-    );
+    let url = local_url::api_url(port, &format!("/api/messages?limit=20&as={as_encoded}"));
     let body = reqwest::get(&url)
         .await
         .map_err(|e| format!("failed to fetch log: {e}"))?

@@ -8,7 +8,7 @@ pub(crate) fn post_rpc_write(
         .ok_or_else(|| anyhow::anyhow!("cannot resolve auth-token path (HOME unset?)"))?;
     let token = crate::auth::read(&token_path)
         .map_err(|e| anyhow::anyhow!("read auth-token from {}: {e}", token_path.display()))?;
-    let url = crate::transport::local_url::api_url(port, &format!("/api/rpc/{tool}"));
+    let url = local_url::api_url(port, &format!("/api/rpc/{tool}"));
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
@@ -65,7 +65,7 @@ pub(crate) fn run_signal(state: &str) -> anyhow::Result<()> {
         .ok_or_else(|| anyhow::anyhow!("cannot resolve auth-token path (HOME unset?)"))?;
     let token = crate::auth::read(&token_path)
         .map_err(|e| anyhow::anyhow!("read auth-token from {}: {e}", token_path.display()))?;
-    let url = crate::transport::local_url::api_url(port, "/api/presence");
+    let url = local_url::api_url(port, "/api/presence");
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;

@@ -17,7 +17,7 @@ async fn post_rpc(
     body: &Value,
     token: &str,
 ) -> Result<String, String> {
-    let url = crate::transport::local_url::api_url(port, &format!("/api/rpc/{tool}"));
+    let url = local_url::api_url(port, &format!("/api/rpc/{tool}"));
     let mut request = reqwest::Client::new()
         .post(&url)
         .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"))

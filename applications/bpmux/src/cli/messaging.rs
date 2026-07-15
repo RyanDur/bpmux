@@ -8,7 +8,7 @@ pub(crate) fn emit_recall_activity(role: &str, count: usize) {
 pub(crate) fn run_wait_for_event(after: &Option<String>, timeout_ms: u64) -> anyhow::Result<()> {
     let role = crate::resolve_role(&None);
     let port = crate::resolve_bpmux_port();
-    let mut url = crate::transport::local_url::api_url(port, "/api/wait-for-event");
+    let mut url = local_url::api_url(port, "/api/wait-for-event");
     url.push_str(&format!("?as={role}&timeout_ms={timeout_ms}"));
     if let Some(cursor) = after {
         url.push_str(&format!("&after={cursor}"));
@@ -64,7 +64,7 @@ pub(crate) fn run_send(
         .and_then(|cwd| crate::resolve_registered_user_id(&cwd));
     let body = send_payload(&role, text, to, addressee, sender_id);
     let port = crate::resolve_bpmux_port();
-    let url = crate::transport::local_url::api_url(port, "/api/messages");
+    let url = local_url::api_url(port, "/api/messages");
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
@@ -108,7 +108,7 @@ pub(crate) fn run_register() -> anyhow::Result<()> {
     }
     let body = serde_json::Value::Object(payload);
     let port = crate::resolve_bpmux_port();
-    let url = crate::transport::local_url::api_url(port, "/api/register");
+    let url = local_url::api_url(port, "/api/register");
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
@@ -134,7 +134,7 @@ pub(crate) fn run_register() -> anyhow::Result<()> {
 pub(crate) fn run_read(limit: usize, full: bool) -> anyhow::Result<()> {
     let role = crate::resolve_role(&None);
     let port = crate::resolve_bpmux_port();
-    let mut url = crate::transport::local_url::api_url(port, "/api/messages");
+    let mut url = local_url::api_url(port, "/api/messages");
     url.push_str(&format!("?limit={limit}&chat_only=true&as={role}"));
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -178,7 +178,7 @@ pub(crate) fn run_emit_activity(from: &str, text: &str) -> anyhow::Result<()> {
 
 fn post_activity(body: &serde_json::Value) {
     let port = crate::resolve_bpmux_port();
-    let url = crate::transport::local_url::api_url(port, "/api/messages");
+    let url = local_url::api_url(port, "/api/messages");
     let Ok(rt) = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

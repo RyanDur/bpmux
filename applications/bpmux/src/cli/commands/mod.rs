@@ -24,7 +24,7 @@ pub(crate) enum Command {
     Bridge {
         #[arg(
             long,
-            default_value_t = crate::transport::local_url::DEFAULT_API_PORT,
+            default_value_t = local_url::DEFAULT_API_PORT,
             help = "bpmux server port to connect to"
         )]
         port: u16,

@@ -10,7 +10,7 @@ pub fn ws_url(port: u16, path: &str) -> String {
     format!("ws://{LOCAL_HOST}:{port}{path}")
 }
 
-pub(crate) fn percent_encode(value: &str) -> String {
+pub fn percent_encode(value: &str) -> String {
     value
         .bytes()
         .map(|b| match b {
@@ -21,3 +21,6 @@ pub(crate) fn percent_encode(value: &str) -> String {
         })
         .collect()
 }
+
+#[cfg(test)]
+mod formatting_tests;

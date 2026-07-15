@@ -1,7 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::local_url::*;
-
 #[test]
 fn no_hardcoded_localhost_literals_in_src() {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
@@ -9,7 +7,7 @@ fn no_hardcoded_localhost_literals_in_src() {
     let mut offenders: Vec<String> = Vec::new();
     walk_rs_files(&src_dir, &mut |path: &std::path::Path| {
         let path_str = path.display().to_string();
-        if path_str.ends_with("local_url.rs") || path_str.ends_with("local_url_formatting.rs") {
+        if path_str.ends_with("local_url_lock_tests.rs") {
             return;
         }
         let Ok(content) = std::fs::read_to_string(path) else {
@@ -27,7 +25,7 @@ fn no_hardcoded_localhost_literals_in_src() {
     });
     assert!(
         offenders.is_empty(),
-        "#1364 Sc4 substrate-enforce: hardcoded localhost URL literals must route through transport::local_url helpers. Offenders:\n{}",
+        "#1364 Sc4 substrate-enforce: hardcoded localhost URL literals must route through the local_url component helpers. Offenders:\n{}",
         offenders.join("\n")
     );
 }
@@ -44,37 +42,4 @@ fn walk_rs_files(dir: &std::path::Path, callback: &mut dyn FnMut(&std::path::Pat
             callback(&path);
         }
     }
-}
-
-#[test]
-fn api_url_prefixes_http_and_local_host() {
-    assert_eq!(
-        api_url(4117, "/api/messages"),
-        "http://127.0.0.1:4117/api/messages"
-    );
-}
-
-#[test]
-fn ws_url_prefixes_ws_and_local_host() {
-    assert_eq!(ws_url(4117, "/ws"), "ws://127.0.0.1:4117/ws");
-}
-
-#[test]
-fn api_url_passes_path_verbatim_with_query_string() {
-    let path = "/api/messages?limit=200&chat_only=true";
-    assert_eq!(
-        api_url(8080, path),
-        "http://127.0.0.1:8080/api/messages?limit=200&chat_only=true"
-    );
-}
-
-#[test]
-fn default_api_port_pins_4117() {
-    assert_eq!(DEFAULT_API_PORT, 4117);
-}
-
-#[test]
-fn percent_encode_passes_unreserved_and_escapes_the_rest() {
-    assert_eq!(percent_encode("abcXYZ090-_.~"), "abcXYZ090-_.~");
-    assert_eq!(percent_encode("a b&c=d"), "a%20b%26c%3Dd");
 }

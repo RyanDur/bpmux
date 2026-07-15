@@ -17,7 +17,7 @@ pub(crate) async fn run_ws_connection(
     ws_tx_store: Arc<Mutex<Option<WsSink>>>,
     subscriptions: event_subscription::SubscriptionRegistry,
 ) {
-    let ws_url = crate::transport::local_url::ws_url(port, "/ws");
+    let ws_url = local_url::ws_url(port, "/ws");
     let (ws_stream, _) = match tokio_tungstenite::connect_async(&ws_url).await {
         Ok(conn) => conn,
         Err(e) => {

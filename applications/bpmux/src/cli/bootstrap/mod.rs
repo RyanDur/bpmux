@@ -31,7 +31,7 @@ pub(crate) struct Cli {
 
     #[arg(
         long,
-        default_value_t = transport::local_url::DEFAULT_API_PORT,
+        default_value_t = local_url::DEFAULT_API_PORT,
         help = "MCP server port"
     )]
     mcp_port: u16,

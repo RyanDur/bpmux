@@ -5,7 +5,6 @@ pub mod crypto;
 
 pub(crate) mod delivery_ids;
 pub mod electron_capture;
-pub mod local_url;
 pub mod peer;
 pub mod protocol;
 pub mod rest;
@@ -31,8 +30,6 @@ mod ci_watcher_tests;
 mod crypto_tests;
 #[cfg(test)]
 mod external_mutation_tests;
-#[cfg(test)]
-mod local_url_formatting;
 #[cfg(test)]
 mod peer_tests;
 #[cfg(test)]

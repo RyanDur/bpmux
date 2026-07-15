@@ -1,4 +1,4 @@
-use crate::{location, transport};
+use crate::location;
 
 pub(super) fn resolve_data_base(cli_base: &Option<String>) -> anyhow::Result<std::path::PathBuf> {
     match cli_base {
@@ -11,7 +11,7 @@ pub(crate) fn resolve_bpmux_port() -> u16 {
     std::env::var("BPMUX_PORT")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(transport::local_url::DEFAULT_API_PORT)
+        .unwrap_or(local_url::DEFAULT_API_PORT)
 }
 
 pub(crate) fn resolve_role(role_arg: &Option<String>) -> String {

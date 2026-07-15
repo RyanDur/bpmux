@@ -9,6 +9,7 @@ members = [
     "components/diag",
     "components/integrations",
     "components/kernel",
+    "components/local_url",
     "components/memory",
     "components/message",
     "components/message_log",

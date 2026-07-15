@@ -29,7 +29,7 @@ pub(in crate::bridge) async fn handle_ci_get_job_status(
         .ok_or_else(|| serialize_error(&CiJobStatusError::auth_failed()))?;
     let token = crate::auth::read(&token_path)
         .map_err(|e| serialize_error(&CiJobStatusError::auth_failed_with_detail(&e.to_string())))?;
-    let url = crate::transport::local_url::api_url(port, &format!("/api/ci/jobs/{run_id}"));
+    let url = local_url::api_url(port, &format!("/api/ci/jobs/{run_id}"));
     let mut url_for_verbose = url.clone();
     if verbose {
         url_for_verbose.push_str("?verbose=true");

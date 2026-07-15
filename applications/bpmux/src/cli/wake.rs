@@ -39,7 +39,7 @@ pub(crate) fn run_wake_on_event(event: &str, filter: &Option<String>) -> anyhow:
     })?;
     let body = wake_payload(&role, &user_id, event, filter_value);
     let port = crate::resolve_bpmux_port();
-    let url = crate::transport::local_url::api_url(port, "/api/wake-on-event");
+    let url = local_url::api_url(port, "/api/wake-on-event");
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;

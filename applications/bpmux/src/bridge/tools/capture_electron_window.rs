@@ -7,10 +7,7 @@ pub(in crate::bridge) async fn handle_capture_electron_window(
     let token = crate::auth::read(&token_path)
         .map_err(|e| format!("read auth-token from {}: {e}", token_path.display()))?;
     let role_encoded = url_encode(role);
-    let url = crate::transport::local_url::api_url(
-        port,
-        &format!("/api/electron-capture?role={role_encoded}"),
-    );
+    let url = local_url::api_url(port, &format!("/api/electron-capture?role={role_encoded}"));
     let res = reqwest::Client::new()
         .get(&url)
         .header(reqwest::header::AUTHORIZATION, format!("Bearer {token}"))

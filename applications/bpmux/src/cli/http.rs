@@ -19,13 +19,13 @@ pub(crate) fn http_get_with_query(
     params: &[(&str, &str)],
 ) -> anyhow::Result<(reqwest::StatusCode, String)> {
     let port = crate::resolve_bpmux_port();
-    let mut url = crate::transport::local_url::api_url(port, path);
+    let mut url = local_url::api_url(port, path);
     for (i, (key, value)) in params.iter().enumerate() {
         let separator = if i == 0 { '?' } else { '&' };
         url.push(separator);
         url.push_str(key);
         url.push('=');
-        url.push_str(&crate::transport::local_url::percent_encode(value));
+        url.push_str(&local_url::percent_encode(value));
     }
     http_get(&url)
 }
@@ -40,7 +40,7 @@ fn bearer_token() -> anyhow::Result<String> {
 pub(crate) fn authed_get(path: &str) -> anyhow::Result<(reqwest::StatusCode, String)> {
     let port = crate::resolve_bpmux_port();
     let token = bearer_token()?;
-    let url = crate::transport::local_url::api_url(port, path);
+    let url = local_url::api_url(port, path);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
@@ -63,7 +63,7 @@ pub(crate) fn authed_get(path: &str) -> anyhow::Result<(reqwest::StatusCode, Str
 pub(crate) fn authed_post_empty(path: &str) -> anyhow::Result<(reqwest::StatusCode, String)> {
     let port = crate::resolve_bpmux_port();
     let token = bearer_token()?;
-    let url = crate::transport::local_url::api_url(port, path);
+    let url = local_url::api_url(port, path);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;

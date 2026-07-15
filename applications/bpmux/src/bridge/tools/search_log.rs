@@ -8,10 +8,7 @@ pub(in crate::bridge) async fn handle_search_log(
         .get("query")
         .and_then(|v| v.as_str())
         .ok_or("missing 'query' argument")?;
-    let mut url = crate::transport::local_url::api_url(
-        port,
-        &format!("/api/search?query={}", urlencoding(query)),
-    );
+    let mut url = local_url::api_url(port, &format!("/api/search?query={}", urlencoding(query)));
     if let Some(sender) = args.get("sender").and_then(|v| v.as_str()) {
         url.push_str(&format!("&sender={}", urlencoding(sender)));
     }

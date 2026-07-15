@@ -18,6 +18,8 @@ pub mod hub;
 #[cfg(test)]
 mod hub_tests;
 pub use ::integrations;
+#[cfg(test)]
+mod local_url_lock_tests;
 pub mod location;
 #[cfg(test)]
 mod location_migration_tests;

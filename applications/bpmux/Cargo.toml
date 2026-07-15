@@ -13,6 +13,7 @@ comprehension = { path = "../../components/comprehension" }
 diag = { path = "../../components/diag" }
 integrations = { path = "../../components/integrations" }
 kernel = { path = "../../components/kernel" }
+local_url = { path = "../../components/local_url" }
 memory = { path = "../../components/memory" }
 message = { path = "../../components/message" }
 message_log = { path = "../../components/message_log" }

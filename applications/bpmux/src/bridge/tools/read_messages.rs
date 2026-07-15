@@ -23,7 +23,7 @@ pub(in crate::bridge) async fn handle_read_messages(
         .and_then(|v| v.as_u64())
         .unwrap_or(default_limit);
     let short = agent_name.split(':').next().unwrap_or(agent_name);
-    let url = crate::transport::local_url::api_url(port, &read_messages_request_path(limit, short));
+    let url = local_url::api_url(port, &read_messages_request_path(limit, short));
     let body = reqwest::get(&url)
         .await
         .map_err(|e| format!("failed to fetch: {e}"))?
