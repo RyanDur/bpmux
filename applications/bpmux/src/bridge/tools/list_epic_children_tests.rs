@@ -1,16 +1,15 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::list_epic_children::handle_list_epic_children;
-use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::store::{AppAction, SeededStore};
 use chrono::{TimeZone, Utc};
 use product_management::epic::Epic;
 use product_management::iteration::{Iteration, IterationId};
+use product_management::story::slice::StoryAction;
 use product_management::story::{Story, StoryId, StoryKind, Work};
 use serde_json::json;
 use source_codec::gh_label_codec::GhLabelCodec;
 use source_codec::mapper::{decode_epic_from_story, decode_story_metadata, is_epic_story};
-use std::sync::Arc;
 
 fn decoded(number: u64, title: &str, labels: &[&str]) -> (Story, Vec<String>) {
     let label_json: Vec<serde_json::Value> = labels.iter().map(|n| json!({ "name": n })).collect();
@@ -44,8 +43,8 @@ fn child_without_parent(number: u64) -> (Story, Vec<String>) {
     decoded(number, &format!("orphan #{number}"), &["feature"])
 }
 
-async fn store_with(seeds: Vec<(Story, Vec<String>)>) -> Arc<dyn RefreshDriver> {
-    store_with_current_members(seeds, &[]).await
+fn store_with(seeds: Vec<(Story, Vec<String>)>) -> SeededStore {
+    store_with_current_members(seeds, &[])
 }
 
 fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
@@ -68,27 +67,17 @@ fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
     }]
 }
 
-async fn store_with_current_members(
-    seeds: Vec<(Story, Vec<String>)>,
-    members: &[u64],
-) -> Arc<dyn RefreshDriver> {
-    let adapter = Arc::new(InMemorySourceAdapter::new());
-    for (story, labels) in &seeds {
-        adapter.seed_labels(story.id.value(), labels.clone());
-    }
-    adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        adapter,
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
+fn store_with_current_members(seeds: Vec<(Story, Vec<String>)>, members: &[u64]) -> SeededStore {
     let epics: Vec<Epic> = seeds
         .iter()
         .filter(|(story, labels)| is_epic_story(story, labels))
         .map(|(story, _)| decode_epic_from_story(story, false))
         .collect();
-    crate::store::bind_seeded_refresh(&orch, vec![], current_iteration_of(members), epics);
-    orch.refresh_all().await.unwrap();
-    orch
+    let store = SeededStore::new(vec![], current_iteration_of(members), epics);
+    store.dispatch(AppAction::Story(StoryAction::Seeded(
+        seeds.into_iter().map(|(story, _)| story).collect(),
+    )));
+    store
 }
 
 fn args(epic_id: u64) -> serde_json::Map<String, serde_json::Value> {
@@ -99,8 +88,10 @@ fn args(epic_id: u64) -> serde_json::Map<String, serde_json::Value> {
 
 #[tokio::test]
 async fn returns_zero_children_for_empty_epic() {
-    let store = store_with(vec![epic(100)]).await;
-    let result = handle_list_epic_children(&args(100), &store).await.unwrap();
+    let store = store_with(vec![epic(100)]);
+    let result = handle_list_epic_children(&args(100), &store.select())
+        .await
+        .unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
     assert_eq!(parsed["epic_id"], 100);
     assert_eq!(parsed["children"].as_array().unwrap().len(), 0);
@@ -114,9 +105,10 @@ async fn returns_single_child_with_parent_epic_match() {
             child(101, 100, StoryKind::Feature, Work::NotStarted),
         ],
         &[101],
-    )
-    .await;
-    let result = handle_list_epic_children(&args(100), &store).await.unwrap();
+    );
+    let result = handle_list_epic_children(&args(100), &store.select())
+        .await
+        .unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
     let children = parsed["children"].as_array().unwrap();
     assert_eq!(children.len(), 1);
@@ -133,9 +125,10 @@ async fn returns_multiple_children_sorted_by_number() {
         child(105, 100, StoryKind::Feature, Work::NotStarted),
         child(102, 100, StoryKind::Bug, Work::NotStarted),
         child(108, 100, StoryKind::Chore, Work::Accepted),
-    ])
-    .await;
-    let result = handle_list_epic_children(&args(100), &store).await.unwrap();
+    ]);
+    let result = handle_list_epic_children(&args(100), &store.select())
+        .await
+        .unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
     let children = parsed["children"].as_array().unwrap();
     assert_eq!(children.len(), 3);
@@ -151,9 +144,10 @@ async fn excludes_stories_with_different_parent() {
         epic(200),
         child(101, 100, StoryKind::Feature, Work::NotStarted),
         child(201, 200, StoryKind::Feature, Work::NotStarted),
-    ])
-    .await;
-    let result = handle_list_epic_children(&args(100), &store).await.unwrap();
+    ]);
+    let result = handle_list_epic_children(&args(100), &store.select())
+        .await
+        .unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
     let children = parsed["children"].as_array().unwrap();
     assert_eq!(children.len(), 1);
@@ -166,9 +160,10 @@ async fn excludes_stories_without_parent_epic() {
         epic(100),
         child(101, 100, StoryKind::Feature, Work::NotStarted),
         child_without_parent(202),
-    ])
-    .await;
-    let result = handle_list_epic_children(&args(100), &store).await.unwrap();
+    ]);
+    let result = handle_list_epic_children(&args(100), &store.select())
+        .await
+        .unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
     assert_eq!(parsed["children"].as_array().unwrap().len(), 1);
 }
@@ -176,8 +171,8 @@ async fn excludes_stories_without_parent_epic() {
 #[tokio::test]
 async fn rejects_non_epic_story_type() {
     let not_epic = decoded(100, "feature #100", &["feature", "icebox"]);
-    let store = store_with(vec![not_epic]).await;
-    let err = handle_list_epic_children(&args(100), &store)
+    let store = store_with(vec![not_epic]);
+    let err = handle_list_epic_children(&args(100), &store.select())
         .await
         .unwrap_err();
     assert!(err.contains("not an Epic"), "got: {err}");
@@ -185,8 +180,8 @@ async fn rejects_non_epic_story_type() {
 
 #[tokio::test]
 async fn rejects_non_existent_epic_number() {
-    let store = store_with(vec![]).await;
-    let err = handle_list_epic_children(&args(999), &store)
+    let store = store_with(vec![]);
+    let err = handle_list_epic_children(&args(999), &store.select())
         .await
         .unwrap_err();
     assert!(err.contains("not found"), "got: {err}");
@@ -194,9 +189,11 @@ async fn rejects_non_existent_epic_number() {
 
 #[tokio::test]
 async fn rejects_missing_epic_number_arg() {
-    let store = store_with(vec![]).await;
+    let store = store_with(vec![]);
     let empty = serde_json::Map::new();
-    let err = handle_list_epic_children(&empty, &store).await.unwrap_err();
+    let err = handle_list_epic_children(&empty, &store.select())
+        .await
+        .unwrap_err();
     assert!(err.contains("epic_id"), "got: {err}");
 }
 
@@ -206,8 +203,10 @@ async fn handles_large_epic_with_ten_children() {
     for n in 1..=10 {
         stories.push(child(100 + n, 100, StoryKind::Feature, Work::NotStarted));
     }
-    let store = store_with(stories).await;
-    let result = handle_list_epic_children(&args(100), &store).await.unwrap();
+    let store = store_with(stories);
+    let result = handle_list_epic_children(&args(100), &store.select())
+        .await
+        .unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
     assert_eq!(parsed["children"].as_array().unwrap().len(), 10);
 }
@@ -215,8 +214,10 @@ async fn handles_large_epic_with_ten_children() {
 #[tokio::test]
 async fn derives_is_closed_from_workflow_conclusion() {
     let (accepted, accepted_labels) = child(101, 100, StoryKind::Feature, Work::Accepted);
-    let store = store_with(vec![epic(100), (accepted, accepted_labels)]).await;
-    let result = handle_list_epic_children(&args(100), &store).await.unwrap();
+    let store = store_with(vec![epic(100), (accepted, accepted_labels)]);
+    let result = handle_list_epic_children(&args(100), &store.select())
+        .await
+        .unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
     assert_eq!(
         parsed["children"][0]["is_closed"], true,

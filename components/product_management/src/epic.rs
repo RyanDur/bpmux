@@ -59,6 +59,10 @@ pub fn all(state: &EpicState) -> Vec<Epic> {
     state.epics.clone()
 }
 
+pub fn get(state: &EpicState, id: EpicId) -> Option<Epic> {
+    state.epics.iter().find(|epic| epic.id == id).cloned()
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct EpicCounts {
     pub accepted_count: usize,

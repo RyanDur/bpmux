@@ -52,7 +52,7 @@ fn view_args(id: u64) -> serde_json::Map<String, serde_json::Value> {
 async fn returns_record_after_write() {
     let dir = TempDir::new().unwrap();
     let hub = make_hub(dir.path().to_path_buf());
-    let (orch, store) = orch_and_store();
+    let (_orch, store) = orch_and_store();
     handle_submit_verdict(
         &submit_args(42, "verified", "src/foo.rs cite"),
         "designer:claude-code",
@@ -63,7 +63,7 @@ async fn returns_record_after_write() {
     )
     .await
     .unwrap();
-    let response = handle_view_verdicts(&view_args(42), Some(&orch))
+    let response = handle_view_verdicts(&view_args(42), &store.select())
         .await
         .unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();

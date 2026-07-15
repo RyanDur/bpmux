@@ -1,10 +1,36 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use crate::epic::{EpicId, children_of, derive_epic_counts, derive_epic_state};
+use crate::epic::{
+    Epic, EpicId, EpicState, children_of, derive_epic_counts, derive_epic_state, get,
+};
 use crate::iteration::{Iteration, IterationId};
 use crate::scheduling::ProjectedState;
 use crate::story::{Story, StoryId, Work};
 use chrono::{TimeZone, Utc};
+
+fn epic_of(id: u64) -> Epic {
+    Epic {
+        id: EpicId::new(id),
+        title: format!("epic-{id}"),
+        body: None,
+        filed_at: Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
+        filed_by: "pm".to_string(),
+        is_closed: false,
+    }
+}
+
+#[test]
+fn get_hits_a_saved_epic_and_misses_an_absent_id() {
+    let state = EpicState {
+        epics: vec![epic_of(1)],
+    };
+
+    assert_eq!(
+        get(&state, EpicId::new(1)).map(|epic| epic.id.value()),
+        Some(1)
+    );
+    assert_eq!(get(&state, EpicId::new(99)), None);
+}
 
 fn epic_child(id: u64, state: Work) -> Story {
     Story::new_minimal(

@@ -88,8 +88,8 @@ async fn move_to_ready_position(
     merge_dispatched(seed, &mut rx);
 }
 
-async fn ready_queue_ids(orch: &Arc<dyn RefreshDriver>) -> Vec<u64> {
-    let raw = dispatch_list_ready(Some(orch)).await.unwrap();
+async fn ready_queue_ids(seed: &SeededStore) -> Vec<u64> {
+    let raw = dispatch_list_ready(&seed.select()).await.unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&raw).unwrap();
     parsed
         .as_array()
@@ -115,7 +115,7 @@ async fn burst_reorder_lands_each_story_at_its_own_position() {
     move_to_ready_position(&orch, &seed, 5003, 1).await;
     move_to_ready_position(&orch, &seed, 5004, 1).await;
 
-    let queue = ready_queue_ids(&orch).await;
+    let queue = ready_queue_ids(&seed).await;
     assert_eq!(
         queue,
         vec![5004, 5003, 5002, 5001],
@@ -138,7 +138,7 @@ async fn positioned_members_return_in_membership_order_and_a_not_started_non_mem
     move_to_ready_position(&orch, &seed, 5002, 1).await;
     move_to_ready_position(&orch, &seed, 5003, 1).await;
 
-    let queue = ready_queue_ids(&orch).await;
+    let queue = ready_queue_ids(&seed).await;
     assert_eq!(
         queue,
         vec![5003, 5002],

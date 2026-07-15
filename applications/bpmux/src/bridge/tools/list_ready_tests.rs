@@ -1,12 +1,10 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use std::sync::Arc;
-
 use crate::bridge::dispatch::dispatch_list_ready;
-use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::store::{AppAction, SeededStore};
 use chrono::{TimeZone, Utc};
 use product_management::iteration::{Iteration, IterationId};
+use product_management::story::slice::StoryAction;
 use product_management::story::{Story, StoryId, Work};
 
 fn member(id: u64) -> Story {
@@ -37,15 +35,9 @@ fn iteration(id: u64, is_current: bool, complete: bool, stories: Vec<u64>) -> It
 }
 
 async fn ready_ids(stories: Vec<Story>, iterations: Vec<Iteration>) -> Vec<u64> {
-    let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(stories);
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
-        adapter,
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    crate::store::bind_seeded_refresh(&refresh, vec![], iterations, vec![]);
-    refresh.refresh_all().await.unwrap();
-    let raw = dispatch_list_ready(Some(&refresh)).await.unwrap();
+    let store = SeededStore::new(vec![], iterations, vec![]);
+    store.dispatch(AppAction::Story(StoryAction::Seeded(stories)));
+    let raw = dispatch_list_ready(&store.select()).await.unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&raw).unwrap();
     parsed
         .as_array()

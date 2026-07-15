@@ -212,7 +212,7 @@ mod verdict_substrate_integration_1407 {
     async fn view_verdicts_marks_verdict_expired_when_grounded_head_moved() {
         let dir = TempDir::new().unwrap();
         let _hub = make_hub(dir.path().to_path_buf());
-        let (orch, store) = orch_with_story_and_store(delivered_story(42)).await;
+        let (_orch, store) = orch_with_story_and_store(delivered_story(42)).await;
         seed_verdict_grounded_on(
             &store,
             42,
@@ -220,7 +220,7 @@ mod verdict_substrate_integration_1407 {
             "a-frozen-sha-that-is-not-current-head",
         );
 
-        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), Some(&orch))
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), &store.select())
             .await
             .expect("view_verdicts succeeds");
         let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");
@@ -457,11 +457,11 @@ mod verdict_substrate_integration_1407 {
     async fn view_verdicts_returns_record_after_submit() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
-        let (orch, store) = orch_and_store();
+        let (_orch, store) = orch_and_store();
         submit(&store, &hub, &verdict_args(42), "designer:claude-code")
             .await
             .expect("designer submit_verdict");
-        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), Some(&orch))
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), &store.select())
             .await
             .expect("view_verdicts succeeds after write");
         let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");
@@ -476,10 +476,11 @@ mod verdict_substrate_integration_1407 {
 
     #[tokio::test]
     async fn view_verdicts_returns_empty_for_unknown_story() {
-        let (orch, _store) = orch_and_store();
-        let response = crate::bridge::tools::handle_view_verdicts(&view_args(99999), Some(&orch))
-            .await
-            .expect("view_verdicts succeeds for empty store");
+        let (_orch, store) = orch_and_store();
+        let response =
+            crate::bridge::tools::handle_view_verdicts(&view_args(99999), &store.select())
+                .await
+                .expect("view_verdicts succeeds for empty store");
         let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");
         let records = parsed.as_array().expect("response is array");
         assert!(
@@ -492,7 +493,7 @@ mod verdict_substrate_integration_1407 {
     async fn view_verdicts_scopes_by_story_id() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
-        let (orch, store) = orch_and_store();
+        let (_orch, store) = orch_and_store();
         submit(&store, &hub, &verdict_args(10), "designer:claude-code")
             .await
             .unwrap();
@@ -503,7 +504,7 @@ mod verdict_substrate_integration_1407 {
             .await
             .unwrap();
 
-        let response = crate::bridge::tools::handle_view_verdicts(&view_args(20), Some(&orch))
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(20), &store.select())
             .await
             .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
@@ -517,14 +518,14 @@ mod verdict_substrate_integration_1407 {
     async fn view_verdicts_returns_both_roles_for_one_story() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
-        let (orch, store) = orch_and_store();
+        let (_orch, store) = orch_and_store();
         submit(&store, &hub, &verdict_args(42), "designer:claude-code")
             .await
             .unwrap();
         submit(&store, &hub, &verdict_args(42), "dev:claude-code")
             .await
             .unwrap();
-        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), Some(&orch))
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), &store.select())
             .await
             .unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&response).unwrap();
@@ -542,7 +543,7 @@ mod verdict_substrate_integration_1407 {
     async fn view_verdicts_is_pure_read() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
-        let (orch, store) = orch_and_store();
+        let (_orch, store) = orch_and_store();
         submit(&store, &hub, &verdict_args(42), "designer:claude-code")
             .await
             .unwrap();
@@ -551,13 +552,13 @@ mod verdict_substrate_integration_1407 {
             .select(|state| evidence_for_story(&state.evidence, StoryId::new(42)))
             .len();
 
-        crate::bridge::tools::handle_view_verdicts(&view_args(42), Some(&orch))
+        crate::bridge::tools::handle_view_verdicts(&view_args(42), &store.select())
             .await
             .unwrap();
-        crate::bridge::tools::handle_view_verdicts(&view_args(42), Some(&orch))
+        crate::bridge::tools::handle_view_verdicts(&view_args(42), &store.select())
             .await
             .unwrap();
-        crate::bridge::tools::handle_view_verdicts(&view_args(42), Some(&orch))
+        crate::bridge::tools::handle_view_verdicts(&view_args(42), &store.select())
             .await
             .unwrap();
 
@@ -573,9 +574,9 @@ mod verdict_substrate_integration_1407 {
 
     #[tokio::test]
     async fn view_verdicts_refuses_missing_story_id() {
-        let (orch, _store) = orch_and_store();
+        let (_orch, store) = orch_and_store();
         let empty_args = serde_json::Map::new();
-        let err = crate::bridge::tools::handle_view_verdicts(&empty_args, Some(&orch))
+        let err = crate::bridge::tools::handle_view_verdicts(&empty_args, &store.select())
             .await
             .expect_err("missing story_id must refuse");
         assert!(err.contains("story_id"));
@@ -585,11 +586,11 @@ mod verdict_substrate_integration_1407 {
     async fn view_verdicts_surfaces_freshness_state_at_the_read_axis() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
-        let (orch, store) = orch_with_story_and_store(delivered_story(42)).await;
+        let (_orch, store) = orch_with_story_and_store(delivered_story(42)).await;
         submit(&store, &hub, &verdict_args(42), "designer:claude-code")
             .await
             .expect("designer submit_verdict");
-        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), Some(&orch))
+        let response = crate::bridge::tools::handle_view_verdicts(&view_args(42), &store.select())
             .await
             .expect("view_verdicts succeeds with the board store");
         let parsed: serde_json::Value = serde_json::from_str(&response).expect("response is JSON");

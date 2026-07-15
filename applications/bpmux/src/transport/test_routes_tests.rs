@@ -19,7 +19,7 @@ fn fresh_test_hub() -> Arc<hub::Hub> {
     Arc::new(hub::Hub::new(dir.keep(), "test:owner".to_string(), wake_tx))
 }
 
-async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>) {
+async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>, crate::store::Select) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
@@ -50,8 +50,8 @@ async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>) {
         .layer(axum::Extension(orchestrator))
         .layer(axum::Extension(none_tracker))
         .layer(axum::Extension(crate::store::Dispatch::recording().0))
-        .layer(axum::Extension(select));
-    (router, orch)
+        .layer(axum::Extension(select.clone()));
+    (router, orch, select)
 }
 
 fn fixture_test_mode_off() -> axum::Router {
@@ -88,7 +88,7 @@ async fn read_json(resp: axum::http::Response<Body>) -> Value {
 
 #[tokio::test]
 async fn response_correctness_happy_path_returns_message_with_assigned_number() {
-    let (router, _refresh) = fixture_test_mode_on().await;
+    let (router, _refresh, _select) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] response-correctness-happy",
         "user_job":"When testing, dev needs response-shape verification.",
@@ -110,7 +110,7 @@ async fn response_correctness_happy_path_returns_message_with_assigned_number() 
 
 #[tokio::test]
 async fn response_correctness_rejects_empty_observation_falsifier() {
-    let (router, _refresh) = fixture_test_mode_on().await;
+    let (router, _refresh, _select) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] x",
         "user_job":"When testing, ...",
@@ -128,7 +128,7 @@ async fn response_correctness_rejects_empty_observation_falsifier() {
 
 #[tokio::test]
 async fn response_correctness_rejects_empty_user_job() {
-    let (router, _refresh) = fixture_test_mode_on().await;
+    let (router, _refresh, _select) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] x",
         "user_job":"",
@@ -164,7 +164,7 @@ async fn response_correctness_returns_503_when_test_mode_disabled() {
 
 #[tokio::test]
 async fn roundtrip_coherence_view_board_reflects_new_story() {
-    let (router, refresh) = fixture_test_mode_on().await;
+    let (router, refresh, _select) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] roundtrip-marker-A",
         "user_job":"When testing, dev needs roundtrip verification.",
@@ -188,7 +188,7 @@ async fn roundtrip_coherence_view_board_reflects_new_story() {
 
 #[tokio::test]
 async fn roundtrip_coherence_user_job_and_falsifier_preserved_in_body() {
-    let (router, refresh) = fixture_test_mode_on().await;
+    let (router, refresh, _select) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] roundtrip-body-marker",
         "user_job":"USER_JOB_MARKER_42",
@@ -272,7 +272,7 @@ async fn rest_get_board_auto_reingests_when_orchestrator_store_is_empty() {
 
 #[tokio::test]
 async fn roundtrip_coherence_api_board_reflects_new_story_in_test_mode() {
-    let (router, _refresh) = fixture_test_mode_on().await;
+    let (router, _refresh, _select) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] http-roundtrip-marker",
         "user_job":"When testing, dev needs HTTP /api/board to reflect mutations in test mode.",
@@ -303,7 +303,7 @@ async fn roundtrip_coherence_api_board_reflects_new_story_in_test_mode() {
 
 #[tokio::test]
 async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic() {
-    let (router, refresh) = fixture_test_mode_on().await;
+    let (router, refresh, _select) = fixture_test_mode_on().await;
     let feature = r#"{
         "title":"[Feature] not-an-epic",
         "user_job":"When testing, dev needs negative-path coverage.",
@@ -349,7 +349,7 @@ async fn post_comment_on_story(router: axum::Router, body: &str) -> axum::http::
 
 #[tokio::test]
 async fn comment_on_story_response_correctness_happy_path_returns_message() {
-    let (router, refresh) = fixture_test_mode_on().await;
+    let (router, refresh, _select) = fixture_test_mode_on().await;
     let create = r#"{
         "title":"[Feature] comment-target",
         "user_job":"When testing comment_on_story, dev needs a target story.",
@@ -381,7 +381,7 @@ async fn comment_on_story_response_correctness_happy_path_returns_message() {
 
 #[tokio::test]
 async fn comment_on_story_response_correctness_rejects_empty_body() {
-    let (router, refresh) = fixture_test_mode_on().await;
+    let (router, refresh, _select) = fixture_test_mode_on().await;
     let create = r#"{
         "title":"[Feature] comment-target",
         "user_job":"When testing empty-body validation, dev needs a target story.",
@@ -409,7 +409,7 @@ async fn comment_on_story_response_correctness_rejects_empty_body() {
 
 #[tokio::test]
 async fn comment_on_story_roundtrip_view_comments_reflects_new_comment() {
-    let (router, refresh) = fixture_test_mode_on().await;
+    let (router, refresh, select) = fixture_test_mode_on().await;
     let create = r#"{
         "title":"[Feature] comment-roundtrip",
         "user_job":"When testing comment roundtrip, dev needs a target story.",
@@ -434,7 +434,7 @@ async fn comment_on_story_roundtrip_view_comments_reflects_new_comment() {
         "id".to_string(),
         serde_json::Value::Number(target_id.into()),
     );
-    let view = bridge::dispatch_view_comments(args, Some(&refresh))
+    let view = bridge::dispatch_view_comments(args, &select)
         .await
         .expect("view_comments returns Ok");
     assert!(
@@ -455,7 +455,7 @@ async fn post_close_story(router: axum::Router, body: &str) -> axum::http::Respo
 
 #[tokio::test]
 async fn close_story_response_correctness_happy_path_returns_message() {
-    let (router, refresh) = fixture_test_mode_on().await;
+    let (router, refresh, _select) = fixture_test_mode_on().await;
     let create = r#"{
         "title":"[Feature] close-target",
         "user_job":"When testing close_story, dev needs a target story.",
@@ -491,7 +491,7 @@ async fn close_story_response_correctness_happy_path_returns_message() {
 
 #[tokio::test]
 async fn close_story_response_correctness_rejects_empty_reason() {
-    let (router, refresh) = fixture_test_mode_on().await;
+    let (router, refresh, _select) = fixture_test_mode_on().await;
     let create = r#"{
         "title":"[Feature] close-target",
         "user_job":"When testing empty-reason validation, dev needs a target story.",
@@ -523,7 +523,7 @@ async fn close_story_response_correctness_rejects_empty_reason() {
 
 #[tokio::test]
 async fn close_story_roundtrip_api_board_reflects_closed_state() {
-    let (router, refresh) = fixture_test_mode_on().await;
+    let (router, refresh, _select) = fixture_test_mode_on().await;
     let create = r#"{
         "title":"[Feature] close-roundtrip",
         "user_job":"When testing close_story roundtrip, dev needs a target story.",

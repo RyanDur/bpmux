@@ -2,7 +2,6 @@ use chrono::{DateTime, Utc};
 use product_management::evidence::Evidence;
 use product_management::story::StoryId;
 use serde::Serialize;
-use std::sync::Arc;
 
 #[derive(Serialize)]
 struct VerdictView {
@@ -16,11 +15,8 @@ struct VerdictView {
     substrate_changed: Option<bool>,
 }
 
-fn resolve_accept_window_secs(
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
-    story_id: StoryId,
-) -> Option<u64> {
-    let story = refresh?.story(story_id.value())?;
+fn resolve_accept_window_secs(select: &crate::store::Select, story_id: StoryId) -> Option<u64> {
+    let story = select.select(|s| product_management::story::slice::get(&s.stories, story_id))?;
     let class = product_management::story::gate_class_from_acceptor_and_story_type(
         story.acceptor(),
         story.story_type(),
@@ -32,7 +28,7 @@ fn resolve_accept_window_secs(
 
 pub(in crate::bridge) async fn handle_view_verdicts(
     args: &serde_json::Map<String, serde_json::Value>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     let story_id = StoryId::new(
         args.get("story_id")
@@ -40,10 +36,9 @@ pub(in crate::bridge) async fn handle_view_verdicts(
             .ok_or("missing 'story_id' argument")?,
     );
 
-    let records = refresh
-        .map(|r| r.evidence_for_story(story_id.value()))
-        .unwrap_or_default();
-    let window_secs = resolve_accept_window_secs(refresh, story_id);
+    let records =
+        select.select(|s| product_management::evidence::evidence_for_story(&s.evidence, story_id));
+    let window_secs = resolve_accept_window_secs(select, story_id);
     let current_head = crate::bridge::tools::git_repo::current_head_sha();
     let now = chrono::Utc::now();
     let views: Vec<VerdictView> = records

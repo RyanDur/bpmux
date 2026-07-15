@@ -1,8 +1,5 @@
-use std::sync::Arc;
-
 use serde::Serialize;
 
-use crate::sync::RefreshDriver;
 use product_management::story::Stage;
 
 #[derive(Serialize)]
@@ -11,12 +8,13 @@ struct DevInFlight {
 }
 
 pub(in crate::bridge) async fn handle_dev_in_flight(
-    refresh: &Arc<dyn RefreshDriver>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
-    let in_flight = refresh
-        .all_stories()
-        .iter()
-        .any(|s| refresh.story_fine_stage(s) == Some(Stage::Dev));
+    let in_flight = select.select(|s| {
+        product_management::story::slice::all(&s.stories)
+            .iter()
+            .any(|story| board::fine_stage(story, &s.board) == Some(Stage::Dev))
+    });
     let response = DevInFlight {
         dev_in_flight: in_flight,
     };
