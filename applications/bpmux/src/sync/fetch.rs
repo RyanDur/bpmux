@@ -1,4 +1,4 @@
-use super::types::cache_fill_meta;
+use super::cache_fill_meta;
 use super::{CastVerdict, FreeComment, SyncOrchestrator};
 use crate::sync::{ConditionalBody, SourceAdapter, SyncError};
 use product_management::story::StoryId;

@@ -4,6 +4,7 @@ use chrono::Utc;
 
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use product_management::story::{CastVerdict, FreeComment};
+pub(crate) use source_sync::cache_fill_meta;
 pub use source_sync::{
     ConditionalBody, Ingested, PushContext, SourceAdapter, SyncError, classify_close_error,
     is_permanent_push_failure,

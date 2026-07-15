@@ -63,7 +63,7 @@ pub(in crate::integrations::github) async fn push_story_closed(
     match inner.close_story(number).await {
         Ok(value) => Ok(decode_story_metadata(&value).map(|story| {
             StoryEvent::new(
-                crate::sync::cache_fill_meta(),
+                source_sync::cache_fill_meta(),
                 StoryId::new(number),
                 StoryEventKind::StoryRefreshed {
                     story: Box::new(story),
@@ -84,7 +84,7 @@ pub(in crate::integrations::github) async fn push_story_reopened(
     let value = inner.reopen_story(number).await.map_err(SyncError::Other)?;
     Ok(decode_story_metadata(&value).map(|story| {
         StoryEvent::new(
-            crate::sync::cache_fill_meta(),
+            source_sync::cache_fill_meta(),
             StoryId::new(number),
             StoryEventKind::StoryRefreshed {
                 story: Box::new(story),
