@@ -37,25 +37,21 @@ pub(super) fn race_window_barrier_from_env() -> Option<Arc<crate::sync::RaceWind
     Some(Arc::new(crate::sync::RaceWindowBarrier::new(target)))
 }
 
-pub(super) async fn seed_ci_green_for_tests(store: &Arc<crate::store::Store>) {
-    let enabled = std::env::var("BPMUX_TEST_SEED_CI_GREEN")
-        .map(|v| !v.is_empty() && v != "0")
+pub(super) fn boot_ci_state() -> crate::store::ci::CiState {
+    let seeded = std::env::var("BPMUX_TEST_SEED_CI_GREEN")
+        .map(|value| !value.is_empty() && value != "0")
         .unwrap_or(false);
-    if !enabled {
-        return;
+    if !seeded {
+        return crate::store::ci::CiState::default();
     }
-    store
-        .dispatch(crate::store::AppAction::Ci(
-            crate::store::CiAction::Updated(crate::store::CiSnapshot {
-                state: crate::ci::CiState::Green,
-                run_id: None,
-                head_sha: Some("test-mode-fixture-sha".to_string()),
-                display_title: None,
-                conclusion: "success",
-                workflows: Vec::new(),
-            }),
-        ))
-        .await;
+    crate::store::ci::hydrated(crate::store::CiSnapshot {
+        state: crate::ci::CiState::Green,
+        run_id: None,
+        head_sha: Some("test-mode-fixture-sha".to_string()),
+        display_title: None,
+        conclusion: "success",
+        workflows: Vec::new(),
+    })
 }
 
 pub(super) async fn build_test_orchestrator(

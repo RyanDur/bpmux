@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
-use super::{
-    AggregatedReaction, CiBroadcastListener, CiSnapshot, ReactionsBroadcastListener,
-    RosterBroadcastListener, RosterMember, Select, Store, ci, reactions, roster,
-};
+use super::{AggregatedReaction, CiSnapshot, RosterMember, Select, Store, ci, reactions, roster};
+#[cfg(test)]
+use super::{CiBroadcastListener, ReactionsBroadcastListener, RosterBroadcastListener};
 use product_management::epic::{self, Epic};
 use product_management::iteration::{self, Iteration};
 use product_management::outcome::{self, Outcome};
@@ -30,6 +29,7 @@ impl Store {
         self.app_store.select(|state| ci::snapshot(&state.ci))
     }
 
+    #[cfg(test)]
     pub fn add_ci_listener(&self, listener: Arc<dyn CiBroadcastListener>) {
         self.ci_listeners
             .lock()
@@ -64,6 +64,7 @@ impl Store {
         })
     }
 
+    #[cfg(test)]
     pub fn add_reactions_listener(&self, listener: Arc<dyn ReactionsBroadcastListener>) {
         self.reactions_listeners
             .lock()
@@ -71,6 +72,7 @@ impl Store {
             .push(listener);
     }
 
+    #[cfg(test)]
     pub fn add_roster_listener(&self, listener: Arc<dyn RosterBroadcastListener>) {
         self.roster_listeners
             .lock()

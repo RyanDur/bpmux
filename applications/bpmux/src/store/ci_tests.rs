@@ -2,11 +2,12 @@
 
 use std::collections::VecDeque;
 use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 
 use tempfile::TempDir;
 use tokio::sync::broadcast;
+use tokio::sync::broadcast::error::TryRecvError;
 use tokio_util::sync::CancellationToken;
 
 use super::ci::{CiBroadcastListener, CiPollFetch, CiSnapshot, last_successful_poll_at};
@@ -115,6 +116,66 @@ impl CiPollFetch for FakeCiTracker {
     fn rate_limit_observer(&self) -> RateLimitObserver {
         RateLimitObserver::default()
     }
+}
+
+static CI_SEED_LOCK: Mutex<()> = Mutex::new(());
+
+struct CiSeedGuard {
+    previous: Option<String>,
+    _lock: MutexGuard<'static, ()>,
+}
+
+impl CiSeedGuard {
+    fn set() -> Self {
+        let lock = CI_SEED_LOCK
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let previous = std::env::var("BPMUX_TEST_SEED_CI_GREEN").ok();
+        #[allow(unsafe_code)]
+        unsafe {
+            std::env::set_var("BPMUX_TEST_SEED_CI_GREEN", "1");
+        }
+        Self {
+            previous,
+            _lock: lock,
+        }
+    }
+}
+
+impl Drop for CiSeedGuard {
+    fn drop(&mut self) {
+        #[allow(unsafe_code)]
+        unsafe {
+            match &self.previous {
+                Some(value) => std::env::set_var("BPMUX_TEST_SEED_CI_GREEN", value),
+                None => std::env::remove_var("BPMUX_TEST_SEED_CI_GREEN"),
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn the_ci_test_seed_is_hydrated_at_construction_and_never_broadcast() {
+    let _seed = CiSeedGuard::set();
+    let (hub, _dir) = fresh_hub();
+    let mut frames = hub.subscribe();
+    let store: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
+    tokio::task::yield_now().await;
+
+    assert_eq!(
+        store
+            .ci_snapshot()
+            .expect("a seeded store boots with CI state already in place")
+            .head_sha,
+        Some("test-mode-fixture-sha".to_string()),
+        "the CI test seed is boot hydration, so it belongs in the store's initial state \
+         beside board/reactions/routing/outbox — never in a post-construction dispatch"
+    );
+    assert!(
+        matches!(frames.try_recv(), Err(TryRecvError::Empty)),
+        "boot hydration is not a transition and must reach no broadcaster; a seeded snapshot \
+         on the wire is drained by the next cursor-less wait_for_event as if CI had just changed"
+    );
 }
 
 #[tokio::test]

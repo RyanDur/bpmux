@@ -14,6 +14,9 @@ use crate::sync::{self, RefreshDriver};
 use crate::transport::rest::broadcast_listeners::{
     EpicBroadcast, IterationBroadcast, OutcomeBroadcast, StoryBroadcast,
 };
+use crate::transport::state_delta_broadcasters::{
+    CiHubBroadcaster, ReactionsHubBroadcaster, RosterHubBroadcaster,
+};
 
 pub fn build_store(
     hub: Arc<hub::Hub>,
@@ -111,9 +114,6 @@ fn assemble(
         .as_ref()
         .map(|t| t.rate_limit_observer())
         .unwrap_or_default();
-    let roster_listeners: RosterListeners = Arc::new(Mutex::new(Vec::new()));
-    let reactions_listeners: ReactionsListeners = Arc::new(Mutex::new(Vec::new()));
-    let ci_listeners: CiListeners = Arc::new(Mutex::new(Vec::new()));
     let app_store = kernel::Store::new(
         AppState::with_board(board::persistence::load(&hub.dir))
             .with_reactions(crate::store::reactions::from_store(&reactions::load(
@@ -127,9 +127,20 @@ fn assemble(
             .with_routing(crate::store::routing::from_users(
                 &hub.storage.load_users().unwrap_or_default(),
             ))
+            .with_ci(super::setup::boot_ci_state())
             .with_outbox(initial_outbox),
         Box::new(app_reduce),
     );
+    let store_select = crate::store::Select::new(Arc::downgrade(&app_store));
+    let roster_listeners: RosterListeners = Arc::new(Mutex::new(vec![Arc::new(
+        RosterHubBroadcaster::new(hub.clone(), store_select),
+    )]));
+    let reactions_listeners: ReactionsListeners = Arc::new(Mutex::new(vec![Arc::new(
+        ReactionsHubBroadcaster::new(hub.clone()),
+    )]));
+    let ci_listeners: CiListeners = Arc::new(Mutex::new(vec![Arc::new(CiHubBroadcaster::new(
+        hub.clone(),
+    ))]));
     app_store.add_listener(Arc::new(RosterBroadcast::new(roster_listeners.clone())));
     app_store.add_listener(Arc::new(ReactionsBroadcast::new(
         reactions_listeners.clone(),
@@ -148,8 +159,11 @@ fn assemble(
         hub,
         rate_limit_observer,
         app_store,
+        #[cfg(test)]
         ci_listeners,
+        #[cfg(test)]
         roster_listeners,
+        #[cfg(test)]
         reactions_listeners,
     }
 }

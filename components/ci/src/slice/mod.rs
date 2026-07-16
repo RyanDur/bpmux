@@ -50,6 +50,14 @@ pub struct CiState {
     last_updated_at: Option<String>,
 }
 
+pub fn hydrated(snapshot: CiSnapshot) -> CiState {
+    CiState {
+        last_seen: Some((snapshot.run_id, snapshot.conclusion)),
+        snapshot: Some(snapshot),
+        ..CiState::default()
+    }
+}
+
 pub fn reduce(state: &CiState, action: &CiAction) -> Option<CiState> {
     match action {
         CiAction::Updated(snap) => {

@@ -79,7 +79,6 @@ pub async fn run_server(
         ),
     };
     let store = std::sync::Arc::new(store_inner);
-    seed_ci_green_for_tests(&store).await;
     crate::room::spawn_terminal_delivery_loop(
         hub.clone(),
         pty_registry.clone(),
@@ -91,7 +90,6 @@ pub async fn run_server(
         refresh.bind_dispatch(store.dispatcher());
         startup_tasks::spawn_background_ingest(refresh.clone(), store.dispatcher());
     }
-    wire_store_listeners(&store, &hub);
     wire_startup_roster(&store, &hub, &pty_registry).await;
     start_polling(&store, orchestrator.is_some()).await;
 

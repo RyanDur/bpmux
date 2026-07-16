@@ -53,8 +53,11 @@ pub struct Store {
     hub: Arc<hub::Hub>,
     rate_limit_observer: rate_limit::RateLimitObserver,
     app_store: Arc<kernel::Store<app::AppState, app::AppAction>>,
+    #[cfg(test)]
     ci_listeners: app::CiListeners,
+    #[cfg(test)]
     roster_listeners: app::RosterListeners,
+    #[cfg(test)]
     reactions_listeners: app::ReactionsListeners,
 }
 
@@ -62,8 +65,11 @@ pub(crate) struct StoreParts {
     pub(crate) hub: Arc<hub::Hub>,
     pub(crate) rate_limit_observer: rate_limit::RateLimitObserver,
     pub(crate) app_store: Arc<kernel::Store<app::AppState, app::AppAction>>,
+    #[cfg(test)]
     pub(crate) ci_listeners: app::CiListeners,
+    #[cfg(test)]
     pub(crate) roster_listeners: app::RosterListeners,
+    #[cfg(test)]
     pub(crate) reactions_listeners: app::ReactionsListeners,
 }
 
@@ -73,8 +79,11 @@ impl Store {
             hub: parts.hub,
             rate_limit_observer: parts.rate_limit_observer,
             app_store: parts.app_store,
+            #[cfg(test)]
             ci_listeners: parts.ci_listeners,
+            #[cfg(test)]
             roster_listeners: parts.roster_listeners,
+            #[cfg(test)]
             reactions_listeners: parts.reactions_listeners,
         }
     }
