@@ -1,4 +1,5 @@
 use super::story_decode::{decode_story_metadata, extract_label_names};
+use chrono::{DateTime, Utc};
 use product_management::epic::{Epic, EpicId};
 use product_management::story::Story;
 
@@ -35,12 +36,30 @@ pub fn decode_epic(v: &serde_json::Value) -> Option<Epic> {
 }
 
 pub fn decode_epic_from_story(story: &Story, is_closed: bool) -> Epic {
+    assemble_epic(
+        EpicId::new(story.id.value()),
+        story.title().to_string(),
+        story.body().map(str::to_string),
+        story.filed_at(),
+        story.filed_by().to_string(),
+        is_closed,
+    )
+}
+
+pub fn assemble_epic(
+    id: EpicId,
+    title: String,
+    body: Option<String>,
+    filed_at: DateTime<Utc>,
+    filed_by: String,
+    is_closed: bool,
+) -> Epic {
     Epic {
-        id: EpicId::new(story.id.value()),
-        title: story.title().to_string(),
-        body: story.body().map(str::to_string),
-        filed_at: story.filed_at(),
-        filed_by: story.filed_by().to_string(),
+        id,
+        title,
+        body,
+        filed_at,
+        filed_by,
         is_closed,
     }
 }

@@ -51,7 +51,7 @@ pub(crate) async fn handle_create_story(
         .get("parent_epic")
         .and_then(|v| v.as_u64())
         .map(EpicId::new);
-    let r = refresh.ok_or(
+    let driver = refresh.ok_or(
         "create_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
     )?;
     validate_parent_epic(select, parent_epic)?;
@@ -66,7 +66,7 @@ pub(crate) async fn handle_create_story(
     let epic_body = composed_body.clone();
     let meta = meta_for(agent_name, actor_id);
     let id = create_and_broadcast_story_events(
-        r,
+        driver,
         meta,
         title,
         composed_body,
@@ -76,17 +76,18 @@ pub(crate) async fn handle_create_story(
     )
     .await?;
     if source_codec::mapper::is_epic_title(title) {
+        let epic = source_codec::mapper::assemble_epic(
+            product_management::epic::EpicId::new(id),
+            title.to_string(),
+            Some(epic_body),
+            chrono::Utc::now(),
+            user_routing::short_name(agent_name).to_string(),
+            false,
+        );
         dispatch.dispatch(crate::store::AppAction::Epic(
-            product_management::epic::EpicAction::Upserted(vec![product_management::epic::Epic {
-                id: product_management::epic::EpicId::new(id),
-                title: title.to_string(),
-                body: Some(epic_body),
-                filed_at: chrono::Utc::now(),
-                filed_by: user_routing::short_name(agent_name).to_string(),
-                is_closed: false,
-            }]),
+            product_management::epic::EpicAction::Upserted(vec![epic]),
         ));
-        r.remove_story(id);
+        driver.remove_story(id);
     }
     Ok(match parent_epic {
         Some(epic) => {
@@ -149,7 +150,7 @@ fn validate_parent_epic(
 }
 
 async fn create_and_broadcast_story_events(
-    r: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    driver: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
     meta: product_management::story::events::EventMeta,
     title: &str,
     composed_body: String,
@@ -157,36 +158,39 @@ async fn create_and_broadcast_story_events(
     parent_epic: Option<EpicId>,
     acceptor: Option<product_management::story::Acceptor>,
 ) -> Result<u64, String> {
-    let id = r
+    let id = driver
         .create_story(title.to_string(), composed_body.clone(), Vec::new())
         .await
         .map_err(|e| format!("create_story failed: {e}"))?;
-    r.mutate_sync(product_management::story::events::StoryEvent::new(
-        meta.clone(),
-        StoryId::new(id),
-        product_management::story::events::StoryEventKind::StoryCreated {
-            title: title.to_string(),
-            body: composed_body,
-            initial_state: product_management::story::Work::NotStarted,
-            story_type,
-        },
-    ))
-    .map_err(|e| format!("#{id} created but enqueue failed: {e}"))?;
-    if let Some(acceptor) = acceptor {
-        r.mutate_sync(product_management::story::events::StoryEvent::new(
+    driver
+        .mutate_sync(product_management::story::events::StoryEvent::new(
             meta.clone(),
             StoryId::new(id),
-            product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
+            product_management::story::events::StoryEventKind::StoryCreated {
+                title: title.to_string(),
+                body: composed_body,
+                initial_state: product_management::story::Work::NotStarted,
+                story_type,
+            },
         ))
-        .map_err(|e| format!("#{id} acceptor enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{id} created but enqueue failed: {e}"))?;
+    if let Some(acceptor) = acceptor {
+        driver
+            .mutate_sync(product_management::story::events::StoryEvent::new(
+                meta.clone(),
+                StoryId::new(id),
+                product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
+            ))
+            .map_err(|e| format!("#{id} acceptor enqueue failed: {e}"))?;
     }
     if let Some(epic_id) = parent_epic {
-        r.mutate_sync(product_management::story::events::StoryEvent::new(
-            meta,
-            StoryId::new(id),
-            product_management::story::events::StoryEventKind::ParentEpicSet { epic_id },
-        ))
-        .map_err(|e| format!("#{id} parent_epic enqueue failed: {e}"))?;
+        driver
+            .mutate_sync(product_management::story::events::StoryEvent::new(
+                meta,
+                StoryId::new(id),
+                product_management::story::events::StoryEventKind::ParentEpicSet { epic_id },
+            ))
+            .map_err(|e| format!("#{id} parent_epic enqueue failed: {e}"))?;
     }
     Ok(id)
 }

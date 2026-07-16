@@ -25,18 +25,19 @@ pub(crate) async fn handle_set_parent_epic(
     if id == epic_id {
         return Err(format!("story #{id} cannot be its own parent epic"));
     }
-    let r = refresh.ok_or("set_parent_epic requires refresh (RefreshDriver)")?;
-    ensure_story_in_canonical_store(r, select, id).await?;
-    ensure_epic_in_canonical_store(r, select, epic_id).await?;
+    let driver = refresh.ok_or("set_parent_epic requires refresh (RefreshDriver)")?;
+    ensure_story_in_canonical_store(driver, select, id).await?;
+    ensure_epic_in_canonical_store(driver, select, epic_id).await?;
     let meta = meta_for(agent_name, actor_id);
-    r.mutate_sync(product_management::story::events::StoryEvent::new(
-        meta,
-        StoryId::new(id),
-        product_management::story::events::StoryEventKind::ParentEpicSet {
-            epic_id: EpicId::new(epic_id),
-        },
-    ))
-    .map_err(|e| format!("#{id} parent_epic enqueue failed: {e}"))?;
+    driver
+        .mutate_sync(product_management::story::events::StoryEvent::new(
+            meta,
+            StoryId::new(id),
+            product_management::story::events::StoryEventKind::ParentEpicSet {
+                epic_id: EpicId::new(epic_id),
+            },
+        ))
+        .map_err(|e| format!("#{id} parent_epic enqueue failed: {e}"))?;
     Ok(format!("#{id} grouped under epic #{epic_id}"))
 }
 
@@ -53,14 +54,15 @@ pub(crate) async fn handle_unset_parent_epic(
         .get("id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'id' argument")?;
-    let r = refresh.ok_or("unset_parent_epic requires refresh (RefreshDriver)")?;
-    ensure_story_in_canonical_store(r, select, id).await?;
+    let driver = refresh.ok_or("unset_parent_epic requires refresh (RefreshDriver)")?;
+    ensure_story_in_canonical_store(driver, select, id).await?;
     let meta = meta_for(agent_name, actor_id);
-    r.mutate_sync(product_management::story::events::StoryEvent::new(
-        meta,
-        StoryId::new(id),
-        product_management::story::events::StoryEventKind::ParentEpicUnset,
-    ))
-    .map_err(|e| format!("#{id} parent_epic-unset enqueue failed: {e}"))?;
+    driver
+        .mutate_sync(product_management::story::events::StoryEvent::new(
+            meta,
+            StoryId::new(id),
+            product_management::story::events::StoryEventKind::ParentEpicUnset,
+        ))
+        .map_err(|e| format!("#{id} parent_epic-unset enqueue failed: {e}"))?;
     Ok(format!("#{id} ungrouped from parent epic"))
 }

@@ -31,7 +31,7 @@ pub(crate) async fn handle_edit_story(
                 .to_string(),
         );
     }
-    let r = refresh
+    let driver = refresh
         .ok_or("edit_story requires refresh (RefreshDriver) — no canonical store available")?;
     let iteration = select.select(|state| {
         product_management::iteration::get(
@@ -42,7 +42,7 @@ pub(crate) async fn handle_edit_story(
     if let Some(b) = body
         && iteration.is_none()
     {
-        let story = ensure_story_in_canonical_store(r, select, id).await?;
+        let story = ensure_story_in_canonical_store(driver, select, id).await?;
         if story.story_type() != product_management::story::StoryKind::Chore {
             crate::bridge::atp_substantive_gate::verify_atp_pre_filing(b, None)
                 .map_err(|e| e.as_json_string())?;
@@ -50,27 +50,31 @@ pub(crate) async fn handle_edit_story(
     }
     let mut updated: Vec<&str> = Vec::new();
     if let Some(t) = title {
-        r.update_title(id, t.to_string())
+        driver
+            .update_title(id, t.to_string())
             .await
             .map_err(|e| format!("#{id} title update failed: {e}"))?;
         updated.push("title");
     }
     if let Some(b) = body {
-        r.update_body(id, b.to_string())
+        driver
+            .update_body(id, b.to_string())
             .await
             .map_err(|e| format!("#{id} body update failed: {e}"))?;
         updated.push("body");
     }
     if let Some(acceptor) = acceptor {
-        ensure_story_in_canonical_store(r, select, id).await?;
+        ensure_story_in_canonical_store(driver, select, id).await?;
         let meta = meta_for(agent_name, actor_id);
-        r.mutate_sync(product_management::story::events::StoryEvent::new(
-            meta,
-            product_management::story::StoryId::new(id),
-            product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
-        ))
-        .map_err(|e| format!("#{id} acceptor enqueue failed: {e}"))?;
-        r.drain_pending()
+        driver
+            .mutate_sync(product_management::story::events::StoryEvent::new(
+                meta,
+                product_management::story::StoryId::new(id),
+                product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
+            ))
+            .map_err(|e| format!("#{id} acceptor enqueue failed: {e}"))?;
+        driver
+            .drain_pending()
             .await
             .map_err(|e| format!("#{id} drain after acceptor re-set failed: {e}"))?;
         updated.push("acceptor");
