@@ -120,7 +120,12 @@ pub async fn post_terminal_close(
     }
     match pty_registry.remove(&req.terminal_id) {
         Some(live) => {
-            live.close_and_reap();
+            if let Err(e) = tokio::task::spawn_blocking(move || live.close_and_reap()).await {
+                diag::log_diag(&format!(
+                    "terminal close: reap task for {} did not complete: {e}",
+                    req.terminal_id
+                ));
+            }
             (
                 StatusCode::OK,
                 json_headers(),
