@@ -80,7 +80,14 @@ pub(crate) async fn dispatch_pass_desk_check(
     .await?;
     if let Some(id) = args.get("id").and_then(|v| v.as_u64()) {
         let story_type = tools_stories::classify_for_pass_desk_check(id, refresh);
-        let acceptor = refresh.and_then(|r| r.story(id)).and_then(|s| s.acceptor());
+        let acceptor = select
+            .select(|s| {
+                product_management::story::slice::get(
+                    &s.stories,
+                    product_management::story::StoryId::new(id),
+                )
+            })
+            .and_then(|s| s.acceptor());
         for msg in tools_stories::build_pass_desk_check_signals(id, story_type, acceptor) {
             broadcast_client_msg_via_hub(hub, agent_name, msg);
         }

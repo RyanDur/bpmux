@@ -66,7 +66,7 @@ pub(crate) async fn handle_deliver_story(
         let held_step = refreshed
             .as_ref()
             .and_then(|s| s.as_ref())
-            .and_then(|story| r.story_held_stage(story))
+            .and_then(|story| select.select(|state| board::held_stage(story, &state.board)))
             .unwrap_or_else(|| product_management::story::Stage::Dev.id());
         let board::Decision {
             coarse: new_state,

@@ -59,7 +59,8 @@ pub(crate) async fn set_member_position(
 ) -> Result<(), String> {
     let target = StoryId::new(story_id);
     let iteration = ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
-    for other in r.iterations() {
+    let all_iterations = select.select(|s| product_management::iteration::all(&s.iterations));
+    for other in all_iterations {
         let other_id = other.id.value();
         if other_id == iteration_id || !other.stories.contains(&target) {
             continue;

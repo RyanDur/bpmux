@@ -47,7 +47,9 @@ pub(crate) async fn handle_pass_desk_check(
     let acceptor = parse_acceptor_arg(args)?;
     let bypass = verify_bug_question_or_bypass(args, BugGate::PassDeskCheck)?;
     let r_opt = refresh;
-    let story_opt = r_opt.and_then(|r| r.story(id));
+    let story_opt = r_opt.and_then(|_| {
+        select.select(|s| product_management::story::slice::get(&s.stories, StoryId::new(id)))
+    });
     let class = story_opt
         .as_ref()
         .map(|s| product_management::story::gate_class_from_acceptor(s.acceptor()))

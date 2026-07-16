@@ -64,9 +64,15 @@ pub(in crate::bridge) async fn handle_move_story(
         .ok_or("move_story requires refresh (RefreshDriver) — tracker fallback not supported")?;
     let prior =
         Some(crate::bridge::tools_stories::ensure_story_in_canonical_store(r, select, id).await?);
-    let from_fine = prior.as_ref().and_then(|s| r.story_fine_stage(s));
-    let from_display =
-        current_state_display(prior.as_ref(), from_fine, &r.iterations()).to_string();
+    let from_fine = prior
+        .as_ref()
+        .and_then(|s| select.select(|state| board::fine_stage(s, &state.board)));
+    let from_display = current_state_display(
+        prior.as_ref(),
+        from_fine,
+        &select.select(|state| product_management::iteration::all(&state.iterations)),
+    )
+    .to_string();
     let was_closed = prior.as_ref().map(|s| s.is_concluded()).unwrap_or(false);
 
     let scheduling_target = scheduling::resolve_scheduling_target(r, id, &target)?;

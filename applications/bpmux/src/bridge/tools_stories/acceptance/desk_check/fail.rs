@@ -34,9 +34,12 @@ pub(crate) async fn handle_fail_desk_check(
     };
     if let Some(story) = prior.as_ref() {
         let current_state = match refresh {
-            Some(r) => board::state_label(
-                &product_management::scheduling::projected_state(story, &r.iterations()),
-                r.story_fine_stage(story),
+            Some(_) => board::state_label(
+                &product_management::scheduling::projected_state(
+                    story,
+                    &select.select(|s| product_management::iteration::all(&s.iterations)),
+                ),
+                select.select(|s| board::fine_stage(story, &s.board)),
             ),
             None => story.state.as_str(),
         };

@@ -16,8 +16,13 @@ pub(crate) async fn dispatch_deliver_story(
         tools_stories::handle_deliver_story(&args, agent_name, role, actor_id, refresh, select)
             .await?;
     if let Some(id) = args.get("id").and_then(|v| v.as_u64()) {
-        let title = refresh
-            .and_then(|r| r.story(id))
+        let title = select
+            .select(|s| {
+                product_management::story::slice::get(
+                    &s.stories,
+                    product_management::story::StoryId::new(id),
+                )
+            })
             .map(|s| s.title)
             .unwrap_or_else(|| format!("#{id}"));
         for msg in tools_stories::build_delivery_signals(id, &title) {
