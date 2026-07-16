@@ -90,6 +90,7 @@ pub async fn run_server(
         ),
     };
     let store = std::sync::Arc::new(store_inner);
+    seed_ci_green_for_tests(&store).await;
     crate::room::spawn_terminal_delivery_loop(
         hub.clone(),
         pty_registry.clone(),

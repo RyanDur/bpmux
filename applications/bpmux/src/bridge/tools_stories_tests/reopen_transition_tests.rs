@@ -47,6 +47,16 @@ mod reopen_on_state_transition_tests {
         let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
         let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
         store.bind_refresh(&orch);
+        store.dispatch(crate::store::AppAction::Ci(
+            crate::store::CiAction::Updated(crate::store::CiSnapshot {
+                state: crate::ci::CiState::Green,
+                run_id: None,
+                head_sha: Some("test-fixture-sha".to_string()),
+                display_title: None,
+                conclusion: "success",
+                workflows: Vec::new(),
+            }),
+        ));
         orch.refresh_all().await.unwrap();
         let select = store.select();
         (store, orch, adapter, select)

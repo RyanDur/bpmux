@@ -90,10 +90,6 @@ pub trait RefreshDriver: Send + Sync {
 
     fn update_title(&self, id: u64, title: String) -> BoxedFuture<'_, Result<(), SyncError>>;
 
-    fn ci_state(&self) -> Option<workflow::CiSnapshot> {
-        None
-    }
-
     fn test_race_window_rendezvous(&self) -> BoxedFuture<'_, ()> {
         Box::pin(async {})
     }

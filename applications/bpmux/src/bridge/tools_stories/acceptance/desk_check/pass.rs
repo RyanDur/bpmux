@@ -76,7 +76,12 @@ pub(crate) async fn handle_pass_desk_check(
         )
         .map_err(|e| e.as_json_string())?;
     }
-    let ci_snapshot = refresh.and_then(|r| r.ci_state());
+    let ci_snapshot = select
+        .select(|state| crate::store::ci::snapshot(&state.ci))
+        .map(|snapshot| workflow::CiSnapshot {
+            conclusion: snapshot.conclusion.to_string(),
+            head_sha: snapshot.head_sha.unwrap_or_default(),
+        });
     workflow::check_ci_green(transition, ci_snapshot.as_ref()).map_err(|e| e.as_json_string())?;
     let was_closed = if let Some(r) = refresh {
         let prior = ensure_story_in_canonical_store(r, select, id).await?;

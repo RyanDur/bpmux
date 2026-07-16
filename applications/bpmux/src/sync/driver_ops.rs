@@ -134,15 +134,6 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         Box::pin(std::future::ready(self.update_title(number, title)))
     }
 
-    fn ci_state(&self) -> Option<workflow::CiSnapshot> {
-        let store = self.ci_state_store.as_ref()?;
-        let report = store.read()?;
-        Some(workflow::CiSnapshot {
-            conclusion: report.conclusion.to_string(),
-            head_sha: report.head_sha.unwrap_or_default(),
-        })
-    }
-
     fn test_race_window_rendezvous(&self) -> BoxedFuture<'_, ()> {
         let barrier = self.race_window_barrier.clone();
         Box::pin(async move {
