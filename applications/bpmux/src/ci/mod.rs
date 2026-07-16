@@ -8,6 +8,5 @@ pub use ::ci::{
 };
 pub(crate) use ::ci::{
     build_dev_ci_signal, build_multi_depth_for_transition, compute_broadcast_text,
-    unknown_ci_state_report,
 };
 pub mod slice;

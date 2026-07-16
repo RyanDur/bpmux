@@ -107,6 +107,18 @@ pub fn last_updated_at(state: &CiState) -> Option<String> {
     state.last_updated_at.clone()
 }
 
+pub fn report_from_state(state: &CiState) -> crate::CiStateReport {
+    match &state.snapshot {
+        None => crate::unknown_ci_state_report(),
+        Some(snap) => {
+            let mut report = crate::report_from_event(snap.to_ci_event());
+            report.last_successful_poll_at = state.last_successful_poll_at.clone();
+            report.last_updated_at = state.last_updated_at.clone();
+            report
+        }
+    }
+}
+
 mod action;
 mod listeners;
 
@@ -114,6 +126,8 @@ mod listeners;
 mod listeners_tests;
 #[cfg(test)]
 mod reduce_tests;
+#[cfg(test)]
+mod report_from_state_tests;
 
 pub use action::CiAction;
 pub use listeners::CiStateStoreWriter;

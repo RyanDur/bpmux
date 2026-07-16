@@ -3,11 +3,9 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 
 pub async fn get_ci(
-    axum::Extension(ci_state_store): axum::Extension<crate::ci::CiStateStore>,
+    axum::Extension(select): axum::Extension<crate::store::Select>,
 ) -> impl IntoResponse {
-    let report = ci_state_store
-        .read()
-        .unwrap_or_else(crate::ci::unknown_ci_state_report);
+    let report = select.select(|state| crate::ci::slice::report_from_state(&state.ci));
     (
         StatusCode::OK,
         json_headers(),

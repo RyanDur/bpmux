@@ -10,8 +10,8 @@ use rate_limit::RateLimitObserver;
 
 pub use ::ci::slice::{
     BoxedFuture, CiAction, CiBroadcastListener, CiPollFetch, CiSnapshot, CiState,
-    CiStateStoreWriter, last_successful_poll_at, last_updated_at, polling, reduce, snapshot,
-    snapshot_key,
+    CiStateStoreWriter, last_successful_poll_at, last_updated_at, polling, reduce,
+    report_from_state, snapshot, snapshot_key,
 };
 
 pub trait CiWatchDriver: Send + Sync {

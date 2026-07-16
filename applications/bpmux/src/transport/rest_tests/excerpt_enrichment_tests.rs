@@ -303,16 +303,47 @@ async fn post_reaction_cascade_falls_back_to_no_excerpt_when_target_absent() {
     );
 }
 
-#[tokio::test]
-async fn get_ci_returns_unknown_when_store_empty() {
-    use crate::ci::CiStateStore;
-    let store = CiStateStore::new();
-    let router = axum::Router::new()
+fn ci_router(seeded: &crate::store::SeededStore) -> axum::Router {
+    axum::Router::new()
         .route(
             "/api/ci",
             axum::routing::get(crate::transport::rest::get_ci),
         )
-        .layer(axum::Extension(store));
+        .layer(axum::Extension(seeded.select()))
+}
+
+fn dispatch_ci_snapshot(
+    seeded: &crate::store::SeededStore,
+    conclusion: &'static str,
+    ci_state: crate::ci::CiState,
+    run_id: u64,
+    head_sha: &str,
+    display_title: &str,
+) {
+    seeded.dispatch(
+        crate::store::CiAction::Updated(crate::store::CiSnapshot {
+            state: ci_state,
+            run_id: Some(run_id),
+            head_sha: Some(head_sha.to_string()),
+            display_title: Some(display_title.to_string()),
+            conclusion,
+            workflows: Vec::new(),
+        })
+        .into(),
+    );
+    seeded.dispatch(
+        crate::store::CiAction::PollSucceeded {
+            at: chrono::Utc::now().to_rfc3339(),
+            updated: true,
+        }
+        .into(),
+    );
+}
+
+#[tokio::test]
+async fn get_ci_returns_unknown_when_state_empty() {
+    let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
+    let router = ci_router(&seeded);
     let request = Request::builder()
         .method("GET")
         .uri("/api/ci")
@@ -343,30 +374,17 @@ async fn get_ci_returns_unknown_when_store_empty() {
 }
 
 #[tokio::test]
-async fn get_ci_returns_cached_state_with_last_updated_at_after_write() {
-    use crate::ci::CiStateReport;
-    use crate::ci::CiStateStore;
-    let store = CiStateStore::new();
-    let report = CiStateReport {
-        conclusion: "success",
-        last_run_id: Some(42),
-        branch: "main",
-        url: "https://github.com/acme/bpmux/actions".to_string(),
-        head_sha: Some("abc1234".to_string()),
-        display_title: Some("test".to_string()),
-        last_updated_at: None,
-        last_successful_poll_at: None,
-        poll_interval_secs: 60,
-        backoff_cap_secs: 3600,
-        workflows: Vec::new(),
-    };
-    store.write(report);
-    let router = axum::Router::new()
-        .route(
-            "/api/ci",
-            axum::routing::get(crate::transport::rest::get_ci),
-        )
-        .layer(axum::Extension(store));
+async fn get_ci_returns_state_with_last_updated_at_after_a_successful_poll() {
+    let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
+    dispatch_ci_snapshot(
+        &seeded,
+        "success",
+        crate::ci::CiState::Green,
+        42,
+        "abc1234",
+        "test",
+    );
+    let router = ci_router(&seeded);
     let request = Request::builder()
         .method("GET")
         .uri("/api/ci")
@@ -382,7 +400,7 @@ async fn get_ci_returns_cached_state_with_last_updated_at_after_write() {
     assert_eq!(json["last_run_id"], 42);
     assert!(
         json["last_updated_at"].is_string(),
-        "post-write: last_updated_at is RFC3339 string per AC; got {}",
+        "post-poll: last_updated_at is RFC3339 string per AC; got {}",
         json["last_updated_at"]
     );
     let ts = json["last_updated_at"].as_str().unwrap();
@@ -393,29 +411,17 @@ async fn get_ci_returns_cached_state_with_last_updated_at_after_write() {
 }
 
 #[tokio::test]
-async fn get_ci_does_not_hit_github_when_store_has_cached_state() {
-    use crate::ci::CiStateReport;
-    use crate::ci::CiStateStore;
-    let store = CiStateStore::new();
-    store.write(CiStateReport {
-        conclusion: "failure",
-        last_run_id: Some(7),
-        branch: "main",
-        url: "https://github.com/acme/bpmux/actions".to_string(),
-        head_sha: Some("def5678".to_string()),
-        display_title: Some("flaky test".to_string()),
-        last_updated_at: None,
-        last_successful_poll_at: None,
-        poll_interval_secs: 60,
-        backoff_cap_secs: 3600,
-        workflows: Vec::new(),
-    });
-    let router = axum::Router::new()
-        .route(
-            "/api/ci",
-            axum::routing::get(crate::transport::rest::get_ci),
-        )
-        .layer(axum::Extension(store));
+async fn get_ci_does_not_hit_github_when_state_has_a_cached_snapshot() {
+    let seeded = crate::store::SeededStore::new(Vec::new(), Vec::new(), Vec::new());
+    dispatch_ci_snapshot(
+        &seeded,
+        "failure",
+        crate::ci::CiState::Red,
+        7,
+        "def5678",
+        "flaky test",
+    );
+    let router = ci_router(&seeded);
     let start = std::time::Instant::now();
     let request = Request::builder()
         .method("GET")
@@ -427,7 +433,7 @@ async fn get_ci_does_not_hit_github_when_store_has_cached_state() {
     assert_eq!(response.status(), StatusCode::OK);
     assert!(
         elapsed < std::time::Duration::from_millis(50),
-        "get_ci must read cache in <50ms (no GH call); took {elapsed:?}"
+        "get_ci must read state.ci in-memory (no GH call); took {elapsed:?}"
     );
 }
 

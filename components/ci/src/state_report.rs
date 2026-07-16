@@ -1,7 +1,7 @@
 use crate::{CiEvent, CiState, RunEntry, WorkflowSummary, classify_runs, github_actions_url};
 use crate::{MAX_BACKOFF, POLL_INTERVAL};
 
-#[derive(Debug, Clone, serde::Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, serde::Serialize, PartialEq, Eq)]
 pub struct CiStateReport {
     pub conclusion: &'static str,
     pub last_run_id: Option<u64>,
