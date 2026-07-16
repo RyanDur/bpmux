@@ -42,6 +42,7 @@ pub(crate) fn select_stories_to_revalidate(
 
 pub async fn run_hydration_loop_cancellable(
     refresh: Arc<dyn crate::sync::RefreshDriver>,
+    select: crate::store::Select,
     interval: std::time::Duration,
     observer: rate_limit::RateLimitObserver,
     ct: tokio_util::sync::CancellationToken,
@@ -67,8 +68,9 @@ pub async fn run_hydration_loop_cancellable(
             }
             continue;
         }
-        let stories = refresh.all_stories();
-        let iterations = refresh.iterations();
+        let stories = select.select(|state| product_management::story::slice::all(&state.stories));
+        let iterations =
+            select.select(|state| product_management::iteration::all(&state.iterations));
         let to_hydrate = select_stories_to_hydrate(&stories, HYDRATION_MAX_PER_TICK, &iterations);
         let to_revalidate =
             select_stories_to_revalidate(&stories, HYDRATION_MAX_PER_TICK, &iterations);

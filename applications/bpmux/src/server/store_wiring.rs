@@ -59,32 +59,33 @@ pub(crate) fn build_store_with_refresh(
         parent_ct.clone(),
         initial_outbox,
     );
+    let store_select = crate::store::Select::new(std::sync::Arc::downgrade(&parts.app_store));
     let sync_poll = Arc::new(crate::bridge::polling::SyncPoll::new(
         refresh.clone(),
+        store_select.clone(),
         parts.rate_limit_observer.clone(),
         ingest_interval,
         hydration_interval,
         parent_ct.clone(),
     ));
     parts.app_store.add_listener(sync_poll);
-    let board_select = crate::store::Select::new(std::sync::Arc::downgrade(&parts.app_store));
     parts.app_store.add_listener(Arc::new(OutcomeBroadcast::new(
         parts.hub.clone(),
-        board_select.clone(),
+        store_select.clone(),
     )));
     parts
         .app_store
         .add_listener(Arc::new(IterationBroadcast::new(
             parts.hub.clone(),
-            board_select.clone(),
+            store_select.clone(),
         )));
     parts.app_store.add_listener(Arc::new(EpicBroadcast::new(
         parts.hub.clone(),
-        board_select.clone(),
+        store_select.clone(),
     )));
     parts.app_store.add_listener(Arc::new(StoryBroadcast::new(
         parts.hub.clone(),
-        board_select.clone(),
+        store_select.clone(),
     )));
     parts.app_store.add_listener(Arc::new(OwnerParkListener));
     parts

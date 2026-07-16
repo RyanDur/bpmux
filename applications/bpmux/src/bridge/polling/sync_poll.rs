@@ -10,6 +10,7 @@ use rate_limit::RateLimitObserver;
 
 pub struct SyncPoll {
     refresh: Arc<dyn RefreshDriver>,
+    select: crate::store::Select,
     observer: RateLimitObserver,
     ingest_interval: Duration,
     hydration_interval: Duration,
@@ -21,6 +22,7 @@ pub struct SyncPoll {
 impl SyncPoll {
     pub fn new(
         refresh: Arc<dyn RefreshDriver>,
+        select: crate::store::Select,
         observer: RateLimitObserver,
         ingest_interval: Duration,
         hydration_interval: Duration,
@@ -28,6 +30,7 @@ impl SyncPoll {
     ) -> Self {
         Self {
             refresh,
+            select,
             observer,
             ingest_interval,
             hydration_interval,
@@ -70,6 +73,7 @@ impl SyncPoll {
         let token = self.parent_ct.child_token();
         tokio::spawn(crate::bridge::run_hydration_loop_cancellable(
             self.refresh.clone(),
+            self.select.clone(),
             self.hydration_interval,
             self.observer.clone(),
             token.clone(),
