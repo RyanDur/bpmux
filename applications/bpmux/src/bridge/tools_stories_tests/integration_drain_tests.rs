@@ -28,8 +28,10 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(882));
@@ -39,7 +41,8 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
         "acceptance_test_path".into(),
         serde_json::json!("does/not/exist.spec.ts"),
     );
-    let result = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
+    let result =
+        handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
     assert!(result.is_err(), "missing path must block: {result:?}");
     assert!(result.unwrap_err().contains("does not exist"));
 }
@@ -67,14 +70,17 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(883));
     args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
     args.insert("falsifier_reframing".into(), serde_json::json!("f"));
-    let result = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
+    let result =
+        handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
     assert!(result.is_ok(), "Chore exempt: {result:?}");
 }
 
@@ -119,14 +125,16 @@ async fn start_story_keeps_the_stores_optimistic_reject_when_the_adapter_verdict
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(884));
     args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
     args.insert("falsifier_reframing".into(), serde_json::json!("f"));
-    let msg = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch))
+    let msg = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select)
         .await
         .expect("pickup succeeds");
     assert!(
@@ -169,14 +177,16 @@ async fn start_story_fetches_the_rework_lead_when_the_store_has_no_cached_verdic
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(885));
     args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
     args.insert("falsifier_reframing".into(), serde_json::json!("f"));
-    let msg = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch))
+    let msg = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select)
         .await
         .expect("pickup succeeds");
     assert!(
@@ -209,13 +219,15 @@ async fn reject_story_returns_optimistically_and_defers_gh_push_to_the_async_dra
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], current_iteration_of(&[4690]), vec![]);
+    let store = crate::store::SeededStore::new(vec![], current_iteration_of(&[4690]), vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(4690));
     args.insert("reason".into(), serde_json::json!("cascade drain test"));
-    handle_reject_story(&args, "owner:human", "owner", None, Some(&orch))
+    handle_reject_story(&args, "owner:human", "owner", None, Some(&orch), &select)
         .await
         .unwrap();
 
@@ -269,15 +281,24 @@ async fn fail_desk_check_returns_optimistically_and_defers_gh_push_to_the_async_
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(4691));
     args.insert("reason".into(), serde_json::json!("cascade drain test"));
-    handle_fail_desk_check(&args, "designer:test", "designer", None, Some(&orch))
-        .await
-        .unwrap();
+    handle_fail_desk_check(
+        &args,
+        "designer:test",
+        "designer",
+        None,
+        Some(&orch),
+        &select,
+    )
+    .await
+    .unwrap();
 
     assert!(
         adapter.pushed_events().is_empty(),
@@ -321,13 +342,16 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(469));
     args.insert("reason".into(), serde_json::json!("rework needed"));
-    let result = handle_reject_story(&args, "owner:human", "owner", None, Some(&orch)).await;
+    let result =
+        handle_reject_story(&args, "owner:human", "owner", None, Some(&orch), &select).await;
     assert!(result.is_ok(), "reject should succeed: {result:?}");
 
     orch.drain_pending().await.unwrap();
@@ -375,13 +399,15 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(470));
     args.insert("reason".into(), serde_json::json!("not done"));
-    handle_reject_story(&args, "owner:human", "owner", None, Some(&orch))
+    handle_reject_story(&args, "owner:human", "owner", None, Some(&orch), &select)
         .await
         .unwrap();
 
@@ -544,8 +570,10 @@ async fn deliver_story_returns_optimistically_and_defers_push_failure_to_the_asy
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
+    let select = store.select();
 
     adapter.set_push_failures(true);
 
@@ -555,7 +583,8 @@ async fn deliver_story_returns_optimistically_and_defers_push_failure_to_the_asy
         "verified_observation".into(),
         serde_json::json!("drove the label-leak failure-injection scenario"),
     );
-    let result = handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
+    let result =
+        handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
     assert!(
         result.is_ok(),
         "deliver_story returns optimistically — the write succeeds locally even when the GH push will fail; the failure is reconciled on the async drain, not surfaced at return: {result:?}"

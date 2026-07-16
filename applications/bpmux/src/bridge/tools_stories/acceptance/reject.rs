@@ -8,6 +8,7 @@ pub(crate) async fn handle_reject_story(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     let actor_role = role;
     let workflow = workflow::current_workflow();
@@ -56,18 +57,19 @@ pub(crate) async fn handle_reject_story(
         workflow::check_target_state_valid(transition, story.state.as_str())
             .map_err(|e| e.as_json_string())?;
     }
-    reject_via_canonical_store(r, id, agent_name, actor_id, reason.clone()).await?;
+    reject_via_canonical_store(r, select, id, agent_name, actor_id, reason.clone()).await?;
     Ok(format!("#{id} rejected: {reason}"))
 }
 
 pub(crate) async fn reject_via_canonical_store(
     refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    select: &crate::store::Select,
     id: u64,
     agent_name: &str,
     actor_id: Option<&str>,
     reason: String,
 ) -> Result<(), String> {
-    let prior = ensure_story_in_canonical_store(refresh, id).await?;
+    let prior = ensure_story_in_canonical_store(refresh, select, id).await?;
     let workflow = workflow::current_workflow();
     let transition = workflow
         .transition_by_id("reject")

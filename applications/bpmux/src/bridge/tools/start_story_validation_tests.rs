@@ -16,7 +16,11 @@ mod gate_retire_1348 {
         state: Work,
         story_type: StoryKind,
         body: &str,
-    ) -> Arc<dyn RefreshDriver> {
+    ) -> (
+        crate::store::SeededStore,
+        Arc<dyn RefreshDriver>,
+        crate::store::Select,
+    ) {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let seeded = Story::new_minimal(
             StoryId::new(id),
@@ -35,9 +39,11 @@ mod gate_retire_1348 {
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+        let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+        store.bind_refresh(&orch);
         orch.refresh_all().await.unwrap();
-        orch
+        let select = store.select();
+        (store, orch, select)
     }
 
     #[tokio::test]
@@ -52,7 +58,7 @@ mod gate_retire_1348 {
                     - **Given:** a body with Gherkin but no ATP section\n\
                     - **When:** dev fires start_story\n\
                     - **Then:** start_story returns Ok\n";
-        let orch = seeded_orchestrator(
+        let (_store, orch, select) = seeded_orchestrator(
             9101,
             "[Feature] gherkin-only body",
             Work::NotStarted,
@@ -64,7 +70,8 @@ mod gate_retire_1348 {
         args.insert("id".into(), serde_json::json!(9101));
         args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
         args.insert("falsifier_reframing".into(), serde_json::json!("f"));
-        let result = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
+        let result =
+            handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
         assert!(
             result.is_ok(),
             "Gherkin-only Feature start_story must succeed without ATP section: {result:?}"
@@ -78,7 +85,7 @@ mod gate_retire_1348 {
                     - **Given:** Gherkin-only body\n\
                     - **When:** dev delivers\n\
                     - **Then:** gate accepts\n";
-        let orch = seeded_orchestrator(
+        let (_store, orch, select) = seeded_orchestrator(
             9102,
             "[Feature] gherkin-only deliver",
             Work::InProgress,
@@ -92,7 +99,8 @@ mod gate_retire_1348 {
             "verified_observation".into(),
             serde_json::json!("drove the user-job end-to-end via real-backend tests"),
         );
-        let result = handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
+        let result =
+            handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
         assert!(
             result.is_ok(),
             "Gherkin-only Feature deliver_story must succeed without ATP section: {result:?}"
@@ -106,7 +114,7 @@ mod gate_retire_1348 {
                     - **Given:** Gherkin-only Bug body\n\
                     - **When:** dev starts\n\
                     - **Then:** start_story returns Ok\n";
-        let orch = seeded_orchestrator(
+        let (_store, orch, select) = seeded_orchestrator(
             9103,
             "[Bug] gherkin-only body",
             Work::NotStarted,
@@ -118,7 +126,8 @@ mod gate_retire_1348 {
         args.insert("id".into(), serde_json::json!(9103));
         args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
         args.insert("falsifier_reframing".into(), serde_json::json!("f"));
-        let result = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
+        let result =
+            handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
         assert!(
             result.is_ok(),
             "Gherkin-only Bug start_story must succeed without ATP section: {result:?}"
@@ -128,7 +137,7 @@ mod gate_retire_1348 {
     #[tokio::test]
     async fn start_story_still_validates_atp_path_when_present_in_body() {
         let body = format!("## Acceptance test path\n\n{}\n", "does/not/exist.spec.ts");
-        let orch = seeded_orchestrator(
+        let (_store, orch, select) = seeded_orchestrator(
             9104,
             "[Feature] backward-compat ATP path",
             Work::NotStarted,
@@ -140,7 +149,8 @@ mod gate_retire_1348 {
         args.insert("id".into(), serde_json::json!(9104));
         args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
         args.insert("falsifier_reframing".into(), serde_json::json!("f"));
-        let result = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
+        let result =
+            handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
         assert!(
             result.is_err(),
             "Feature with body-named ATP path that doesn't exist must still block: {result:?}"
@@ -154,7 +164,7 @@ mod gate_retire_1348 {
     #[tokio::test]
     async fn deliver_story_still_validates_atp_path_when_present_in_body() {
         let body = format!("## Acceptance test path\n\n{}\n", "does/not/exist.spec.ts");
-        let orch = seeded_orchestrator(
+        let (_store, orch, select) = seeded_orchestrator(
             9105,
             "[Feature] backward-compat ATP deliver",
             Work::InProgress,
@@ -168,7 +178,8 @@ mod gate_retire_1348 {
             "verified_observation".into(),
             serde_json::json!("drove end-to-end via tests"),
         );
-        let result = handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
+        let result =
+            handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
         assert!(
             result.is_err(),
             "Feature with body-named ATP path that doesn't exist must still block at deliver: {result:?}"

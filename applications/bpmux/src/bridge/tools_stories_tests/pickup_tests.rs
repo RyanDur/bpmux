@@ -10,12 +10,14 @@ async fn start_story_rejects_missing_pickup_paraphrase() {
         "id": 398,
         "falsifier_reframing": "I would reject if the pickup signal is invisible."
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_start_story(
         args.as_object().unwrap(),
         "dev:claude-code",
         "dev",
         None,
         None,
+        &select,
     )
     .await;
     assert!(
@@ -40,12 +42,14 @@ async fn start_story_rejects_empty_pickup_paraphrase() {
         "pickup_paraphrase": "   \n  ",
         "falsifier_reframing": "I would reject if..."
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_start_story(
         args.as_object().unwrap(),
         "dev:claude-code",
         "dev",
         None,
         None,
+        &select,
     )
     .await;
     assert!(
@@ -61,12 +65,14 @@ async fn start_story_rejects_missing_falsifier_reframing() {
         "id": 398,
         "pickup_paraphrase": "As a dev, I restate the user-job..."
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_start_story(
         args.as_object().unwrap(),
         "dev:claude-code",
         "dev",
         None,
         None,
+        &select,
     )
     .await;
     assert!(
@@ -87,12 +93,14 @@ async fn start_story_validation_passes_then_refresh_required_after_5n() {
         "pickup_paraphrase": "User-job: dev articulates their read of the story at pickup so the team knows work is in flight.",
         "falsifier_reframing": "I would reject if start_story without the new fields still succeeds."
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_start_story(
         args.as_object().unwrap(),
         "dev:claude-code",
         "dev",
         None,
         None,
+        &select,
     )
     .await;
     assert!(result.is_err());
@@ -123,8 +131,10 @@ async fn start_story_stamps_actor_id_from_the_threaded_identify_user_id() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(886));
@@ -136,6 +146,7 @@ async fn start_story_stamps_actor_id_from_the_threaded_identify_user_id() {
         "dev",
         Some("user-alpha-42"),
         Some(&orch),
+        &select,
     )
     .await
     .expect("pickup succeeds");
@@ -166,6 +177,7 @@ async fn start_story_still_dev_only_with_new_params() {
         "pickup_paraphrase": "any text",
         "falsifier_reframing": "any text"
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     for caller in ["pm:claude-code", "designer:claude-code"] {
         let result = handle_start_story(
             args.as_object().unwrap(),
@@ -173,6 +185,7 @@ async fn start_story_still_dev_only_with_new_params() {
             role_from_name(caller),
             None,
             None,
+            &select,
         )
         .await;
         assert!(

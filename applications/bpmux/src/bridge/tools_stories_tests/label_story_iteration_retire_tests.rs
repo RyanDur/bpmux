@@ -8,7 +8,11 @@ use chrono::{TimeZone, Utc};
 use product_management::story::{Story, StoryId, Work};
 use std::sync::Arc;
 
-async fn build_orchestrator() -> Arc<dyn RefreshDriver> {
+async fn build_orchestrator() -> (
+    crate::store::SeededStore,
+    Arc<dyn RefreshDriver>,
+    crate::store::Select,
+) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let story = Story::new_minimal(
         StoryId::new(200),
@@ -22,9 +26,11 @@ async fn build_orchestrator() -> Arc<dyn RefreshDriver> {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
-    orch
+    let select = store.select();
+    (store, orch, select)
 }
 
 fn label_args(label: &str, operation: &str) -> serde_json::Map<String, serde_json::Value> {
@@ -37,13 +43,14 @@ fn label_args(label: &str, operation: &str) -> serde_json::Map<String, serde_jso
 
 #[tokio::test]
 async fn label_story_rejects_iteration_label_with_tool_retired_kind_1402() {
-    let orch = build_orchestrator().await;
+    let (_store, orch, select) = build_orchestrator().await;
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "add"),
         "pm:claude-code",
         "pm",
         None,
         Some(&orch),
+        &select,
     )
     .await;
     let err = result.expect_err("iteration-axis label-add must be rejected post-#1402 retire");
@@ -67,7 +74,7 @@ async fn label_story_rejects_iteration_label_with_tool_retired_kind_1402() {
 
 #[tokio::test]
 async fn label_story_rejects_iteration_label_for_different_names_1402() {
-    let orch = build_orchestrator().await;
+    let (_store, orch, select) = build_orchestrator().await;
     for label in [
         "iteration-Pegasus.100",
         "iteration-Big-Dipper.200",
@@ -80,6 +87,7 @@ async fn label_story_rejects_iteration_label_for_different_names_1402() {
             "pm",
             None,
             Some(&orch),
+            &select,
         )
         .await;
         let err = result.expect_err(&format!("{label} must be rejected"));
@@ -92,7 +100,7 @@ async fn label_story_rejects_iteration_label_for_different_names_1402() {
 
 #[tokio::test]
 async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
-    let orch = build_orchestrator().await;
+    let (_store, orch, select) = build_orchestrator().await;
     for label in [
         "desk-check-fail",
         "deferred",
@@ -108,6 +116,7 @@ async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
             "pm",
             None,
             Some(&orch),
+            &select,
         )
         .await;
         assert!(
@@ -134,12 +143,14 @@ async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
 
 #[tokio::test]
 async fn label_story_rejects_iteration_label_before_canonical_store_check_1402() {
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "add"),
         "pm:claude-code",
         "pm",
         None,
         None,
+        &select,
     )
     .await;
     let err = result.expect_err("iteration-label rejection fires even without refresh-driver");
@@ -151,7 +162,7 @@ async fn label_story_rejects_iteration_label_before_canonical_store_check_1402()
 
 #[tokio::test]
 async fn label_story_rejects_malformed_label_shapes_through_normal_path_1402() {
-    let orch = build_orchestrator().await;
+    let (_store, orch, select) = build_orchestrator().await;
     for label in [
         "iteration-",
         "iteration-Pegasus",
@@ -165,6 +176,7 @@ async fn label_story_rejects_malformed_label_shapes_through_normal_path_1402() {
             "pm",
             None,
             Some(&orch),
+            &select,
         )
         .await;
         assert!(
@@ -176,13 +188,14 @@ async fn label_story_rejects_malformed_label_shapes_through_normal_path_1402() {
 
 #[tokio::test]
 async fn label_story_remove_iteration_label_still_works_for_migration_1402() {
-    let orch = build_orchestrator().await;
+    let (_store, orch, select) = build_orchestrator().await;
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "remove"),
         "pm:claude-code",
         "pm",
         None,
         Some(&orch),
+        &select,
     )
     .await;
     assert!(
@@ -193,13 +206,14 @@ async fn label_story_remove_iteration_label_still_works_for_migration_1402() {
 
 #[tokio::test]
 async fn non_pm_role_rejected_before_retire_gate_fires_1402() {
-    let orch = build_orchestrator().await;
+    let (_store, orch, select) = build_orchestrator().await;
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "add"),
         "dev:claude-code",
         "dev",
         None,
         Some(&orch),
+        &select,
     )
     .await;
     let err = result.expect_err("non-PM rejected at role-gate");

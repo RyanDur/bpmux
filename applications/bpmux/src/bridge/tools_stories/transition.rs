@@ -11,6 +11,7 @@ pub(crate) async fn handle_start_story(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     let actor_role = role;
     let workflow = workflow::current_workflow();
@@ -27,7 +28,7 @@ pub(crate) async fn handle_start_story(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'id' argument")?;
     let (was_closed, prior_state, reject_lead) = if let Some(r) = refresh {
-        let prior = ensure_story_in_canonical_store(r, id).await?;
+        let prior = ensure_story_in_canonical_store(r, select, id).await?;
         let _ = r.fetch_body(id).await;
         if prior.verdicts.is_none() {
             let _ = r.fetch_verdicts(id).await;

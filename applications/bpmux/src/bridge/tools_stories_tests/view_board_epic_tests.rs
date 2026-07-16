@@ -229,8 +229,10 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
     assert_eq!(
         orchestrator.story(301).unwrap().parent_epic(),
         Some(EpicId::new(457)),
@@ -239,8 +241,15 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(301));
-    let result =
-        handle_unset_parent_epic(&args, "pm:claude-code", "pm", None, Some(&orchestrator)).await;
+    let result = handle_unset_parent_epic(
+        &args,
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&orchestrator),
+        &select,
+    )
+    .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     assert_eq!(orchestrator.story(301).unwrap().parent_epic(), None);

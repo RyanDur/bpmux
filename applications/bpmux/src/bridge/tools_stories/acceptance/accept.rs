@@ -13,6 +13,7 @@ pub(crate) async fn handle_accept_story(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
     hub: Option<&std::sync::Arc<crate::hub::Hub>>,
 ) -> Result<String, String> {
     let actor_role = role;
@@ -102,19 +103,20 @@ pub(crate) async fn handle_accept_story(
             .map_err(|e| e.as_json_string())?;
         }
     }
-    accept_via_canonical_store(r, id, agent_name, actor_id, bypass).await?;
+    accept_via_canonical_store(r, select, id, agent_name, actor_id, bypass).await?;
     r.test_race_window_complete();
     Ok(format!("#{id} accepted and closed"))
 }
 
 pub(crate) async fn accept_via_canonical_store(
     refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    select: &crate::store::Select,
     id: u64,
     agent_name: &str,
     actor_id: Option<&str>,
     bypass: Option<String>,
 ) -> Result<(), String> {
-    ensure_story_in_canonical_store(refresh, id).await?;
+    ensure_story_in_canonical_store(refresh, select, id).await?;
     let workflow = workflow::current_workflow();
     let transition = workflow
         .transition_by_id("accept")

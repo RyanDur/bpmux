@@ -43,7 +43,7 @@ pub(crate) async fn handle_add_story_to_iteration(
         ));
     }
     let r = refresh.ok_or("add_story_to_iteration requires refresh (RefreshDriver)")?;
-    ensure_story_in_canonical_store(r, story_id).await?;
+    ensure_story_in_canonical_store(r, select, story_id).await?;
     super::iteration_members::set_member_position(
         r,
         select,

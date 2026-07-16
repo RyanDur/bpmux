@@ -299,8 +299,10 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(301));
@@ -309,7 +311,15 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
         serde_json::json!("superseded by #999 — won't ship"),
     );
     args.insert("disposition".into(), serde_json::json!("retire"));
-    let result = handle_close_story(&args, "pm:claude-code", "pm", None, Some(&orchestrator)).await;
+    let result = handle_close_story(
+        &args,
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&orchestrator),
+        &select,
+    )
+    .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = orchestrator.story(301).expect("story exists");
@@ -386,8 +396,10 @@ async fn close_story_accept_disposition_transitions_state_to_accepted() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(302));
@@ -396,7 +408,15 @@ async fn close_story_accept_disposition_transitions_state_to_accepted() {
         serde_json::json!("owner verified the outcome directly"),
     );
     args.insert("disposition".into(), serde_json::json!("accept"));
-    let result = handle_close_story(&args, "pm:claude-code", "pm", None, Some(&orchestrator)).await;
+    let result = handle_close_story(
+        &args,
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&orchestrator),
+        &select,
+    )
+    .await;
     assert!(
         result.is_ok(),
         "accept-disposition close should succeed: {result:?}"

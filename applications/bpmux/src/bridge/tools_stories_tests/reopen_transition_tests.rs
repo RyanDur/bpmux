@@ -29,7 +29,12 @@ mod reopen_on_state_transition_tests {
 
     async fn build_orchestrator(
         seeded: (Story, Vec<String>),
-    ) -> (Arc<dyn RefreshDriver>, Arc<InMemorySourceAdapter>) {
+    ) -> (
+        crate::store::SeededStore,
+        Arc<dyn RefreshDriver>,
+        Arc<InMemorySourceAdapter>,
+        crate::store::Select,
+    ) {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (story, labels) = seeded;
         adapter.seed_labels(story.id.value(), labels);
@@ -40,20 +45,23 @@ mod reopen_on_state_transition_tests {
         )
         .with_ci_state_store(super::test_ci_state_store_green());
         let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
-        crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+        let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+        store.bind_refresh(&orch);
         orch.refresh_all().await.unwrap();
-        (orch, adapter)
+        let select = store.select();
+        (store, orch, adapter, select)
     }
 
     #[tokio::test]
     async fn start_story_reopens_when_prior_is_concluded() {
         let seeded = seeded_chore(7110, Work::Accepted);
-        let (orch, adapter) = build_orchestrator(seeded).await;
+        let (_store, orch, adapter, select) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7110));
         args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
         args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
-        let result = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
+        let result =
+            handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
         assert!(result.is_ok(), "start_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         let pushed = adapter.pushed_events();
@@ -68,12 +76,12 @@ mod reopen_on_state_transition_tests {
     #[tokio::test]
     async fn start_story_does_not_reopen_when_prior_is_active() {
         let (story, labels) = seeded_chore(7111, Work::NotStarted);
-        let (orch, adapter) = build_orchestrator((story, labels)).await;
+        let (_store, orch, adapter, select) = build_orchestrator((story, labels)).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7111));
         args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
         args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
-        handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch))
+        handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select)
             .await
             .unwrap();
         orch.drain_pending().await.unwrap();
@@ -89,14 +97,15 @@ mod reopen_on_state_transition_tests {
     #[tokio::test]
     async fn deliver_story_reopens_when_prior_is_concluded() {
         let seeded = seeded_chore(7120, Work::Accepted);
-        let (orch, adapter) = build_orchestrator(seeded).await;
+        let (_store, orch, adapter, select) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7120));
         args.insert(
             "verified_observation".into(),
             serde_json::json!("verified end-to-end"),
         );
-        let result = handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
+        let result =
+            handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
         assert!(result.is_ok(), "deliver_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         let pushed = adapter.pushed_events();
@@ -111,7 +120,7 @@ mod reopen_on_state_transition_tests {
     #[tokio::test]
     async fn pass_desk_check_reopens_when_prior_is_concluded() {
         let seeded = seeded_chore(7130, Work::Accepted);
-        let (orch, adapter) = build_orchestrator(seeded).await;
+        let (_store, orch, adapter, select) = build_orchestrator(seeded).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7130));
         args.insert("acceptor".into(), serde_json::json!("owner"));
@@ -122,6 +131,7 @@ mod reopen_on_state_transition_tests {
             "designer",
             None,
             Some(&orch),
+            &select,
             None,
         )
         .await;
@@ -145,13 +155,15 @@ mod reopen_on_state_transition_tests {
             Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
             "dev".into(),
         );
-        let (orch, adapter) = build_orchestrator((seeded_story, vec!["chore".to_string()])).await;
+        let (_store, orch, adapter, select) =
+            build_orchestrator((seeded_story, vec!["chore".to_string()])).await;
 
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7200));
         args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
         args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
-        let result = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
+        let result =
+            handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
         assert!(result.is_ok(), "start_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
@@ -164,7 +176,8 @@ mod reopen_on_state_transition_tests {
             "verified_observation".into(),
             serde_json::json!("drove the chore end-to-end"),
         );
-        let result = handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
+        let result =
+            handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
         assert!(result.is_ok(), "deliver_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         let story = orch.story(7200).unwrap();
@@ -177,9 +190,15 @@ mod reopen_on_state_transition_tests {
             "reason".into(),
             serde_json::json!("the drill-in header still overlaps the avatar at 320px"),
         );
-        let result =
-            handle_fail_desk_check(&args, "designer:claude-code", "designer", None, Some(&orch))
-                .await;
+        let result = handle_fail_desk_check(
+            &args,
+            "designer:claude-code",
+            "designer",
+            None,
+            Some(&orch),
+            &select,
+        )
+        .await;
         assert!(result.is_ok(), "fail_desk_check should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         let story = orch.story(7200).unwrap();
@@ -208,7 +227,8 @@ mod reopen_on_state_transition_tests {
             "verified_observation".into(),
             serde_json::json!("reworked the header overlap and drove it end-to-end"),
         );
-        let result = handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
+        let result =
+            handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
         assert!(
             result.is_ok(),
             "re-entry deliver_story should succeed: {result:?}"
@@ -228,6 +248,7 @@ mod reopen_on_state_transition_tests {
             "designer",
             None,
             Some(&orch),
+            &select,
             None,
         )
         .await;
@@ -243,7 +264,8 @@ mod reopen_on_state_transition_tests {
             "reason".into(),
             serde_json::json!("scope drifted from the accepted falsifier"),
         );
-        let result = handle_reject_story(&args, "pm:claude-code", "pm", None, Some(&orch)).await;
+        let result =
+            handle_reject_story(&args, "pm:claude-code", "pm", None, Some(&orch), &select).await;
         assert!(result.is_ok(), "reject_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
@@ -260,7 +282,8 @@ mod reopen_on_state_transition_tests {
             "falsifier_reframing".into(),
             serde_json::json!("reframing, take two"),
         );
-        let result = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch)).await;
+        let result =
+            handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
         let ok = result.expect("re-entry start_story should succeed");
         assert!(
             ok.contains("REWORK") && ok.contains("scope drifted from the accepted falsifier"),
@@ -277,7 +300,7 @@ mod reopen_on_state_transition_tests {
             "verified_observation".into(),
             serde_json::json!("drove the accepted fix end-to-end after rework"),
         );
-        handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch))
+        handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select)
             .await
             .unwrap();
         orch.drain_pending().await.unwrap();
@@ -293,6 +316,7 @@ mod reopen_on_state_transition_tests {
             "designer",
             None,
             Some(&orch),
+            &select,
             None,
         )
         .await
@@ -303,8 +327,16 @@ mod reopen_on_state_transition_tests {
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7200));
         args.insert("would_file_bug".into(), serde_json::json!(false));
-        let result =
-            handle_accept_story(&args, "pm:claude-code", "pm", None, Some(&orch), None).await;
+        let result = handle_accept_story(
+            &args,
+            "pm:claude-code",
+            "pm",
+            None,
+            Some(&orch),
+            &select,
+            None,
+        )
+        .await;
         assert!(result.is_ok(), "accept_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();

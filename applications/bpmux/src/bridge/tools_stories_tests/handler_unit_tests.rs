@@ -8,12 +8,14 @@ use protocol::ClientMessage;
 #[tokio::test]
 async fn accept_requires_refresh_after_5n_fallback_retirement() {
     let args = serde_json::json!({"id": 213, "would_file_bug": false});
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_accept_story(
         args.as_object().unwrap(),
         "pm:claude-code",
         "pm",
         None,
         None,
+        &select,
         None,
     )
     .await;
@@ -36,12 +38,14 @@ async fn accept_rejects_unknown_role_via_handler() {
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let args = serde_json::json!({"id": 1, "would_file_bug": false});
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_accept_story(
         args.as_object().unwrap(),
         "intern:claude-code",
         "intern",
         None,
         Some(&orchestrator),
+        &select,
         None,
     )
     .await;
@@ -59,12 +63,14 @@ async fn accept_rejects_unknown_role_via_handler() {
 #[tokio::test]
 async fn accept_requires_would_file_bug_arg() {
     let args = serde_json::json!({"id": 213});
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let err = handle_accept_story(
         args.as_object().unwrap(),
         "pm:claude-code",
         "pm",
         None,
         None,
+        &select,
         None,
     )
     .await
@@ -82,12 +88,14 @@ async fn accept_requires_would_file_bug_arg() {
 #[tokio::test]
 async fn accept_blocks_when_would_file_bug_true_without_force() {
     let args = serde_json::json!({"id": 213, "would_file_bug": true});
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let err = handle_accept_story(
         args.as_object().unwrap(),
         "pm:claude-code",
         "pm",
         None,
         None,
+        &select,
         None,
     )
     .await
@@ -105,12 +113,14 @@ async fn accept_blocks_when_would_file_bug_true_without_force() {
 #[tokio::test]
 async fn accept_force_bypass_requires_bypass_reason() {
     let args = serde_json::json!({"id": 213, "would_file_bug": true, "force": true});
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let err = handle_accept_story(
         args.as_object().unwrap(),
         "pm:claude-code",
         "pm",
         None,
         None,
+        &select,
         None,
     )
     .await
@@ -124,12 +134,14 @@ async fn accept_force_bypass_requires_bypass_reason() {
 #[tokio::test]
 async fn pass_desk_check_requires_would_file_bug_arg() {
     let args = serde_json::json!({"id": 201, "acceptor": "owner"});
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let err = handle_pass_desk_check(
         args.as_object().unwrap(),
         "designer:claude-code",
         "designer",
         None,
         None,
+        &select,
         None,
     )
     .await
@@ -147,12 +159,14 @@ async fn pass_desk_check_requires_would_file_bug_arg() {
 #[tokio::test]
 async fn pass_desk_check_blocks_when_would_file_bug_true_without_force() {
     let args = serde_json::json!({"id": 201, "acceptor": "owner", "would_file_bug": true});
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let err = handle_pass_desk_check(
         args.as_object().unwrap(),
         "designer:claude-code",
         "designer",
         None,
         None,
+        &select,
         None,
     )
     .await
@@ -184,8 +198,10 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
 
     let args = serde_json::json!({
         "id": 777,
@@ -199,6 +215,7 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
         "owner",
         None,
         Some(&orchestrator),
+        &select,
         None,
     )
     .await;
@@ -224,6 +241,7 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
 
 #[tokio::test]
 async fn reject_allows_pm_designer_dev_owner() {
+    let select = crate::store::Select::new(std::sync::Weak::new());
     for caller in [
         "owner:human",
         "pm:claude-code",
@@ -237,6 +255,7 @@ async fn reject_allows_pm_designer_dev_owner() {
             role_from_name(caller),
             None,
             None,
+            &select,
         )
         .await;
         assert!(
@@ -258,12 +277,14 @@ async fn reject_rejects_unknown_role_via_handler() {
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let args = serde_json::json!({"id": 1, "reason": "test"});
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_reject_story(
         args.as_object().unwrap(),
         "intern:claude-code",
         "intern",
         None,
         Some(&orchestrator),
+        &select,
     )
     .await;
     let err = result.expect_err("intern role should be substrate-refused");

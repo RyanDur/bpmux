@@ -157,8 +157,16 @@ mod verdict_substrate_integration_1407 {
             .await
             .unwrap();
 
-        let result =
-            handle_accept_story(&accept_args(42), "pm", "pm", None, Some(&orch), Some(&hub)).await;
+        let result = handle_accept_story(
+            &accept_args(42),
+            "pm",
+            "pm",
+            None,
+            Some(&orch),
+            &store.select(),
+            Some(&hub),
+        )
+        .await;
         assert!(
             result.is_ok(),
             "accept_story must succeed when both verdicts present for target story; got {result:?}"
@@ -174,9 +182,17 @@ mod verdict_substrate_integration_1407 {
         seed_expired_verdict(&store, 42, "dev");
 
         let mut rx = hub.subscribe();
-        let err = handle_accept_story(&accept_args(42), "pm", "pm", None, Some(&orch), Some(&hub))
-            .await
-            .expect_err("expired verdicts must still block the accept");
+        let err = handle_accept_story(
+            &accept_args(42),
+            "pm",
+            "pm",
+            None,
+            Some(&orch),
+            &store.select(),
+            Some(&hub),
+        )
+        .await
+        .expect_err("expired verdicts must still block the accept");
         assert!(
             err.contains("verdict-expired"),
             "block still cites expiry — the reprompt is additive, never a bypass; got {err}"
@@ -247,11 +263,19 @@ mod verdict_substrate_integration_1407 {
         seed_verdict_grounded_on(&store, 42, "dev", "stale-sha-x");
 
         let mut rx = hub.subscribe();
-        let err = handle_accept_story(&accept_args(42), "pm", "pm", None, Some(&orch), Some(&hub))
-            .await
-            .expect_err(
-                "a moved grounded-head must block accept even though the verdicts are time-fresh",
-            );
+        let err = handle_accept_story(
+            &accept_args(42),
+            "pm",
+            "pm",
+            None,
+            Some(&orch),
+            &store.select(),
+            Some(&hub),
+        )
+        .await
+        .expect_err(
+            "a moved grounded-head must block accept even though the verdicts are time-fresh",
+        );
         assert!(
             err.contains("verdict-expired"),
             "substrate-change expiry routes through the same expired path; got {err}"
@@ -282,9 +306,17 @@ mod verdict_substrate_integration_1407 {
             .await
             .unwrap();
 
-        let err = handle_accept_story(&accept_args(42), "pm", "pm", None, Some(&orch), Some(&hub))
-            .await
-            .expect_err("verdicts on #99 must not satisfy accept_story #42");
+        let err = handle_accept_story(
+            &accept_args(42),
+            "pm",
+            "pm",
+            None,
+            Some(&orch),
+            &store.select(),
+            Some(&hub),
+        )
+        .await
+        .expect_err("verdicts on #99 must not satisfy accept_story #42");
         assert!(
             err.contains("workflow-gate-mismatch"),
             "rejection cites structured kind; got {err}"
@@ -304,9 +336,17 @@ mod verdict_substrate_integration_1407 {
             .await
             .unwrap();
 
-        let err = handle_accept_story(&accept_args(42), "pm", "pm", None, Some(&orch), Some(&hub))
-            .await
-            .expect_err("missing dev-verdict must refuse");
+        let err = handle_accept_story(
+            &accept_args(42),
+            "pm",
+            "pm",
+            None,
+            Some(&orch),
+            &store.select(),
+            Some(&hub),
+        )
+        .await
+        .expect_err("missing dev-verdict must refuse");
         assert!(
             err.contains("dev-verdict"),
             "rejection cites missing dev-verdict; got {err}"

@@ -15,7 +15,15 @@ mod stage_verb_behavior {
     use product_management::story::{Stage, Story, StoryId, Verdict, Work};
     use std::sync::Arc;
 
-    async fn seeded(id: u64, state: Work, labels: &[&str]) -> Arc<dyn RefreshDriver> {
+    async fn seeded(
+        id: u64,
+        state: Work,
+        labels: &[&str],
+    ) -> (
+        crate::store::SeededStore,
+        Arc<dyn RefreshDriver>,
+        crate::store::Select,
+    ) {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let story = Story::new_minimal(
             StoryId::new(id),
@@ -33,9 +41,11 @@ mod stage_verb_behavior {
             )
             .with_ci_state_store(super::test_ci_state_store_green()),
         );
-        crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+        let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+        store.bind_refresh(&orch);
         orch.refresh_all().await.unwrap();
-        orch
+        let select = store.select();
+        (store, orch, select)
     }
 
     fn pass_args(id: u64) -> serde_json::Map<String, serde_json::Value> {
@@ -57,13 +67,14 @@ mod stage_verb_behavior {
 
     #[tokio::test]
     async fn pass_stage_at_the_first_stage_advances_to_the_next_configured_stage() {
-        let orch = seeded(8100, Work::InProgress, &["chore"]).await;
+        let (_store, orch, select) = seeded(8100, Work::InProgress, &["chore"]).await;
         let result = handle_pass_stage(
             &pass_args(8100),
             "dev:claude-code",
             "dev",
             None,
             Some(&orch),
+            &select,
         )
         .await;
         assert!(result.is_ok(), "the dev judges the dev stage: {result:?}");
@@ -78,13 +89,14 @@ mod stage_verb_behavior {
 
     #[tokio::test]
     async fn pass_stage_refuses_an_actor_who_is_not_the_configured_judge() {
-        let orch = seeded(8101, Work::InProgress, &["chore", "desk-check"]).await;
+        let (_store, orch, select) = seeded(8101, Work::InProgress, &["chore", "desk-check"]).await;
         let err = handle_pass_stage(
             &pass_args(8101),
             "dev:claude-code",
             "dev",
             None,
             Some(&orch),
+            &select,
         )
         .await
         .expect_err("dev is not desk-check's judge");
@@ -96,13 +108,14 @@ mod stage_verb_behavior {
 
     #[tokio::test]
     async fn pass_stage_at_the_last_stage_crosses_to_acceptance() {
-        let orch = seeded(8102, Work::InProgress, &["chore", "desk-check"]).await;
+        let (_store, orch, select) = seeded(8102, Work::InProgress, &["chore", "desk-check"]).await;
         let result = handle_pass_stage(
             &pass_args(8102),
             "designer:claude-code",
             "designer",
             None,
             Some(&orch),
+            &select,
         )
         .await;
         assert!(result.is_ok(), "designer judges desk-check: {result:?}");
@@ -118,13 +131,14 @@ mod stage_verb_behavior {
 
     #[tokio::test]
     async fn fail_stage_sends_the_story_back_per_the_ladder() {
-        let orch = seeded(8103, Work::InProgress, &["chore", "desk-check"]).await;
+        let (_store, orch, select) = seeded(8103, Work::InProgress, &["chore", "desk-check"]).await;
         let result = handle_fail_stage(
             &fail_args(8103, "the drill-in header overlaps the avatar at 320px"),
             "designer:claude-code",
             "designer",
             None,
             Some(&orch),
+            &select,
         )
         .await;
         assert!(result.is_ok(), "designer judges desk-check: {result:?}");
@@ -139,13 +153,14 @@ mod stage_verb_behavior {
 
     #[tokio::test]
     async fn fail_stage_records_the_verdict_at_the_judged_stage() {
-        let orch = seeded(8104, Work::InProgress, &["chore", "desk-check"]).await;
+        let (_store, orch, select) = seeded(8104, Work::InProgress, &["chore", "desk-check"]).await;
         handle_fail_stage(
             &fail_args(8104, "the falsifier scenario reproduces the overlap"),
             "designer:claude-code",
             "designer",
             None,
             Some(&orch),
+            &select,
         )
         .await
         .unwrap();
@@ -163,13 +178,14 @@ mod stage_verb_behavior {
 
     #[tokio::test]
     async fn fail_stage_requires_a_cited_reason() {
-        let orch = seeded(8105, Work::InProgress, &["chore", "desk-check"]).await;
+        let (_store, orch, select) = seeded(8105, Work::InProgress, &["chore", "desk-check"]).await;
         let err = handle_fail_stage(
             &fail_args(8105, "nope"),
             "designer:claude-code",
             "designer",
             None,
             Some(&orch),
+            &select,
         )
         .await
         .expect_err("a bare 'nope' is not a citable judgment");
@@ -181,13 +197,14 @@ mod stage_verb_behavior {
 
     #[tokio::test]
     async fn stage_verbs_require_the_story_in_the_middle() {
-        let orch = seeded(8106, Work::NotStarted, &["chore"]).await;
+        let (_store, orch, select) = seeded(8106, Work::NotStarted, &["chore"]).await;
         let err = handle_pass_stage(
             &pass_args(8106),
             "dev:claude-code",
             "dev",
             None,
             Some(&orch),
+            &select,
         )
         .await
         .expect_err("a ready story has no stage to judge");

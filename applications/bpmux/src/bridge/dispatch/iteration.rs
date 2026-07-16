@@ -66,8 +66,10 @@ pub(crate) async fn dispatch_unset_parent_epic(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
-    tools_stories::handle_unset_parent_epic(&args, agent_name, role, actor_id, refresh).await
+    tools_stories::handle_unset_parent_epic(&args, agent_name, role, actor_id, refresh, select)
+        .await
 }
 
 pub(crate) async fn dispatch_add_story_to_iteration(

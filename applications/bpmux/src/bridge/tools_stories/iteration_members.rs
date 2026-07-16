@@ -14,7 +14,7 @@ async fn member_of(
     story_id: u64,
 ) -> Result<(Iteration, Story), String> {
     let iteration = ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
-    let story = ensure_story_in_canonical_store(r, story_id).await?;
+    let story = ensure_story_in_canonical_store(r, select, story_id).await?;
     if !iteration.stories.contains(&StoryId::new(story_id)) {
         return Err(format!(
             "#{story_id} is not a member of iteration #{iteration_id}"

@@ -35,6 +35,7 @@ pub(crate) async fn handle_pass_desk_check(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
     hub: Option<&std::sync::Arc<crate::hub::Hub>>,
 ) -> Result<String, String> {
     let actor_role = role;
@@ -75,7 +76,7 @@ pub(crate) async fn handle_pass_desk_check(
     let ci_snapshot = refresh.and_then(|r| r.ci_state());
     workflow::check_ci_green(transition, ci_snapshot.as_ref()).map_err(|e| e.as_json_string())?;
     let was_closed = if let Some(r) = refresh {
-        let prior = ensure_story_in_canonical_store(r, id).await?;
+        let prior = ensure_story_in_canonical_store(r, select, id).await?;
         if let Some(body) = prior.body.as_deref() {
             crate::bridge::atp_substantive_gate::verify_atp_substantive(body)?;
         }

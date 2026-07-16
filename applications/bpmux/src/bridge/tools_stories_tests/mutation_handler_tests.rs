@@ -28,8 +28,10 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(123));
@@ -37,7 +39,8 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
         "body".into(),
         serde_json::json!("new comment via orchestrator"),
     );
-    let result = handle_comment_on_story(&args, "dev:claude-code", None, Some(&orchestrator)).await;
+    let result =
+        handle_comment_on_story(&args, "dev:claude-code", None, Some(&orchestrator), &select).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = orchestrator.story(123).unwrap();
@@ -79,14 +82,24 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(200));
     args.insert("label".into(), serde_json::json!("desk-check-fail"));
     args.insert("operation".into(), serde_json::json!("add"));
-    let result = handle_label_story(&args, "pm:claude-code", "pm", None, Some(&orchestrator)).await;
+    let result = handle_label_story(
+        &args,
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&orchestrator),
+        &select,
+    )
+    .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = orchestrator.story(200).unwrap();
@@ -132,16 +145,25 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut add_args = serde_json::Map::new();
     add_args.insert("id".into(), serde_json::json!(200));
     add_args.insert("label".into(), serde_json::json!("desk-check-fail"));
     add_args.insert("operation".into(), serde_json::json!("add"));
-    handle_label_story(&add_args, "pm:claude-code", "pm", None, Some(&orchestrator))
-        .await
-        .unwrap();
+    handle_label_story(
+        &add_args,
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&orchestrator),
+        &select,
+    )
+    .await
+    .unwrap();
 
     let mut remove_args = serde_json::Map::new();
     remove_args.insert("id".into(), serde_json::json!(200));
@@ -153,6 +175,7 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
         "pm",
         None,
         Some(&orchestrator),
+        &select,
     )
     .await;
     assert!(
@@ -208,8 +231,10 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     )
     .with_ci_state_store(test_ci_state_store_green());
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(201));
@@ -221,6 +246,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         "designer",
         None,
         Some(&orchestrator),
+        &select,
         None,
     )
     .await;
@@ -296,8 +322,10 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(202));
@@ -309,6 +337,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         "designer",
         None,
         Some(&orchestrator),
+        &select,
     )
     .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");

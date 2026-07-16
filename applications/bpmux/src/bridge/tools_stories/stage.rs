@@ -13,8 +13,9 @@ pub(crate) async fn handle_pass_stage(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
-    let (id, r, story, held) = judged_stage_of(args, refresh).await?;
+    let (id, r, story, held) = judged_stage_of(args, refresh, select).await?;
     enforce_judge(&held, role, agent_name)?;
     let observation = require_nonempty_string(
         args,
@@ -49,8 +50,9 @@ pub(crate) async fn handle_fail_stage(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
-    let (id, r, story, held) = judged_stage_of(args, refresh).await?;
+    let (id, r, story, held) = judged_stage_of(args, refresh, select).await?;
     enforce_judge(&held, role, agent_name)?;
     let reason = args
         .get("reason")
@@ -92,13 +94,14 @@ pub(crate) async fn handle_fail_stage(
 async fn judged_stage_of<'r>(
     args: &serde_json::Map<String, serde_json::Value>,
     refresh: Option<&'r std::sync::Arc<dyn RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<(u64, &'r std::sync::Arc<dyn RefreshDriver>, Story, StageId), String> {
     let id = args
         .get("id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'id' argument")?;
     let r = refresh.ok_or("stage verbs require refresh (RefreshDriver)")?;
-    let story = ensure_story_in_canonical_store(r, id).await?;
+    let story = ensure_story_in_canonical_store(r, select, id).await?;
     if !matches!(story.state, Work::InProgress) {
         return Err(format!(
             "#{id} is not in the board's middle (state={}); stage judgments apply only between pickup and acceptance",

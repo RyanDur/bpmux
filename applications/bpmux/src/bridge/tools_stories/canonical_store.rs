@@ -1,8 +1,9 @@
 pub(crate) async fn ensure_story_in_canonical_store(
     refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    select: &crate::store::Select,
     id: u64,
 ) -> Result<product_management::story::Story, String> {
-    if let Some(story) = refresh.story(id) {
+    if let Some(story) = backing_story_via_select(select, id) {
         return Ok(story);
     }
     refresh.refresh_story(id).await.map_err(|e| {
@@ -11,7 +12,7 @@ pub(crate) async fn ensure_story_in_canonical_store(
              cannot proceed with mutation against unknown story state"
         )
     })?;
-    refresh.story(id).ok_or_else(|| {
+    backing_story_via_select(select, id).ok_or_else(|| {
         format!(
             "story #{id} not found in canonical store after refresh_story \
              round-trip; story may not exist at source-of-truth"

@@ -236,6 +236,7 @@ async fn an_optimistic_reject_is_visible_on_the_board_snapshot_before_it_reaches
     let store = crate::store::SeededStore::new(vec![], vec![current], vec![]);
     store.bind_refresh(&refresh);
     refresh.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(9100));
@@ -249,6 +250,7 @@ async fn an_optimistic_reject_is_visible_on_the_board_snapshot_before_it_reaches
         "pm",
         None,
         Some(&refresh),
+        &select,
     )
     .await
     .expect("pm rejects the story");

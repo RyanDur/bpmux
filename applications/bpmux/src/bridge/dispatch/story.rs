@@ -18,8 +18,9 @@ pub(crate) async fn dispatch_comment_on_story(
     agent_name: &str,
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
-    tools_stories::handle_comment_on_story(&args, agent_name, actor_id, refresh).await
+    tools_stories::handle_comment_on_story(&args, agent_name, actor_id, refresh, select).await
 }
 
 pub(crate) async fn dispatch_close_story(
@@ -28,8 +29,9 @@ pub(crate) async fn dispatch_close_story(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
-    tools_stories::handle_close_story(&args, agent_name, role, actor_id, refresh).await
+    tools_stories::handle_close_story(&args, agent_name, role, actor_id, refresh, select).await
 }
 
 pub(crate) async fn dispatch_label_story(
@@ -38,8 +40,9 @@ pub(crate) async fn dispatch_label_story(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
-    tools_stories::handle_label_story(&args, agent_name, role, actor_id, refresh).await
+    tools_stories::handle_label_story(&args, agent_name, role, actor_id, refresh, select).await
 }
 
 pub(crate) async fn dispatch_reorder_story(
@@ -69,9 +72,11 @@ pub(crate) async fn dispatch_edit_story(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    tools_stories::handle_edit_story(&args, agent_name, role, actor_id, refresh, dispatch).await
+    tools_stories::handle_edit_story(&args, agent_name, role, actor_id, refresh, select, dispatch)
+        .await
 }
 
 pub(crate) async fn dispatch_submit_verdict(

@@ -33,8 +33,10 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(203));
@@ -46,8 +48,15 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
         "falsifier_reframing".into(),
         serde_json::json!("reframing content"),
     );
-    let result =
-        handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orchestrator)).await;
+    let result = handle_start_story(
+        &args,
+        "dev:claude-code",
+        "dev",
+        None,
+        Some(&orchestrator),
+        &select,
+    )
+    .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = orchestrator.story(203).unwrap();
@@ -121,8 +130,10 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(204));
@@ -130,8 +141,15 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
         "verified_observation".into(),
         serde_json::json!("drove the falsifier scenario end-to-end"),
     );
-    let result =
-        handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orchestrator)).await;
+    let result = handle_deliver_story(
+        &args,
+        "dev:claude-code",
+        "dev",
+        None,
+        Some(&orchestrator),
+        &select,
+    )
+    .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = orchestrator.story(204).unwrap();
@@ -202,8 +220,10 @@ async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(205));
@@ -214,6 +234,7 @@ async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
         "owner",
         None,
         Some(&orchestrator),
+        &select,
         None,
     )
     .await;
@@ -298,15 +319,25 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(5070));
     args.insert("would_file_bug".into(), serde_json::json!(false));
-    handle_accept_story(&args, "owner:human", "owner", None, Some(&orch), None)
-        .await
-        .unwrap();
+    handle_accept_story(
+        &args,
+        "owner:human",
+        "owner",
+        None,
+        Some(&orch),
+        &select,
+        None,
+    )
+    .await
+    .unwrap();
 
     orch.drain_pending().await.unwrap();
     let pushed = adapter.pushed_events();
@@ -375,14 +406,23 @@ async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
         is_current: true,
         complete: false,
     };
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![current], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![current], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(206));
     args.insert("reason".into(), serde_json::json!("scope mismatch"));
-    let result =
-        handle_reject_story(&args, "owner:human", "owner", None, Some(&orchestrator)).await;
+    let result = handle_reject_story(
+        &args,
+        "owner:human",
+        "owner",
+        None,
+        Some(&orchestrator),
+        &select,
+    )
+    .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     let story = orchestrator.story(206).unwrap();
@@ -541,8 +581,10 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
 
     let dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx0) = tokio::sync::broadcast::channel(16);
@@ -565,6 +607,7 @@ async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
         "dev",
         None,
         Some(&orchestrator),
+        &select,
         &hub,
     )
     .await;
@@ -615,16 +658,25 @@ async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(1524));
     args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
     args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
-    let result = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orchestrator))
-        .await
-        .expect("start_story succeeds");
+    let result = handle_start_story(
+        &args,
+        "dev:claude-code",
+        "dev",
+        None,
+        Some(&orchestrator),
+        &select,
+    )
+    .await
+    .expect("start_story succeeds");
 
     assert!(
         result.contains(reason),
@@ -697,16 +749,25 @@ async fn start_story_leads_with_the_latest_reject_not_an_older_one() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("id".into(), serde_json::json!(1525));
     args.insert("pickup_paraphrase".into(), serde_json::json!("paraphrase"));
     args.insert("falsifier_reframing".into(), serde_json::json!("reframing"));
-    let result = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orchestrator))
-        .await
-        .expect("start_story succeeds");
+    let result = handle_start_story(
+        &args,
+        "dev:claude-code",
+        "dev",
+        None,
+        Some(&orchestrator),
+        &select,
+    )
+    .await
+    .expect("start_story succeeds");
 
     assert!(
         result.contains(latest),

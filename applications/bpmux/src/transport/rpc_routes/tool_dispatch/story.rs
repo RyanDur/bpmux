@@ -10,7 +10,15 @@ pub(super) async fn route(
 ) -> Routed {
     let result = match tool {
         "close_story" => {
-            bridge::dispatch_close_story(args, cx.agent, cx.role, cx.actor_id, cx.refresh_ref).await
+            bridge::dispatch_close_story(
+                args,
+                cx.agent,
+                cx.role,
+                cx.actor_id,
+                cx.refresh_ref,
+                cx.select,
+            )
+            .await
         }
         "create_story" => {
             bridge::dispatch_create_story(
@@ -24,10 +32,25 @@ pub(super) async fn route(
             .await
         }
         "comment_on_story" => {
-            bridge::dispatch_comment_on_story(args, cx.agent, cx.actor_id, cx.refresh_ref).await
+            bridge::dispatch_comment_on_story(
+                args,
+                cx.agent,
+                cx.actor_id,
+                cx.refresh_ref,
+                cx.select,
+            )
+            .await
         }
         "label_story" => {
-            bridge::dispatch_label_story(args, cx.agent, cx.role, cx.actor_id, cx.refresh_ref).await
+            bridge::dispatch_label_story(
+                args,
+                cx.agent,
+                cx.role,
+                cx.actor_id,
+                cx.refresh_ref,
+                cx.select,
+            )
+            .await
         }
         "set_parent_epic" => {
             bridge::dispatch_set_parent_epic(
@@ -41,8 +64,15 @@ pub(super) async fn route(
             .await
         }
         "unset_parent_epic" => {
-            bridge::dispatch_unset_parent_epic(args, cx.agent, cx.role, cx.actor_id, cx.refresh_ref)
-                .await
+            bridge::dispatch_unset_parent_epic(
+                args,
+                cx.agent,
+                cx.role,
+                cx.actor_id,
+                cx.refresh_ref,
+                cx.select,
+            )
+            .await
         }
         "reorder_story" => bridge::dispatch_reorder_story(args, cx.agent, cx.refresh_ref).await,
         "move_story" => {
@@ -64,6 +94,7 @@ pub(super) async fn route(
                 cx.role,
                 cx.actor_id,
                 cx.refresh_ref,
+                cx.select,
                 cx.dispatcher,
             )
             .await

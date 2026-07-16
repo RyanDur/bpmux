@@ -259,6 +259,7 @@ pub async fn post_test_edit_story(
     axum::Extension(select): axum::Extension<crate::store::Select>,
     Json(req): Json<EditStoryReq>,
 ) -> impl IntoResponse {
+    let select_for_dispatch = select.clone();
     run_test_route(hub, refresh, select, |refresh, _hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "id", req.id);
@@ -270,7 +271,16 @@ pub async fn post_test_edit_story(
         }
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
         let role = bridge::tools_stories::role_from_name(&agent);
-        bridge::dispatch_edit_story(args, &agent, role, None, Some(&refresh), &dispatcher).await
+        bridge::dispatch_edit_story(
+            args,
+            &agent,
+            role,
+            None,
+            Some(&refresh),
+            &select_for_dispatch,
+            &dispatcher,
+        )
+        .await
     })
     .await
 }
@@ -288,12 +298,14 @@ pub async fn post_test_comment_on_story(
     axum::Extension(select): axum::Extension<crate::store::Select>,
     Json(req): Json<CommentOnStoryReq>,
 ) -> impl IntoResponse {
+    let select_for_dispatch = select.clone();
     run_test_route(hub, refresh, select, |refresh, _hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "id", req.id);
         put_str(&mut args, "body", req.body);
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
-        bridge::dispatch_comment_on_story(args, &agent, None, Some(&refresh)).await
+        bridge::dispatch_comment_on_story(args, &agent, None, Some(&refresh), &select_for_dispatch)
+            .await
     })
     .await
 }
@@ -312,6 +324,7 @@ pub async fn post_test_start_story(
     axum::Extension(select): axum::Extension<crate::store::Select>,
     Json(req): Json<StartStoryReq>,
 ) -> impl IntoResponse {
+    let select_for_dispatch = select.clone();
     run_test_route(hub, refresh, select, |refresh, hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "id", req.id);
@@ -319,7 +332,16 @@ pub async fn post_test_start_story(
         put_str(&mut args, "falsifier_reframing", req.falsifier_reframing);
         let agent = req.agent.unwrap_or_else(|| "dev:test".to_string());
         let role = bridge::tools_stories::role_from_name(&agent);
-        bridge::dispatch_start_story(args, &agent, role, None, Some(&refresh), &hub).await
+        bridge::dispatch_start_story(
+            args,
+            &agent,
+            role,
+            None,
+            Some(&refresh),
+            &select_for_dispatch,
+            &hub,
+        )
+        .await
     })
     .await
 }
@@ -337,13 +359,23 @@ pub async fn post_test_fail_desk_check(
     axum::Extension(select): axum::Extension<crate::store::Select>,
     Json(req): Json<FailDeskCheckReq>,
 ) -> impl IntoResponse {
+    let select_for_dispatch = select.clone();
     run_test_route(hub, refresh, select, |refresh, hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "id", req.id);
         put_str(&mut args, "reason", req.reason);
         let agent = req.agent.unwrap_or_else(|| "designer:test".to_string());
         let role = bridge::tools_stories::role_from_name(&agent);
-        bridge::dispatch_fail_desk_check(args, &agent, role, None, Some(&refresh), &hub).await
+        bridge::dispatch_fail_desk_check(
+            args,
+            &agent,
+            role,
+            None,
+            Some(&refresh),
+            &select_for_dispatch,
+            &hub,
+        )
+        .await
     })
     .await
 }
@@ -360,12 +392,22 @@ pub async fn post_test_accept_story(
     axum::Extension(select): axum::Extension<crate::store::Select>,
     Json(req): Json<AcceptStoryReq>,
 ) -> impl IntoResponse {
+    let select_for_dispatch = select.clone();
     run_test_route(hub, refresh, select, |refresh, hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "id", req.id);
         let agent = req.agent.unwrap_or_else(|| "owner:test".to_string());
         let role = bridge::tools_stories::role_from_name(&agent);
-        bridge::dispatch_accept_story(args, &agent, role, None, Some(&refresh), &hub).await
+        bridge::dispatch_accept_story(
+            args,
+            &agent,
+            role,
+            None,
+            Some(&refresh),
+            &select_for_dispatch,
+            &hub,
+        )
+        .await
     })
     .await
 }
@@ -383,13 +425,23 @@ pub async fn post_test_deliver_story(
     axum::Extension(select): axum::Extension<crate::store::Select>,
     Json(req): Json<DeliverStoryReq>,
 ) -> impl IntoResponse {
+    let select_for_dispatch = select.clone();
     run_test_route(hub, refresh, select, |refresh, hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "id", req.id);
         put_str(&mut args, "verified_observation", req.verified_observation);
         let agent = req.agent.unwrap_or_else(|| "dev:test".to_string());
         let role = bridge::tools_stories::role_from_name(&agent);
-        bridge::dispatch_deliver_story(args, &agent, role, None, Some(&refresh), &hub).await
+        bridge::dispatch_deliver_story(
+            args,
+            &agent,
+            role,
+            None,
+            Some(&refresh),
+            &select_for_dispatch,
+            &hub,
+        )
+        .await
     })
     .await
 }
@@ -408,6 +460,7 @@ pub async fn post_test_close_story(
     axum::Extension(select): axum::Extension<crate::store::Select>,
     Json(req): Json<CloseStoryReq>,
 ) -> impl IntoResponse {
+    let select_for_dispatch = select.clone();
     run_test_route(hub, refresh, select, |refresh, _hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "id", req.id);
@@ -417,7 +470,15 @@ pub async fn post_test_close_story(
         }
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
         let role = bridge::tools_stories::role_from_name(&agent);
-        bridge::dispatch_close_story(args, &agent, role, None, Some(&refresh)).await
+        bridge::dispatch_close_story(
+            args,
+            &agent,
+            role,
+            None,
+            Some(&refresh),
+            &select_for_dispatch,
+        )
+        .await
     })
     .await
 }

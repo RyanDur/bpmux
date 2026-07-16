@@ -28,16 +28,24 @@ fn seed_story(id: u64, title: &str, body: &str) -> Story {
     s
 }
 
-async fn build_refresh(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+async fn build_refresh(
+    stories: Vec<Story>,
+) -> (
+    crate::store::SeededStore,
+    Arc<dyn RefreshDriver>,
+    crate::store::Select,
+) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(stories);
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
-    orch
+    let select = store.select();
+    (store, orch, select)
 }
 
 fn args_obj(value: Value) -> Map<String, Value> {
@@ -46,7 +54,7 @@ fn args_obj(value: Value) -> Map<String, Value> {
 
 #[tokio::test]
 async fn edit_story_title_only_updates_title_preserves_body() {
-    let refresh = build_refresh(vec![seed_story(
+    let (_store, refresh, select) = build_refresh(vec![seed_story(
         1234,
         "[Feature] original title",
         "## What\n\nthe body content",
@@ -62,6 +70,7 @@ async fn edit_story_title_only_updates_title_preserves_body() {
         "pm",
         None,
         Some(&refresh),
+        &select,
         &dispatch(),
     )
     .await
@@ -78,7 +87,7 @@ async fn edit_story_title_only_updates_title_preserves_body() {
 
 #[tokio::test]
 async fn edit_story_body_only_updates_body_preserves_title() {
-    let refresh = build_refresh(vec![seed_story(
+    let (_store, refresh, select) = build_refresh(vec![seed_story(
         1234,
         "[Feature] original title",
         "old body",
@@ -94,6 +103,7 @@ async fn edit_story_body_only_updates_body_preserves_title() {
         "pm",
         None,
         Some(&refresh),
+        &select,
         &dispatch(),
     )
     .await
@@ -110,7 +120,8 @@ async fn edit_story_body_only_updates_body_preserves_title() {
 
 #[tokio::test]
 async fn edit_story_with_both_title_and_body_updates_both() {
-    let refresh = build_refresh(vec![seed_story(1234, "old title", "old body")]).await;
+    let (_store, refresh, select) =
+        build_refresh(vec![seed_story(1234, "old title", "old body")]).await;
     let args = args_obj(json!({
         "id": 1234,
         "title": "new title",
@@ -122,6 +133,7 @@ async fn edit_story_with_both_title_and_body_updates_both() {
         "pm",
         None,
         Some(&refresh),
+        &select,
         &dispatch(),
     )
     .await
@@ -145,8 +157,10 @@ async fn edit_story_body_returns_optimistically_and_pushes_via_the_drain() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orch);
     orch.refresh_all().await.unwrap();
+    let select = store.select();
 
     let args = args_obj(json!({ "id": 1234, "body": "## What\n\nnew body content" }));
     handle_edit_story(
@@ -155,6 +169,7 @@ async fn edit_story_body_returns_optimistically_and_pushes_via_the_drain() {
         "pm",
         None,
         Some(&orch),
+        &select,
         &dispatch(),
     )
     .await
@@ -190,7 +205,7 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
     use product_management::story::events::EventMeta;
     use product_management::story::events::{StoryEvent, StoryEventKind};
 
-    let refresh = build_refresh(vec![seed_story(1234, "title", "body")]).await;
+    let (_store, refresh, select) = build_refresh(vec![seed_story(1234, "title", "body")]).await;
     let meta = EventMeta {
         actor: "pm".to_string(),
         actor_id: None,
@@ -219,6 +234,7 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
         "pm",
         None,
         Some(&refresh),
+        &select,
         &dispatch(),
     )
     .await
@@ -233,7 +249,7 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
 
 #[tokio::test]
 async fn edit_story_with_neither_field_rejects() {
-    let refresh = build_refresh(vec![seed_story(1234, "title", "body")]).await;
+    let (_store, refresh, select) = build_refresh(vec![seed_story(1234, "title", "body")]).await;
     let args = args_obj(json!({ "id": 1234 }));
     let err = handle_edit_story(
         &args,
@@ -241,6 +257,7 @@ async fn edit_story_with_neither_field_rejects() {
         "pm",
         None,
         Some(&refresh),
+        &select,
         &dispatch(),
     )
     .await
@@ -253,7 +270,7 @@ async fn edit_story_with_neither_field_rejects() {
 
 #[tokio::test]
 async fn edit_story_rejects_non_pm_role() {
-    let refresh = build_refresh(vec![seed_story(1234, "title", "body")]).await;
+    let (_store, refresh, select) = build_refresh(vec![seed_story(1234, "title", "body")]).await;
     let args = args_obj(json!({
         "id": 1234,
         "title": "new title"
@@ -264,6 +281,7 @@ async fn edit_story_rejects_non_pm_role() {
         "dev",
         None,
         Some(&refresh),
+        &select,
         &dispatch(),
     )
     .await

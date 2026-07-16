@@ -10,6 +10,7 @@ pub(crate) async fn handle_fail_desk_check(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     let actor_role = role;
     let workflow = workflow::current_workflow();
@@ -27,7 +28,7 @@ pub(crate) async fn handle_fail_desk_check(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'id' argument")?;
     let prior = if let Some(r) = refresh {
-        Some(ensure_story_in_canonical_store(r, id).await?)
+        Some(ensure_story_in_canonical_store(r, select, id).await?)
     } else {
         None
     };

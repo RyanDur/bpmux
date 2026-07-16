@@ -90,6 +90,7 @@ pub async fn post_accept_story(
     };
     match crate::bridge::tools_stories::accept_via_canonical_store(
         &refresh,
+        &select,
         number,
         "ui-electron",
         None,
@@ -147,6 +148,7 @@ pub async fn post_reject_story(
     };
     match crate::bridge::tools_stories::reject_via_canonical_store(
         &refresh,
+        &select,
         number,
         "ui-electron",
         None,

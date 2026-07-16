@@ -7,6 +7,7 @@ pub(crate) async fn handle_edit_story(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     require_purpose(role, &["pm"], "edit story")?;
@@ -36,7 +37,7 @@ pub(crate) async fn handle_edit_story(
     if let Some(b) = body
         && iteration.is_none()
     {
-        let story = ensure_story_in_canonical_store(r, id).await?;
+        let story = ensure_story_in_canonical_store(r, select, id).await?;
         if story.story_type() != product_management::story::StoryKind::Chore {
             crate::bridge::atp_substantive_gate::verify_atp_pre_filing(b, None)
                 .map_err(|e| e.as_json_string())?;
@@ -56,7 +57,7 @@ pub(crate) async fn handle_edit_story(
         updated.push("body");
     }
     if let Some(acceptor) = acceptor {
-        ensure_story_in_canonical_store(r, id).await?;
+        ensure_story_in_canonical_store(r, select, id).await?;
         let meta = meta_for(agent_name, actor_id);
         r.mutate_sync(product_management::story::events::StoryEvent::new(
             meta,

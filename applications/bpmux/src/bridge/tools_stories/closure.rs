@@ -10,6 +10,7 @@ pub(crate) async fn handle_close_story(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     let actor_role = role;
     let workflow = workflow::current_workflow();
@@ -54,7 +55,7 @@ pub(crate) async fn handle_close_story(
         return Err(err.to_string());
     }
     if let Some(r) = refresh {
-        ensure_story_in_canonical_store(r, id).await?;
+        ensure_story_in_canonical_store(r, select, id).await?;
         let meta = meta_for(agent_name, actor_id);
         if matches!(terminal_state, product_management::story::Work::Retired) {
             r.mutate_sync(product_management::story::events::StoryEvent::new(

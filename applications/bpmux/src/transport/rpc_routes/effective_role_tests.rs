@@ -43,6 +43,7 @@ async fn a_dev_registrant_presenting_pm_is_refused_a_pm_gated_tool() {
         &role,
         Some("sess-imposter"),
         None,
+        &select,
     )
     .await
     .expect_err("a dev registrant presenting 'pm' must be refused the pm-gated label tool");
@@ -69,6 +70,7 @@ async fn a_pm_registrant_presenting_a_nonrole_display_passes_pm_gates() {
         &role,
         Some("sess-pm"),
         None,
+        &select,
     )
     .await
     .expect_err("the pm gate passes, then the handler reaches the refresh-absent path");

@@ -11,6 +11,7 @@ pub(crate) async fn handle_deliver_story(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     let actor_role = role;
     let workflow = workflow::current_workflow();
@@ -28,7 +29,7 @@ pub(crate) async fn handle_deliver_story(
         .ok_or("missing 'id' argument")?;
     let refreshed: Option<Option<Story>> = match refresh {
         Some(r) => {
-            let story = ensure_story_in_canonical_store(r, id).await?;
+            let story = ensure_story_in_canonical_store(r, select, id).await?;
             let _ = r.fetch_body(id).await;
             Some(Some(story))
         }

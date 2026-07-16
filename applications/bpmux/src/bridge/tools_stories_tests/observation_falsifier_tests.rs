@@ -235,12 +235,14 @@ async fn deliver_story_rejects_missing_verified_observation() {
     let args = serde_json::json!({
         "id": 391
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_deliver_story(
         args.as_object().unwrap(),
         "dev:claude-code",
         "dev",
         None,
         None,
+        &select,
     )
     .await;
     assert!(result.is_err(), "missing verified_observation should fail");
@@ -261,12 +263,14 @@ async fn deliver_story_rejects_empty_verified_observation() {
         "id": 391,
         "verified_observation": ""
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_deliver_story(
         args.as_object().unwrap(),
         "dev:claude-code",
         "dev",
         None,
         None,
+        &select,
     )
     .await;
     assert!(result.is_err(), "empty verified_observation should fail");
@@ -279,12 +283,14 @@ async fn label_story_default_op_requires_refresh_after_5n() {
         "id": 42,
         "label": "ready"
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_label_story(
         args.as_object().unwrap(),
         "pm:claude-code",
         "pm",
         None,
         None,
+        &select,
     )
     .await;
     assert!(result.is_err());
@@ -298,12 +304,14 @@ async fn label_story_add_op_requires_refresh_after_5n() {
         "label": "blocked",
         "operation": "add"
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_label_story(
         args.as_object().unwrap(),
         "pm:claude-code",
         "pm",
         None,
         None,
+        &select,
     )
     .await;
     assert!(result.is_err());
@@ -317,12 +325,14 @@ async fn label_story_remove_op_requires_refresh_after_5n() {
         "label": "in progress",
         "operation": "remove"
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_label_story(
         args.as_object().unwrap(),
         "pm:claude-code",
         "pm",
         None,
         None,
+        &select,
     )
     .await;
     assert!(result.is_err());
@@ -336,12 +346,14 @@ async fn label_story_remove_idempotent_call_requires_refresh_after_5n() {
         "label": "never-attached-label",
         "operation": "remove"
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_label_story(
         args.as_object().unwrap(),
         "pm:claude-code",
         "pm",
         None,
         None,
+        &select,
     )
     .await;
     assert!(result.is_err());
@@ -370,8 +382,10 @@ async fn label_story_rejects_invalid_operation_in_migrated_path() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
 
     let args = serde_json::json!({
         "id": 42,
@@ -384,6 +398,7 @@ async fn label_story_rejects_invalid_operation_in_migrated_path() {
         "pm",
         None,
         Some(&orchestrator),
+        &select,
     )
     .await;
     assert!(result.is_err());
@@ -399,12 +414,14 @@ async fn label_story_add_propagates_tracker_error_without_broadcast() {
         "label": "ready",
         "operation": "add"
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_label_story(
         args.as_object().unwrap(),
         "pm:claude-code",
         "pm",
         None,
         None,
+        &select,
     )
     .await;
     assert!(
@@ -420,12 +437,14 @@ async fn label_story_remove_propagates_tracker_error_without_broadcast() {
         "label": "ready",
         "operation": "remove"
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_label_story(
         args.as_object().unwrap(),
         "pm:claude-code",
         "pm",
         None,
         None,
+        &select,
     )
     .await;
     assert!(
@@ -441,6 +460,7 @@ async fn label_story_still_pm_gated_with_operation_param() {
         "label": "ready",
         "operation": "remove"
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     for caller in ["dev:claude-code", "designer:claude-code"] {
         let result = handle_label_story(
             args.as_object().unwrap(),
@@ -448,6 +468,7 @@ async fn label_story_still_pm_gated_with_operation_param() {
             role_from_name(caller),
             None,
             None,
+            &select,
         )
         .await;
         assert!(
@@ -465,6 +486,7 @@ async fn label_story_still_pm_gated_with_operation_param() {
         "owner",
         None,
         None,
+        &select,
     )
     .await;
     assert!(

@@ -117,7 +117,8 @@ async fn comment_on_story_rejects_empty_body() {
     let mut args = serde_json::Map::new();
     args.insert("id".to_string(), serde_json::json!(42));
     args.insert("body".to_string(), serde_json::json!(""));
-    let result = handle_comment_on_story(&args, "dev:claude-code", None, None).await;
+    let select = crate::store::Select::new(std::sync::Weak::new());
+    let result = handle_comment_on_story(&args, "dev:claude-code", None, None, &select).await;
     assert!(
         result.is_err(),
         "empty body must be rejected: got {result:?}"
@@ -130,7 +131,8 @@ async fn comment_on_story_rejects_whitespace_only_body() {
     let mut args = serde_json::Map::new();
     args.insert("id".to_string(), serde_json::json!(42));
     args.insert("body".to_string(), serde_json::json!("   \n  "));
-    let result = handle_comment_on_story(&args, "dev:claude-code", None, None).await;
+    let select = crate::store::Select::new(std::sync::Weak::new());
+    let result = handle_comment_on_story(&args, "dev:claude-code", None, None, &select).await;
     assert!(result.is_err(), "whitespace-only body must be rejected");
 }
 
@@ -140,7 +142,8 @@ async fn comment_on_story_rejects_when_refresh_absent() {
         let mut args = serde_json::Map::new();
         args.insert("id".to_string(), serde_json::json!(42));
         args.insert("body".to_string(), serde_json::json!("a real comment"));
-        let result = handle_comment_on_story(&args, caller, None, None).await;
+        let select = crate::store::Select::new(std::sync::Weak::new());
+        let result = handle_comment_on_story(&args, caller, None, None, &select).await;
         assert!(
             result.is_err(),
             "caller={caller} expected Err, got {result:?}"

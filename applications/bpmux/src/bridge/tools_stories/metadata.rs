@@ -31,6 +31,7 @@ pub(crate) async fn handle_label_story(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     require_purpose(role, &["pm"], "label")?;
     let id = args
@@ -49,7 +50,7 @@ pub(crate) async fn handle_label_story(
         return Err(retired_iteration_label_axis_error(label));
     }
     if let Some(r) = refresh {
-        ensure_story_in_canonical_store(r, id).await?;
+        ensure_story_in_canonical_store(r, select, id).await?;
         let meta = meta_for(agent_name, actor_id);
         let codec = source_codec::gh_label_codec::GhLabelCodec;
         let tag = codec.decode_tag(label);
@@ -114,6 +115,7 @@ pub(crate) async fn handle_comment_on_story(
     agent_name: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     let id = args
         .get("id")
@@ -127,7 +129,7 @@ pub(crate) async fn handle_comment_on_story(
         return Err("'body' must not be empty".to_string());
     }
     if let Some(r) = refresh {
-        ensure_story_in_canonical_store(r, id).await?;
+        ensure_story_in_canonical_store(r, select, id).await?;
         let event = product_management::story::events::StoryEvent::new(
             meta_for(agent_name, actor_id),
             StoryId::new(id),
