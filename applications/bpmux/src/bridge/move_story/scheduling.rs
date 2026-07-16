@@ -13,14 +13,14 @@ pub(super) fn resolve_scheduling_target(
     target: &TargetState,
 ) -> Result<Option<IterationId>, String> {
     let is_epic = select
-        .select(|s| {
-            product_management::epic::get(&s.epics, product_management::epic::EpicId::new(id))
+        .select(|state| {
+            product_management::epic::get(&state.epics, product_management::epic::EpicId::new(id))
         })
         .is_some();
     if is_epic || !matches!(target, TargetState::Ready) {
         return Ok(None);
     }
-    let iterations = select.select(|s| product_management::iteration::all(&s.iterations));
+    let iterations = select.select(|state| product_management::iteration::all(&state.iterations));
     match current_iteration_id(&iterations) {
         Some(iteration_id) => Ok(Some(iteration_id)),
         None => Err(format!(

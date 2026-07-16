@@ -36,7 +36,7 @@ pub fn wake_committed_terminals(
     );
     for user_id in woken {
         let Some(terminal_id) =
-            select.select(|s| crate::store::routing::terminal_for(&s.routing, &user_id))
+            select.select(|state| crate::store::routing::terminal_for(&state.routing, &user_id))
         else {
             continue;
         };

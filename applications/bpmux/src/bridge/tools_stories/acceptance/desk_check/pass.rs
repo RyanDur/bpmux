@@ -48,7 +48,8 @@ pub(crate) async fn handle_pass_desk_check(
     let bypass = verify_bug_question_or_bypass(args, BugGate::PassDeskCheck)?;
     let r_opt = refresh;
     let story_opt = r_opt.and_then(|_| {
-        select.select(|s| product_management::story::slice::get(&s.stories, StoryId::new(id)))
+        select
+            .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(id)))
     });
     let class = story_opt
         .as_ref()

@@ -54,7 +54,7 @@ fn find_outcome_in_store(
     id: u64,
 ) -> Option<product_management::outcome::Outcome> {
     select
-        .select(|s| product_management::outcome::all(&s.outcomes))
+        .select(|state| product_management::outcome::all(&state.outcomes))
         .into_iter()
         .find(|outcome| outcome.id == product_management::outcome::OutcomeId::new(id))
 }
@@ -63,9 +63,9 @@ fn backing_story_via_select(
     select: &crate::store::Select,
     id: u64,
 ) -> Option<product_management::story::Story> {
-    select.select(|s| {
+    select.select(|state| {
         product_management::story::slice::get(
-            &s.stories,
+            &state.stories,
             product_management::story::StoryId::new(id),
         )
     })
@@ -82,7 +82,7 @@ pub(crate) async fn ensure_iteration_in_canonical_store(
 ) -> Result<product_management::iteration::Iteration, String> {
     let iteration_id = product_management::iteration::IterationId::new(id);
     if let Some(iteration) =
-        select.select(|s| product_management::iteration::get(&s.iterations, iteration_id))
+        select.select(|state| product_management::iteration::get(&state.iterations, iteration_id))
     {
         return Ok(iteration);
     }
@@ -96,7 +96,7 @@ pub(crate) async fn ensure_iteration_in_canonical_store(
         )
     })?;
     if let Some(iteration) =
-        select.select(|s| product_management::iteration::get(&s.iterations, iteration_id))
+        select.select(|state| product_management::iteration::get(&state.iterations, iteration_id))
     {
         return Ok(iteration);
     }
@@ -121,7 +121,8 @@ pub(crate) async fn ensure_epic_in_canonical_store(
     id: u64,
 ) -> Result<product_management::epic::Epic, String> {
     let epic_id = product_management::epic::EpicId::new(id);
-    if let Some(epic) = select.select(|s| product_management::epic::get(&s.epics, epic_id)) {
+    if let Some(epic) = select.select(|state| product_management::epic::get(&state.epics, epic_id))
+    {
         return Ok(epic);
     }
     if backing_story_via_select(select, id).is_some() {
@@ -133,7 +134,8 @@ pub(crate) async fn ensure_epic_in_canonical_store(
              cannot proceed with an epic operation against unknown state"
         )
     })?;
-    if let Some(epic) = select.select(|s| product_management::epic::get(&s.epics, epic_id)) {
+    if let Some(epic) = select.select(|state| product_management::epic::get(&state.epics, epic_id))
+    {
         return Ok(epic);
     }
     if backing_story_via_select(select, id).is_some() {

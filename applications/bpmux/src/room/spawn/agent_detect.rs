@@ -102,15 +102,15 @@ pub fn spawn_agent_run_detector(
                     };
                     let now_ts = chrono::Utc::now().to_rfc3339();
                     if let Some(mint) = detector.observe(foreground, Instant::now(), &now_ts)
-                        && !select.select(|s| {
-                            crate::store::routing::is_terminal_linked(&s.routing, &terminal_id)
+                        && !select.select(|state| {
+                            crate::store::routing::is_terminal_linked(&state.routing, &terminal_id)
                         })
                         && let Ok(dir_user) =
                             register_dir_user(std::path::Path::new(&mint.cwd))
                     {
-                        let actions = select.select(|s| {
+                        let actions = select.select(|state| {
                             crate::store::routing::register_agent_actions(
-                                &s.routing,
+                                &state.routing,
                                 &dir_user.id,
                                 &dir_user.name,
                                 &terminal_id,
@@ -138,8 +138,8 @@ pub fn spawn_agent_run_detector(
                     }
                     if foreground {
                         present = present
-                            || select.select(|s| {
-                                crate::store::routing::is_terminal_linked(&s.routing, &terminal_id)
+                            || select.select(|state| {
+                                crate::store::routing::is_terminal_linked(&state.routing, &terminal_id)
                             });
                     } else if present {
                         leave_terminal(&dispatch, &select, &terminal_id);
@@ -155,7 +155,7 @@ pub fn spawn_agent_run_detector(
 
 fn leave_terminal(dispatch: &Dispatch, select: &Select, terminal_id: &str) {
     if let Some(routing_id) =
-        select.select(|s| crate::store::routing::user_for_terminal(&s.routing, terminal_id))
+        select.select(|state| crate::store::routing::user_for_terminal(&state.routing, terminal_id))
     {
         dispatch.dispatch(AppAction::Roster(RosterAction::RosterMemberRemoved {
             routing_id,

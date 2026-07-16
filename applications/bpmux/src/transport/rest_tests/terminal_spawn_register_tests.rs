@@ -43,7 +43,7 @@ async fn the_plus_spawn_flow_auto_registers_an_agent_running_in_its_working_dir_
     let resolve = |display: &str| {
         store
             .select()
-            .select(|s| crate::store::routing::resolve(&s.routing, display))
+            .select(|state| crate::store::routing::resolve(&state.routing, display))
     };
 
     let work = TempDir::new().expect("work dir");

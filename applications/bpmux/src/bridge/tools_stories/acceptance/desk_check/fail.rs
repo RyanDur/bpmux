@@ -37,9 +37,9 @@ pub(crate) async fn handle_fail_desk_check(
             Some(_) => board::state_label(
                 &product_management::scheduling::projected_state(
                     story,
-                    &select.select(|s| product_management::iteration::all(&s.iterations)),
+                    &select.select(|state| product_management::iteration::all(&state.iterations)),
                 ),
-                select.select(|s| board::fine_stage(story, &s.board)),
+                select.select(|state| board::fine_stage(story, &state.board)),
             ),
             None => story.state.as_str(),
         };

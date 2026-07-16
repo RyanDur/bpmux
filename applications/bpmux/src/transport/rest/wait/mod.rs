@@ -36,8 +36,9 @@ pub async fn wait_for_event(
 ) -> impl IntoResponse {
     let role = params.as_peer.clone().unwrap_or_default();
     let resolved_ids =
-        select.select(|s| crate::store::routing::resolve(&s.routing, short_name(&role)));
-    let claimed_owner_nonce = select.select(|s| owner_session::claimed_nonce(&s.owner_session));
+        select.select(|state| crate::store::routing::resolve(&state.routing, short_name(&role)));
+    let claimed_owner_nonce =
+        select.select(|state| owner_session::claimed_nonce(&state.owner_session));
     let presented_owner_nonce = headers
         .get(OWNER_NONCE_HEADER)
         .and_then(|value| value.to_str().ok());
@@ -108,13 +109,14 @@ fn durable_drain_cursor(
     client_after: Option<&str>,
 ) -> Option<String> {
     match select
-        .select(|s| crate::store::routing::resolve(&s.routing, short_name(role)))
+        .select(|state| crate::store::routing::resolve(&state.routing, short_name(role)))
         .into_iter()
         .next()
     {
         Some(user_id) => {
-            let floor = select
-                .select(|s| crate::store::routing::drain_floor(&s.routing, &user_id, client_after));
+            let floor = select.select(|state| {
+                crate::store::routing::drain_floor(&state.routing, &user_id, client_after)
+            });
             if let Some(ref position) = floor {
                 dispatch.dispatch(
                     RoutingAction::CursorAdvanced {

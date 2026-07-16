@@ -65,23 +65,23 @@ pub(in crate::bridge) async fn handle_get_story(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'id' argument")?;
     let r = refresh.ok_or("get_story requires refresh (canonical-store)")?;
-    if let Some(iteration) = select.select(|s| {
+    if let Some(iteration) = select.select(|state| {
         product_management::iteration::get(
-            &s.iterations,
+            &state.iterations,
             product_management::iteration::IterationId::new(id),
         )
     }) {
         return render_iteration_detail(r, &iteration, select).await;
     }
-    if let Some(epic) = select.select(|s| {
-        product_management::epic::get(&s.epics, product_management::epic::EpicId::new(id))
+    if let Some(epic) = select.select(|state| {
+        product_management::epic::get(&state.epics, product_management::epic::EpicId::new(id))
     }) {
         return render_epic_detail(refresh, &epic, select).await;
     }
     let mut story = select
-        .select(|s| {
+        .select(|state| {
             product_management::story::slice::get(
-                &s.stories,
+                &state.stories,
                 product_management::story::StoryId::new(id),
             )
         })
@@ -90,9 +90,9 @@ pub(in crate::bridge) async fn handle_get_story(
         match r.fetch_body(id).await {
             Ok(_) => {
                 story = select
-                    .select(|s| {
+                    .select(|state| {
                         product_management::story::slice::get(
-                            &s.stories,
+                            &state.stories,
                             product_management::story::StoryId::new(id),
                         )
                     })
@@ -105,8 +105,8 @@ pub(in crate::bridge) async fn handle_get_story(
             }
         }
     }
-    let fine = select.select(|s| board::fine_stage(&story, &s.board));
-    let iterations = select.select(|s| product_management::iteration::all(&s.iterations));
+    let fine = select.select(|state| board::fine_stage(&story, &state.board));
+    let iterations = select.select(|state| product_management::iteration::all(&state.iterations));
     let projected = product_management::scheduling::projected_state(&story, &iterations);
     let needs_gates = matches!(projected, ProjectedState::Ready)
         || fine == Some(Stage::Dev)
@@ -115,9 +115,9 @@ pub(in crate::bridge) async fn handle_get_story(
         match r.fetch_verdicts(id).await {
             Ok(_) => {
                 story = select
-                    .select(|s| {
+                    .select(|state| {
                         product_management::story::slice::get(
-                            &s.stories,
+                            &state.stories,
                             product_management::story::StoryId::new(id),
                         )
                     })
@@ -133,7 +133,7 @@ pub(in crate::bridge) async fn handle_get_story(
     let body_cached = story.body.as_deref();
     let mut body_out = body_cached.unwrap_or(NOT_HYDRATED_PLACEHOLDER).to_string();
     let latest_reject = story.verdicts.as_deref().and_then(latest_reject_json);
-    let held = select.select(|s| board::held_stage(&story, &s.board));
+    let held = select.select(|state| board::held_stage(&story, &state.board));
     let workflow_state = story
         .verdicts
         .as_deref()

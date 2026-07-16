@@ -10,11 +10,11 @@ pub async fn get_board(
     axum::Extension(select): axum::Extension<crate::store::Select>,
 ) -> impl IntoResponse {
     if let Some(refresh) = orchestrator.as_ref() {
-        if select.select(|s| product_management::story::slice::is_empty(&s.stories)) {
+        if select.select(|state| product_management::story::slice::is_empty(&state.stories)) {
             match refresh.refresh_all().await {
                 Ok(()) => {
                     if select
-                        .select(|s| product_management::story::slice::all(&s.stories))
+                        .select(|state| product_management::story::slice::all(&state.stories))
                         .is_empty()
                     {
                         diag::log_diag(
@@ -24,7 +24,9 @@ pub async fn get_board(
                         diag::log_diag(&format!(
                             "rest get_board: empty store; refresh_all recovered {} stories",
                             select
-                                .select(|s| product_management::story::slice::all(&s.stories))
+                                .select(|state| product_management::story::slice::all(
+                                    &state.stories
+                                ))
                                 .len()
                         ));
                     }
@@ -79,7 +81,7 @@ pub async fn get_iterations(
             err_body("iterations view requires the canonical store"),
         );
     };
-    if select.select(|s| product_management::story::slice::is_empty(&s.stories)) {
+    if select.select(|state| product_management::story::slice::is_empty(&state.stories)) {
         let _ = refresh.refresh_all().await;
     }
     let body = serde_json::json!({

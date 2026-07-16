@@ -21,9 +21,9 @@ fn register_agent(
     terminal_id: &str,
     job_start: &str,
 ) {
-    let actions = store
-        .select()
-        .select(|s| register_agent_actions(&s.routing, user_id, display, terminal_id, job_start));
+    let actions = store.select().select(|state| {
+        register_agent_actions(&state.routing, user_id, display, terminal_id, job_start)
+    });
     for action in actions {
         store.dispatch(action.into());
     }
@@ -524,7 +524,7 @@ async fn a_pty_loop_delivered_message_is_not_systematically_re_drained_by_the_de
 
     let floor = store
         .select()
-        .select(|s| drain_floor(&s.routing, "sess-dev", Some("2020-01-01T00:00:00Z")))
+        .select(|state| drain_floor(&state.routing, "sess-dev", Some("2020-01-01T00:00:00Z")))
         .expect("floor");
     let floor_ts = chrono::DateTime::parse_from_rfc3339(&floor)
         .unwrap()

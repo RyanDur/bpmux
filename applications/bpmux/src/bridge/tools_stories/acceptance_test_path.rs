@@ -123,9 +123,9 @@ pub(crate) fn validate_acceptance_test_path_at_pickup(
     number: u64,
     select: &crate::store::Select,
 ) -> Result<(), String> {
-    let Some(story) = select.select(|s| {
+    let Some(story) = select.select(|state| {
         product_management::story::slice::get(
-            &s.stories,
+            &state.stories,
             product_management::story::StoryId::new(number),
         )
     }) else {
@@ -150,9 +150,9 @@ pub(crate) fn validate_acceptance_test_path_at_deliver(
     number: u64,
     select: &crate::store::Select,
 ) -> Result<(), String> {
-    let Some(story) = select.select(|s| {
+    let Some(story) = select.select(|state| {
         product_management::story::slice::get(
-            &s.stories,
+            &state.stories,
             product_management::story::StoryId::new(number),
         )
     }) else {

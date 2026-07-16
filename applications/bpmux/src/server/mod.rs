@@ -8,7 +8,9 @@ use crate::transport;
 
 fn startup_routing_id(select: &crate::store::Select, identity: &str) -> String {
     select
-        .select(|s| crate::store::routing::resolve(&s.routing, user_routing::short_name(identity)))
+        .select(|state| {
+            crate::store::routing::resolve(&state.routing, user_routing::short_name(identity))
+        })
         .into_iter()
         .next()
         .unwrap_or_else(|| identity.to_string())

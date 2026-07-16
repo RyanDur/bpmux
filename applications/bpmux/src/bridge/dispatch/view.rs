@@ -45,7 +45,7 @@ pub(crate) async fn dispatch_get_story(
 }
 
 pub(crate) async fn dispatch_list_ready(select: &crate::store::Select) -> Result<String, String> {
-    let iterations = select.select(|s| product_management::iteration::all(&s.iterations));
+    let iterations = select.select(|state| product_management::iteration::all(&state.iterations));
     tools::handle_list_ready(select, &iterations).await
 }
 
@@ -78,10 +78,10 @@ pub(crate) async fn dispatch_view_comments(
 }
 
 pub(crate) async fn dispatch_view_backlog(select: &crate::store::Select) -> Result<String, String> {
-    let (stories, iterations) = select.select(|s| {
+    let (stories, iterations) = select.select(|state| {
         (
-            product_management::story::slice::all(&s.stories),
-            product_management::iteration::all(&s.iterations),
+            product_management::story::slice::all(&state.stories),
+            product_management::iteration::all(&state.iterations),
         )
     });
     let summary = tools::build_backlog_summary(&stories, &iterations);

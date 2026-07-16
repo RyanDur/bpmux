@@ -59,9 +59,12 @@ pub async fn get_messages(
     let as_peer = params.as_peer.clone();
     let resolved_ids: Vec<String> = as_peer
         .as_deref()
-        .map(|peer| select.select(|s| crate::store::routing::resolve(&s.routing, short_name(peer))))
+        .map(|peer| {
+            select.select(|state| crate::store::routing::resolve(&state.routing, short_name(peer)))
+        })
         .unwrap_or_default();
-    let claimed_owner_nonce = select.select(|s| owner_session::claimed_nonce(&s.owner_session));
+    let claimed_owner_nonce =
+        select.select(|state| owner_session::claimed_nonce(&state.owner_session));
     let presented_owner_nonce = headers
         .get(OWNER_NONCE_HEADER)
         .and_then(|value| value.to_str().ok());

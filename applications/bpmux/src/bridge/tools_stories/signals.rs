@@ -72,9 +72,9 @@ pub(crate) fn classify_for_pass_desk_check(
     select: &crate::store::Select,
 ) -> product_management::story::StoryKind {
     select
-        .select(|s| {
+        .select(|state| {
             product_management::story::slice::get(
-                &s.stories,
+                &state.stories,
                 product_management::story::StoryId::new(id),
             )
         })

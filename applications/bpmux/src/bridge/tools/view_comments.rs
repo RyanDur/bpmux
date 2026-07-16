@@ -9,7 +9,7 @@ pub(in crate::bridge) async fn handle_view_comments(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'id' argument")?;
     let story = select
-        .select(|s| product_management::story::slice::get(&s.stories, StoryId::new(id)))
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(id)))
         .ok_or_else(|| format!("story #{id} not found in board"))?;
     let hydrated = story.free_comments.is_some();
     let shaped: Vec<serde_json::Value> = story

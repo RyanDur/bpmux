@@ -8,11 +8,12 @@ pub(crate) async fn handle_view_board(
     let r = refresh.ok_or(
         "view_board requires refresh (RefreshDriver) — tracker fallback retired in slice 5l",
     )?;
-    let mut stories = select.select(|s| product_management::story::slice::all(&s.stories));
-    if select.select(|s| product_management::story::slice::is_empty(&s.stories)) {
+    let mut stories = select.select(|state| product_management::story::slice::all(&state.stories));
+    if select.select(|state| product_management::story::slice::is_empty(&state.stories)) {
         match r.refresh_all().await {
             Ok(()) => {
-                stories = select.select(|s| product_management::story::slice::all(&s.stories));
+                stories =
+                    select.select(|state| product_management::story::slice::all(&state.stories));
                 if stories.is_empty() {
                     diag::log_diag(
                         "view_board: empty store; refresh_all returned Ok with 0 stories — ingest succeeded but source-of-truth empty OR decode dropped all rows",
@@ -26,7 +27,8 @@ pub(crate) async fn handle_view_board(
             }
             Err(e) => {
                 diag::log_diag(&format!("view_board: empty store; refresh_all failed: {e}"));
-                stories = select.select(|s| product_management::story::slice::all(&s.stories));
+                stories =
+                    select.select(|state| product_management::story::slice::all(&state.stories));
             }
         }
     }
@@ -54,17 +56,17 @@ pub(crate) async fn handle_view_board(
             .and_then(|v| v.as_u64())
             .map(|n| n as usize),
     };
-    let (epics, iterations, fine) = select.select(|s| {
+    let (epics, iterations, fine) = select.select(|state| {
         let fine: std::collections::HashMap<product_management::story::StoryId, workflow::StageId> =
             stories
                 .iter()
                 .filter_map(|story| {
-                    board::fine_stage(story, &s.board).map(|stage| (story.id, stage.id()))
+                    board::fine_stage(story, &state.board).map(|stage| (story.id, stage.id()))
                 })
                 .collect();
         (
-            product_management::epic::all(&s.epics),
-            product_management::iteration::all(&s.iterations),
+            product_management::epic::all(&state.epics),
+            product_management::iteration::all(&state.iterations),
             fine,
         )
     });

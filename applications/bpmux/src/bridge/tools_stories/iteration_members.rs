@@ -59,7 +59,8 @@ pub(crate) async fn set_member_position(
 ) -> Result<(), String> {
     let target = StoryId::new(story_id);
     let iteration = ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
-    let all_iterations = select.select(|s| product_management::iteration::all(&s.iterations));
+    let all_iterations =
+        select.select(|state| product_management::iteration::all(&state.iterations));
     for other in all_iterations {
         let other_id = other.id.value();
         if other_id == iteration_id || !other.stories.contains(&target) {
@@ -83,7 +84,8 @@ pub(crate) async fn remove_member_everywhere(
     story_id: u64,
 ) -> Result<(), String> {
     let target = StoryId::new(story_id);
-    let all_iterations = select.select(|s| product_management::iteration::all(&s.iterations));
+    let all_iterations =
+        select.select(|state| product_management::iteration::all(&state.iterations));
     for iteration in all_iterations {
         if !iteration.stories.contains(&target) {
             continue;

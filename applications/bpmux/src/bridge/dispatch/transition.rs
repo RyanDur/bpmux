@@ -17,9 +17,9 @@ pub(crate) async fn dispatch_deliver_story(
             .await?;
     if let Some(id) = args.get("id").and_then(|v| v.as_u64()) {
         let title = select
-            .select(|s| {
+            .select(|state| {
                 product_management::story::slice::get(
-                    &s.stories,
+                    &state.stories,
                     product_management::story::StoryId::new(id),
                 )
             })

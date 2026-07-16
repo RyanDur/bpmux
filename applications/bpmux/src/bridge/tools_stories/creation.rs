@@ -130,14 +130,14 @@ fn validate_parent_epic(
         return Ok(());
     };
     if select
-        .select(|s| product_management::epic::get(&s.epics, epic))
+        .select(|state| product_management::epic::get(&state.epics, epic))
         .is_some()
     {
         return Ok(());
     }
-    if let Some(parent) = select
-        .select(|s| product_management::story::slice::get(&s.stories, StoryId::new(epic.value())))
-    {
+    if let Some(parent) = select.select(|state| {
+        product_management::story::slice::get(&state.stories, StoryId::new(epic.value()))
+    }) {
         return Err(format!(
             "story {epic} is not an Epic (story_type={:?}); only Epic stories can be parents",
             parent.story_type()

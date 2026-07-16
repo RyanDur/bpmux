@@ -10,9 +10,9 @@ pub(super) fn resolve_routing_user_id(
 ) -> Option<String> {
     match identify_user_id {
         Some(user_id) => {
-            let known = store
-                .selector()
-                .select(|s| crate::store::routing::display_for(&s.routing, &user_id).is_some());
+            let known = store.selector().select(|state| {
+                crate::store::routing::display_for(&state.routing, &user_id).is_some()
+            });
             if !known {
                 dispatch.dispatch(
                     crate::store::routing::RoutingAction::Registered {
@@ -27,7 +27,7 @@ pub(super) fn resolve_routing_user_id(
         }
         None => store
             .selector()
-            .select(|s| crate::store::routing::resolve(&s.routing, short_name(identity)))
+            .select(|state| crate::store::routing::resolve(&state.routing, short_name(identity)))
             .into_iter()
             .next(),
     }

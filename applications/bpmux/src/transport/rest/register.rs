@@ -35,7 +35,9 @@ pub async fn post_register(
         .terminal_id
         .as_ref()
         .and_then(|terminal_id| {
-            select.select(|s| crate::store::routing::user_for_terminal(&s.routing, terminal_id))
+            select.select(|state| {
+                crate::store::routing::user_for_terminal(&state.routing, terminal_id)
+            })
         })
         .filter(|prior| *prior != payload.user_id);
     dispatch.dispatch(

@@ -10,7 +10,7 @@ pub(in crate::bridge) async fn handle_list_ready(
         .map(|iteration| iteration.stories.clone())
         .unwrap_or_default();
     let ready: Vec<Story> = select
-        .select(|s| product_management::story::slice::all(&s.stories))
+        .select(|state| product_management::story::slice::all(&state.stories))
         .into_iter()
         .filter(|story| {
             product_management::scheduling::projected_state(story, iterations)

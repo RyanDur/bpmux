@@ -41,7 +41,7 @@ pub async fn post_presence(
             ),
         );
     };
-    let routing_ids = select.select(|s| crate::store::routing::resolve(&s.routing, &agent));
+    let routing_ids = select.select(|state| crate::store::routing::resolve(&state.routing, &agent));
     if routing_ids.is_empty() {
         return (
             StatusCode::NOT_FOUND,

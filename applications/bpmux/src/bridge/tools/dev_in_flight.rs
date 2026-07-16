@@ -10,10 +10,10 @@ struct DevInFlight {
 pub(in crate::bridge) async fn handle_dev_in_flight(
     select: &crate::store::Select,
 ) -> Result<String, String> {
-    let in_flight = select.select(|s| {
-        product_management::story::slice::all(&s.stories)
+    let in_flight = select.select(|state| {
+        product_management::story::slice::all(&state.stories)
             .iter()
-            .any(|story| board::fine_stage(story, &s.board) == Some(Stage::Dev))
+            .any(|story| board::fine_stage(story, &state.board) == Some(Stage::Dev))
     });
     let response = DevInFlight {
         dev_in_flight: in_flight,

@@ -99,9 +99,9 @@ pub fn deliver_to_terminals(
     }
     let line = framed_line(msg);
     let ts = msg.ts.to_rfc3339();
-    for (user_id, terminal_id) in select.select(|s| {
+    for (user_id, terminal_id) in select.select(|state| {
         crate::store::routing::delivery_targets(
-            &s.routing,
+            &state.routing,
             msg.to.as_deref(),
             msg.to_ids.as_deref(),
             &msg.from,
@@ -171,7 +171,7 @@ fn framed_line(msg: &Message) -> String {
 
 fn after_cursor(select: &Select, user_id: &str, ts: chrono::DateTime<chrono::Utc>) -> bool {
     match select
-        .select(|s| crate::store::routing::cursor(&s.routing, user_id))
+        .select(|state| crate::store::routing::cursor(&state.routing, user_id))
         .as_deref()
         .and_then(|cursor| chrono::DateTime::parse_from_rfc3339(cursor).ok())
     {

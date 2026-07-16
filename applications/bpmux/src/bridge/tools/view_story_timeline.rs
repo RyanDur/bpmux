@@ -53,13 +53,15 @@ pub(in crate::bridge) async fn handle_view_story_timeline(
         .ok_or("missing 'id' argument")?;
     let r = refresh.ok_or("view_story_timeline requires refresh (canonical-store)")?;
     let mut story = select
-        .select(|s| product_management::story::slice::get(&s.stories, StoryId::new(id)))
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(id)))
         .ok_or_else(|| format!("story #{id} not found in board"))?;
     if story.verdicts.is_none() {
         match r.fetch_verdicts(id).await {
             Ok(_) => {
                 story = select
-                    .select(|s| product_management::story::slice::get(&s.stories, StoryId::new(id)))
+                    .select(|state| {
+                        product_management::story::slice::get(&state.stories, StoryId::new(id))
+                    })
                     .ok_or_else(|| format!("story #{id} not found in board after gate fetch"))?;
             }
             Err(e) => {

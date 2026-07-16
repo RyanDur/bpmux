@@ -40,7 +40,7 @@ pub(super) fn effective_role(
     actor_id: Option<&str>,
 ) -> String {
     actor_id
-        .and_then(|id| select.select(|s| crate::store::routing::role_for(&s.routing, id)))
+        .and_then(|id| select.select(|state| crate::store::routing::role_for(&state.routing, id)))
         .unwrap_or_else(|| crate::bridge::tools_stories::role_from_name(agent).to_string())
 }
 

@@ -37,7 +37,7 @@ async fn a_cache_fill_leaves_the_shared_grain_empty_but_the_boot_sweep_fills_it_
     orchestrator.fetch_verdicts(11).await.unwrap();
     let after_cache_fill = handle
         .select()
-        .select(|s| s.shared_history.records().to_vec());
+        .select(|state| state.shared_history.records().to_vec());
     assert!(
         after_cache_fill.is_empty(),
         "a VerdictsFetched cache fill is not a gate observation — the shared grain stays empty"
@@ -46,7 +46,7 @@ async fn a_cache_fill_leaves_the_shared_grain_empty_but_the_boot_sweep_fills_it_
     backfill_shared_history(orch_dyn.as_ref(), |action| handle.dispatch(action)).await;
     let after_backfill = handle
         .select()
-        .select(|s| s.shared_history.records().to_vec());
+        .select(|state| state.shared_history.records().to_vec());
     assert_eq!(
         after_backfill.len(),
         1,
@@ -85,7 +85,7 @@ async fn the_boot_sweep_replaces_each_storys_records_per_story() {
     backfill_shared_history(orch_dyn.as_ref(), |action| handle.dispatch(action)).await;
     let records = handle
         .select()
-        .select(|s| s.shared_history.records().to_vec());
+        .select(|state| state.shared_history.records().to_vec());
     assert_eq!(records.len(), 2, "one durable record per swept story");
     assert!(
         records

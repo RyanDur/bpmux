@@ -33,9 +33,9 @@ pub(crate) async fn handle_edit_story(
     }
     let r = refresh
         .ok_or("edit_story requires refresh (RefreshDriver) — no canonical store available")?;
-    let iteration = select.select(|s| {
+    let iteration = select.select(|state| {
         product_management::iteration::get(
-            &s.iterations,
+            &state.iterations,
             product_management::iteration::IterationId::new(id),
         )
     });
@@ -96,8 +96,8 @@ pub(crate) async fn handle_edit_story(
         ));
     }
     if (title.is_some() || body.is_some())
-        && let Some(epic) = select.select(|s| {
-            product_management::epic::get(&s.epics, product_management::epic::EpicId::new(id))
+        && let Some(epic) = select.select(|state| {
+            product_management::epic::get(&state.epics, product_management::epic::EpicId::new(id))
         })
     {
         let new_title = title

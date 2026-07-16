@@ -17,9 +17,9 @@ pub(super) async fn render_iteration_detail(
     let mut body = iteration.body.clone();
     if body.is_none() && r.fetch_body(id).await.is_ok() {
         body = select
-            .select(|s| {
+            .select(|state| {
                 product_management::iteration::get(
-                    &s.iterations,
+                    &state.iterations,
                     product_management::iteration::IterationId::new(id),
                 )
             })
@@ -33,9 +33,9 @@ pub(super) async fn render_iteration_detail(
             .iter()
             .filter_map(|n| {
                 select
-                    .select(|s| {
+                    .select(|state| {
                         product_management::story::slice::get(
-                            &s.stories,
+                            &state.stories,
                             product_management::story::StoryId::new(n.value()),
                         )
                     })
@@ -71,8 +71,11 @@ pub(super) async fn render_epic_detail(
         && r.fetch_body(id).await.is_ok()
     {
         body = select
-            .select(|s| {
-                product_management::epic::get(&s.epics, product_management::epic::EpicId::new(id))
+            .select(|state| {
+                product_management::epic::get(
+                    &state.epics,
+                    product_management::epic::EpicId::new(id),
+                )
             })
             .and_then(|e| e.body);
     }
@@ -80,9 +83,11 @@ pub(super) async fn render_epic_detail(
     let body_out = body.unwrap_or_else(|| NOT_HYDRATED_PLACEHOLDER.to_string());
     let workflow_state = match refresh {
         Some(_) => {
-            let stories = select.select(|s| product_management::story::slice::all(&s.stories));
+            let stories =
+                select.select(|state| product_management::story::slice::all(&state.stories));
             let children = product_management::epic::children_of(&stories, epic.id);
-            let iterations = select.select(|s| product_management::iteration::all(&s.iterations));
+            let iterations =
+                select.select(|state| product_management::iteration::all(&state.iterations));
             product_management::epic::derive_epic_state(&children, &iterations).as_str()
         }
         None => product_management::scheduling::ProjectedState::Icebox.as_str(),

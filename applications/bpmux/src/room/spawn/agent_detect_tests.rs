@@ -19,7 +19,7 @@ fn osc7(path: &str) -> Vec<u8> {
 fn resolve(store: &SeededStore, display: &str) -> Vec<String> {
     store
         .select()
-        .select(|s| crate::store::routing::resolve(&s.routing, display))
+        .select(|state| crate::store::routing::resolve(&state.routing, display))
 }
 
 const GATE: Duration = Duration::from_millis(1000);

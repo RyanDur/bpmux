@@ -16,7 +16,8 @@ struct VerdictView {
 }
 
 fn resolve_accept_window_secs(select: &crate::store::Select, story_id: StoryId) -> Option<u64> {
-    let story = select.select(|s| product_management::story::slice::get(&s.stories, story_id))?;
+    let story =
+        select.select(|state| product_management::story::slice::get(&state.stories, story_id))?;
     let class = product_management::story::gate_class_from_acceptor_and_story_type(
         story.acceptor(),
         story.story_type(),
@@ -36,8 +37,9 @@ pub(in crate::bridge) async fn handle_view_verdicts(
             .ok_or("missing 'story_id' argument")?,
     );
 
-    let records =
-        select.select(|s| product_management::evidence::evidence_for_story(&s.evidence, story_id));
+    let records = select.select(|state| {
+        product_management::evidence::evidence_for_story(&state.evidence, story_id)
+    });
     let window_secs = resolve_accept_window_secs(select, story_id);
     let current_head = crate::bridge::tools::git_repo::current_head_sha();
     let now = chrono::Utc::now();

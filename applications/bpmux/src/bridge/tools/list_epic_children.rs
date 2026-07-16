@@ -10,11 +10,11 @@ pub(in crate::bridge) async fn handle_list_epic_children(
         .and_then(|v| v.as_u64())
         .ok_or_else(|| "list_epic_children: epic_id argument required (u64)".to_string())?;
     select
-        .select(|s| product_management::epic::get(&s.epics, EpicId::new(epic_id)))
+        .select(|state| product_management::epic::get(&state.epics, EpicId::new(epic_id)))
         .ok_or_else(|| format!("list_epic_children: epic_id {epic_id} not found or not an Epic"))?;
-    let iterations = select.select(|s| product_management::iteration::all(&s.iterations));
+    let iterations = select.select(|state| product_management::iteration::all(&state.iterations));
     let mut children: Vec<Story> = select
-        .select(|s| product_management::story::slice::all(&s.stories))
+        .select(|state| product_management::story::slice::all(&state.stories))
         .into_iter()
         .filter(|s| s.parent_epic() == Some(EpicId::new(epic_id)))
         .collect();

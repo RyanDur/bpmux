@@ -58,7 +58,7 @@ async fn a_body_carrying_user_id_commits_exactly_that_id() {
     let payload = serde_json::json!({ "conclusion": "green" });
     let woken = seeded
         .select()
-        .select(|s| matching_users(&s.commitments, "ci_state_changed", &payload));
+        .select(|state| matching_users(&state.commitments, "ci_state_changed", &payload));
     assert_eq!(
         woken,
         vec!["id-dev-1".to_string()],
@@ -84,7 +84,7 @@ async fn a_body_without_user_id_falls_back_to_resolving_the_role_and_commits_eve
     let payload = serde_json::json!({ "conclusion": "green" });
     let mut woken = seeded
         .select()
-        .select(|s| matching_users(&s.commitments, "ci_state_changed", &payload));
+        .select(|state| matching_users(&state.commitments, "ci_state_changed", &payload));
     woken.sort();
     assert_eq!(
         woken,
@@ -111,7 +111,7 @@ async fn a_body_without_user_id_for_an_unregistered_role_commits_nothing() {
     let payload = serde_json::json!({ "conclusion": "green" });
     let woken = seeded
         .select()
-        .select(|s| matching_users(&s.commitments, "ci_state_changed", &payload));
+        .select(|state| matching_users(&state.commitments, "ci_state_changed", &payload));
     assert!(
         woken.is_empty(),
         "an id-keyed store cannot arm a commitment for a role with zero resolved ids — the skew-only fallback narrows here versus the old name-keyed behavior (disclosed: retires with B-5)"

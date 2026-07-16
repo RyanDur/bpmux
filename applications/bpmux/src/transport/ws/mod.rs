@@ -66,7 +66,7 @@ pub(super) async fn run_ws_session(
     let routing_user_id = resolve_routing_user_id(&store, &dispatch, &identity, identify_user_id);
     let claimed_owner_nonce = store
         .selector()
-        .select(|s| owner_session::claimed_nonce(&s.owner_session));
+        .select(|state| owner_session::claimed_nonce(&state.owner_session));
     let is_owner = owner_session::resolve_owner_mark(
         claimed_owner_nonce.as_deref(),
         identify_owner_nonce.as_deref(),

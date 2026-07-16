@@ -26,9 +26,9 @@ pub async fn wake_on_event(
 ) -> impl IntoResponse {
     let user_ids = match payload.user_id {
         Some(user_id) => vec![user_id],
-        None => {
-            select.select(|s| crate::store::routing::resolve(&s.routing, short_name(&payload.role)))
-        }
+        None => select.select(|state| {
+            crate::store::routing::resolve(&state.routing, short_name(&payload.role))
+        }),
     };
     for user_id in user_ids {
         dispatch.dispatch(

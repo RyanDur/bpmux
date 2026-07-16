@@ -81,9 +81,9 @@ pub(crate) async fn dispatch_pass_desk_check(
     if let Some(id) = args.get("id").and_then(|v| v.as_u64()) {
         let story_type = tools_stories::classify_for_pass_desk_check(id, select);
         let acceptor = select
-            .select(|s| {
+            .select(|state| {
                 product_management::story::slice::get(
-                    &s.stories,
+                    &state.stories,
                     product_management::story::StoryId::new(id),
                 )
             })
