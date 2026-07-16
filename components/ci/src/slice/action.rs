@@ -7,4 +7,5 @@ pub enum CiAction {
     StopPolling,
     PollingStopped,
     Updated(CiSnapshot),
+    PollSucceeded { at: String, updated: bool },
 }

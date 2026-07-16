@@ -79,6 +79,8 @@ pub fn spawn<A>(
                 Ok(crate::ci::ConditionalRunEntry::NotModified) => {
                     backoff = base_backoff;
                     ci_state_store.mark_poll_succeeded();
+                    let at = chrono::Utc::now().to_rfc3339();
+                    dispatch(CiAction::PollSucceeded { at, updated: false }.into());
                     broadcast_ci_poll(&hub, last_snapshot.as_ref(), poll_time(&ci_state_store));
                     continue;
                 }
@@ -90,6 +92,8 @@ pub fn spawn<A>(
                 Ok(crate::ci::ConditionalRunEntry::Empty) => {
                     backoff = base_backoff;
                     ci_state_store.mark_poll_succeeded();
+                    let at = chrono::Utc::now().to_rfc3339();
+                    dispatch(CiAction::PollSucceeded { at, updated: false }.into());
                     broadcast_ci_poll(&hub, last_snapshot.as_ref(), poll_time(&ci_state_store));
                     continue;
                 }
@@ -148,6 +152,8 @@ pub fn spawn<A>(
             dispatch(CiAction::Updated(snapshot.clone()).into());
             last_snapshot = Some(snapshot);
             ci_state_store.mark_poll_succeeded();
+            let at = chrono::Utc::now().to_rfc3339();
+            dispatch(CiAction::PollSucceeded { at, updated: true }.into());
             broadcast_ci_poll(&hub, last_snapshot.as_ref(), poll_time(&ci_state_store));
         }
     });

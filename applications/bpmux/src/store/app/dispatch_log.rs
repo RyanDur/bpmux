@@ -13,6 +13,7 @@ pub fn validate_and_log(action: &AppAction) {
         AppAction::Ci(CiAction::StopPolling) => "Ci.StopPolling",
         AppAction::Ci(CiAction::PollingStopped) => "Ci.PollingStopped",
         AppAction::Ci(CiAction::Updated(_)) => "Ci.Updated",
+        AppAction::Ci(CiAction::PollSucceeded { .. }) => "Ci.PollSucceeded",
         AppAction::Sync(SyncAction::StartIngestPolling) => "Sync.StartIngestPolling",
         AppAction::Sync(SyncAction::StopIngestPolling) => "Sync.StopIngestPolling",
         AppAction::Sync(SyncAction::StartHydrationPolling) => "Sync.StartHydrationPolling",

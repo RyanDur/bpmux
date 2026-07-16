@@ -1,6 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::{CiAction, CiSnapshot, CiState, polling, reduce, snapshot};
+use super::{
+    CiAction, CiSnapshot, CiState, last_successful_poll_at, last_updated_at, polling, reduce,
+    snapshot,
+};
 
 fn snap(run_id: u64, conclusion: &'static str) -> CiSnapshot {
     CiSnapshot {
@@ -67,5 +70,63 @@ fn stop_polling_command_is_pure_intent_not_actuality() {
     assert!(
         reduce(&CiState::default(), &CiAction::StopPolling).is_none(),
         "the command alone reports no state change until the effector reports a fact"
+    );
+}
+
+#[test]
+fn poll_succeeded_always_records_the_liveness_timestamp() {
+    let state = reduce(
+        &CiState::default(),
+        &CiAction::PollSucceeded {
+            at: "2026-07-16T00:00:00Z".to_string(),
+            updated: false,
+        },
+    )
+    .expect("a successful poll changes state");
+    assert_eq!(
+        last_successful_poll_at(&state),
+        Some("2026-07-16T00:00:00Z".to_string()),
+        "every successful poll, regardless of verdict change, records liveness"
+    );
+    assert_eq!(
+        last_updated_at(&state),
+        None,
+        "an unchanged verdict leaves last_updated_at untouched"
+    );
+}
+
+#[test]
+fn poll_succeeded_records_the_verdict_timestamp_only_when_updated() {
+    let state = reduce(
+        &CiState::default(),
+        &CiAction::PollSucceeded {
+            at: "2026-07-16T00:00:00Z".to_string(),
+            updated: true,
+        },
+    )
+    .expect("a successful poll changes state");
+    assert_eq!(
+        last_updated_at(&state),
+        Some("2026-07-16T00:00:00Z".to_string()),
+        "a changed verdict records the update timestamp"
+    );
+
+    let unchanged = reduce(
+        &state,
+        &CiAction::PollSucceeded {
+            at: "2026-07-16T00:00:10Z".to_string(),
+            updated: false,
+        },
+    )
+    .expect("a successful poll changes state");
+    assert_eq!(
+        last_successful_poll_at(&unchanged),
+        Some("2026-07-16T00:00:10Z".to_string()),
+        "liveness advances on every poll"
+    );
+    assert_eq!(
+        last_updated_at(&unchanged),
+        Some("2026-07-16T00:00:00Z".to_string()),
+        "the prior verdict timestamp survives a poll with no change"
     );
 }

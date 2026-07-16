@@ -46,6 +46,8 @@ pub struct CiState {
     last_seen: Option<(Option<u64>, &'static str)>,
     snapshot: Option<CiSnapshot>,
     polling: bool,
+    last_successful_poll_at: Option<String>,
+    last_updated_at: Option<String>,
 }
 
 pub fn reduce(state: &CiState, action: &CiAction) -> Option<CiState> {
@@ -70,6 +72,15 @@ pub fn reduce(state: &CiState, action: &CiAction) -> Option<CiState> {
             ..state.clone()
         }),
         CiAction::StartPolling | CiAction::StopPolling => None,
+        CiAction::PollSucceeded { at, updated } => Some(CiState {
+            last_successful_poll_at: Some(at.clone()),
+            last_updated_at: if *updated {
+                Some(at.clone())
+            } else {
+                state.last_updated_at.clone()
+            },
+            ..state.clone()
+        }),
     }
 }
 
@@ -86,6 +97,14 @@ pub fn snapshot_key(state: &CiState) -> Option<(Option<u64>, &'static str)> {
         .snapshot
         .as_ref()
         .map(|snap| (snap.run_id, snap.conclusion))
+}
+
+pub fn last_successful_poll_at(state: &CiState) -> Option<String> {
+    state.last_successful_poll_at.clone()
+}
+
+pub fn last_updated_at(state: &CiState) -> Option<String> {
+    state.last_updated_at.clone()
 }
 
 mod action;
