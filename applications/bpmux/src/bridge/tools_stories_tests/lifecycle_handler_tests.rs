@@ -1,7 +1,6 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use super::test_ci_state_store_green;
 use product_management::story::{StoryId, StoryKind};
 use protocol::ClientMessage;
 

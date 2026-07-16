@@ -9,11 +9,10 @@ use tempfile::TempDir;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
-use super::ci::{CiBroadcastListener, CiPollFetch, CiSnapshot};
+use super::ci::{CiBroadcastListener, CiPollFetch, CiSnapshot, last_successful_poll_at};
 use super::test_support::eventually;
 use super::{AppAction, CiAction, PollKind, Store, SyncAction};
 use crate::ci::CiState;
-use crate::ci::CiStateStore;
 use crate::ci::ConditionalRunEntry;
 use crate::hub::Hub;
 use crate::server::store_wiring::{build_store, build_store_with_refresh};
@@ -121,12 +120,7 @@ impl CiPollFetch for FakeCiTracker {
 #[tokio::test]
 async fn ci_updated_action_drives_reducer_and_fires_listener() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(
-        hub,
-        None,
-        CiStateStore::new(),
-        CancellationToken::new(),
-    ));
+    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
     let recorder = Arc::new(RecordingListener::default());
     orch.add_ci_listener(recorder.clone());
 
@@ -145,12 +139,7 @@ async fn ci_updated_action_drives_reducer_and_fires_listener() {
 #[tokio::test]
 async fn ci_updated_dedup_same_run_and_conclusion_no_listener_fire() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(
-        hub,
-        None,
-        CiStateStore::new(),
-        CancellationToken::new(),
-    ));
+    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
     let recorder = Arc::new(RecordingListener::default());
     orch.add_ci_listener(recorder.clone());
 
@@ -173,12 +162,7 @@ async fn ci_updated_dedup_same_run_and_conclusion_no_listener_fire() {
 #[tokio::test]
 async fn ci_updated_run_change_or_conclusion_change_fires_listener() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(
-        hub,
-        None,
-        CiStateStore::new(),
-        CancellationToken::new(),
-    ));
+    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
     let recorder = Arc::new(RecordingListener::default());
     orch.add_ci_listener(recorder.clone());
 
@@ -199,12 +183,7 @@ async fn ci_updated_run_change_or_conclusion_change_fires_listener() {
 #[tokio::test]
 async fn start_ci_polling_no_op_without_tracker() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(
-        hub,
-        None,
-        CiStateStore::new(),
-        CancellationToken::new(),
-    ));
+    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
     orch.dispatch(AppAction::Ci(CiAction::StartPolling)).await;
     assert!(!orch.is_running(PollKind::Ci).await);
 }
@@ -212,12 +191,7 @@ async fn start_ci_polling_no_op_without_tracker() {
 #[tokio::test]
 async fn stop_ci_polling_without_start_no_op() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(
-        hub,
-        None,
-        CiStateStore::new(),
-        CancellationToken::new(),
-    ));
+    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
     orch.dispatch(AppAction::Ci(CiAction::StopPolling)).await;
     assert!(!orch.is_running(PollKind::Ci).await);
 }
@@ -226,7 +200,7 @@ async fn stop_ci_polling_without_start_no_op() {
 async fn parent_cancel_propagates_when_running_no_tracker() {
     let parent = CancellationToken::new();
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(hub, None, CiStateStore::new(), parent.clone()));
+    let orch: Arc<Store> = Arc::new(build_store(hub, None, parent.clone()));
     orch.dispatch(AppAction::Ci(CiAction::StartPolling)).await;
     parent.cancel();
     tokio::time::sleep(Duration::from_millis(50)).await;
@@ -237,12 +211,7 @@ async fn parent_cancel_propagates_when_running_no_tracker() {
 #[tokio::test]
 async fn rate_limit_observer_exposed_at_orchestrator_layer() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(
-        hub,
-        None,
-        CiStateStore::new(),
-        CancellationToken::new(),
-    ));
+    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
     let snapshot = orch.rate_limit_observer().snapshot();
     assert_eq!(snapshot.retry_after_wake_epoch, 0);
     assert_eq!(snapshot.ratelimit_reset_epoch, 0);
@@ -256,7 +225,6 @@ async fn live_loop_dispatches_ci_updated_through_action_chain() {
     let orch: Arc<Store> = Arc::new(build_store(
         hub,
         Some(tracker.clone() as Arc<dyn CiPollFetch>),
-        CiStateStore::new(),
         parent.clone(),
     ));
     let recorder = Arc::new(RecordingListener::default());
@@ -314,11 +282,9 @@ async fn live_loop_marks_poll_succeeded_on_all_three_branches() {
         ConditionalRunEntry::Empty,
     ]));
     let parent = CancellationToken::new();
-    let ci_state_store = CiStateStore::new();
     let orch: Arc<Store> = Arc::new(build_store(
         hub,
         Some(tracker.clone() as Arc<dyn CiPollFetch>),
-        ci_state_store.clone(),
         parent.clone(),
     ));
 
@@ -354,11 +320,13 @@ async fn live_loop_marks_poll_succeeded_on_all_three_branches() {
         "all 3 fixture responses (Modified + NotModified + Empty) consumed by live loop"
     );
 
-    let last_polled = ci_state_store.last_successful_poll_at();
+    let last_polled = orch
+        .selector()
+        .select(|state| last_successful_poll_at(&state.ci));
     assert!(
         last_polled.is_some(),
-        "mark_poll_succeeded fires on Modified+NotModified+Empty branches; \
-         last_successful_poll_at must be Some after all 3 outcomes consumed"
+        "PollSucceeded dispatches on Modified+NotModified+Empty branches; \
+         state.ci's last_successful_poll_at must be Some after all 3 outcomes consumed"
     );
 
     orch.dispatch(AppAction::Ci(CiAction::StopPolling)).await;
@@ -379,11 +347,9 @@ async fn live_loop_broadcasts_frozen_poll_time_on_failure() {
         vec![default_modified_entry()],
     ));
     let parent = CancellationToken::new();
-    let ci_state_store = CiStateStore::new();
     let orch: Arc<Store> = Arc::new(build_store(
         hub,
         Some(tracker.clone() as Arc<dyn CiPollFetch>),
-        ci_state_store.clone(),
         parent.clone(),
     ));
 
@@ -445,12 +411,7 @@ fn refresh_for_tests() -> Arc<dyn crate::sync::RefreshDriver> {
 #[tokio::test]
 async fn start_ingest_polling_no_op_without_refresh() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(
-        hub,
-        None,
-        CiStateStore::new(),
-        CancellationToken::new(),
-    ));
+    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
     orch.dispatch(AppAction::Sync(SyncAction::StartIngestPolling))
         .await;
     assert!(!orch.is_running(PollKind::Ingest).await);
@@ -459,12 +420,7 @@ async fn start_ingest_polling_no_op_without_refresh() {
 #[tokio::test]
 async fn start_hydration_polling_no_op_without_refresh() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(
-        hub,
-        None,
-        CiStateStore::new(),
-        CancellationToken::new(),
-    ));
+    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
     orch.dispatch(AppAction::Sync(SyncAction::StartHydrationPolling))
         .await;
     assert!(!orch.is_running(PollKind::Hydration).await);
@@ -473,12 +429,7 @@ async fn start_hydration_polling_no_op_without_refresh() {
 #[tokio::test]
 async fn stop_ingest_without_start_no_op() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(
-        hub,
-        None,
-        CiStateStore::new(),
-        CancellationToken::new(),
-    ));
+    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
     orch.dispatch(AppAction::Sync(SyncAction::StopIngestPolling))
         .await;
     assert!(!orch.is_running(PollKind::Ingest).await);
@@ -487,12 +438,7 @@ async fn stop_ingest_without_start_no_op() {
 #[tokio::test]
 async fn stop_hydration_without_start_no_op() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(
-        hub,
-        None,
-        CiStateStore::new(),
-        CancellationToken::new(),
-    ));
+    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
     orch.dispatch(AppAction::Sync(SyncAction::StopHydrationPolling))
         .await;
     assert!(!orch.is_running(PollKind::Hydration).await);
@@ -504,7 +450,6 @@ async fn start_ingest_polling_spawns_loop_with_refresh() {
     let orch: Arc<Store> = Arc::new(build_store_with_refresh(
         hub,
         None,
-        CiStateStore::new(),
         CancellationToken::new(),
         Vec::new(),
         refresh_for_tests(),
@@ -536,7 +481,6 @@ async fn start_hydration_polling_spawns_loop_with_refresh() {
     let orch: Arc<Store> = Arc::new(build_store_with_refresh(
         hub,
         None,
-        CiStateStore::new(),
         CancellationToken::new(),
         Vec::new(),
         refresh_for_tests(),
@@ -568,7 +512,6 @@ async fn start_ingest_idempotent_no_op_when_already_running() {
     let orch: Arc<Store> = Arc::new(build_store_with_refresh(
         hub,
         None,
-        CiStateStore::new(),
         CancellationToken::new(),
         Vec::new(),
         refresh_for_tests(),
@@ -599,7 +542,6 @@ async fn start_hydration_idempotent_no_op_when_already_running() {
     let orch: Arc<Store> = Arc::new(build_store_with_refresh(
         hub,
         None,
-        CiStateStore::new(),
         CancellationToken::new(),
         Vec::new(),
         refresh_for_tests(),

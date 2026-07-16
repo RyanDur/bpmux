@@ -1,7 +1,6 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use super::test_ci_state_store_green;
 use protocol::ClientMessage;
 
 #[cfg(test)]
@@ -42,8 +41,7 @@ mod reopen_on_state_transition_tests {
         let orch_concrete = SyncOrchestrator::new(
             Arc::clone(&adapter),
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-        )
-        .with_ci_state_store(super::test_ci_state_store_green());
+        );
         let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
         let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
         store.bind_refresh(&orch);

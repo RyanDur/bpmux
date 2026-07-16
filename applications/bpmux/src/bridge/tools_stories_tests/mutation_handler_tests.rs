@@ -1,7 +1,6 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use super::test_ci_state_store_green;
 use product_management::story::StoryId;
 use protocol::ClientMessage;
 
@@ -228,8 +227,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     let orch_concrete = SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    )
-    .with_ci_state_store(test_ci_state_store_green());
+    );
     let orchestrator: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
     let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
     store.bind_refresh(&orchestrator);

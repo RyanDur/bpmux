@@ -1,4 +1,4 @@
-use crate::{CiEvent, CiState, RunEntry, WorkflowSummary, classify_runs, github_actions_url};
+use crate::{CiEvent, CiState, WorkflowSummary, github_actions_url};
 use crate::{MAX_BACKOFF, POLL_INTERVAL};
 
 #[derive(Debug, Clone, Default, serde::Serialize, PartialEq, Eq)]
@@ -40,10 +40,6 @@ pub(crate) fn report_from_event(event: CiEvent) -> CiStateReport {
         backoff_cap_secs: MAX_BACKOFF.as_secs(),
         workflows: event.workflows,
     }
-}
-
-pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
-    report_from_event(classify_runs(runs))
 }
 
 pub fn unknown_ci_state_report() -> CiStateReport {

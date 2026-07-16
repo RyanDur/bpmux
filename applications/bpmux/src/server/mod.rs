@@ -26,7 +26,6 @@ pub async fn run_server(
     let tracker: transport::rest::TrackerHandle =
         crate::integrations::github::GitHubSourceAdapter::from_env().map(std::sync::Arc::new);
 
-    let ci_state_store = crate::ci::CiStateStore::new();
     let race_window_barrier = race_window_barrier_from_env();
 
     let (orchestrator, hydrated_outbox): (OrchestratorHandle, Vec<source_sync::QueuedWrite>) =
@@ -34,20 +33,12 @@ pub async fn run_server(
             eprintln!(
                 "[bpmux server] BPMUX_TEST_MODE=1 — instantiating in-memory orchestrator for acceptance tests"
             );
-            let (orch, writes) = build_test_orchestrator(
-                hub.clone(),
-                ci_state_store.clone(),
-                race_window_barrier.clone(),
-            )
-            .await;
+            let (orch, writes) =
+                build_test_orchestrator(hub.clone(), race_window_barrier.clone()).await;
             (Some(orch), writes)
         } else if let Some(tracker_arc) = tracker.as_ref().cloned() {
-            let (orch, writes) = build_prod_orchestrator(
-                hub.clone(),
-                tracker_arc,
-                ci_state_store.clone(),
-                race_window_barrier.clone(),
-            );
+            let (orch, writes) =
+                build_prod_orchestrator(hub.clone(), tracker_arc, race_window_barrier.clone());
             (Some(orch), writes)
         } else {
             (None, Vec::new())
@@ -71,7 +62,6 @@ pub async fn run_server(
                 .as_ref()
                 .cloned()
                 .map(|t| t as std::sync::Arc<dyn crate::store::CiPollFetch>),
-            ci_state_store.clone(),
             ct.clone(),
             hydrated_outbox,
             refresh,
@@ -84,7 +74,6 @@ pub async fn run_server(
                 .as_ref()
                 .cloned()
                 .map(|t| t as std::sync::Arc<dyn crate::store::CiPollFetch>),
-            ci_state_store.clone(),
             ct.clone(),
             hydrated_outbox,
         ),
@@ -102,7 +91,7 @@ pub async fn run_server(
         refresh.bind_dispatch(store.dispatcher());
         startup_tasks::spawn_background_ingest(refresh.clone(), store.dispatcher());
     }
-    wire_store_listeners(&store, &hub, &ci_state_store);
+    wire_store_listeners(&store, &hub);
     wire_startup_roster(&store, &hub, &pty_registry).await;
     start_polling(&store, orchestrator.is_some()).await;
 
@@ -114,7 +103,6 @@ pub async fn run_server(
         unfurl_cache,
         hub,
         tracker,
-        ci_state_store,
         ci_log_store,
         electron_capture_lock,
         orchestrator,

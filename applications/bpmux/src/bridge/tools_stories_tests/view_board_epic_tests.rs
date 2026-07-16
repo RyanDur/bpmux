@@ -1,7 +1,6 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use super::test_ci_state_store_green;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use product_management::epic::{Epic, EpicId};
 use product_management::story::{Story, StoryId};

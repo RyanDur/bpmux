@@ -1,7 +1,6 @@
 #![allow(unused_imports)]
 
 use super::super::tools_stories::*;
-use super::test_ci_state_store_green;
 use product_management::story::Acceptor;
 use product_management::story::StoryKind;
 use product_management::story::story_type_from_title;

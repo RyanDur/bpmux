@@ -3,7 +3,6 @@ use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::ci::CiStateStore;
 use crate::hub;
 use crate::store::{
     AppState, BoardPlacementPersister, BoardPlacementReconciler, CiBroadcast, CiListeners,
@@ -19,46 +18,31 @@ use crate::transport::rest::broadcast_listeners::{
 pub fn build_store(
     hub: Arc<hub::Hub>,
     tracker: Option<Arc<dyn CiPollFetch>>,
-    ci_state_store: CiStateStore,
     parent_ct: CancellationToken,
 ) -> Store {
-    build_store_with_outbox(hub, tracker, ci_state_store, parent_ct, Vec::new())
+    build_store_with_outbox(hub, tracker, parent_ct, Vec::new())
 }
 
 pub(crate) fn build_store_with_outbox(
     hub: Arc<hub::Hub>,
     tracker: Option<Arc<dyn CiPollFetch>>,
-    ci_state_store: CiStateStore,
     parent_ct: CancellationToken,
     initial_outbox: Vec<source_sync::QueuedWrite>,
 ) -> Store {
-    Store::from_parts(assemble(
-        hub,
-        tracker,
-        ci_state_store,
-        parent_ct,
-        initial_outbox,
-    ))
+    Store::from_parts(assemble(hub, tracker, parent_ct, initial_outbox))
 }
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn build_store_with_refresh(
     hub: Arc<hub::Hub>,
     tracker: Option<Arc<dyn CiPollFetch>>,
-    ci_state_store: CiStateStore,
     parent_ct: CancellationToken,
     initial_outbox: Vec<source_sync::QueuedWrite>,
     refresh: Arc<dyn RefreshDriver>,
     ingest_interval: Duration,
     hydration_interval: Duration,
 ) -> Store {
-    let parts = assemble(
-        hub,
-        tracker,
-        ci_state_store,
-        parent_ct.clone(),
-        initial_outbox,
-    );
+    let parts = assemble(hub, tracker, parent_ct.clone(), initial_outbox);
     let store_select = crate::store::Select::new(std::sync::Arc::downgrade(&parts.app_store));
     let sync_poll = Arc::new(crate::bridge::polling::SyncPoll::new(
         refresh.clone(),
@@ -120,7 +104,6 @@ pub(crate) fn build_store_with_refresh(
 fn assemble(
     hub: Arc<hub::Hub>,
     tracker: Option<Arc<dyn CiPollFetch>>,
-    ci_state_store: CiStateStore,
     parent_ct: CancellationToken,
     initial_outbox: Vec<source_sync::QueuedWrite>,
 ) -> StoreParts {
@@ -154,7 +137,6 @@ fn assemble(
     app_store.add_listener(Arc::new(CiBroadcast::new(ci_listeners.clone())));
     let ci_poll = Arc::new(ci::CiPoll::new(
         tracker.clone(),
-        ci_state_store.clone(),
         hub.clone(),
         parent_ct,
         rate_limit_observer.clone(),

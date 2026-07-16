@@ -155,12 +155,8 @@ async fn ci_broadcast_ignores_a_ci_slice_change_that_keeps_the_snapshot_key() {
 async fn polling_liveness_facts_never_refire_the_ci_fan_out() {
     let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));
     let recorder = Arc::new(RecordingCiListener::default());
-    let ci_state_store = crate::ci::CiStateStore::new();
     let listeners: app::CiListeners = Arc::new(std::sync::Mutex::new(vec![
-        recorder.clone() as Arc<dyn CiBroadcastListener>,
-        Arc::new(crate::store::CiStateStoreWriter::new(
-            ci_state_store.clone(),
-        )),
+        recorder.clone() as Arc<dyn CiBroadcastListener>
     ]));
     store.add_listener(Arc::new(app::CiBroadcast::new(listeners)));
 
@@ -174,10 +170,6 @@ async fn polling_liveness_facts_never_refire_the_ci_fan_out() {
             == 1
     })
     .await;
-    let seeded_report_stamp = ci_state_store
-        .read()
-        .expect("the seeded Updated wrote the ci_state_store")
-        .last_updated_at;
 
     store.dispatch(AppAction::Ci(CiAction::PollingStarted));
     store.dispatch(AppAction::Ci(CiAction::PollingStopped));
@@ -192,14 +184,6 @@ async fn polling_liveness_facts_never_refire_the_ci_fan_out() {
             .len(),
         1,
         "a polling-liveness fact reports effector state, not a snapshot change — it must never re-fire the CI broadcast fan-out"
-    );
-    assert_eq!(
-        ci_state_store
-            .read()
-            .expect("the seeded report survives")
-            .last_updated_at,
-        seeded_report_stamp,
-        "the ci_state_store keeps the seeded write's stamp — liveness facts must never rewrite it"
     );
 }
 

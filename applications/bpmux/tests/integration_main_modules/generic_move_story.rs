@@ -58,7 +58,6 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
     let app_store = Arc::new(bpmux::server::store_wiring::build_store(
         hub,
         None,
-        bpmux::ci::CiStateStore::new(),
         CancellationToken::new(),
     ));
     orch.bind_select(app_store.selector());

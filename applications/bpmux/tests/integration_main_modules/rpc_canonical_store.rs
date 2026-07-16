@@ -102,7 +102,6 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
     let app_store = Arc::new(bpmux::server::store_wiring::build_store(
         hub.clone(),
         None,
-        bpmux::ci::CiStateStore::new(),
         CancellationToken::new(),
     ));
     refresh.bind_select(app_store.selector());

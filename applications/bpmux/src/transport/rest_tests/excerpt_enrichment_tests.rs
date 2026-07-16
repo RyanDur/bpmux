@@ -200,7 +200,6 @@ async fn post_reaction_cascade_threads_excerpt_into_broadcast_event_text() {
     let orch = std::sync::Arc::new(crate::store::test_support::wired_store(
         hub.clone(),
         None,
-        crate::ci::CiStateStore::new(),
         tokio_util::sync::CancellationToken::new(),
     ));
     let router = axum::Router::new()
@@ -264,7 +263,6 @@ async fn post_reaction_cascade_falls_back_to_no_excerpt_when_target_absent() {
     let orch = std::sync::Arc::new(crate::store::test_support::wired_store(
         hub.clone(),
         None,
-        crate::ci::CiStateStore::new(),
         tokio_util::sync::CancellationToken::new(),
     ));
     let router = axum::Router::new()

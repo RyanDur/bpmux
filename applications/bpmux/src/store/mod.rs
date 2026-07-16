@@ -38,9 +38,7 @@ pub(crate) use app::{
     LocalHistoryPersister, OwnerParkListener, ReactionsBroadcast, ReactionsListeners,
     ReactionsPersister, RosterBroadcast, RosterListeners, RoutingPersister, SharedHistoryPersister,
 };
-pub use ci::{
-    BoxedFuture, CiAction, CiBroadcastListener, CiPollFetch, CiSnapshot, CiStateStoreWriter,
-};
+pub use ci::{BoxedFuture, CiAction, CiBroadcastListener, CiPollFetch, CiSnapshot};
 pub use commitments::CommitmentsAction;
 pub use dispatch::Dispatch;
 pub use reactions::{AggregatedReaction, ReactionsAction, ReactionsBroadcastListener};

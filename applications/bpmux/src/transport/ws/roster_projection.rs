@@ -34,7 +34,6 @@ fn fresh_orchestrator() -> Arc<crate::store::Store> {
     Arc::new(crate::store::test_support::wired_store(
         hub,
         None,
-        crate::ci::CiStateStore::new(),
         tokio_util::sync::CancellationToken::new(),
     ))
 }

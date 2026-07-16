@@ -4,7 +4,7 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use crate::ci::slice::CiWatchDriver;
-use crate::ci::{CiStateStore, MAX_BACKOFF, POLL_INTERVAL};
+use crate::ci::{MAX_BACKOFF, POLL_INTERVAL};
 use crate::hub::Hub;
 use crate::store::{AppAction, CiAction, CiPollFetch, CiSnapshot};
 use kernel::Dispatch;
@@ -20,12 +20,11 @@ impl CiWatchDriver for CiWatcherDriver {
         &self,
         dispatch: Dispatch<AppAction>,
         tracker: Arc<dyn CiPollFetch>,
-        ci_state_store: CiStateStore,
         hub: Arc<Hub>,
         observer: RateLimitObserver,
         ct: CancellationToken,
     ) {
-        spawn(dispatch, tracker, ci_state_store, hub, observer, ct);
+        spawn(dispatch, tracker, hub, observer, ct);
     }
 }
 
@@ -50,7 +49,6 @@ pub fn classify_transition(prev: Option<Observation>, current: Observation) -> T
 pub fn spawn<A>(
     dispatch: Dispatch<A>,
     tracker: Arc<dyn CiPollFetch>,
-    ci_state_store: CiStateStore,
     hub: Arc<Hub>,
     observer: RateLimitObserver,
     ct: CancellationToken,
@@ -61,12 +59,11 @@ pub fn spawn<A>(
     tokio::spawn(async move {
         let mut last_etag: Option<String> = None;
         let mut last_snapshot: Option<CiSnapshot> = None;
+        let mut last_poll_at: Option<String> = None;
         let mut interval = tokio::time::interval(POLL_INTERVAL);
         let base_backoff = Duration::from_secs(60);
         let max_backoff = MAX_BACKOFF;
         let mut backoff = base_backoff;
-        let poll_time =
-            |store: &CiStateStore| store.last_successful_poll_at().map(|t| t.to_rfc3339());
         loop {
             tokio::select! {
                 _ = ct.cancelled() => break,
@@ -78,10 +75,10 @@ pub fn spawn<A>(
             let entries = match conditional {
                 Ok(crate::ci::ConditionalRunEntry::NotModified) => {
                     backoff = base_backoff;
-                    ci_state_store.mark_poll_succeeded();
                     let at = chrono::Utc::now().to_rfc3339();
+                    last_poll_at = Some(at.clone());
                     dispatch(CiAction::PollSucceeded { at, updated: false }.into());
-                    broadcast_ci_poll(&hub, last_snapshot.as_ref(), poll_time(&ci_state_store));
+                    broadcast_ci_poll(&hub, last_snapshot.as_ref(), last_poll_at.clone());
                     continue;
                 }
                 Ok(crate::ci::ConditionalRunEntry::Modified { entries, etag }) => {
@@ -91,14 +88,14 @@ pub fn spawn<A>(
                 }
                 Ok(crate::ci::ConditionalRunEntry::Empty) => {
                     backoff = base_backoff;
-                    ci_state_store.mark_poll_succeeded();
                     let at = chrono::Utc::now().to_rfc3339();
+                    last_poll_at = Some(at.clone());
                     dispatch(CiAction::PollSucceeded { at, updated: false }.into());
-                    broadcast_ci_poll(&hub, last_snapshot.as_ref(), poll_time(&ci_state_store));
+                    broadcast_ci_poll(&hub, last_snapshot.as_ref(), last_poll_at.clone());
                     continue;
                 }
                 Err(e) => {
-                    broadcast_ci_poll(&hub, last_snapshot.as_ref(), poll_time(&ci_state_store));
+                    broadcast_ci_poll(&hub, last_snapshot.as_ref(), last_poll_at.clone());
                     if let Some(decision) = rate_limit::classify_and_decide(
                         &e,
                         observer.snapshot(),
@@ -151,10 +148,10 @@ pub fn spawn<A>(
             };
             dispatch(CiAction::Updated(snapshot.clone()).into());
             last_snapshot = Some(snapshot);
-            ci_state_store.mark_poll_succeeded();
             let at = chrono::Utc::now().to_rfc3339();
+            last_poll_at = Some(at.clone());
             dispatch(CiAction::PollSucceeded { at, updated: true }.into());
-            broadcast_ci_poll(&hub, last_snapshot.as_ref(), poll_time(&ci_state_store));
+            broadcast_ci_poll(&hub, last_snapshot.as_ref(), last_poll_at.clone());
         }
     });
 }

@@ -21,21 +21,3 @@ mod stage_verb_tests;
 mod verdict_substrate_tests;
 mod view_board_basic_tests;
 mod view_board_epic_tests;
-
-pub(super) fn test_ci_state_store_green() -> crate::ci::CiStateStore {
-    let store = crate::ci::CiStateStore::new();
-    store.write(crate::ci::CiStateReport {
-        conclusion: "success",
-        last_run_id: None,
-        branch: "main",
-        url: String::new(),
-        head_sha: Some("test-fixture-sha".to_string()),
-        display_title: None,
-        last_updated_at: None,
-        last_successful_poll_at: None,
-        poll_interval_secs: 0,
-        backoff_cap_secs: 0,
-        workflows: Vec::new(),
-    });
-    store
-}

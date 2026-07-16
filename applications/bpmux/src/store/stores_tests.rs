@@ -12,7 +12,6 @@ use super::{
     AggregatedReaction, AppAction, Presence, ReactionsAction, ReactionsBroadcastListener,
     RosterAction, RosterBroadcastListener, RosterMember, RosterRole, Store,
 };
-use crate::ci::CiStateStore;
 use crate::hub::Hub;
 use crate::server::store_wiring::build_store;
 use message::Message;
@@ -22,12 +21,7 @@ fn fresh_orch() -> Arc<Store> {
     let (tx, _rx) = broadcast::channel::<Message>(64);
     let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "local".to_string(), tx));
     std::mem::forget(dir);
-    Arc::new(build_store(
-        hub,
-        None,
-        CiStateStore::new(),
-        CancellationToken::new(),
-    ))
+    Arc::new(build_store(hub, None, CancellationToken::new()))
 }
 
 #[derive(Default)]
@@ -392,12 +386,7 @@ async fn post_reaction_rest_handler_dispatches_through_orchestrator() {
     let dir = TempDir::new().expect("tempdir");
     let (tx, _rx) = broadcast::channel::<Message>(64);
     let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "test".to_string(), tx));
-    let orch: Arc<Store> = Arc::new(build_store(
-        hub.clone(),
-        None,
-        CiStateStore::new(),
-        CancellationToken::new(),
-    ));
+    let orch: Arc<Store> = Arc::new(build_store(hub.clone(), None, CancellationToken::new()));
     let rec = Arc::new(RecReactions::default());
     orch.add_reactions_listener(rec.clone());
 
@@ -460,12 +449,7 @@ async fn get_reactions_reads_the_store_selector_with_no_file_present() {
     let dir = TempDir::new().expect("tempdir");
     let (tx, _rx) = broadcast::channel::<Message>(64);
     let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "test".to_string(), tx));
-    let orch: Arc<Store> = Arc::new(build_store(
-        hub.clone(),
-        None,
-        CiStateStore::new(),
-        CancellationToken::new(),
-    ));
+    let orch: Arc<Store> = Arc::new(build_store(hub.clone(), None, CancellationToken::new()));
 
     orch.dispatch(AppAction::Reactions(ReactionsAction::ReactionToggled {
         channel: "broadcast".to_string(),
@@ -519,12 +503,7 @@ async fn post_reaction_returns_present_from_the_post_dispatch_selector() {
     let dir = TempDir::new().expect("tempdir");
     let (tx, _rx) = broadcast::channel::<Message>(64);
     let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "test".to_string(), tx));
-    let orch: Arc<Store> = Arc::new(build_store(
-        hub.clone(),
-        None,
-        CiStateStore::new(),
-        CancellationToken::new(),
-    ));
+    let orch: Arc<Store> = Arc::new(build_store(hub.clone(), None, CancellationToken::new()));
 
     let post = |orch: Arc<Store>, hub: Arc<Hub>| async move {
         let router = axum::Router::new()

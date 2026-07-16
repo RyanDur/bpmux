@@ -60,13 +60,11 @@ pub(super) async fn seed_ci_green_for_tests(store: &Arc<crate::store::Store>) {
 
 pub(super) async fn build_test_orchestrator(
     hub: Arc<hub::Hub>,
-    ci_state_store: crate::ci::CiStateStore,
     race_window_barrier: Option<Arc<crate::sync::RaceWindowBarrier>>,
 ) -> (Arc<dyn RefreshDriver>, Vec<QueuedWrite>) {
     let adapter = Arc::new(crate::integrations::in_memory::InMemorySourceAdapter::new());
     let hydrated = hydrate_outbox(&hub.storage);
-    let orch_concrete = SyncOrchestrator::new(adapter, Arc::new(GhLabelCodec));
-    let mut orch_concrete = orch_concrete.with_ci_state_store(ci_state_store);
+    let mut orch_concrete = SyncOrchestrator::new(adapter, Arc::new(GhLabelCodec));
     if let Some(barrier) = race_window_barrier {
         orch_concrete = orch_concrete.with_race_window_barrier(barrier);
     }
@@ -76,7 +74,6 @@ pub(super) async fn build_test_orchestrator(
 pub(super) fn build_prod_orchestrator(
     hub: Arc<hub::Hub>,
     adapter: Arc<crate::integrations::github::GitHubSourceAdapter>,
-    ci_state_store: crate::ci::CiStateStore,
     race_window_barrier: Option<Arc<crate::sync::RaceWindowBarrier>>,
 ) -> (Arc<dyn RefreshDriver>, Vec<QueuedWrite>) {
     let hydrated = hydrate_outbox(&hub.storage);
@@ -84,8 +81,7 @@ pub(super) fn build_prod_orchestrator(
         "server: board-outbox hydrated via storage ({} pending events)",
         hydrated.len()
     ));
-    let orch_concrete = SyncOrchestrator::new(adapter, Arc::new(GhLabelCodec));
-    let mut orch_concrete = orch_concrete.with_ci_state_store(ci_state_store);
+    let mut orch_concrete = SyncOrchestrator::new(adapter, Arc::new(GhLabelCodec));
     if let Some(barrier) = race_window_barrier {
         orch_concrete = orch_concrete.with_race_window_barrier(barrier);
     }

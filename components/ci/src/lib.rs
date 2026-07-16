@@ -16,9 +16,6 @@ mod runs;
 mod state_report;
 #[cfg(test)]
 mod state_report_tests;
-mod state_store;
-#[cfg(test)]
-mod state_store_tests;
 
 pub use actions_url::{GITHUB_BASE_URL, github_actions_url};
 pub use broadcast::{
@@ -30,8 +27,7 @@ pub use log_parse::{build_non_test_failure_record, parse_playwright_failures_fro
 pub use log_store::CiLogStore;
 pub use runs::{CiLogError, CiRunFailures, CiTestFailure, ConditionalRunEntry, WorkflowRunEntry};
 pub(crate) use state_report::report_from_event;
-pub use state_report::{CiStateReport, build_ci_state_report, unknown_ci_state_report};
-pub use state_store::CiStateStore;
+pub use state_report::{CiStateReport, unknown_ci_state_report};
 pub mod slice;
 
 pub const POLL_INTERVAL: Duration = Duration::from_secs(10);

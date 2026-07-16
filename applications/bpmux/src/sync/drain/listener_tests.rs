@@ -8,7 +8,6 @@ use tempfile::TempDir;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 
-use crate::ci::CiStateStore;
 use crate::hub::Hub;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::server::store_wiring::build_store_with_refresh;
@@ -71,7 +70,6 @@ async fn write_queued_burst_single_flights_one_drain_that_pushes_each_write_once
     let store: Arc<Store> = Arc::new(build_store_with_refresh(
         hub,
         None,
-        CiStateStore::new(),
         CancellationToken::new(),
         Vec::new(),
         refresh.clone(),
@@ -132,7 +130,6 @@ async fn polling_liveness_facts_never_drain_a_seeded_outbox() {
     let store: Arc<Store> = Arc::new(build_store_with_refresh(
         hub,
         None,
-        CiStateStore::new(),
         CancellationToken::new(),
         vec![seeded_write(9101, "one", 1), seeded_write(9102, "two", 2)],
         refresh.clone(),
@@ -200,7 +197,6 @@ async fn a_mutated_write_is_selectable_the_moment_mutate_returns() {
     let store: Arc<Store> = Arc::new(build_store_with_refresh(
         hub,
         None,
-        CiStateStore::new(),
         CancellationToken::new(),
         Vec::new(),
         refresh.clone(),
@@ -251,7 +247,6 @@ async fn an_ingested_upsert_is_selectable_the_moment_refresh_returns() {
     let store: Arc<Store> = Arc::new(build_store_with_refresh(
         hub,
         None,
-        CiStateStore::new(),
         CancellationToken::new(),
         Vec::new(),
         refresh.clone(),

@@ -120,14 +120,10 @@ pub fn report_from_state(state: &CiState) -> crate::CiStateReport {
 }
 
 mod action;
-mod listeners;
 
-#[cfg(test)]
-mod listeners_tests;
 #[cfg(test)]
 mod reduce_tests;
 #[cfg(test)]
 mod report_from_state_tests;
 
 pub use action::CiAction;
-pub use listeners::CiStateStoreWriter;

@@ -19,7 +19,6 @@ fn fresh_store() -> (Arc<Store>, Arc<Hub>) {
     let store = Arc::new(crate::store::test_support::wired_store(
         hub.clone(),
         None,
-        crate::ci::CiStateStore::new(),
         tokio_util::sync::CancellationToken::new(),
     ));
     (store, hub)

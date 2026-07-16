@@ -1,18 +1,10 @@
 use std::sync::Arc;
 
-use crate::ci::CiStateStore;
 use crate::hub;
 use crate::room::LivePtyRegistry;
 use crate::store::Store;
 
-pub(super) fn wire_store_listeners(
-    store: &Arc<Store>,
-    hub: &Arc<hub::Hub>,
-    ci_state_store: &CiStateStore,
-) {
-    store.add_ci_listener(Arc::new(crate::store::CiStateStoreWriter::new(
-        ci_state_store.clone(),
-    )));
+pub(super) fn wire_store_listeners(store: &Arc<Store>, hub: &Arc<hub::Hub>) {
     store.add_ci_listener(Arc::new(
         crate::transport::state_delta_broadcasters::CiHubBroadcaster::new(hub.clone()),
     ));
