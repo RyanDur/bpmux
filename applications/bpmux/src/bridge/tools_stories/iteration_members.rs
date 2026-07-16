@@ -78,11 +78,13 @@ pub(crate) async fn set_member_position(
 
 pub(crate) async fn remove_member_everywhere(
     r: &Arc<dyn RefreshDriver>,
+    select: &crate::store::Select,
     dispatch: &crate::store::Dispatch,
     story_id: u64,
 ) -> Result<(), String> {
     let target = StoryId::new(story_id);
-    for iteration in r.iterations() {
+    let all_iterations = select.select(|s| product_management::iteration::all(&s.iterations));
+    for iteration in all_iterations {
         if !iteration.stories.contains(&target) {
             continue;
         }

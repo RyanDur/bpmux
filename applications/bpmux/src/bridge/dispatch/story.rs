@@ -8,9 +8,11 @@ pub(crate) async fn dispatch_create_story(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
-    tools_stories::handle_create_story(&args, agent_name, role, actor_id, refresh, dispatch).await
+    tools_stories::handle_create_story(&args, agent_name, role, actor_id, refresh, select, dispatch)
+        .await
 }
 
 pub(crate) async fn dispatch_comment_on_story(

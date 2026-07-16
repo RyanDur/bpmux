@@ -57,8 +57,8 @@ pub(crate) async fn handle_start_story(
         "falsifier_reframing",
         "falsifier_reframing is required (2026-04-23 retro): restate the observation-falsifier — either verbatim from filing or your sharpening. Forces engagement with the rejection criteria before code.",
     )?;
-    if let Some(r) = refresh {
-        validate_acceptance_test_path_at_pickup(args, id, r.as_ref())?;
+    if refresh.is_some() {
+        validate_acceptance_test_path_at_pickup(args, id, select)?;
     }
     let pickup_payload =
         format!("{pickup_paraphrase}\n\n---\n\n**falsifier_reframing**:\n\n{falsifier_reframing}");

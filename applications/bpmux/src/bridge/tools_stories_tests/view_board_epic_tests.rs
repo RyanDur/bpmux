@@ -314,7 +314,8 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let _store = bind_epics(&orchestrator, &seeded);
+    let store = bind_epics(&orchestrator, &seeded);
+    let select = store.select();
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -331,6 +332,7 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
         "pm",
         None,
         Some(&orchestrator),
+        &select,
         &td(),
     )
     .await;
@@ -379,8 +381,10 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    store.bind_refresh(&orchestrator);
     orchestrator.refresh_all().await.unwrap();
+    let select = store.select();
 
     let mut args = serde_json::Map::new();
     args.insert("title".into(), serde_json::json!("orphan"));
@@ -396,6 +400,7 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
         "pm",
         None,
         Some(&orchestrator),
+        &select,
         &td(),
     )
     .await;
@@ -697,6 +702,7 @@ async fn create_story_for_epic_title_dispatches_epic_upsert_and_stays_out_of_sto
     orch.refresh_all().await.unwrap();
 
     let (dispatch, mut rx) = crate::store::Dispatch::recording();
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let mut args = serde_json::Map::new();
     args.insert("title".into(), serde_json::json!("[Epic] umbrella"));
     args.insert("user_job".into(), serde_json::json!("user job here"));
@@ -704,8 +710,16 @@ async fn create_story_for_epic_title_dispatches_epic_upsert_and_stays_out_of_sto
         "observation_falsifier".into(),
         serde_json::json!("would reject if X"),
     );
-    let result =
-        handle_create_story(&args, "pm:claude-code", "pm", None, Some(&orch), &dispatch).await;
+    let result = handle_create_story(
+        &args,
+        "pm:claude-code",
+        "pm",
+        None,
+        Some(&orch),
+        &select,
+        &dispatch,
+    )
+    .await;
     assert!(result.is_ok(), "epic create should succeed: {result:?}");
 
     let epic_id = match rx.try_recv() {

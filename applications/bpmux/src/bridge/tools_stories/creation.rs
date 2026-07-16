@@ -9,6 +9,7 @@ pub(crate) async fn handle_create_story(
     role: &str,
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    select: &crate::store::Select,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     let title = args
@@ -53,7 +54,7 @@ pub(crate) async fn handle_create_story(
     let r = refresh.ok_or(
         "create_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
     )?;
-    validate_parent_epic(r, parent_epic)?;
+    validate_parent_epic(select, parent_epic)?;
     let acceptor = match args.get("acceptor").and_then(|v| v.as_str()) {
         Some(raw) => Some(
             product_management::story::Acceptor::parse(raw.trim()).ok_or_else(|| {
@@ -122,16 +123,21 @@ fn validate_actor_role_can_create(
 }
 
 fn validate_parent_epic(
-    r: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    select: &crate::store::Select,
     parent_epic: Option<EpicId>,
 ) -> Result<(), String> {
     let Some(epic) = parent_epic else {
         return Ok(());
     };
-    if r.epic(epic).is_some() {
+    if select
+        .select(|s| product_management::epic::get(&s.epics, epic))
+        .is_some()
+    {
         return Ok(());
     }
-    if let Some(parent) = r.story(epic.value()) {
+    if let Some(parent) = select
+        .select(|s| product_management::story::slice::get(&s.stories, StoryId::new(epic.value())))
+    {
         return Err(format!(
             "story {epic} is not an Epic (story_type={:?}); only Epic stories can be parents",
             parent.story_type()

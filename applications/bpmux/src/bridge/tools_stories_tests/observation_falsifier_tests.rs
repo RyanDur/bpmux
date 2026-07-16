@@ -15,6 +15,7 @@ async fn create_story_rejects_non_pm_non_owner_role() {
         "user_job": "as dev, I want X",
         "observation_falsifier": "reject if X"
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     for role in ["dev", "designer", "unknown"].iter() {
         let result = handle_create_story(
             args.as_object().unwrap(),
@@ -22,6 +23,7 @@ async fn create_story_rejects_non_pm_non_owner_role() {
             role_from_name(role),
             None,
             None,
+            &select,
             &td(),
         )
         .await;
@@ -45,6 +47,7 @@ async fn create_story_rejects_non_pm_non_owner_role() {
         "owner",
         None,
         None,
+        &select,
         &td(),
     )
     .await;
@@ -64,6 +67,7 @@ async fn create_story_allows_dev_for_chore_class() {
         "user_job": "as dev, the board files comply with #1493",
         "observation_falsifier": "reject if div/span remain"
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     for role in ["dev", "dev:claude-code"].iter() {
         let result = handle_create_story(
             args.as_object().unwrap(),
@@ -71,6 +75,7 @@ async fn create_story_allows_dev_for_chore_class() {
             role_from_name(role),
             None,
             None,
+            &select,
             &td(),
         )
         .await;
@@ -97,8 +102,17 @@ async fn create_story_rejects_dev_for_non_chore_class() {
         "user_job": "as dev, I want X",
         "observation_falsifier": "reject if X"
     });
-    let result =
-        handle_create_story(args.as_object().unwrap(), "dev", "dev", None, None, &td()).await;
+    let select = crate::store::Select::new(std::sync::Weak::new());
+    let result = handle_create_story(
+        args.as_object().unwrap(),
+        "dev",
+        "dev",
+        None,
+        None,
+        &select,
+        &td(),
+    )
+    .await;
     assert!(result.is_err(), "dev creating a Feature should be rejected");
     let err = result.unwrap_err();
     assert!(
@@ -114,12 +128,14 @@ async fn create_story_rejects_designer_even_for_chore_class() {
         "user_job": "as designer, I want X",
         "observation_falsifier": "reject if X"
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_create_story(
         args.as_object().unwrap(),
         "designer",
         "designer",
         None,
         None,
+        &select,
         &td(),
     )
     .await;
@@ -140,8 +156,17 @@ async fn create_story_pm_role_passes_role_gate_then_hits_refresh_required() {
         "user_job": "as pm, I want X",
         "observation_falsifier": "reject if X"
     });
-    let result =
-        handle_create_story(args.as_object().unwrap(), "pm", "pm", None, None, &td()).await;
+    let select = crate::store::Select::new(std::sync::Weak::new());
+    let result = handle_create_story(
+        args.as_object().unwrap(),
+        "pm",
+        "pm",
+        None,
+        None,
+        &select,
+        &td(),
+    )
+    .await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }
@@ -153,12 +178,14 @@ async fn create_story_pm_with_tool_suffix_role_gate_passes_then_refresh_required
         "user_job": "as pm, I want X",
         "observation_falsifier": "reject if X"
     });
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_create_story(
         args.as_object().unwrap(),
         "pm:claude-code",
         "pm",
         None,
         None,
+        &select,
         &td(),
     )
     .await;
@@ -173,8 +200,17 @@ async fn create_story_rejects_missing_user_job() {
         "body": "body text",
         "observation_falsifier": "I would reject if X"
     });
-    let result =
-        handle_create_story(args.as_object().unwrap(), "pm", "pm", None, None, &td()).await;
+    let select = crate::store::Select::new(std::sync::Weak::new());
+    let result = handle_create_story(
+        args.as_object().unwrap(),
+        "pm",
+        "pm",
+        None,
+        None,
+        &select,
+        &td(),
+    )
+    .await;
     assert!(result.is_err(), "missing user_job should fail");
     let err = result.unwrap_err();
     assert!(
@@ -194,8 +230,17 @@ async fn create_story_rejects_empty_user_job() {
         "user_job": "   ",
         "observation_falsifier": "I would reject if X"
     });
-    let result =
-        handle_create_story(args.as_object().unwrap(), "pm", "pm", None, None, &td()).await;
+    let select = crate::store::Select::new(std::sync::Weak::new());
+    let result = handle_create_story(
+        args.as_object().unwrap(),
+        "pm",
+        "pm",
+        None,
+        None,
+        &select,
+        &td(),
+    )
+    .await;
     assert!(result.is_err(), "whitespace-only user_job should fail");
     assert!(result.unwrap_err().contains("user_job"));
 }
@@ -206,8 +251,17 @@ async fn create_story_rejects_missing_observation_falsifier() {
         "title": "a story",
         "user_job": "When I X, I need Y because Z"
     });
-    let result =
-        handle_create_story(args.as_object().unwrap(), "pm", "pm", None, None, &td()).await;
+    let select = crate::store::Select::new(std::sync::Weak::new());
+    let result = handle_create_story(
+        args.as_object().unwrap(),
+        "pm",
+        "pm",
+        None,
+        None,
+        &select,
+        &td(),
+    )
+    .await;
     assert!(result.is_err(), "missing observation_falsifier should fail");
     let err = result.unwrap_err();
     assert!(
@@ -224,8 +278,17 @@ async fn create_story_validation_passes_then_refresh_required_after_5n() {
         "user_job": "When I X, I need Y because Z",
         "observation_falsifier": "I would reject if I observed W"
     });
-    let result =
-        handle_create_story(args.as_object().unwrap(), "pm", "pm", None, None, &td()).await;
+    let select = crate::store::Select::new(std::sync::Weak::new());
+    let result = handle_create_story(
+        args.as_object().unwrap(),
+        "pm",
+        "pm",
+        None,
+        None,
+        &select,
+        &td(),
+    )
+    .await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("requires refresh"));
 }

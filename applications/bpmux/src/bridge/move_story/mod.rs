@@ -75,7 +75,7 @@ pub(in crate::bridge) async fn handle_move_story(
     .to_string();
     let was_closed = prior.as_ref().map(|s| s.is_concluded()).unwrap_or(false);
 
-    let scheduling_target = scheduling::resolve_scheduling_target(r, id, &target)?;
+    let scheduling_target = scheduling::resolve_scheduling_target(select, id, &target)?;
 
     let meta = meta_for(agent_name, actor_id);
     let actor_short = meta.actor.clone();

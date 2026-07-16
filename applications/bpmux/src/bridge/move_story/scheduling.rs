@@ -8,15 +8,20 @@ use product_management::story::StoryId;
 use super::target::TargetState;
 
 pub(super) fn resolve_scheduling_target(
-    r: &Arc<dyn RefreshDriver>,
+    select: &crate::store::Select,
     id: u64,
     target: &TargetState,
 ) -> Result<Option<IterationId>, String> {
-    let is_epic = r.epic(product_management::epic::EpicId::new(id)).is_some();
+    let is_epic = select
+        .select(|s| {
+            product_management::epic::get(&s.epics, product_management::epic::EpicId::new(id))
+        })
+        .is_some();
     if is_epic || !matches!(target, TargetState::Ready) {
         return Ok(None);
     }
-    match current_iteration_id(&r.iterations()) {
+    let iterations = select.select(|s| product_management::iteration::all(&s.iterations));
+    match current_iteration_id(&iterations) {
         Some(iteration_id) => Ok(Some(iteration_id)),
         None => Err(format!(
             "#{id} cannot move to ready: no current iteration designated — ready IS the \
@@ -36,9 +41,11 @@ pub(super) async fn apply_scheduling(
     scheduling_target: Option<IterationId>,
 ) -> Result<(), String> {
     if matches!(target, TargetState::Icebox) {
-        crate::bridge::tools_stories::iteration_members::remove_member_everywhere(r, dispatch, id)
-            .await
-            .map_err(|e| format!("#{id} unschedule (iteration-member removal) failed: {e}"))?;
+        crate::bridge::tools_stories::iteration_members::remove_member_everywhere(
+            r, select, dispatch, id,
+        )
+        .await
+        .map_err(|e| format!("#{id} unschedule (iteration-member removal) failed: {e}"))?;
     }
     let Some(iteration_id) = scheduling_target else {
         return Ok(());

@@ -121,9 +121,14 @@ fn walk_for_git_root(start: &std::path::Path) -> Option<std::path::PathBuf> {
 pub(crate) fn validate_acceptance_test_path_at_pickup(
     args: &serde_json::Map<String, serde_json::Value>,
     number: u64,
-    refresh: &dyn crate::sync::RefreshDriver,
+    select: &crate::store::Select,
 ) -> Result<(), String> {
-    let Some(story) = refresh.story(number) else {
+    let Some(story) = select.select(|s| {
+        product_management::story::slice::get(
+            &s.stories,
+            product_management::story::StoryId::new(number),
+        )
+    }) else {
         return Ok(());
     };
     if !user_facing_story_type(story.story_type()) {
@@ -143,9 +148,14 @@ pub(crate) fn validate_acceptance_test_path_at_pickup(
 
 pub(crate) fn validate_acceptance_test_path_at_deliver(
     number: u64,
-    refresh: &dyn crate::sync::RefreshDriver,
+    select: &crate::store::Select,
 ) -> Result<(), String> {
-    let Some(story) = refresh.story(number) else {
+    let Some(story) = select.select(|s| {
+        product_management::story::slice::get(
+            &s.stories,
+            product_management::story::StoryId::new(number),
+        )
+    }) else {
         return Ok(());
     };
     if !user_facing_story_type(story.story_type()) {

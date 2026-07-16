@@ -95,6 +95,7 @@ pub async fn post_test_create_story(
     axum::Extension(select): axum::Extension<crate::store::Select>,
     Json(req): Json<CreateStoryReq>,
 ) -> impl IntoResponse {
+    let select_for_dispatch = select.clone();
     run_test_route(hub, refresh, select, |refresh, _hub| async move {
         let mut args = serde_json::Map::new();
         put_str(&mut args, "title", req.title);
@@ -116,7 +117,16 @@ pub async fn post_test_create_story(
         put_str(&mut args, "acceptance_test_path", path);
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
         let role = bridge::tools_stories::role_from_name(&agent);
-        bridge::dispatch_create_story(args, &agent, role, None, Some(&refresh), &dispatcher).await
+        bridge::dispatch_create_story(
+            args,
+            &agent,
+            role,
+            None,
+            Some(&refresh),
+            &select_for_dispatch,
+            &dispatcher,
+        )
+        .await
     })
     .await
 }

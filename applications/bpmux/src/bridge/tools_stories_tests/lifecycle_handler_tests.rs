@@ -506,12 +506,14 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
     );
     args.insert("body".into(), serde_json::json!("author note"));
 
+    let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_create_story(
         &args,
         "pm:claude-code",
         "pm",
         None,
         Some(&orchestrator),
+        &select,
         &td(),
     )
     .await;
@@ -789,16 +791,19 @@ mod classify_for_pass_desk_check_tests {
     use product_management::story::{Story, Work};
     use std::sync::Arc;
 
-    async fn orchestrator_with_seed(stories: Vec<Story>) -> Arc<dyn RefreshDriver> {
+    async fn select_with_seed(stories: Vec<Story>) -> crate::store::Select {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.seed_stories(stories);
         let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
             Arc::clone(&adapter),
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+        let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+        store.bind_refresh(&orch);
         orch.refresh_all().await.unwrap();
-        orch
+        let select = store.select();
+        std::mem::forget(store);
+        select
     }
 
     fn make_story(id: u64, story_type: StoryKind) -> Story {
@@ -815,41 +820,39 @@ mod classify_for_pass_desk_check_tests {
 
     #[tokio::test]
     async fn refreshed_path_returns_feature_via_typed_story_type() {
-        let orch = orchestrator_with_seed(vec![make_story(910, StoryKind::Feature)]).await;
+        let select = select_with_seed(vec![make_story(910, StoryKind::Feature)]).await;
         assert_eq!(
-            classify_for_pass_desk_check(910, Some(&orch)),
+            classify_for_pass_desk_check(910, &select),
             StoryKind::Feature
         );
     }
 
     #[tokio::test]
     async fn refreshed_path_returns_bug_via_typed_story_type() {
-        let orch = orchestrator_with_seed(vec![make_story(911, StoryKind::Bug)]).await;
-        assert_eq!(
-            classify_for_pass_desk_check(911, Some(&orch)),
-            StoryKind::Bug
-        );
+        let select = select_with_seed(vec![make_story(911, StoryKind::Bug)]).await;
+        assert_eq!(classify_for_pass_desk_check(911, &select), StoryKind::Bug);
     }
 
     #[tokio::test]
     async fn refreshed_path_returns_chore_via_typed_story_type() {
-        let orch = orchestrator_with_seed(vec![make_story(912, StoryKind::Chore)]).await;
-        assert_eq!(
-            classify_for_pass_desk_check(912, Some(&orch)),
-            StoryKind::Chore
-        );
+        let select = select_with_seed(vec![make_story(912, StoryKind::Chore)]).await;
+        assert_eq!(classify_for_pass_desk_check(912, &select), StoryKind::Chore);
     }
 
     #[tokio::test]
     async fn defaults_to_feature_when_refresh_absent() {
-        assert_eq!(classify_for_pass_desk_check(913, None), StoryKind::Feature);
+        let select = crate::store::Select::new(std::sync::Weak::new());
+        assert_eq!(
+            classify_for_pass_desk_check(913, &select),
+            StoryKind::Feature
+        );
     }
 
     #[tokio::test]
     async fn defaults_to_feature_when_story_not_in_cache() {
-        let orch = orchestrator_with_seed(vec![]).await;
+        let select = select_with_seed(vec![]).await;
         assert_eq!(
-            classify_for_pass_desk_check(914, Some(&orch)),
+            classify_for_pass_desk_check(914, &select),
             StoryKind::Feature
         );
     }

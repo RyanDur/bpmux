@@ -39,8 +39,8 @@ pub(crate) async fn handle_deliver_story(
         workflow::check_target_state_valid(transition, story.state.as_str())
             .map_err(|e| e.as_json_string())?;
     }
-    if let Some(r) = refresh {
-        validate_acceptance_test_path_at_deliver(id, r.as_ref())?;
+    if refresh.is_some() {
+        validate_acceptance_test_path_at_deliver(id, select)?;
         if let Some(story) = refreshed.as_ref().and_then(|s| s.as_ref())
             && let Some(body) = story.body.as_deref()
         {
