@@ -664,14 +664,9 @@ async fn an_osc7_emitting_agent_that_also_registers_is_bound_once_no_duplicate_i
 }
 
 async fn roster_identities(bpmux: &TestBpmux) -> Vec<String> {
-    let url = format!("http://127.0.0.1:{}/api/roster", bpmux.port());
-    let body: serde_json::Value = reqwest::Client::new()
-        .get(&url)
-        .bearer_auth(bpmux.simulate_secret())
-        .header(reqwest::header::HOST, format!("127.0.0.1:{}", bpmux.port()))
-        .send()
+    let body: serde_json::Value = bpmux
+        .authed_get("/api/roster")
         .await
-        .expect("GET /api/roster")
         .json()
         .await
         .expect("roster json");

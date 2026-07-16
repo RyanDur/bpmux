@@ -23,6 +23,24 @@ pub struct TestBpmux {
     _default_mock_gh: Option<MockServer>,
 }
 
+fn describe_send_failure(error: &reqwest::Error, port: u16, path: &str) -> String {
+    let mut chain = Vec::new();
+    let mut source: Option<&dyn std::error::Error> = Some(error);
+    while let Some(current) = source {
+        chain.push(current.to_string());
+        source = current.source();
+    }
+    format!(
+        "POST {path} to 127.0.0.1:{port} never sent — the request failed at the CONNECTION layer, \
+         so this says nothing about the handler. Read the chain to tell the causes apart: \
+         'Connection refused' = the bpmux process is gone; 'Can't assign requested address' = the \
+         CLIENT exhausted ephemeral ports (socket churn, not a server fault); 'Connection reset' = \
+         the server died mid-request. is_connect={} is_timeout={} chain={chain:?}",
+        error.is_connect(),
+        error.is_timeout(),
+    )
+}
+
 impl TestBpmux {
     pub fn start() -> Self {
         Self::start_named("human")
@@ -269,14 +287,32 @@ impl TestBpmux {
     pub async fn authed_post(&self, path: &str, body: serde_json::Value) -> reqwest::Response {
         let secret = self.simulate_secret();
         let url = format!("http://127.0.0.1:{}{}", self.port, path);
-        reqwest::Client::new()
+        match reqwest::Client::new()
             .post(&url)
             .bearer_auth(&secret)
             .header(reqwest::header::HOST, format!("127.0.0.1:{}", self.port))
             .json(&body)
             .send()
             .await
-            .expect("POST to bpmux should send")
+        {
+            Ok(response) => response,
+            Err(e) => panic!("{}", describe_send_failure(&e, self.port, path)),
+        }
+    }
+
+    pub async fn authed_get(&self, path: &str) -> reqwest::Response {
+        let secret = self.simulate_secret();
+        let url = format!("http://127.0.0.1:{}{}", self.port, path);
+        match reqwest::Client::new()
+            .get(&url)
+            .bearer_auth(&secret)
+            .header(reqwest::header::HOST, format!("127.0.0.1:{}", self.port))
+            .send()
+            .await
+        {
+            Ok(response) => response,
+            Err(e) => panic!("{}", describe_send_failure(&e, self.port, path)),
+        }
     }
 
     pub fn simulate_secret(&self) -> String {
