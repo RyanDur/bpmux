@@ -62,15 +62,10 @@ impl LabelCodec for GhLabelCodec {
     fn stage_label(&self, stage: Stage) -> &'static str {
         stage_github_label(stage)
     }
-
-    fn is_legacy_state_label(&self, label: &str) -> bool {
-        LEGACY_STATE_LABELS.contains(&label)
-    }
 }
 
 pub const CURRENT_ITERATION_LABEL: &str = "current-iteration";
 pub const DESK_CHECK_FAIL_LABEL: &str = "desk-check-fail";
-const LEGACY_STATE_LABELS: &[&str] = &["ready for accept", "needs fixes", "rejected"];
 pub const WORKFLOW_STATE_LABELS: &[&str] = &[
     "icebox",
     "ready",

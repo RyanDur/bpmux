@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use chrono::Utc;
 
-use product_management::story::events::{StoryEvent, StoryEventKind};
 use product_management::story::{CastVerdict, FreeComment};
 pub(crate) use source_sync::cache_fill_meta;
 pub use source_sync::{
@@ -12,7 +11,6 @@ pub use source_sync::{
 use source_sync::{SyncStatus, is_stale, is_startup_fail, staleness_threshold_secs};
 
 mod backfill;
-mod coalesce;
 mod dispatch;
 mod drain;
 mod driver;
@@ -26,7 +24,6 @@ mod types;
 mod write_through;
 
 pub(crate) use backfill::backfill_shared_history;
-use coalesce::stale_state_labels_for;
 pub(crate) use drain::GithubDrain;
 pub use driver::*;
 pub use outbox_persister::{OutboxPersister, OutboxSink};
@@ -90,37 +87,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
                 Err(e)
             }
         }
-    }
-
-    pub async fn reconcile_dual_state_labels(&self) -> Result<usize, SyncError> {
-        let stories = self.read_all_stories();
-        let iterations = self.read_iterations();
-        let mut repairs = 0usize;
-        for story in stories {
-            let labels = match self.adapter.fetch_story_labels(story.id.value()).await {
-                Ok(l) => l,
-                Err(_) => continue,
-            };
-            let fine = self.read_story_fine_stage(&story);
-            let stale = stale_state_labels_for(&*self.codec, &story, &labels, fine, &iterations);
-            for stale_label in stale {
-                let meta = product_management::story::events::EventMeta {
-                    actor: "bpmux:reconcile".to_string(),
-                    actor_id: None,
-                    ts: Utc::now(),
-                };
-                self.mutate(StoryEvent::new(
-                    meta,
-                    story.id,
-                    StoryEventKind::TagRemoved { label: stale_label },
-                ))?;
-                repairs += 1;
-            }
-        }
-        if repairs > 0 {
-            self.drain_pass().await?;
-        }
-        Ok(repairs)
     }
 }
 

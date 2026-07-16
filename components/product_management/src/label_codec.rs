@@ -21,6 +21,4 @@ pub trait LabelCodec {
     fn encode_acceptor(&self, acceptor: Acceptor) -> &'static str;
 
     fn stage_label(&self, stage: Stage) -> &'static str;
-
-    fn is_legacy_state_label(&self, label: &str) -> bool;
 }

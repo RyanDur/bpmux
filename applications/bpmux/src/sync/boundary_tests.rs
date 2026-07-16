@@ -39,7 +39,6 @@ const GITHUB_CONCRETION_TOKENS: &[&str] = &[
     "integrations::github",
     "gh_label_codec",
     "stage_github_label",
-    "LEGACY_STATE_LABELS",
 ];
 
 fn collect_rs_files(dir: &Path, out: &mut Vec<PathBuf>) {
@@ -128,7 +127,7 @@ fn sync_names_no_github_concretions() {
 
     assert!(
         violations.is_empty(),
-        "the synchronization engine speaks provider vocabulary ONLY through the domain-owned LabelCodec port: coalesce asks codec.stage_label / codec.is_legacy_state_label, and the composition root (server/setup.rs) supplies the provider impl to SyncOrchestrator::new. A sync prod file naming a github concretion is the port bypass this lock retired — route the question through the LabelCodec trait instead. Violations:\n{}",
+        "the synchronization engine speaks provider vocabulary ONLY through the domain-owned LabelCodec port (e.g. codec.stage_label), and the composition root (server/setup.rs) supplies the provider impl to SyncOrchestrator::new. A sync prod file naming a github concretion is the port bypass this lock retired — route the question through the LabelCodec trait instead. Violations:\n{}",
         violations.join("\n")
     );
 }

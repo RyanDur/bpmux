@@ -68,10 +68,6 @@ mod codec_injection_substrate {
         fn stage_label(&self, _stage: Stage) -> &'static str {
             "STUB-stage"
         }
-
-        fn is_legacy_state_label(&self, _label: &str) -> bool {
-            false
-        }
     }
 
     fn meta() -> EventMeta {
