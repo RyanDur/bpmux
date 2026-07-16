@@ -60,7 +60,7 @@ pub fn decode_outcome_from_story(story: &Story, labels: &[String]) -> Outcome {
     )
 }
 
-fn assemble_outcome(
+pub fn assemble_outcome(
     id: OutcomeId,
     title: String,
     body: Option<String>,

@@ -48,36 +48,35 @@ pub(crate) async fn handle_create_outcome(
         .and_then(|v| v.as_str())
         .map(ToString::to_string)
         .unwrap_or_else(|| format!("## {title}\n"));
-    let r = refresh
+    let driver = refresh
         .ok_or("create_outcome requires refresh (RefreshDriver) — canonical store unavailable")?;
-    let id = r
+    let id = driver
         .create_story(title.clone(), body.clone(), vec!["outcome".to_string()])
         .await
         .map_err(|e| format!("create_outcome adapter call failed: {e}"))?;
     let meta = meta_for(agent_name, actor_id);
-    r.mutate_sync(product_management::story::events::StoryEvent::new(
-        meta,
-        StoryId::new(id),
-        product_management::story::events::StoryEventKind::TagAdded {
-            label: source_codec::gh_label_codec::GhLabelCodec.encode_horizon(horizon),
-        },
-    ))
-    .map_err(|e| format!("#{id} outcome horizon label enqueue failed: {e}"))?;
-    dispatch.dispatch(crate::store::AppAction::Outcome(
-        product_management::outcome::OutcomeAction::Upserted(vec![
-            product_management::outcome::Outcome {
-                id: product_management::outcome::OutcomeId::new(id),
-                title: title.clone(),
-                body: Some(body),
-                filed_at: chrono::Utc::now(),
-                filed_by: user_routing::short_name(agent_name).to_string(),
-                lifecycle: product_management::outcome::OutcomeLifecycle::Active {
-                    horizon: Some(horizon),
-                    horizon_order: None,
-                },
-                iterations: Vec::new(),
+    let horizon_label = source_codec::gh_label_codec::GhLabelCodec.encode_horizon(horizon);
+    driver
+        .mutate_sync(product_management::story::events::StoryEvent::new(
+            meta,
+            StoryId::new(id),
+            product_management::story::events::StoryEventKind::TagAdded {
+                label: horizon_label.clone(),
             },
-        ]),
+        ))
+        .map_err(|e| format!("#{id} outcome horizon label enqueue failed: {e}"))?;
+    let labels = vec!["outcome".to_string(), horizon_label];
+    let outcome = source_codec::mapper::assemble_outcome(
+        product_management::outcome::OutcomeId::new(id),
+        title.clone(),
+        Some(body),
+        chrono::Utc::now(),
+        user_routing::short_name(agent_name).to_string(),
+        &labels,
+        false,
+    );
+    dispatch.dispatch(crate::store::AppAction::Outcome(
+        product_management::outcome::OutcomeAction::Upserted(vec![outcome]),
     ));
     Ok(format!(
         "outcome created: #{id} {title} (horizon {})",

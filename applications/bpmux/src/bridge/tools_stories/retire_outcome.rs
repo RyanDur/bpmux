@@ -25,36 +25,39 @@ pub(crate) async fn handle_retire_outcome(
         .filter(|r| !r.trim().is_empty())
         .ok_or("outcome retire needs --reason <R> (retire is destructive; the reason is the audit-trail)")?;
 
-    let r = refresh.ok_or("retire_outcome requires refresh (RefreshDriver)")?;
-    let outcome = ensure_outcome_in_canonical_store(r, select, outcome_id).await?;
+    let driver = refresh.ok_or("retire_outcome requires refresh (RefreshDriver)")?;
+    let outcome = ensure_outcome_in_canonical_store(driver, select, outcome_id).await?;
 
     let meta = || meta_for(agent_name, actor_id);
-    r.mutate_sync(StoryEvent::new(
-        meta(),
-        StoryId::new(outcome_id),
-        StoryEventKind::StateTransitioned {
-            new_state: product_management::story::Work::Retired,
-            placement: None,
-        },
-    ))
-    .map_err(|e| format!("#{outcome_id} retire state-transition failed: {e}"))?;
-    r.mutate_sync(StoryEvent::new(
-        meta(),
-        StoryId::new(outcome_id),
-        StoryEventKind::StoryClosed {
-            reason: Some(format!("retired: {reason}")),
-        },
-    ))
-    .map_err(|e| format!("#{outcome_id} retire enqueue failed: {e}"))?;
-    if !outcome.is_retired() {
-        r.mutate_sync(StoryEvent::new(
+    driver
+        .mutate_sync(StoryEvent::new(
             meta(),
             StoryId::new(outcome_id),
-            StoryEventKind::TagAdded {
-                label: "retired".to_string(),
+            StoryEventKind::StateTransitioned {
+                new_state: product_management::story::Work::Retired,
+                placement: None,
             },
         ))
-        .map_err(|e| format!("#{outcome_id} retire-tag enqueue failed: {e}"))?;
+        .map_err(|e| format!("#{outcome_id} retire state-transition failed: {e}"))?;
+    driver
+        .mutate_sync(StoryEvent::new(
+            meta(),
+            StoryId::new(outcome_id),
+            StoryEventKind::StoryClosed {
+                reason: Some(format!("retired: {reason}")),
+            },
+        ))
+        .map_err(|e| format!("#{outcome_id} retire enqueue failed: {e}"))?;
+    if !outcome.is_retired() {
+        driver
+            .mutate_sync(StoryEvent::new(
+                meta(),
+                StoryId::new(outcome_id),
+                StoryEventKind::TagAdded {
+                    label: "retired".to_string(),
+                },
+            ))
+            .map_err(|e| format!("#{outcome_id} retire-tag enqueue failed: {e}"))?;
     }
 
     dispatch.dispatch(crate::store::AppAction::Outcome(

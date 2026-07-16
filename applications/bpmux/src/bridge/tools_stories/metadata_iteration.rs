@@ -42,10 +42,10 @@ pub(crate) async fn handle_add_story_to_iteration(
             "story #{story_id} cannot be added to itself as iteration-member"
         ));
     }
-    let r = refresh.ok_or("add_story_to_iteration requires refresh (RefreshDriver)")?;
-    ensure_story_in_canonical_store(r, select, story_id).await?;
+    let driver = refresh.ok_or("add_story_to_iteration requires refresh (RefreshDriver)")?;
+    ensure_story_in_canonical_store(driver, select, story_id).await?;
     super::iteration_members::set_member_position(
-        r,
+        driver,
         select,
         dispatch,
         iteration_id,
@@ -78,9 +78,9 @@ pub(crate) async fn handle_map_iteration_to_outcome(
         .get("position")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'position' argument")? as u32;
-    let r = refresh.ok_or("map_iteration_to_outcome requires refresh (RefreshDriver)")?;
-    let iteration = ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
-    let outcome = ensure_outcome_in_canonical_store(r, select, outcome_id).await?;
+    let driver = refresh.ok_or("map_iteration_to_outcome requires refresh (RefreshDriver)")?;
+    let iteration = ensure_iteration_in_canonical_store(driver, select, iteration_id).await?;
+    let outcome = ensure_outcome_in_canonical_store(driver, select, outcome_id).await?;
 
     let mut parent = outcome
         .body
@@ -96,7 +96,8 @@ pub(crate) async fn handle_map_iteration_to_outcome(
         .insert(insert_index, IterationId::new(iteration_id));
     let outcome_body = parent.write_into_body(outcome.body.as_deref().unwrap_or_default());
     let optimistic = outcome_with_body(&outcome, &outcome_body);
-    r.update_body(outcome_id, outcome_body)
+    driver
+        .update_body(outcome_id, outcome_body)
         .await
         .map_err(|e| format!("#{outcome_id} iteration-map body update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Outcome(
@@ -110,7 +111,8 @@ pub(crate) async fn handle_map_iteration_to_outcome(
         .unwrap_or_default();
     child.outcome = Some(OutcomeId::new(outcome_id));
     let iteration_body = child.write_into_body(iteration.body.as_deref().unwrap_or_default());
-    r.update_body(iteration_id, iteration_body.clone())
+    driver
+        .update_body(iteration_id, iteration_body.clone())
         .await
         .map_err(|e| format!("#{iteration_id} outcome-FK-set body update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Iteration(

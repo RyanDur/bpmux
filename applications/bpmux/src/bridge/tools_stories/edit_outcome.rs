@@ -21,19 +21,21 @@ pub(crate) async fn handle_edit_outcome(
         return Err("outcome edit needs a change: pass --title <T> and/or --body <B>".to_string());
     }
 
-    let r = refresh.ok_or("edit_outcome requires refresh (RefreshDriver)")?;
-    let mut outcome = ensure_outcome_in_canonical_store(r, select, outcome_id).await?;
+    let driver = refresh.ok_or("edit_outcome requires refresh (RefreshDriver)")?;
+    let mut outcome = ensure_outcome_in_canonical_store(driver, select, outcome_id).await?;
 
     let mut updated: Vec<&str> = Vec::new();
     if let Some(t) = title {
-        r.update_title(outcome_id, t.to_string())
+        driver
+            .update_title(outcome_id, t.to_string())
             .await
             .map_err(|e| format!("#{outcome_id} title update failed: {e}"))?;
         outcome = outcome.with_title(t);
         updated.push("title");
     }
     if let Some(b) = body {
-        r.update_body(outcome_id, b.to_string())
+        driver
+            .update_body(outcome_id, b.to_string())
             .await
             .map_err(|e| format!("#{outcome_id} why update failed: {e}"))?;
         outcome = outcome_with_body(&outcome, b);

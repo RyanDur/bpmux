@@ -9,13 +9,13 @@ use source_codec::relationships::{IterationRelationships, OutcomeRelationships, 
 use std::sync::Arc;
 
 async fn verify_iteration_mapped(
-    r: &Arc<dyn RefreshDriver>,
+    driver: &Arc<dyn RefreshDriver>,
     select: &crate::store::Select,
     outcome_id: u64,
     iteration_id: u64,
 ) -> Result<Outcome, String> {
-    let outcome = ensure_outcome_in_canonical_store(r, select, outcome_id).await?;
-    ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
+    let outcome = ensure_outcome_in_canonical_store(driver, select, outcome_id).await?;
+    ensure_iteration_in_canonical_store(driver, select, iteration_id).await?;
     if !outcome.iterations.contains(&IterationId::new(iteration_id)) {
         return Err(format!(
             "iteration #{iteration_id} is not mapped to outcome #{outcome_id}"
@@ -41,8 +41,8 @@ pub(crate) async fn handle_unmap_outcome_iteration(
         .and_then(serde_json::Value::as_u64)
         .ok_or("missing 'iteration_id' argument")?;
 
-    let r = refresh.ok_or("unmap_outcome_iteration requires refresh (RefreshDriver)")?;
-    let outcome = verify_iteration_mapped(r, select, outcome_id, iteration_id).await?;
+    let driver = refresh.ok_or("unmap_outcome_iteration requires refresh (RefreshDriver)")?;
+    let outcome = verify_iteration_mapped(driver, select, outcome_id, iteration_id).await?;
 
     let mut parent = outcome
         .body
@@ -54,14 +54,15 @@ pub(crate) async fn handle_unmap_outcome_iteration(
         .retain(|id| *id != IterationId::new(iteration_id));
     let outcome_body = parent.write_into_body(outcome.body.as_deref().unwrap_or_default());
     let optimistic = outcome_with_body(&outcome, &outcome_body);
-    r.update_body(outcome_id, outcome_body)
+    driver
+        .update_body(outcome_id, outcome_body)
         .await
         .map_err(|e| format!("#{outcome_id} iteration-unmap body update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Outcome(
         product_management::outcome::OutcomeAction::Upserted(vec![optimistic]),
     ));
 
-    let iteration = ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
+    let iteration = ensure_iteration_in_canonical_store(driver, select, iteration_id).await?;
     let mut child = iteration
         .body
         .as_deref()
@@ -69,7 +70,8 @@ pub(crate) async fn handle_unmap_outcome_iteration(
         .unwrap_or_default();
     child.outcome = None;
     let iteration_body = child.write_into_body(iteration.body.as_deref().unwrap_or_default());
-    r.update_body(iteration_id, iteration_body.clone())
+    driver
+        .update_body(iteration_id, iteration_body.clone())
         .await
         .map_err(|e| format!("#{iteration_id} outcome-FK-clear body update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Iteration(
@@ -109,11 +111,11 @@ pub(crate) async fn handle_reorder_outcome_iteration(
         .ok_or("outcome reorder needs --to <P> (the new 1-indexed priority-order)")?
         as u32;
 
-    let r = refresh.ok_or("reorder_outcome_iteration requires refresh (RefreshDriver)")?;
-    let outcome = verify_iteration_mapped(r, select, outcome_id, iteration_id).await?;
+    let driver = refresh.ok_or("reorder_outcome_iteration requires refresh (RefreshDriver)")?;
+    let outcome = verify_iteration_mapped(driver, select, outcome_id, iteration_id).await?;
 
     let (band_size, new_body) = reorder_iterations_within_outcome(
-        r,
+        driver,
         outcome_id,
         outcome.body.as_deref(),
         iteration_id,
@@ -131,7 +133,7 @@ pub(crate) async fn handle_reorder_outcome_iteration(
 }
 
 async fn reorder_iterations_within_outcome(
-    r: &Arc<dyn RefreshDriver>,
+    driver: &Arc<dyn RefreshDriver>,
     outcome_id: u64,
     outcome_body: Option<&str>,
     iteration_id: u64,
@@ -152,7 +154,8 @@ async fn reorder_iterations_within_outcome(
         .insert(insert_index, IterationId::new(iteration_id));
 
     let body = parent.write_into_body(outcome_body.unwrap_or_default());
-    r.update_body(outcome_id, body.clone())
+    driver
+        .update_body(outcome_id, body.clone())
         .await
         .map_err(|e| format!("#{outcome_id} outcome-reorder body update failed: {e}"))?;
     Ok((band_size, body))

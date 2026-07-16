@@ -39,8 +39,8 @@ pub(crate) async fn handle_reprioritize_outcome(
         })
         .transpose()?;
 
-    let r = refresh.ok_or("reprioritize_outcome requires refresh (RefreshDriver)")?;
-    let outcome = ensure_outcome_in_canonical_store(r, select, outcome_id).await?;
+    let driver = refresh.ok_or("reprioritize_outcome requires refresh (RefreshDriver)")?;
+    let outcome = ensure_outcome_in_canonical_store(driver, select, outcome_id).await?;
 
     let target_band = match requested_band {
         Some(band) => band,
@@ -54,7 +54,7 @@ pub(crate) async fn handle_reprioritize_outcome(
 
     let band_changed = outcome.horizon() != Some(target_band);
     if band_changed {
-        push_band_change(r, &codec, &meta, &outcome, target_band)?;
+        push_band_change(driver, &codec, &meta, &outcome, target_band)?;
     }
 
     let moved = outcome.with_horizon(
@@ -68,7 +68,9 @@ pub(crate) async fn handle_reprioritize_outcome(
 
     let mut updates: Vec<Outcome> = Vec::new();
     let position_note = match position {
-        Some(p) => reorder_within_band(r, &codec, &meta, &moved, target_band, p, &mut updates)?,
+        Some(p) => {
+            reorder_within_band(driver, &codec, &meta, &moved, target_band, p, &mut updates)?
+        }
         None => {
             if band_changed {
                 updates.push(moved);
