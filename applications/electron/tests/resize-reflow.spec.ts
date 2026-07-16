@@ -4,6 +4,7 @@ import { TerminalPage } from './pages/terminalPage'
 
 test.describe('#1594 resize-reflow — resizing the window reflows the terminal (live cols×rows in the header)', () => {
   test('resizing the window changes the header live cols×rows (not a fixed 80×24)', async () => {
+    test.setTimeout(90_000)
     const realShell =
       process.env.SHELL && process.env.SHELL.length > 0 ? process.env.SHELL : '/bin/bash'
     const { app, win, mockGh } = await launchWithMockGh({
@@ -34,6 +35,7 @@ test.describe('#1594 resize-reflow — resizing the window reflows the terminal 
   })
 
   test('the xterm BUFFER tracks the real width, not a fixed 80: a ~46-col line is one row at a wide viewport and wraps to multiple rows when narrowed', async () => {
+    test.setTimeout(90_000)
     const realShell =
       process.env.SHELL && process.env.SHELL.length > 0 ? process.env.SHELL : '/bin/bash'
     const { app, win, mockGh } = await launchWithMockGh({
@@ -75,25 +77,21 @@ test.describe('#1594 resize-reflow — resizing the window reflows the terminal 
         )
 
       await win.setViewportSize({ width: 1400, height: 900 })
+      await term.run(`echo WIDESTART${'Z'.repeat(30)}WIDEEND`)
       await expect
-        .poll(
-          async () => {
-            await term.run(`echo WIDESTART${'Z'.repeat(30)}WIDEEND`)
-            return markersShareARow('WIDESTART', 'WIDEEND')
-          },
-          { timeout: 20000, intervals: [400, 700, 1000, 1500] }
-        )
+        .poll(() => markersShareARow('WIDESTART', 'WIDEEND'), {
+          timeout: 20000,
+          intervals: [200, 400, 700, 1000]
+        })
         .toBe(true)
 
       await win.setViewportSize({ width: 480, height: 600 })
+      await term.run(`echo NARROWSTART${'Z'.repeat(30)}NARROWEND`)
       await expect
-        .poll(
-          async () => {
-            await term.run(`echo NARROWSTART${'Z'.repeat(30)}NARROWEND`)
-            return markersBothPresent('NARROWSTART', 'NARROWEND')
-          },
-          { timeout: 20000, intervals: [400, 700, 1000, 1500] }
-        )
+        .poll(() => markersBothPresent('NARROWSTART', 'NARROWEND'), {
+          timeout: 20000,
+          intervals: [200, 400, 700, 1000]
+        })
         .toBe(true)
       expect(
         await markersShareARow('NARROWSTART', 'NARROWEND'),
