@@ -1,6 +1,6 @@
 use super::event_meta::meta_for;
 use super::helpers::{compose_iteration_body, require_nonempty_string};
-use product_management::iteration::{Iteration, IterationId};
+use product_management::iteration::IterationId;
 use product_management::story::StoryId;
 
 pub(crate) async fn handle_create_iteration(
@@ -28,9 +28,9 @@ pub(crate) async fn handle_create_iteration(
         "name",
         "name is required: short name for the iteration (e.g., 'Aquila', 'Pegasus'). Surfaces as the GH issue title 'Iteration {name}'.",
     )?;
-    let r = refresh
+    let driver = refresh
         .ok_or("create_iteration requires refresh (RefreshDriver) — canonical store unavailable")?;
-    let existing_open_iteration = r
+    let existing_open_iteration = driver
         .iterations()
         .into_iter()
         .find(|it| !it.complete && it.title.eq_ignore_ascii_case(&format!("Iteration {name}")));
@@ -42,7 +42,7 @@ pub(crate) async fn handle_create_iteration(
     }
     let title = format!("Iteration {name}");
     let body = compose_iteration_body(name);
-    let next_order = r
+    let next_order = driver
         .iterations()
         .into_iter()
         .filter(|it| !it.complete)
@@ -52,44 +52,45 @@ pub(crate) async fn handle_create_iteration(
             product_management::iteration::label::DEFAULT_FIRST_POSITION,
             |m| m + product_management::iteration::label::DEFAULT_STEP,
         );
-    let id = r
-        .create_story(title.clone(), body.clone(), vec!["iteration".to_string()])
+    let iteration_label = "iteration".to_string();
+    let id = driver
+        .create_story(title.clone(), body.clone(), vec![iteration_label.clone()])
         .await
         .map_err(|e| format!("create_iteration adapter call failed: {e}"))?;
     let meta = meta_for(agent_name, actor_id);
     let filed_by = meta.actor.clone();
     let filed_at = meta.ts;
-    r.mutate_sync(product_management::story::events::StoryEvent::new(
-        meta.clone(),
-        StoryId::new(id),
-        product_management::story::events::StoryEventKind::TagAdded {
-            label: "iteration".to_string(),
-        },
-    ))
-    .map_err(|e| format!("#{id} iteration label enqueue failed: {e}"))?;
-    r.mutate_sync(product_management::story::events::StoryEvent::new(
-        meta,
-        StoryId::new(id),
-        product_management::story::events::StoryEventKind::TagAdded {
-            label: source_codec::gh_label_codec::GhLabelCodec.encode_iteration_order(next_order),
-        },
-    ))
-    .map_err(|e| format!("#{id} iteration-order label enqueue failed: {e}"))?;
+    driver
+        .mutate_sync(product_management::story::events::StoryEvent::new(
+            meta.clone(),
+            StoryId::new(id),
+            product_management::story::events::StoryEventKind::TagAdded {
+                label: iteration_label.clone(),
+            },
+        ))
+        .map_err(|e| format!("#{id} iteration label enqueue failed: {e}"))?;
+    let order_label = source_codec::gh_label_codec::GhLabelCodec.encode_iteration_order(next_order);
+    driver
+        .mutate_sync(product_management::story::events::StoryEvent::new(
+            meta,
+            StoryId::new(id),
+            product_management::story::events::StoryEventKind::TagAdded {
+                label: order_label.clone(),
+            },
+        ))
+        .map_err(|e| format!("#{id} iteration-order label enqueue failed: {e}"))?;
+    let labels = vec![iteration_label, order_label];
+    let iteration = source_codec::mapper::assemble_iteration(
+        IterationId::new(id),
+        title.clone(),
+        Some(body),
+        filed_at,
+        filed_by,
+        &labels,
+        false,
+    );
     dispatch.dispatch(crate::store::AppAction::Iteration(
-        product_management::iteration::IterationAction::Upserted(vec![Iteration {
-            id: IterationId::new(id),
-            title: title.clone(),
-            body: Some(body),
-            filed_at,
-            filed_by,
-            outcome: None,
-            iteration_order: Some(next_order),
-            stories: Vec::new(),
-            review_closers: Vec::new(),
-            dev_ok_by: Vec::new(),
-            is_current: false,
-            complete: false,
-        }]),
+        product_management::iteration::IterationAction::Upserted(vec![iteration]),
     ));
     Ok(format!("iteration created: #{id} {title}"))
 }

@@ -17,38 +17,40 @@ pub(crate) async fn handle_designate_current_iteration(
         .get("iteration_id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'iteration_id' argument")?;
-    let r = refresh.ok_or("designate_current_iteration requires refresh (RefreshDriver)")?;
-    let iteration = ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
+    let driver = refresh.ok_or("designate_current_iteration requires refresh (RefreshDriver)")?;
+    let iteration = ensure_iteration_in_canonical_store(driver, select, iteration_id).await?;
     if iteration.complete {
         return Err(format!(
             "iteration #{iteration_id} is closed; a closed iteration cannot be the current iteration"
         ));
     }
     let meta = || meta_for(agent_name, actor_id);
-    let prior: Vec<product_management::iteration::Iteration> = r
+    let prior: Vec<product_management::iteration::Iteration> = driver
         .iterations()
         .into_iter()
         .filter(|it| it.is_current && it.id != IterationId::new(iteration_id))
         .collect();
     for it in &prior {
-        r.mutate_sync(product_management::story::events::StoryEvent::new(
-            meta(),
-            StoryId::new(it.id.value()),
-            product_management::story::events::StoryEventKind::CurrentIterationCleared,
-        ))
-        .map_err(|e| {
-            format!(
-                "#{} current-designation-clear enqueue failed: {e}",
-                it.id.value()
-            )
-        })?;
+        driver
+            .mutate_sync(product_management::story::events::StoryEvent::new(
+                meta(),
+                StoryId::new(it.id.value()),
+                product_management::story::events::StoryEventKind::CurrentIterationCleared,
+            ))
+            .map_err(|e| {
+                format!(
+                    "#{} current-designation-clear enqueue failed: {e}",
+                    it.id.value()
+                )
+            })?;
     }
-    r.mutate_sync(product_management::story::events::StoryEvent::new(
-        meta(),
-        StoryId::new(iteration_id),
-        product_management::story::events::StoryEventKind::CurrentIterationDesignated,
-    ))
-    .map_err(|e| format!("#{iteration_id} current-designation enqueue failed: {e}"))?;
+    driver
+        .mutate_sync(product_management::story::events::StoryEvent::new(
+            meta(),
+            StoryId::new(iteration_id),
+            product_management::story::events::StoryEventKind::CurrentIterationDesignated,
+        ))
+        .map_err(|e| format!("#{iteration_id} current-designation enqueue failed: {e}"))?;
     let mut updates: Vec<product_management::iteration::Iteration> = prior
         .into_iter()
         .map(|it| product_management::iteration::Iteration {
@@ -84,18 +86,20 @@ pub(crate) async fn handle_close_pre_pickup_review(
         .get("iteration_id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'iteration_id' argument")?;
-    let r = refresh.ok_or("close_pre_pickup_review requires refresh (RefreshDriver)")?;
-    let iteration = ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
+    let driver = refresh.ok_or("close_pre_pickup_review requires refresh (RefreshDriver)")?;
+    let iteration = ensure_iteration_in_canonical_store(driver, select, iteration_id).await?;
     let role = role.to_string();
     let label = source_codec::gh_label_codec::GhLabelCodec.encode_iteration_review_closed(&role);
     let meta = meta_for(agent_name, actor_id);
-    r.mutate_sync(product_management::story::events::StoryEvent::new(
-        meta,
-        StoryId::new(iteration_id),
-        product_management::story::events::StoryEventKind::TagAdded { label },
-    ))
-    .map_err(|e| format!("#{iteration_id} review-close enqueue failed: {e}"))?;
-    r.drain_pending()
+    driver
+        .mutate_sync(product_management::story::events::StoryEvent::new(
+            meta,
+            StoryId::new(iteration_id),
+            product_management::story::events::StoryEventKind::TagAdded { label },
+        ))
+        .map_err(|e| format!("#{iteration_id} review-close enqueue failed: {e}"))?;
+    driver
+        .drain_pending()
         .await
         .map_err(|e| format!("#{iteration_id} review-close push failed: {e}"))?;
     let mut review_closers = iteration.review_closers.clone();
@@ -131,18 +135,20 @@ pub(crate) async fn handle_dev_ok_iteration(
         .get("iteration_id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'iteration_id' argument")?;
-    let r = refresh.ok_or("dev_ok_iteration requires refresh (RefreshDriver)")?;
-    let iteration = ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
+    let driver = refresh.ok_or("dev_ok_iteration requires refresh (RefreshDriver)")?;
+    let iteration = ensure_iteration_in_canonical_store(driver, select, iteration_id).await?;
     let role = role.to_string();
     let label = source_codec::gh_label_codec::GhLabelCodec.encode_iteration_dev_ok(&role);
     let meta = meta_for(agent_name, actor_id);
-    r.mutate_sync(product_management::story::events::StoryEvent::new(
-        meta,
-        StoryId::new(iteration_id),
-        product_management::story::events::StoryEventKind::TagAdded { label },
-    ))
-    .map_err(|e| format!("#{iteration_id} dev-OK enqueue failed: {e}"))?;
-    r.drain_pending()
+    driver
+        .mutate_sync(product_management::story::events::StoryEvent::new(
+            meta,
+            StoryId::new(iteration_id),
+            product_management::story::events::StoryEventKind::TagAdded { label },
+        ))
+        .map_err(|e| format!("#{iteration_id} dev-OK enqueue failed: {e}"))?;
+    driver
+        .drain_pending()
         .await
         .map_err(|e| format!("#{iteration_id} dev-OK push failed: {e}"))?;
     let mut dev_ok_by = iteration.dev_ok_by.clone();

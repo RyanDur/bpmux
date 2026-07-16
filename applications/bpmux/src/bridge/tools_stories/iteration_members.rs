@@ -8,13 +8,13 @@ use source_codec::relationships::{IterationRelationships, Relationships};
 use std::sync::Arc;
 
 async fn member_of(
-    r: &Arc<dyn RefreshDriver>,
+    driver: &Arc<dyn RefreshDriver>,
     select: &crate::store::Select,
     iteration_id: u64,
     story_id: u64,
 ) -> Result<(Iteration, Story), String> {
-    let iteration = ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
-    let story = ensure_story_in_canonical_store(r, select, story_id).await?;
+    let iteration = ensure_iteration_in_canonical_store(driver, select, iteration_id).await?;
+    let story = ensure_story_in_canonical_store(driver, select, story_id).await?;
     if !iteration.stories.contains(&StoryId::new(story_id)) {
         return Err(format!(
             "#{story_id} is not a member of iteration #{iteration_id}"
@@ -24,7 +24,7 @@ async fn member_of(
 }
 
 async fn rewrite_members(
-    r: &Arc<dyn RefreshDriver>,
+    driver: &Arc<dyn RefreshDriver>,
     dispatch: &crate::store::Dispatch,
     iteration: &Iteration,
     stories: Vec<StoryId>,
@@ -37,7 +37,8 @@ async fn rewrite_members(
         .unwrap_or_default();
     rel.stories = stories.clone();
     let body = rel.write_into_body(iteration.body.as_deref().unwrap_or_default());
-    r.update_body(id, body)
+    driver
+        .update_body(id, body)
         .await
         .map_err(|e| format!("#{id} iteration-member body update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Iteration(
@@ -50,7 +51,7 @@ async fn rewrite_members(
 }
 
 pub(crate) async fn set_member_position(
-    r: &Arc<dyn RefreshDriver>,
+    driver: &Arc<dyn RefreshDriver>,
     select: &crate::store::Select,
     dispatch: &crate::store::Dispatch,
     iteration_id: u64,
@@ -58,7 +59,7 @@ pub(crate) async fn set_member_position(
     position: u32,
 ) -> Result<(), String> {
     let target = StoryId::new(story_id);
-    let iteration = ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
+    let iteration = ensure_iteration_in_canonical_store(driver, select, iteration_id).await?;
     let all_iterations =
         select.select(|state| product_management::iteration::all(&state.iterations));
     for other in all_iterations {
@@ -68,17 +69,17 @@ pub(crate) async fn set_member_position(
         }
         let mut other_stories = other.stories.clone();
         other_stories.retain(|n| *n != target);
-        rewrite_members(r, dispatch, &other, other_stories).await?;
+        rewrite_members(driver, dispatch, &other, other_stories).await?;
     }
     let mut stories = iteration.stories.clone();
     stories.retain(|n| *n != target);
     let insert_index = (position.max(1) as usize - 1).min(stories.len());
     stories.insert(insert_index, target);
-    rewrite_members(r, dispatch, &iteration, stories).await
+    rewrite_members(driver, dispatch, &iteration, stories).await
 }
 
 pub(crate) async fn remove_member_everywhere(
-    r: &Arc<dyn RefreshDriver>,
+    driver: &Arc<dyn RefreshDriver>,
     select: &crate::store::Select,
     dispatch: &crate::store::Dispatch,
     story_id: u64,
@@ -92,7 +93,7 @@ pub(crate) async fn remove_member_everywhere(
         }
         let mut stories = iteration.stories.clone();
         stories.retain(|n| *n != target);
-        rewrite_members(r, dispatch, &iteration, stories).await?;
+        rewrite_members(driver, dispatch, &iteration, stories).await?;
     }
     Ok(())
 }
@@ -119,12 +120,12 @@ pub(crate) async fn handle_remove_iteration_member(
         .filter(|r| !r.trim().is_empty())
         .ok_or("remove-member needs --reason <R> (destructive scope-cut; the reason is the audit-trail)")?;
 
-    let r = refresh.ok_or("remove_iteration_member requires refresh (RefreshDriver)")?;
-    let (iteration, story) = member_of(r, select, iteration_id, story_id).await?;
+    let driver = refresh.ok_or("remove_iteration_member requires refresh (RefreshDriver)")?;
+    let (iteration, story) = member_of(driver, select, iteration_id, story_id).await?;
 
     let mut stories = iteration.stories.clone();
     stories.retain(|n| *n != StoryId::new(story_id));
-    rewrite_members(r, dispatch, &iteration, stories).await?;
+    rewrite_members(driver, dispatch, &iteration, stories).await?;
 
     let state_flag = match story.state {
         Work::NotStarted => String::new(),
@@ -156,14 +157,14 @@ pub(crate) async fn handle_move_iteration_member(
             .and_then(serde_json::Value::as_u64)
             .ok_or("move-member needs --to <P> (the new 1-indexed position)")? as u32;
 
-    let r = refresh.ok_or("move_iteration_member requires refresh (RefreshDriver)")?;
-    let (iteration, _) = member_of(r, select, iteration_id, story_id).await?;
+    let driver = refresh.ok_or("move_iteration_member requires refresh (RefreshDriver)")?;
+    let (iteration, _) = member_of(driver, select, iteration_id, story_id).await?;
 
     let mut stories = iteration.stories.clone();
     stories.retain(|n| *n != StoryId::new(story_id));
     let insert_index = (position.max(1) as usize - 1).min(stories.len());
     stories.insert(insert_index, StoryId::new(story_id));
-    rewrite_members(r, dispatch, &iteration, stories).await?;
+    rewrite_members(driver, dispatch, &iteration, stories).await?;
 
     Ok(format!(
         "#{story_id} moved to position {position} in iteration #{iteration_id}"

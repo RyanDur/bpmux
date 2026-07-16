@@ -27,25 +27,31 @@ pub(crate) async fn handle_reorder_iteration(
         .ok_or("iteration reorder needs --to <P> (the new 1-indexed planning order)")?
         as u32;
 
-    let r = refresh.ok_or("reorder_iteration requires refresh (RefreshDriver)")?;
-    ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
+    let driver = refresh.ok_or("reorder_iteration requires refresh (RefreshDriver)")?;
+    ensure_iteration_in_canonical_store(driver, select, iteration_id).await?;
 
-    let band_size =
-        renumber_iteration_order(r, dispatch, agent_name, actor_id, iteration_id, position)?;
+    let band_size = renumber_iteration_order(
+        driver,
+        dispatch,
+        agent_name,
+        actor_id,
+        iteration_id,
+        position,
+    )?;
     Ok(format!(
         "iteration #{iteration_id} reordered to planning position {position} of {band_size}"
     ))
 }
 
 fn renumber_iteration_order(
-    r: &Arc<dyn RefreshDriver>,
+    driver: &Arc<dyn RefreshDriver>,
     dispatch: &crate::store::Dispatch,
     agent_name: &str,
     actor_id: Option<&str>,
     moved: u64,
     requested_position: u32,
 ) -> Result<u32, String> {
-    let mut actives: Vec<Iteration> = r
+    let mut actives: Vec<Iteration> = driver
         .iterations()
         .into_iter()
         .filter(|iteration| !iteration.complete)
@@ -75,23 +81,25 @@ fn renumber_iteration_order(
             continue;
         }
         if let Some(old_position) = iteration.iteration_order {
-            r.mutate_sync(StoryEvent::new(
+            driver
+                .mutate_sync(StoryEvent::new(
+                    meta_for(agent_name, actor_id),
+                    StoryId::new(*number),
+                    StoryEventKind::TagRemoved {
+                        label: GhLabelCodec.encode_iteration_order(old_position),
+                    },
+                ))
+                .map_err(|e| format!("#{number} iteration-order clear enqueue failed: {e}"))?;
+        }
+        driver
+            .mutate_sync(StoryEvent::new(
                 meta_for(agent_name, actor_id),
                 StoryId::new(*number),
-                StoryEventKind::TagRemoved {
-                    label: GhLabelCodec.encode_iteration_order(old_position),
+                StoryEventKind::TagAdded {
+                    label: GhLabelCodec.encode_iteration_order(new_position),
                 },
             ))
-            .map_err(|e| format!("#{number} iteration-order clear enqueue failed: {e}"))?;
-        }
-        r.mutate_sync(StoryEvent::new(
-            meta_for(agent_name, actor_id),
-            StoryId::new(*number),
-            StoryEventKind::TagAdded {
-                label: GhLabelCodec.encode_iteration_order(new_position),
-            },
-        ))
-        .map_err(|e| format!("#{number} iteration-order set enqueue failed: {e}"))?;
+            .map_err(|e| format!("#{number} iteration-order set enqueue failed: {e}"))?;
         updates.push(Iteration {
             iteration_order: Some(new_position),
             ..iteration.clone()
@@ -123,10 +131,11 @@ pub(crate) async fn handle_rename_iteration(
         .filter(|t| !t.trim().is_empty())
         .ok_or("iteration rename needs --name <N>")?;
 
-    let r = refresh.ok_or("rename_iteration requires refresh (RefreshDriver)")?;
-    let iteration = ensure_iteration_in_canonical_store(r, select, iteration_id).await?;
+    let driver = refresh.ok_or("rename_iteration requires refresh (RefreshDriver)")?;
+    let iteration = ensure_iteration_in_canonical_store(driver, select, iteration_id).await?;
     let title = format!("Iteration {name}");
-    r.update_title(iteration_id, title.clone())
+    driver
+        .update_title(iteration_id, title.clone())
         .await
         .map_err(|e| format!("#{iteration_id} name update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Iteration(

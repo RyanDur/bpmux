@@ -69,7 +69,7 @@ pub fn decode_iteration_from_story(story: &Story, labels: &[String], complete: b
     )
 }
 
-fn assemble_iteration(
+pub fn assemble_iteration(
     id: IterationId,
     title: String,
     body: Option<String>,
