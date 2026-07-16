@@ -92,6 +92,8 @@ mod action;
 mod listeners;
 
 #[cfg(test)]
+mod listeners_tests;
+#[cfg(test)]
 mod reduce_tests;
 
 pub use action::CiAction;

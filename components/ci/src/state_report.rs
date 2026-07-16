@@ -1,4 +1,4 @@
-use crate::{CiState, RunEntry, WorkflowSummary, classify_runs, github_actions_url};
+use crate::{CiEvent, CiState, RunEntry, WorkflowSummary, classify_runs, github_actions_url};
 use crate::{MAX_BACKOFF, POLL_INTERVAL};
 
 #[derive(Debug, Clone, serde::Serialize, PartialEq, Eq)]
@@ -19,8 +19,7 @@ pub struct CiStateReport {
     pub workflows: Vec<WorkflowSummary>,
 }
 
-pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
-    let event = classify_runs(runs);
+pub(crate) fn report_from_event(event: CiEvent) -> CiStateReport {
     let conclusion = match event.state {
         CiState::Green => "success",
         CiState::Red => "failure",
@@ -28,12 +27,11 @@ pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
         CiState::QuotaExhausted => "quota_exhausted",
         CiState::Unknown => "unknown",
     };
-    let url = github_actions_url();
     CiStateReport {
         conclusion,
         last_run_id: event.run_id,
         branch: "main",
-        url,
+        url: github_actions_url(),
         head_sha: event.sha,
         display_title: event.title,
         last_updated_at: None,
@@ -42,6 +40,10 @@ pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
         backoff_cap_secs: MAX_BACKOFF.as_secs(),
         workflows: event.workflows,
     }
+}
+
+pub fn build_ci_state_report(runs: &[RunEntry]) -> CiStateReport {
+    report_from_event(classify_runs(runs))
 }
 
 pub fn unknown_ci_state_report() -> CiStateReport {
