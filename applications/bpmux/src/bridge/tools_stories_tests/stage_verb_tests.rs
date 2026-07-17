@@ -77,7 +77,7 @@ mod stage_verb_behavior {
         let story = orch.story(8100).unwrap();
         assert_eq!(story.state, Work::InProgress);
         assert_eq!(
-            orch.story_fine_stage(&story),
+            select.select(|state| board::fine_stage(&story, &state.board)),
             Some(Stage::DeskCheck),
             "passing the first middle stage lands the story at the next configured stage"
         );
@@ -141,7 +141,7 @@ mod stage_verb_behavior {
         let story = orch.story(8103).unwrap();
         assert_eq!(story.state, Work::InProgress);
         assert_eq!(
-            orch.story_fine_stage(&story),
+            select.select(|state| board::fine_stage(&story, &state.board)),
             Some(Stage::Dev),
             "a failed desk-check judgment sends the story back one stage"
         );

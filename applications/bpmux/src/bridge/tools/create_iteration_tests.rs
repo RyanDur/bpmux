@@ -199,7 +199,7 @@ async fn create_iteration_attaches_iteration_label_atomically_at_source() {
         .await
         .expect("refetch from source succeeds");
     refresh
-        .backing_story(id)
+        .story(id)
         .expect("the issue is present after a source refetch");
     assert!(
         adapter

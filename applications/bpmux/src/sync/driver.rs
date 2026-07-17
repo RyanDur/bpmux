@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
 use crate::sync::{ConditionalBody, SyncError};
-use product_management::epic::{Epic, EpicId};
 use product_management::evidence::Evidence;
 use product_management::iteration::{Iteration, IterationId};
 use product_management::outcome::Outcome;
 use product_management::story::events::StoryEvent;
-use product_management::story::{CastVerdict, Stage, Story};
+use product_management::story::{CastVerdict, Story};
 
 use source_sync::SyncStatus;
 
@@ -51,9 +50,6 @@ pub trait RefreshDriver: Send + Sync {
         initial_labels: Vec<String>,
     ) -> BoxedFuture<'_, Result<u64, SyncError>>;
     fn story(&self, id: u64) -> Option<Story>;
-    fn story_fine_stage(&self, story: &Story) -> Option<Stage> {
-        board::fine_stage(story, &board::BoardPlacements::default())
-    }
     fn story_held_stage(&self, story: &Story) -> Option<workflow::StageId> {
         board::held_stage(story, &board::BoardPlacements::default())
     }
@@ -71,15 +67,6 @@ pub trait RefreshDriver: Send + Sync {
         self.iterations()
             .into_iter()
             .find(|iteration| iteration.id == iteration_id)
-    }
-    fn epics(&self) -> Vec<Epic> {
-        Vec::new()
-    }
-    fn epic(&self, epic_id: EpicId) -> Option<Epic> {
-        self.epics().into_iter().find(|epic| epic.id == epic_id)
-    }
-    fn backing_story(&self, id: u64) -> Option<Story> {
-        self.story(id)
     }
     fn store_is_empty(&self) -> bool {
         self.all_stories().is_empty()

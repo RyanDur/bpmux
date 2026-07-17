@@ -4,10 +4,9 @@ use super::SyncOrchestrator;
 use source_sync::{MutationId, QueuedWrite};
 
 use crate::sync::SourceAdapter;
-use product_management::epic::{self, Epic};
 use product_management::iteration::{self, Iteration};
 use product_management::outcome::{self, Outcome};
-use product_management::story::{self, Stage, Story, StoryId};
+use product_management::story::{self, Story, StoryId};
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
     pub(super) fn set_select(&self, select: crate::store::Select) {
@@ -86,13 +85,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             .unwrap_or_default()
     }
 
-    pub(super) fn read_story_fine_stage(&self, story: &Story) -> Option<Stage> {
-        self.select
-            .get()
-            .and_then(|s| s.select(|state| Some(board::fine_stage(story, &state.board))))
-            .unwrap_or_else(|| board::fine_stage(story, &board::BoardPlacements::default()))
-    }
-
     pub(super) fn read_story_held_stage(&self, story: &Story) -> Option<workflow::StageId> {
         self.select
             .get()
@@ -132,13 +124,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self.select
             .get()
             .map(|s| s.select(|state| iteration::all(&state.iterations)))
-            .unwrap_or_default()
-    }
-
-    pub(super) fn read_epics(&self) -> Vec<Epic> {
-        self.select
-            .get()
-            .map(|s| s.select(|state| epic::all(&state.epics)))
             .unwrap_or_default()
     }
 }

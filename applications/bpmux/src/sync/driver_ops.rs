@@ -42,10 +42,6 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.read_iterations()
     }
 
-    fn epics(&self) -> Vec<product_management::epic::Epic> {
-        self.read_epics()
-    }
-
     fn snapshot_status(&self) -> SyncStatus {
         self.snapshot_status()
     }
@@ -90,10 +86,6 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.read_story(StoryId::new(number))
     }
 
-    fn story_fine_stage(&self, story: &Story) -> Option<product_management::story::Stage> {
-        self.read_story_fine_stage(story)
-    }
-
     fn story_held_stage(&self, story: &Story) -> Option<workflow::StageId> {
         self.read_story_held_stage(story)
     }
@@ -104,10 +96,6 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
 
     fn evidence_for_story(&self, id: u64) -> Vec<product_management::evidence::Evidence> {
         self.read_evidence_for_story(StoryId::new(id))
-    }
-
-    fn backing_story(&self, id: u64) -> Option<Story> {
-        self.read_story(StoryId::new(id))
     }
 
     fn store_is_empty(&self) -> bool {

@@ -3,26 +3,10 @@ use std::sync::Arc;
 use super::{AggregatedReaction, CiSnapshot, RosterMember, Select, Store, ci, reactions, roster};
 #[cfg(test)]
 use super::{CiBroadcastListener, ReactionsBroadcastListener, RosterBroadcastListener};
-use product_management::epic::{self, Epic};
-use product_management::iteration::{self, Iteration};
-use product_management::outcome::{self, Outcome};
 
 impl Store {
     pub fn selector(&self) -> Select {
         Select::new(Arc::downgrade(&self.app_store))
-    }
-
-    pub fn outcomes(&self) -> Vec<Outcome> {
-        self.app_store.select(|state| outcome::all(&state.outcomes))
-    }
-
-    pub fn iterations(&self) -> Vec<Iteration> {
-        self.app_store
-            .select(|state| iteration::all(&state.iterations))
-    }
-
-    pub fn epics(&self) -> Vec<Epic> {
-        self.app_store.select(|state| epic::all(&state.epics))
     }
 
     pub fn ci_snapshot(&self) -> Option<CiSnapshot> {

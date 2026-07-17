@@ -190,7 +190,10 @@ mod reopen_on_state_transition_tests {
         orch.drain_pending().await.unwrap();
         let story = orch.story(7200).unwrap();
         assert_eq!(story.state, Work::InProgress);
-        assert_eq!(orch.story_fine_stage(&story), Some(Stage::DeskCheck));
+        assert_eq!(
+            select.select(|state| board::fine_stage(&story, &state.board)),
+            Some(Stage::DeskCheck)
+        );
 
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7200));
@@ -244,7 +247,10 @@ mod reopen_on_state_transition_tests {
         orch.drain_pending().await.unwrap();
         let story = orch.story(7200).unwrap();
         assert_eq!(story.state, Work::InProgress);
-        assert_eq!(orch.story_fine_stage(&story), Some(Stage::DeskCheck));
+        assert_eq!(
+            select.select(|state| board::fine_stage(&story, &state.board)),
+            Some(Stage::DeskCheck)
+        );
 
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7200));
