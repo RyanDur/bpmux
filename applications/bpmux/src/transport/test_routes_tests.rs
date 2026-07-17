@@ -19,6 +19,10 @@ fn fresh_test_hub() -> Arc<hub::Hub> {
     Arc::new(hub::Hub::new(dir.keep(), "test:owner".to_string(), wake_tx))
 }
 
+fn stories_in_store(select: &crate::store::Select) -> Vec<product_management::story::Story> {
+    select.select(|state| product_management::story::slice::all(&state.stories))
+}
+
 async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>, crate::store::Select) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
@@ -188,7 +192,7 @@ async fn roundtrip_coherence_view_board_reflects_new_story() {
 
 #[tokio::test]
 async fn roundtrip_coherence_user_job_and_falsifier_preserved_in_body() {
-    let (router, refresh, _select) = fixture_test_mode_on().await;
+    let (router, refresh, select) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] roundtrip-body-marker",
         "user_job":"USER_JOB_MARKER_42",
@@ -197,7 +201,7 @@ async fn roundtrip_coherence_user_job_and_falsifier_preserved_in_body() {
     let resp = post_create_story(router, body).await;
     assert_eq!(resp.status(), StatusCode::OK);
 
-    let stories = refresh.all_stories();
+    let stories = stories_in_store(&select);
     assert_eq!(stories.len(), 1, "exactly one story present");
 
     let stored_body = refresh
@@ -245,7 +249,7 @@ async fn rest_get_board_auto_reingests_when_orchestrator_store_is_empty() {
         .layer(axum::Extension(store.select()));
 
     assert!(
-        orch.all_stories().is_empty(),
+        stories_in_store(&store.select()).is_empty(),
         "store starts empty (simulates startup-ingest-failed or post-restart cache-loss)"
     );
 
@@ -265,7 +269,7 @@ async fn rest_get_board_auto_reingests_when_orchestrator_store_is_empty() {
     );
     assert_eq!(stories[0]["id"].as_u64(), Some(5050));
     assert!(
-        !orch.all_stories().is_empty(),
+        !stories_in_store(&store.select()).is_empty(),
         "post-call store populated; recovery completed"
     );
 }
@@ -303,7 +307,7 @@ async fn roundtrip_coherence_api_board_reflects_new_story_in_test_mode() {
 
 #[tokio::test]
 async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic() {
-    let (router, refresh, _select) = fixture_test_mode_on().await;
+    let (router, _refresh, select) = fixture_test_mode_on().await;
     let feature = r#"{
         "title":"[Feature] not-an-epic",
         "user_job":"When testing, dev needs negative-path coverage.",
@@ -312,7 +316,7 @@ async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic() {
     let resp = post_create_story(router.clone(), feature).await;
     assert_eq!(resp.status(), StatusCode::OK);
 
-    let parent_id = refresh.all_stories()[0].id.value();
+    let parent_id = stories_in_store(&select)[0].id.value();
 
     let child = format!(
         r#"{{
@@ -331,7 +335,7 @@ async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic() {
         "rejection names the type-mismatch reason; got {err}"
     );
     assert_eq!(
-        refresh.all_stories().len(),
+        stories_in_store(&select).len(),
         1,
         "rejected request did not create a child"
     );
@@ -349,7 +353,7 @@ async fn post_comment_on_story(router: axum::Router, body: &str) -> axum::http::
 
 #[tokio::test]
 async fn comment_on_story_response_correctness_happy_path_returns_message() {
-    let (router, refresh, _select) = fixture_test_mode_on().await;
+    let (router, _refresh, select) = fixture_test_mode_on().await;
     let create = r#"{
         "title":"[Feature] comment-target",
         "user_job":"When testing comment_on_story, dev needs a target story.",
@@ -357,7 +361,7 @@ async fn comment_on_story_response_correctness_happy_path_returns_message() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_id = refresh.all_stories()[0].id.value();
+    let target_id = stories_in_store(&select)[0].id.value();
 
     let comment = format!(
         r#"{{
@@ -381,7 +385,7 @@ async fn comment_on_story_response_correctness_happy_path_returns_message() {
 
 #[tokio::test]
 async fn comment_on_story_response_correctness_rejects_empty_body() {
-    let (router, refresh, _select) = fixture_test_mode_on().await;
+    let (router, _refresh, select) = fixture_test_mode_on().await;
     let create = r#"{
         "title":"[Feature] comment-target",
         "user_job":"When testing empty-body validation, dev needs a target story.",
@@ -389,7 +393,7 @@ async fn comment_on_story_response_correctness_rejects_empty_body() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_id = refresh.all_stories()[0].id.value();
+    let target_id = stories_in_store(&select)[0].id.value();
 
     let comment = format!(
         r#"{{
@@ -409,7 +413,7 @@ async fn comment_on_story_response_correctness_rejects_empty_body() {
 
 #[tokio::test]
 async fn comment_on_story_roundtrip_view_comments_reflects_new_comment() {
-    let (router, refresh, select) = fixture_test_mode_on().await;
+    let (router, _refresh, select) = fixture_test_mode_on().await;
     let create = r#"{
         "title":"[Feature] comment-roundtrip",
         "user_job":"When testing comment roundtrip, dev needs a target story.",
@@ -417,7 +421,7 @@ async fn comment_on_story_roundtrip_view_comments_reflects_new_comment() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_id = refresh.all_stories()[0].id.value();
+    let target_id = stories_in_store(&select)[0].id.value();
 
     let marker = "ROUNDTRIP_MARKER_C1";
     let comment = format!(
@@ -455,7 +459,7 @@ async fn post_close_story(router: axum::Router, body: &str) -> axum::http::Respo
 
 #[tokio::test]
 async fn close_story_response_correctness_happy_path_returns_message() {
-    let (router, refresh, _select) = fixture_test_mode_on().await;
+    let (router, _refresh, select) = fixture_test_mode_on().await;
     let create = r#"{
         "title":"[Feature] close-target",
         "user_job":"When testing close_story, dev needs a target story.",
@@ -463,7 +467,7 @@ async fn close_story_response_correctness_happy_path_returns_message() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_id = refresh.all_stories()[0].id.value();
+    let target_id = stories_in_store(&select)[0].id.value();
 
     let close = format!(
         r#"{{
@@ -491,7 +495,7 @@ async fn close_story_response_correctness_happy_path_returns_message() {
 
 #[tokio::test]
 async fn close_story_response_correctness_rejects_empty_reason() {
-    let (router, refresh, _select) = fixture_test_mode_on().await;
+    let (router, _refresh, select) = fixture_test_mode_on().await;
     let create = r#"{
         "title":"[Feature] close-target",
         "user_job":"When testing empty-reason validation, dev needs a target story.",
@@ -499,7 +503,7 @@ async fn close_story_response_correctness_rejects_empty_reason() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_id = refresh.all_stories()[0].id.value();
+    let target_id = stories_in_store(&select)[0].id.value();
 
     let close = format!(
         r#"{{
@@ -523,7 +527,7 @@ async fn close_story_response_correctness_rejects_empty_reason() {
 
 #[tokio::test]
 async fn close_story_roundtrip_api_board_reflects_closed_state() {
-    let (router, refresh, _select) = fixture_test_mode_on().await;
+    let (router, _refresh, select) = fixture_test_mode_on().await;
     let create = r#"{
         "title":"[Feature] close-roundtrip",
         "user_job":"When testing close_story roundtrip, dev needs a target story.",
@@ -531,7 +535,7 @@ async fn close_story_roundtrip_api_board_reflects_closed_state() {
     }"#;
     let resp = post_create_story(router.clone(), create).await;
     assert_eq!(resp.status(), StatusCode::OK);
-    let target_id = refresh.all_stories()[0].id.value();
+    let target_id = stories_in_store(&select)[0].id.value();
 
     let close = format!(
         r#"{{

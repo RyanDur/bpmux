@@ -86,10 +86,6 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.read_story(StoryId::new(number))
     }
 
-    fn all_stories(&self) -> Vec<Story> {
-        self.read_all_stories()
-    }
-
     fn bind_dispatch(&self, dispatch: crate::store::Dispatch) {
         self.bind_dispatch(dispatch);
     }

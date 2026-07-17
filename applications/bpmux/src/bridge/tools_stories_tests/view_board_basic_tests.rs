@@ -38,9 +38,11 @@ async fn view_board_auto_reingests_when_store_is_empty() {
     store.bind_refresh(&orch);
     let select = store.select();
     assert!(
-        orch.all_stories().is_empty(),
+        select
+            .select(|state| product_management::story::slice::all(&state.stories))
+            .is_empty(),
         "store must start empty (simulates post-restart cache-loss); got: {:?}",
-        orch.all_stories()
+        select.select(|state| product_management::story::slice::all(&state.stories))
     );
     let out = handle_view_board(&serde_json::Map::new(), Some(&orch), &select)
         .await
@@ -50,7 +52,9 @@ async fn view_board_auto_reingests_when_store_is_empty() {
         "view_board should have triggered re-ingest from adapter; output:\n{out}"
     );
     assert!(
-        !orch.all_stories().is_empty(),
+        !select
+            .select(|state| product_management::story::slice::all(&state.stories))
+            .is_empty(),
         "post-call store should be populated; auto-recovery completed"
     );
 }
@@ -83,7 +87,9 @@ async fn view_board_handles_refresh_succeeding_with_empty_result_without_errors(
         "view_board returns honest-empty when source has no stories; output:\n{out}"
     );
     assert!(
-        orch.all_stories().is_empty(),
+        select
+            .select(|state| product_management::story::slice::all(&state.stories))
+            .is_empty(),
         "post-call store remains empty when source-of-truth is empty (silently-empty case logged via diag per #506 observability fix)"
     );
 }
@@ -114,7 +120,9 @@ async fn view_board_handles_refresh_failing_returns_honest_empty_with_diag_log()
         "view_board returns honest-empty when ingest fails; output:\n{out}"
     );
     assert!(
-        orch.all_stories().is_empty(),
+        select
+            .select(|state| product_management::story::slice::all(&state.stories))
+            .is_empty(),
         "store stays empty when ingest fails; diag log captures the failure for #506 observability"
     );
 }

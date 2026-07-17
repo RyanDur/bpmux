@@ -40,15 +40,15 @@ fn seed_iteration(id: u64) -> (Story, Vec<String>) {
     (s, vec!["iteration".to_string()])
 }
 
-async fn build_empty_refresh() -> Arc<dyn RefreshDriver> {
+async fn build_empty_refresh() -> (Arc<dyn RefreshDriver>, crate::store::Select) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let bound_store = crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
-    orch
+    (orch, bound_store)
 }
 
 fn typed_seed(id: u64, story_type: StoryKind, label: &str) -> (Story, Vec<String>) {
@@ -127,7 +127,7 @@ fn args(title: &str, horizon: &str) -> Map<String, Value> {
 
 #[tokio::test]
 async fn pm_creates_a_first_class_outcome_distinct_from_epic_with_horizon_1738() {
-    let refresh = build_empty_refresh().await;
+    let (refresh, bound_store) = build_empty_refresh().await;
     let (dispatch, mut rx) = dispatch_channel();
     let result = handle_create_outcome(
         &args("The team runs on its own infra", "next"),
@@ -148,10 +148,10 @@ async fn pm_creates_a_first_class_outcome_distinct_from_epic_with_horizon_1738()
             "the outcome is a first-class Outcome entity, NOT an Epic — no epic≡outcome conflation",
         );
     assert!(
-        !refresh
-            .all_stories()
+        !bound_store
+            .select(|state| product_management::story::slice::all(&state.stories))
             .iter()
-            .any(|s| s.title == "The team runs on its own infra"),
+            .any(|story| story.title == "The team runs on its own infra"),
         "an outcome must never be modelled as a story/epic — it lives in the outcome collection, never the board's story set"
     );
     assert_eq!(
@@ -163,7 +163,7 @@ async fn pm_creates_a_first_class_outcome_distinct_from_epic_with_horizon_1738()
 
 #[tokio::test]
 async fn create_outcome_is_pm_lane_non_pm_refused_1738() {
-    let refresh = build_empty_refresh().await;
+    let (refresh, _bound_store) = build_empty_refresh().await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_create_outcome(
         &args("X", "now"),
@@ -180,7 +180,7 @@ async fn create_outcome_is_pm_lane_non_pm_refused_1738() {
 
 #[tokio::test]
 async fn create_outcome_rejects_invalid_horizon_1738() {
-    let refresh = build_empty_refresh().await;
+    let (refresh, _bound_store) = build_empty_refresh().await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_create_outcome(
         &args("X", "someday"),

@@ -697,7 +697,7 @@ async fn create_story_for_epic_title_dispatches_epic_upsert_and_stays_out_of_sto
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let bound_store = crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
 
     let (dispatch, mut rx) = crate::store::Dispatch::recording();
@@ -731,7 +731,10 @@ async fn create_story_for_epic_title_dispatches_epic_upsert_and_stays_out_of_sto
         Err(_) => panic!("expected an EpicAction::Upserted dispatch, got none"),
     };
     assert!(
-        orch.all_stories().iter().all(|s| s.id.value() != epic_id),
+        bound_store
+            .select(|state| product_management::story::slice::all(&state.stories))
+            .iter()
+            .all(|story| story.id.value() != epic_id),
         "a created epic lives only in the epic slice — it must not linger in the story store / state-lanes"
     );
 }

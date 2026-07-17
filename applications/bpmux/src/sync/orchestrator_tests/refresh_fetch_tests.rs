@@ -80,7 +80,13 @@ async fn refresh_all_is_alias_for_ingest_once() {
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     orchestrator.refresh_all().await.unwrap();
-    assert_eq!(orchestrator.all_stories().len(), 2);
+    assert_eq!(
+        handle
+            .select()
+            .select(|state| product_management::story::slice::all(&state.stories))
+            .len(),
+        2
+    );
 }
 
 #[tokio::test]

@@ -136,5 +136,4 @@ fn an_unbound_orchestrator_drops_writes_and_reads_come_back_empty() {
         orch.story(1).is_none(),
         "an unbound write is dropped — reads stay empty instead of panicking"
     );
-    assert!(orch.all_stories().is_empty());
 }

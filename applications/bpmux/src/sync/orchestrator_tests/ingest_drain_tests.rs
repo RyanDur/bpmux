@@ -28,7 +28,13 @@ async fn ingest_once_populates_store_from_adapter() {
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     orchestrator.ingest_once().await.unwrap();
-    assert_eq!(orchestrator.all_stories().len(), 2);
+    assert_eq!(
+        handle
+            .select()
+            .select(|state| product_management::story::slice::all(&state.stories))
+            .len(),
+        2
+    );
     assert!(orchestrator.story(1).is_some());
     assert!(orchestrator.story(2).is_some());
     assert!(orchestrator.snapshot_status().last_ingest_at.is_some());
@@ -104,7 +110,13 @@ async fn mutate_applies_event_locally_and_enqueues_for_push() {
             },
         ))
         .unwrap();
-    assert_eq!(orchestrator.all_stories().len(), 1);
+    assert_eq!(
+        handle
+            .select()
+            .select(|state| product_management::story::slice::all(&state.stories))
+            .len(),
+        1
+    );
     assert_eq!(orchestrator.story(100).unwrap().title, "test");
     assert_eq!(orchestrator.snapshot_status().pending_events, 1);
     assert!(

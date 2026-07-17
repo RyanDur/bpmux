@@ -49,7 +49,6 @@ pub trait RefreshDriver: Send + Sync {
         initial_labels: Vec<String>,
     ) -> BoxedFuture<'_, Result<u64, SyncError>>;
     fn story(&self, id: u64) -> Option<Story>;
-    fn all_stories(&self) -> Vec<Story>;
     fn outcomes(&self) -> Vec<Outcome> {
         Vec::new()
     }

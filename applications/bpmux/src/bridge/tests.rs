@@ -367,9 +367,6 @@ mod ingest_poll_loop_tests {
         fn story(&self, _number: u64) -> Option<product_management::story::Story> {
             None
         }
-        fn all_stories(&self) -> Vec<product_management::story::Story> {
-            Vec::new()
-        }
         fn remove_story(&self, _id: u64) -> Option<product_management::story::Story> {
             None
         }

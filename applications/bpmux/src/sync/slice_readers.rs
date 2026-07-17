@@ -78,13 +78,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             .and_then(|s| s.select(|state| story::slice::get(&state.stories, id)))
     }
 
-    pub(super) fn read_all_stories(&self) -> Vec<Story> {
-        self.select
-            .get()
-            .map(|s| s.select(|state| story::slice::all(&state.stories)))
-            .unwrap_or_default()
-    }
-
     pub(super) fn read_outcomes(&self) -> Vec<Outcome> {
         self.select
             .get()
