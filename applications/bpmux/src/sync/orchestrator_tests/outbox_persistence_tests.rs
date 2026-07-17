@@ -30,13 +30,11 @@ mod outbox_persistence {
         initial: Vec<QueuedWrite>,
         stories: Vec<Story>,
     ) -> (Arc<SyncOrchestrator>, SeededStore) {
-        let orch = Arc::new(SyncOrchestrator::new(
+        let handle = SeededStore::new_wired_outbox(sink, initial);
+        let orch = handle.build_orch(
             Arc::clone(adapter),
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-        ));
-        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
-        let handle = SeededStore::new_wired_outbox(sink, initial);
-        handle.bind_refresh(&orch_dyn);
+        );
         if !stories.is_empty() {
             handle.dispatch(AppAction::Story(StoryAction::Seeded(stories)));
         }
@@ -397,13 +395,11 @@ mod outbox_persistence {
     #[tokio::test]
     async fn mutate_silent_no_op_when_story_not_in_store_pins_reducer_shape() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        let orch = handle.build_orch(
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-        ));
-        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
-        let handle = SeededStore::new(vec![], vec![], vec![]);
-        handle.bind_refresh(&orch_dyn);
+        );
         let select = handle.select();
 
         orch.mutate(state_write(999, Work::InProgress)).unwrap();
@@ -423,13 +419,11 @@ mod outbox_persistence {
     async fn refresh_story_populates_store_so_subsequent_mutate_lands() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.seed_stories(vec![seed_story(777, Work::NotStarted)]);
-        let orch = Arc::new(SyncOrchestrator::new(
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        let orch = handle.build_orch(
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-        ));
-        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
-        let handle = SeededStore::new(vec![], vec![], vec![]);
-        handle.bind_refresh(&orch_dyn);
+        );
         let select = handle.select();
 
         orch.mutate(state_write(777, Work::InProgress)).unwrap();

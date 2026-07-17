@@ -45,7 +45,7 @@ pub use reactions::{AggregatedReaction, ReactionsAction, ReactionsBroadcastListe
 pub use roster::{Presence, RosterAction, RosterBroadcastListener, RosterMember, RosterRole};
 pub use select::Select;
 #[cfg(test)]
-pub(crate) use select::{SeededStore, bind_seeded_refresh};
+pub(crate) use select::{SeededStore, build_seeded_orch};
 pub use sync::SyncAction;
 pub use sync_health::SyncHealthAction;
 

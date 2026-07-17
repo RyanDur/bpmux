@@ -4,7 +4,6 @@
 use std::sync::Arc;
 
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::sync::SyncOrchestrator;
 use product_management::story::{Story, StoryId, Work};
 
 use super::startup_tasks::spawn_background_ingest;
@@ -19,11 +18,13 @@ async fn ingest_runs_in_background_not_inline() {
         chrono::Utc::now(),
         "test".to_string(),
     )]);
-    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let (orch, select) = crate::store::build_seeded_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let select = crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+        vec![],
+        vec![],
+        vec![],
+    );
     let stories_in_store =
         || select.select(|state| product_management::story::slice::all(&state.stories));
 

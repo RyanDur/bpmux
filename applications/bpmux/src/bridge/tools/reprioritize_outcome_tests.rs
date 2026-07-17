@@ -112,12 +112,11 @@ async fn build_refresh(
         adapter.seed_labels(story.id.value(), labels.clone());
     }
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
-    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let store = crate::store::SeededStore::new(outcomes_from(&seeds), vec![], vec![]);
+    let orch: Arc<SyncOrchestrator> = store.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let store = crate::store::SeededStore::new(outcomes_from(&seeds), vec![], vec![]);
-    store.bind_refresh(&orch);
+    );
     orch.refresh_all().await.unwrap();
     let select = store.select();
     (store, orch, select)
@@ -125,11 +124,13 @@ async fn build_refresh(
 
 async fn refresh_with_outcomes(outcomes: Vec<Outcome>) -> crate::store::Select {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let (orch, select) = crate::store::build_seeded_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let select = crate::store::bind_seeded_refresh(&orch, outcomes, vec![], vec![]);
+        outcomes,
+        vec![],
+        vec![],
+    );
     orch.refresh_all().await.unwrap();
     select
 }

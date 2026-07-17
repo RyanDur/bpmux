@@ -7,10 +7,6 @@ use product_management::iteration::{self, Iteration};
 use product_management::story::{self, Story, StoryId};
 
 impl SyncOrchestrator {
-    pub fn set_select(&self, select: crate::store::Select) {
-        let _ = self.select.set(select);
-    }
-
     pub(super) fn read_pending_count(&self) -> usize {
         match self.select.get() {
             Some(s) => s.select(|state| crate::store::sync::pending_count(&state.sync)),

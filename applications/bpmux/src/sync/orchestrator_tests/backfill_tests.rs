@@ -25,13 +25,12 @@ async fn a_cache_fill_leaves_the_shared_grain_empty_but_the_boot_sweep_fills_it_
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(11, Work::InProgress)]);
     adapter.seed_verdicts(11, vec![ready_verdict(9, "dev")]);
-    let orchestrator = Arc::new(SyncOrchestrator::new(
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator = handle.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
+    );
     let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
-    let handle = SeededStore::new(vec![], vec![], vec![]);
-    handle.bind_refresh(&orch_dyn);
     orchestrator.ingest_once().await.unwrap();
 
     orchestrator.fetch_verdicts(11).await.unwrap();
@@ -76,13 +75,12 @@ async fn the_boot_sweep_replaces_each_storys_records_per_story() {
     ]);
     adapter.seed_verdicts(11, vec![ready_verdict(9, "dev")]);
     adapter.seed_verdicts(12, vec![ready_verdict(10, "owner")]);
-    let orchestrator = Arc::new(SyncOrchestrator::new(
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator = handle.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
+    );
     let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
-    let handle = SeededStore::new(vec![], vec![], vec![]);
-    handle.bind_refresh(&orch_dyn);
     orchestrator.ingest_once().await.unwrap();
 
     backfill_shared_history(orch_dyn.as_ref(), &handle.select(), |action| {

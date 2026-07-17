@@ -31,12 +31,11 @@ async fn fixture_mock_octocrab(
     )
     .expect("build tracker against mock");
     let adapter = Arc::new(GitHubSourceAdapter::new(tracker));
-    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    let orch: Arc<SyncOrchestrator> = store.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
-    store.bind_refresh(&orch);
+    );
     orch.refresh_all().await.expect("seed-empty ingest");
     let select = store.select();
     std::mem::forget(store);

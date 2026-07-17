@@ -37,13 +37,11 @@ mod reopen_on_state_transition_tests {
         let (story, labels) = seeded;
         adapter.seed_labels(story.id.value(), labels);
         adapter.seed_stories(vec![story]);
-        let orch_concrete = SyncOrchestrator::new(
+        let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+        let orch: Arc<SyncOrchestrator> = store.build_orch(
             Arc::clone(&adapter),
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         );
-        let orch: Arc<SyncOrchestrator> = Arc::new(orch_concrete);
-        let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
-        store.bind_refresh(&orch);
         store.dispatch(crate::store::AppAction::Ci(
             crate::store::CiAction::Updated(crate::store::CiSnapshot {
                 state: crate::ci::CiState::Green,

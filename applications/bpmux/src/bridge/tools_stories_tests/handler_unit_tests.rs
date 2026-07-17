@@ -198,12 +198,11 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
         Utc.with_ymd_and_hms(2026, 5, 3, 0, 0, 0).unwrap(),
         "pm".to_string(),
     )]);
-    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator: Arc<SyncOrchestrator> = store.build_orch(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
-    store.bind_refresh(&orchestrator);
+    );
     orchestrator.refresh_all().await.unwrap();
     let select = store.select();
 

@@ -52,12 +52,13 @@ async fn fixture_orchestrator(
     )
     .expect("build tracker against mock");
     let adapter = Arc::new(GitHubSourceAdapter::new(tracker));
-    let orch = Arc::new(SyncOrchestrator::new(
+    let (orch, select) = crate::store::build_seeded_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
-    let select = crate::store::bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
+        vec![],
+        vec![],
+        vec![],
+    );
     orch.refresh_all().await.expect("seed-empty ingest");
     (orch, select)
 }

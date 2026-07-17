@@ -22,12 +22,11 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator: Arc<SyncOrchestrator> = store.build_orch(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
-    store.bind_refresh(&orchestrator);
+    );
     orchestrator.refresh_all().await.unwrap();
     let select = store.select();
 
@@ -77,12 +76,11 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator: Arc<SyncOrchestrator> = store.build_orch(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
-    store.bind_refresh(&orchestrator);
+    );
     orchestrator.refresh_all().await.unwrap();
     let select = store.select();
 
@@ -141,12 +139,11 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator: Arc<SyncOrchestrator> = store.build_orch(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
-    store.bind_refresh(&orchestrator);
+    );
     orchestrator.refresh_all().await.unwrap();
     let select = store.select();
 
@@ -226,13 +223,11 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         "dev".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orch_concrete = SyncOrchestrator::new(
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator: Arc<SyncOrchestrator> = store.build_orch(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     );
-    let orchestrator: Arc<SyncOrchestrator> = Arc::new(orch_concrete);
-    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
-    store.bind_refresh(&orchestrator);
     store.dispatch(crate::store::AppAction::Ci(
         crate::store::CiAction::Updated(crate::store::CiSnapshot {
             state: crate::ci::CiState::Green,
@@ -329,12 +324,11 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(202, vec!["desk-check".to_string()]);
-    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator: Arc<SyncOrchestrator> = store.build_orch(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
-    store.bind_refresh(&orchestrator);
+    );
     orchestrator.refresh_all().await.unwrap();
     let select = store.select();
 

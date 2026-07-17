@@ -32,24 +32,22 @@ mod verdict_substrate_integration_1407 {
 
     fn orch_and_store() -> (Arc<SyncOrchestrator>, SeededStore) {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+        let store = SeededStore::new(vec![], vec![], vec![]);
+        let orch: Arc<SyncOrchestrator> = store.build_orch(
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-        ));
-        let store = SeededStore::new(vec![], vec![], vec![]);
-        store.bind_refresh(&orch);
+        );
         (orch, store)
     }
 
     async fn orch_with_story_and_store(seeded: Story) -> (Arc<SyncOrchestrator>, SeededStore) {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.seed_stories(vec![seeded]);
-        let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+        let store = SeededStore::new(vec![], vec![], vec![]);
+        let orch: Arc<SyncOrchestrator> = store.build_orch(
             Arc::clone(&adapter),
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-        ));
-        let store = SeededStore::new(vec![], vec![], vec![]);
-        store.bind_refresh(&orch);
+        );
         orch.refresh_all().await.unwrap();
         (orch, store)
     }

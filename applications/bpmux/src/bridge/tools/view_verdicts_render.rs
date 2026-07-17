@@ -18,12 +18,11 @@ fn make_hub(dir: PathBuf) -> Arc<Hub> {
 
 fn orch_and_store() -> (Arc<SyncOrchestrator>, SeededStore) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let store = SeededStore::new(vec![], vec![], vec![]);
+    let orch: Arc<SyncOrchestrator> = store.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let store = SeededStore::new(vec![], vec![], vec![]);
-    store.bind_refresh(&orch);
+    );
     (orch, store)
 }
 

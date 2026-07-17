@@ -6,7 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::store::bind_seeded_refresh;
+use crate::store::build_seeded_orch;
 use crate::sync::SyncOrchestrator;
 use product_management::story::events::{EventMeta, StoryEvent};
 use product_management::story::{Story, Work};
@@ -67,12 +67,13 @@ mod staleness {
     #[tokio::test]
     async fn snapshot_status_default_threshold_keeps_fresh_ingest_not_stale() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(
+        let (orch, _select) = build_seeded_orch(
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-        ));
-        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
-        bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
+            vec![],
+            vec![],
+            vec![],
+        );
         orch.ingest_once().await.unwrap();
         let snap = orch.snapshot_status();
         assert!(snap.last_ingest_at.is_some(), "ingest happened");
@@ -112,12 +113,13 @@ mod staleness {
     async fn snapshot_status_surfaces_startup_fail_when_ingest_fails_with_no_prior_success() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         adapter.set_ingest_failures(true);
-        let orch = Arc::new(SyncOrchestrator::new(
+        let (orch, _select) = build_seeded_orch(
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-        ));
-        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
-        bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
+            vec![],
+            vec![],
+            vec![],
+        );
         let _ = orch.ingest_once().await;
         let snap = orch.snapshot_status();
         assert!(snap.last_ingest_at.is_none(), "no successful ingest yet");

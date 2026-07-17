@@ -54,13 +54,6 @@ async fn edit_story_replaces_body_at_canonical_store() {
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
     seed_story(&adapter, 99);
-    let orch = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&adapter),
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let refresh: Arc<SyncOrchestrator> = orch.clone();
-    let test_refresh: Option<Arc<SyncOrchestrator>> = Some(Arc::clone(&refresh));
-
     let hub_dir = tempfile::tempdir().expect("hub dir");
     let (wake_tx, _) = broadcast::channel(64);
     let hub = Arc::new(Hub::new(
@@ -73,8 +66,14 @@ async fn edit_story_replaces_body_at_canonical_store() {
         None,
         CancellationToken::new(),
     ));
-    refresh.set_select(app_store.selector());
-    refresh.bind_dispatch(app_store.dispatcher());
+    let orch = Arc::new(SyncOrchestrator::new_bound(
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+        app_store.selector(),
+        app_store.dispatcher(),
+    ));
+    let refresh: Arc<SyncOrchestrator> = orch.clone();
+    let test_refresh: Option<Arc<SyncOrchestrator>> = Some(Arc::clone(&refresh));
     orch.ingest_once().await.expect("seed ingest");
     let auth_state = AuthState::new(token.clone());
 

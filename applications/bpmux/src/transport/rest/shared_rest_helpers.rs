@@ -12,12 +12,11 @@ async fn stories_delta_wakes_subscribers_but_is_not_persisted_durably() {
     let dir = tempfile::tempdir().expect("tempdir");
     let (wake_tx, _wake_rx) = tokio::sync::broadcast::channel(BROADCAST_CHANNEL_CAPACITY);
     let hub = hub::Hub::new(dir.path().to_path_buf(), "test:owner".to_string(), wake_tx);
-    let refresh: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    let refresh: Arc<SyncOrchestrator> = store.build_orch(
         Arc::new(InMemorySourceAdapter::new()),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
-    store.bind_refresh(&refresh);
+    );
     refresh.refresh_all().await.expect("seed-empty ingest");
 
     let mut subscriber = hub.subscribe();

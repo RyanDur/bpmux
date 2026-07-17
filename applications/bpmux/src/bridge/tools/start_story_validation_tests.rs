@@ -34,12 +34,11 @@ mod gate_retire_1348 {
         );
         adapter.seed_stories(vec![seeded]);
         adapter.seed_body(id, body.into());
-        let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+        let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+        let orch: Arc<SyncOrchestrator> = store.build_orch(
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-        ));
-        let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
-        store.bind_refresh(&orch);
+        );
         orch.refresh_all().await.unwrap();
         let select = store.select();
         (store, orch, select)

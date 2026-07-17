@@ -35,13 +35,11 @@ mod outbox_coalesce_1339_step_2e {
     async fn rapid_drag_sequence_coalesces_to_first_remove_plus_last_add_per_class() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let seed = seed_story(7011, Work::NotStarted);
-        let orch = Arc::new(SyncOrchestrator::new(
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        let orch = handle.build_orch(
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-        ));
-        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
-        let handle = SeededStore::new(vec![], vec![], vec![]);
-        handle.bind_refresh(&orch_dyn);
+        );
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed])));
 
         orch.mutate(StoryEvent::new(
@@ -107,13 +105,11 @@ mod outbox_coalesce_1339_step_2e {
     #[tokio::test]
     async fn coalesce_per_class_keeps_distinct_iteration_namespaces_apart() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        let orch = handle.build_orch(
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-        ));
-        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
-        let handle = SeededStore::new(vec![], vec![], vec![]);
-        handle.bind_refresh(&orch_dyn);
+        );
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             7012,
             Work::NotStarted,
@@ -158,13 +154,11 @@ mod outbox_coalesce_1339_step_2e {
     #[tokio::test]
     async fn coalesce_does_not_collapse_across_stories() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        let orch = handle.build_orch(
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-        ));
-        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
-        let handle = SeededStore::new(vec![], vec![], vec![]);
-        handle.bind_refresh(&orch_dyn);
+        );
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
             seed_story(7013, Work::NotStarted),
             seed_story(7014, Work::NotStarted),
@@ -216,13 +210,11 @@ mod outbox_coalesce_1339_step_2e {
     #[tokio::test]
     async fn coalesce_does_not_touch_non_iteration_labels() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        let orch = handle.build_orch(
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-        ));
-        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
-        let handle = SeededStore::new(vec![], vec![], vec![]);
-        handle.bind_refresh(&orch_dyn);
+        );
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             7015,
             Work::NotStarted,
@@ -264,13 +256,11 @@ mod outbox_coalesce_1339_step_2e {
     #[tokio::test]
     async fn coalesce_handles_add_only_sequence_keeping_last_add() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = Arc::new(SyncOrchestrator::new(
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        let orch = handle.build_orch(
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-        ));
-        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
-        let handle = SeededStore::new(vec![], vec![], vec![]);
-        handle.bind_refresh(&orch_dyn);
+        );
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             7016,
             Work::NotStarted,

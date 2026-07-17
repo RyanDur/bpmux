@@ -72,12 +72,11 @@ fn iteration_label_decoder_does_not_populate_a_story_field() {
 
 #[test]
 fn create_story_event_does_not_seed_iteration_membership() {
-    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    let _orch: Arc<SyncOrchestrator> = handle.build_orch(
         Arc::new(InMemorySourceAdapter::new()),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let handle = SeededStore::new(vec![], vec![], vec![]);
-    handle.bind_refresh(&orch);
+    );
     let select = handle.select();
     handle.dispatch(AppAction::Story(StoryAction::Event(StoryEvent::new(
         meta(),

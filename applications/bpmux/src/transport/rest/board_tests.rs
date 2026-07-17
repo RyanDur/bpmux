@@ -40,10 +40,6 @@ async fn seeded_store(seeds: Vec<(Story, Vec<String>)>) -> crate::store::SeededS
         adapter.seed_labels(story.id.value(), labels.clone());
     }
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
-    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
-        adapter,
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
     let seeded: Vec<_> = seeds
         .iter()
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("outcome")))
@@ -55,7 +51,10 @@ async fn seeded_store(seeds: Vec<(Story, Vec<String>)>) -> crate::store::SeededS
         .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
         .collect();
     let store = crate::store::SeededStore::new(seeded, iterations, vec![]);
-    store.bind_refresh(&orch);
+    let orch: Arc<SyncOrchestrator> = store.build_orch(
+        adapter,
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+    );
     orch.refresh_all().await.unwrap();
     store
 }

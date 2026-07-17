@@ -85,13 +85,6 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
     seed_story(&adapter, 42, "fixture story");
-    let orch = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&adapter),
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let refresh: Arc<SyncOrchestrator> = orch.clone();
-    let test_refresh: Option<Arc<SyncOrchestrator>> = Some(Arc::clone(&refresh));
-
     let hub_dir = tempfile::tempdir().expect("hub dir");
     let (wake_tx, _) = broadcast::channel(64);
     let hub = Arc::new(Hub::new(
@@ -104,8 +97,14 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
         None,
         CancellationToken::new(),
     ));
-    refresh.set_select(app_store.selector());
-    refresh.bind_dispatch(app_store.dispatcher());
+    let orch = Arc::new(SyncOrchestrator::new_bound(
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+        app_store.selector(),
+        app_store.dispatcher(),
+    ));
+    let refresh: Arc<SyncOrchestrator> = orch.clone();
+    let test_refresh: Option<Arc<SyncOrchestrator>> = Some(Arc::clone(&refresh));
     orch.ingest_once().await.expect("seed ingest");
     let auth_state = AuthState::new(token.clone());
 

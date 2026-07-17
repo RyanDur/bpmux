@@ -75,9 +75,17 @@ impl SeededStore {
         Select::new(std::sync::Arc::downgrade(&self.store))
     }
 
-    pub(crate) fn bind_refresh(&self, refresh: &std::sync::Arc<crate::sync::SyncOrchestrator>) {
-        refresh.set_select(self.select());
-        refresh.bind_dispatch(self.dispatcher());
+    pub(crate) fn build_orch<A: crate::sync::SourceAdapter + 'static>(
+        &self,
+        adapter: std::sync::Arc<A>,
+        codec: std::sync::Arc<dyn product_management::label_codec::LabelCodec + Send + Sync>,
+    ) -> std::sync::Arc<crate::sync::SyncOrchestrator> {
+        std::sync::Arc::new(crate::sync::SyncOrchestrator::new_bound(
+            adapter,
+            codec,
+            self.select(),
+            self.dispatcher(),
+        ))
     }
 
     pub(crate) fn dispatcher(&self) -> crate::store::Dispatch {
@@ -95,15 +103,16 @@ impl SeededStore {
 }
 
 #[cfg(test)]
-pub(crate) fn bind_seeded_refresh(
-    refresh: &std::sync::Arc<crate::sync::SyncOrchestrator>,
+pub(crate) fn build_seeded_orch<A: crate::sync::SourceAdapter + 'static>(
+    adapter: std::sync::Arc<A>,
+    codec: std::sync::Arc<dyn product_management::label_codec::LabelCodec + Send + Sync>,
     outcomes: Vec<product_management::outcome::Outcome>,
     iterations: Vec<product_management::iteration::Iteration>,
     epics: Vec<product_management::epic::Epic>,
-) -> Select {
+) -> (std::sync::Arc<crate::sync::SyncOrchestrator>, Select) {
     let handle = SeededStore::new(outcomes, iterations, epics);
-    handle.bind_refresh(refresh);
+    let orch = handle.build_orch(adapter, codec);
     let select = handle.select();
     std::mem::forget(handle);
-    select
+    (orch, select)
 }

@@ -25,12 +25,11 @@ fn stories_in_store(select: &crate::store::Select) -> Vec<product_management::st
 
 async fn fixture_test_mode_on() -> (axum::Router, Arc<SyncOrchestrator>, crate::store::Select) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    let orch: Arc<SyncOrchestrator> = store.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
-    store.bind_refresh(&orch);
+    );
     orch.refresh_all().await.expect("seed-empty ingest");
     let select = store.select();
     std::mem::forget(store);
@@ -233,12 +232,11 @@ async fn rest_get_board_auto_reingests_when_orchestrator_store_is_empty() {
         ts,
         "dev".into(),
     )]);
-    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    let orch: Arc<SyncOrchestrator> = store.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
-    store.bind_refresh(&orch);
+    );
     let orchestrator: OrchestratorHandle = Some(orch.clone());
     let none_tracker: super::rest::TrackerHandle = None;
     let router = axum::Router::new()

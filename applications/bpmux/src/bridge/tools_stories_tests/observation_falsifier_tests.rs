@@ -439,12 +439,11 @@ async fn label_story_rejects_invalid_operation_in_migrated_path() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator: Arc<SyncOrchestrator> = store.build_orch(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
-    store.bind_refresh(&orchestrator);
+    );
     orchestrator.refresh_all().await.unwrap();
     let select = store.select();
 

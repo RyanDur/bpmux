@@ -21,12 +21,11 @@ async fn handler_errors_when_story_not_in_board() {
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator: Arc<SyncOrchestrator> = store.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
-    store.bind_refresh(&orchestrator);
+    );
     let select = store.select();
     orchestrator.refresh_all().await.unwrap();
 
@@ -63,12 +62,11 @@ async fn handler_reads_gates_from_canonical_store() {
         actor: "dev".into(),
         payload: Some("ran end-to-end".into()),
     }]);
-    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let handle = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator: Arc<SyncOrchestrator> = handle.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let handle = crate::store::SeededStore::new(vec![], vec![], vec![]);
-    handle.bind_refresh(&orchestrator);
+    );
     handle.dispatch(crate::store::AppAction::Story(StoryAction::Seeded(vec![
         story,
     ])));
@@ -108,12 +106,11 @@ async fn handler_returns_filed_only_with_unhydrated_flag_when_verdicts_missing()
         Utc.with_ymd_and_hms(2026, 4, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let handle = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator: Arc<SyncOrchestrator> = handle.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let handle = crate::store::SeededStore::new(vec![], vec![], vec![]);
-    handle.bind_refresh(&orchestrator);
+    );
     handle.dispatch(crate::store::AppAction::Story(StoryAction::Seeded(vec![
         story,
     ])));
@@ -256,12 +253,11 @@ async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
             payload: Some(reason.into()),
         }],
     );
-    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator: Arc<SyncOrchestrator> = store.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
-    store.bind_refresh(&orchestrator);
+    );
     let select = store.select();
     orchestrator.refresh_all().await.unwrap();
 

@@ -17,10 +17,6 @@ async fn seeded_store(seeds: Vec<(Story, Vec<String>)>) -> crate::store::SeededS
         adapter.seed_labels(story.id.value(), labels.clone());
     }
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
-    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
-        adapter,
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
     let seeded: Vec<_> = seeds
         .iter()
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("outcome")))
@@ -32,7 +28,10 @@ async fn seeded_store(seeds: Vec<(Story, Vec<String>)>) -> crate::store::SeededS
         .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
         .collect();
     let store = crate::store::SeededStore::new(seeded, iterations, vec![]);
-    store.bind_refresh(&orch);
+    let orch: Arc<SyncOrchestrator> = store.build_orch(
+        adapter,
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+    );
     orch.refresh_all().await.unwrap();
     store
 }
@@ -157,12 +156,11 @@ fn flagged_iteration(id: u64, is_current: bool, complete: bool, stories: Vec<u64
 async fn board_ready_order(stories: Vec<Story>, iterations: Vec<Iteration>) -> Vec<u64> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(stories);
-    let refresh: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let store = crate::store::SeededStore::new(vec![], iterations, vec![]);
+    let refresh: Arc<SyncOrchestrator> = store.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let store = crate::store::SeededStore::new(vec![], iterations, vec![]);
-    store.bind_refresh(&refresh);
+    );
     refresh.refresh_all().await.unwrap();
     ordered_board_stories(&store.select())
         .iter()
@@ -215,10 +213,6 @@ async fn an_optimistic_reject_is_visible_on_the_board_snapshot_before_it_reaches
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     )]);
-    let refresh: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&adapter),
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
     let current = Iteration {
         id: IterationId::new(9000),
         title: "Iteration Vela".to_string(),
@@ -234,7 +228,10 @@ async fn an_optimistic_reject_is_visible_on_the_board_snapshot_before_it_reaches
         complete: false,
     };
     let store = crate::store::SeededStore::new(vec![], vec![current], vec![]);
-    store.bind_refresh(&refresh);
+    let refresh: Arc<SyncOrchestrator> = store.build_orch(
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+    );
     refresh.refresh_all().await.unwrap();
     let select = store.select();
 

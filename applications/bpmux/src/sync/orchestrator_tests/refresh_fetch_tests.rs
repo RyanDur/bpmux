@@ -15,13 +15,11 @@ use product_management::story::{Stage, Story, StoryId, Work};
 async fn refresh_story_pulls_single_story_from_adapter_into_store() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(42, Work::NotStarted)]);
-    let orchestrator = Arc::new(SyncOrchestrator::new(
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator = handle.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
-    let handle = SeededStore::new(vec![], vec![], vec![]);
-    handle.bind_refresh(&orch_dyn);
+    );
     let select = handle.select();
     assert!(
         select
@@ -44,13 +42,11 @@ async fn refresh_story_pulls_single_story_from_adapter_into_store() {
 #[tokio::test]
 async fn refresh_story_returns_none_when_story_missing_at_source() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orchestrator = Arc::new(SyncOrchestrator::new(
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator = handle.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
-    let handle = SeededStore::new(vec![], vec![], vec![]);
-    handle.bind_refresh(&orch_dyn);
+    );
     let select = handle.select();
     let result = orchestrator.refresh_story(999).await.unwrap();
     assert!(result.is_none());
@@ -69,13 +65,11 @@ async fn refresh_story_fails_fast_when_source_unreachable() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(1, Work::NotStarted)]);
     adapter.set_ingest_failures(true);
-    let orchestrator = Arc::new(SyncOrchestrator::new(
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator = handle.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
-    let handle = SeededStore::new(vec![], vec![], vec![]);
-    handle.bind_refresh(&orch_dyn);
+    );
     let result = orchestrator.refresh_story(1).await;
     assert!(result.is_err());
     assert!(
@@ -91,13 +85,11 @@ async fn refresh_all_is_alias_for_ingest_once() {
         seed_story(1, Work::NotStarted),
         seed_story(2, Work::Acceptance),
     ]);
-    let orchestrator = Arc::new(SyncOrchestrator::new(
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator = handle.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
-    let handle = SeededStore::new(vec![], vec![], vec![]);
-    handle.bind_refresh(&orch_dyn);
+    );
     orchestrator.refresh_all().await.unwrap();
     assert_eq!(
         handle
@@ -112,13 +104,11 @@ async fn refresh_all_is_alias_for_ingest_once() {
 async fn end_to_end_seeded_adapter_through_mutate_and_drain() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(42, Work::NotStarted)]);
-    let orchestrator = Arc::new(SyncOrchestrator::new(
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator = handle.build_orch(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
-    let handle = SeededStore::new(vec![], vec![], vec![]);
-    handle.bind_refresh(&orch_dyn);
+    );
     let select = handle.select();
     orchestrator.ingest_once().await.unwrap();
     assert_eq!(
@@ -161,13 +151,11 @@ async fn fetch_body_caches_the_body_on_the_story() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(7, Work::NotStarted)]);
     adapter.seed_body(7, "the body text".into());
-    let orchestrator = Arc::new(SyncOrchestrator::new(
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator = handle.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
-    let handle = SeededStore::new(vec![], vec![], vec![]);
-    handle.bind_refresh(&orch_dyn);
+    );
     let select = handle.select();
     orchestrator.ingest_once().await.unwrap();
     assert_eq!(
@@ -195,13 +183,11 @@ async fn fetch_body_records_error_when_source_fails() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(7, Work::NotStarted)]);
     adapter.set_ingest_failures(true);
-    let orchestrator = Arc::new(SyncOrchestrator::new(
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator = handle.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
-    let handle = SeededStore::new(vec![], vec![], vec![]);
-    handle.bind_refresh(&orch_dyn);
+    );
     let err = orchestrator.fetch_body(7).await.unwrap_err();
     assert!(matches!(err, crate::sync::SyncError::SourceUnreachable(_)));
     let status = orchestrator.snapshot_status();
@@ -219,13 +205,11 @@ async fn fetch_free_comments_caches_comments_on_the_story() {
         ts: Utc.with_ymd_and_hms(2026, 4, 20, 10, 0, 0).unwrap(),
     }];
     adapter.seed_free_comments(9, seeded.clone());
-    let orchestrator = Arc::new(SyncOrchestrator::new(
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator = handle.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
-    let handle = SeededStore::new(vec![], vec![], vec![]);
-    handle.bind_refresh(&orch_dyn);
+    );
     let select = handle.select();
     orchestrator.ingest_once().await.unwrap();
     assert_eq!(
@@ -262,13 +246,11 @@ async fn fetch_verdicts_caches_comments_on_the_story() {
         payload: Some("paraphrase".into()),
     }];
     adapter.seed_verdicts(11, seeded.clone());
-    let orchestrator = Arc::new(SyncOrchestrator::new(
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator = handle.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
-    let handle = SeededStore::new(vec![], vec![], vec![]);
-    handle.bind_refresh(&orch_dyn);
+    );
     let select = handle.select();
     orchestrator.ingest_once().await.unwrap();
     assert_eq!(
@@ -296,13 +278,11 @@ async fn fetch_verdicts_records_error_when_source_fails() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(11, Work::NotStarted)]);
     adapter.set_ingest_failures(true);
-    let orchestrator = Arc::new(SyncOrchestrator::new(
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    let orchestrator = handle.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
-    let handle = SeededStore::new(vec![], vec![], vec![]);
-    handle.bind_refresh(&orch_dyn);
+    );
     let err = orchestrator.fetch_verdicts(11).await.unwrap_err();
     assert!(matches!(err, crate::sync::SyncError::SourceUnreachable(_)));
     assert!(

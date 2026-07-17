@@ -64,17 +64,16 @@ async fn build_refresh(
         adapter.seed_labels(story.id.value(), labels.clone());
     }
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
-    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
-        adapter,
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
     let seeded: Vec<Outcome> = seeds
         .iter()
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("outcome")))
         .map(|(story, labels)| decode_outcome_from_story(story, labels))
         .collect();
     let store = crate::store::SeededStore::new(seeded, vec![], vec![]);
-    store.bind_refresh(&orch);
+    let orch: Arc<SyncOrchestrator> = store.build_orch(
+        adapter,
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+    );
     orch.refresh_all().await.unwrap();
     let select = store.select();
     (store, orch, select)

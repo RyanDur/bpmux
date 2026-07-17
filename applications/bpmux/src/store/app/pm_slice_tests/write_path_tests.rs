@@ -20,12 +20,11 @@ fn meta() -> EventMeta {
 
 fn bound_orchestrator() -> (SeededStore, Arc<SyncOrchestrator>) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let handle = SeededStore::new(Vec::new(), Vec::new(), Vec::new());
+    let orch = handle.build_orch(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let handle = SeededStore::new(Vec::new(), Vec::new(), Vec::new());
-    handle.bind_refresh(&orch);
+    );
     (handle, orch)
 }
 

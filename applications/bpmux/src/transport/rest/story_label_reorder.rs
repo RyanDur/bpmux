@@ -26,12 +26,11 @@ async fn reordering_a_member_through_the_label_endpoint_never_orphans_it_1524() 
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![membered_member(1687)]);
     adapter.seed_labels(1687, vec!["parent-iteration-#1655.125".to_string()]);
-    let refresh: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
+    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
+    let refresh: Arc<SyncOrchestrator> = store.build_orch(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
-    store.bind_refresh(&refresh);
+    );
     refresh.refresh_all().await.unwrap();
     let select = store.select();
     assert!(

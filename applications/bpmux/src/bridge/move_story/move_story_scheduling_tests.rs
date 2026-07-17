@@ -53,10 +53,6 @@ async fn build_orchestrator(
         adapter.seed_labels(story.id.value(), labels.clone());
     }
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
-    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
-        adapter,
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
     let iterations: Vec<Iteration> = seeds
         .iter()
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
@@ -68,7 +64,10 @@ async fn build_orchestrator(
         .map(|(story, _)| decode_epic_from_story(story, false))
         .collect();
     let seed = SeededStore::new(vec![], iterations, epics);
-    seed.bind_refresh(&orch);
+    let orch: Arc<SyncOrchestrator> = seed.build_orch(
+        adapter,
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+    );
     orch.refresh_all().await.unwrap();
     (orch, seed)
 }

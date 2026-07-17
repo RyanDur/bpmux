@@ -6,16 +6,10 @@ use product_management::story::events::StoryEvent;
 use super::SyncOrchestrator;
 
 impl SyncOrchestrator {
-    pub fn bind_dispatch(&self, dispatch: crate::store::Dispatch) {
-        let _ = self.dispatch.set(dispatch);
-    }
-
     fn emit(&self, action: crate::store::AppAction) {
         match self.dispatch.get() {
             Some(dispatch) => dispatch.dispatch(action),
-            None => diag::log_diag(
-                "orchestrator: dispatch unbound; write dropped (bind_dispatch missing)",
-            ),
+            None => diag::log_diag("orchestrator: dispatch unbound; write dropped"),
         }
     }
 

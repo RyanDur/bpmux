@@ -42,10 +42,6 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
         "dev".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&adapter),
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
 
     let hub_dir = tempfile::tempdir().expect("hub dir");
     let (wake_tx, _) = broadcast::channel(64);
@@ -59,8 +55,12 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
         None,
         CancellationToken::new(),
     ));
-    orch.set_select(app_store.selector());
-    orch.bind_dispatch(app_store.dispatcher());
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new_bound(
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+        app_store.selector(),
+        app_store.dispatcher(),
+    ));
     orch.refresh_all().await.unwrap();
 
     let meta = EventMeta {

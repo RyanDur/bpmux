@@ -52,17 +52,16 @@ async fn build_orchestrator(
         adapter.seed_labels(story.id.value(), labels.clone());
     }
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
-    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
-        adapter,
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
     let iterations: Vec<Iteration> = seeds
         .iter()
         .filter(|(_, labels)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
         .map(|(story, labels)| decode_iteration_from_story(story, labels, false))
         .collect();
     let seed = SeededStore::new(vec![], iterations, vec![]);
-    seed.bind_refresh(&orch);
+    let orch: Arc<SyncOrchestrator> = seed.build_orch(
+        adapter,
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+    );
     orch.refresh_all().await.unwrap();
     (orch, seed)
 }
