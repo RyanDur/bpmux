@@ -1,146 +1,168 @@
 use super::{GitHubSourceAdapter, ingest, mutation};
 use crate::github::tracker::{ConditionalIssue, StoryTracker};
 use product_management::story::events::StoryEvent;
-use product_management::story::{CastVerdict, FreeComment, Story};
+use product_management::story::{CastVerdict, FreeComment};
 use source_codec::mapper::{decode_free_comment, decode_story_with_placement, decode_verdicts};
-use source_sync::{ConditionalBody, Ingested, SourceAdapter, SyncError};
+use source_sync::{
+    BoxedFuture, ConditionalBody, Ingested, SourceAdapter, StoryWithPlacement, SyncError,
+};
 
 impl SourceAdapter for GitHubSourceAdapter {
-    async fn ingest_metadata(&self) -> Result<Ingested, SyncError> {
-        self.ingest_metadata_since(None).await
+    fn ingest_metadata(&self) -> BoxedFuture<'_, Result<Ingested, SyncError>> {
+        self.ingest_metadata_since(None)
     }
 
-    async fn ingest_metadata_since(
+    fn ingest_metadata_since(
         &self,
         since: Option<chrono::DateTime<chrono::Utc>>,
-    ) -> Result<Ingested, SyncError> {
-        let values = self
-            .inner
-            .fetch_board_stories_since(since)
-            .await
-            .map_err(SyncError::Other)?;
-        let received = values.len();
-        let ingest::Classified {
-            stories,
-            outcomes,
-            mut iterations,
-            epics,
-            placements,
-            dropped,
-        } = ingest::classify_ingested(&values);
-        let pre_filter = iterations.len();
-        iterations.retain(|iteration| !(iteration.complete && iteration.stories.is_empty()));
-        let filtered_out = pre_filter - iterations.len();
-        diag::log_diag(&format!(
-            "github ingest_metadata_since(since={:?}): received {received} values, decoded {} stories + {} outcomes + {pre_filter} iterations + {} epics, dropped {dropped} (no number field), filtered {filtered_out} retired+0-member iterations",
-            since.map(|s| s.to_rfc3339()),
-            stories.len(),
-            outcomes.len(),
-            epics.len(),
-        ));
-        Ok(Ingested {
-            items: stories,
-            outcomes,
-            iterations,
-            epics,
-            placements,
+    ) -> BoxedFuture<'_, Result<Ingested, SyncError>> {
+        Box::pin(async move {
+            let values = self
+                .inner
+                .fetch_board_stories_since(since)
+                .await
+                .map_err(SyncError::Other)?;
+            let received = values.len();
+            let ingest::Classified {
+                stories,
+                outcomes,
+                mut iterations,
+                epics,
+                placements,
+                dropped,
+            } = ingest::classify_ingested(&values);
+            let pre_filter = iterations.len();
+            iterations.retain(|iteration| !(iteration.complete && iteration.stories.is_empty()));
+            let filtered_out = pre_filter - iterations.len();
+            diag::log_diag(&format!(
+                "github ingest_metadata_since(since={:?}): received {received} values, decoded {} stories + {} outcomes + {pre_filter} iterations + {} epics, dropped {dropped} (no number field), filtered {filtered_out} retired+0-member iterations",
+                since.map(|timestamp| timestamp.to_rfc3339()),
+                stories.len(),
+                outcomes.len(),
+                epics.len(),
+            ));
+            Ok(Ingested {
+                items: stories,
+                outcomes,
+                iterations,
+                epics,
+                placements,
+            })
         })
     }
 
-    async fn fetch_story_metadata(
+    fn fetch_story_metadata(
         &self,
         number: u64,
-    ) -> Result<Option<(Story, Option<workflow::StageId>)>, SyncError> {
-        match self.inner.get_story(number).await {
-            Ok(Some(v)) => Ok(decode_story_with_placement(&v)),
-            Ok(None) => Ok(None),
-            Err(e) => Err(SyncError::Other(e)),
-        }
+    ) -> BoxedFuture<'_, Result<Option<StoryWithPlacement>, SyncError>> {
+        Box::pin(async move {
+            match self.inner.get_story(number).await {
+                Ok(Some(value)) => Ok(decode_story_with_placement(&value)),
+                Ok(None) => Ok(None),
+                Err(error) => Err(SyncError::Other(error)),
+            }
+        })
     }
 
-    async fn fetch_story_body(&self, number: u64) -> Result<String, SyncError> {
-        match self.inner.get_story(number).await {
-            Ok(Some(v)) => Ok(v
-                .get("body")
-                .and_then(|x| x.as_str())
-                .unwrap_or("")
-                .to_string()),
-            Ok(None) => Err(SyncError::Other(format!("story #{number} not found"))),
-            Err(e) => Err(SyncError::Other(e)),
-        }
+    fn fetch_story_body(&self, number: u64) -> BoxedFuture<'_, Result<String, SyncError>> {
+        Box::pin(async move {
+            match self.inner.get_story(number).await {
+                Ok(Some(value)) => Ok(value
+                    .get("body")
+                    .and_then(|body_value| body_value.as_str())
+                    .unwrap_or("")
+                    .to_string()),
+                Ok(None) => Err(SyncError::Other(format!("story #{number} not found"))),
+                Err(error) => Err(SyncError::Other(error)),
+            }
+        })
     }
 
-    async fn fetch_story_body_conditional(
+    fn fetch_story_body_conditional(
         &self,
         number: u64,
         prior_etag: Option<String>,
-    ) -> Result<ConditionalBody, SyncError> {
-        match self
-            .inner
-            .get_story_conditional(number, prior_etag.as_deref())
-            .await
-        {
-            Ok(ConditionalIssue::NotModified) => Ok(ConditionalBody::NotModified),
-            Ok(ConditionalIssue::Modified { value, etag }) => {
-                let body = value
-                    .get("body")
-                    .and_then(|x| x.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                Ok(ConditionalBody::Modified { body, etag })
+    ) -> BoxedFuture<'_, Result<ConditionalBody, SyncError>> {
+        Box::pin(async move {
+            match self
+                .inner
+                .get_story_conditional(number, prior_etag.as_deref())
+                .await
+            {
+                Ok(ConditionalIssue::NotModified) => Ok(ConditionalBody::NotModified),
+                Ok(ConditionalIssue::Modified { value, etag }) => {
+                    let body = value
+                        .get("body")
+                        .and_then(|body_value| body_value.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    Ok(ConditionalBody::Modified { body, etag })
+                }
+                Ok(ConditionalIssue::NotFound) => {
+                    Err(SyncError::Other(format!("story #{number} not found")))
+                }
+                Err(error) => Err(SyncError::Other(error)),
             }
-            Ok(ConditionalIssue::NotFound) => {
-                Err(SyncError::Other(format!("story #{number} not found")))
-            }
-            Err(e) => Err(SyncError::Other(e)),
-        }
+        })
     }
 
-    async fn fetch_story_labels(&self, number: u64) -> Result<Vec<String>, SyncError> {
-        Ok(self.inner.get_story_labels(number).await)
+    fn fetch_story_labels(&self, number: u64) -> BoxedFuture<'_, Result<Vec<String>, SyncError>> {
+        Box::pin(async move { Ok(self.inner.get_story_labels(number).await) })
     }
 
-    async fn fetch_free_comments(&self, number: u64) -> Result<Vec<FreeComment>, SyncError> {
-        let raw = self
-            .inner
-            .list_story_comments(number)
-            .await
-            .map_err(SyncError::Other)?;
-        Ok(raw.iter().filter_map(decode_free_comment).collect())
-    }
-
-    async fn fetch_verdicts(&self, number: u64) -> Result<Vec<CastVerdict>, SyncError> {
-        let raw = self
-            .inner
-            .list_story_comments(number)
-            .await
-            .map_err(SyncError::Other)?;
-        Ok(decode_verdicts(&raw))
-    }
-
-    async fn push_event(
+    fn fetch_free_comments(
         &self,
-        event: &StoryEvent,
-        context: &source_sync::PushContext,
-    ) -> Result<Option<StoryEvent>, SyncError> {
-        mutation::apply_push_event(&self.inner, event, context).await
+        number: u64,
+    ) -> BoxedFuture<'_, Result<Vec<FreeComment>, SyncError>> {
+        Box::pin(async move {
+            let raw = self
+                .inner
+                .list_story_comments(number)
+                .await
+                .map_err(SyncError::Other)?;
+            Ok(raw.iter().filter_map(decode_free_comment).collect())
+        })
     }
 
-    async fn create_story(
-        &self,
-        title: &str,
-        body: &str,
-        initial_labels: &[&str],
-    ) -> Result<u64, SyncError> {
-        let issue = self
-            .inner
-            .create_story(title, body, initial_labels)
-            .await
-            .map_err(SyncError::Other)?;
-        issue.get("number").and_then(|v| v.as_u64()).ok_or_else(|| {
-            SyncError::Other(format!(
-                "create_story succeeded but issue number missing from response: {issue}"
-            ))
+    fn fetch_verdicts(&self, number: u64) -> BoxedFuture<'_, Result<Vec<CastVerdict>, SyncError>> {
+        Box::pin(async move {
+            let raw = self
+                .inner
+                .list_story_comments(number)
+                .await
+                .map_err(SyncError::Other)?;
+            Ok(decode_verdicts(&raw))
+        })
+    }
+
+    fn push_event<'a>(
+        &'a self,
+        event: &'a StoryEvent,
+        context: &'a source_sync::PushContext,
+    ) -> BoxedFuture<'a, Result<Option<StoryEvent>, SyncError>> {
+        Box::pin(async move { mutation::apply_push_event(&self.inner, event, context).await })
+    }
+
+    fn create_story<'a>(
+        &'a self,
+        title: &'a str,
+        body: &'a str,
+        initial_labels: &'a [&'a str],
+    ) -> BoxedFuture<'a, Result<u64, SyncError>> {
+        Box::pin(async move {
+            let issue = self
+                .inner
+                .create_story(title, body, initial_labels)
+                .await
+                .map_err(SyncError::Other)?;
+            issue
+                .get("number")
+                .and_then(|value| value.as_u64())
+                .ok_or_else(|| {
+                    SyncError::Other(format!(
+                        "create_story succeeded but issue number missing from response: {issue}"
+                    ))
+                })
         })
     }
 }

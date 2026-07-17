@@ -31,6 +31,26 @@ async fn ingest_stories(adapter: &InMemorySourceAdapter) -> Vec<Story> {
 }
 
 #[tokio::test]
+async fn the_source_adapter_port_is_object_safe_so_it_needs_no_erasure_wrapper() {
+    let concrete = InMemorySourceAdapter::new();
+    concrete.seed_stories(vec![seed_story(1, "reached through a trait object")]);
+    let erased: std::sync::Arc<dyn SourceAdapter> = std::sync::Arc::new(concrete);
+
+    let ingested = erased
+        .ingest_metadata()
+        .await
+        .expect("a type-erased adapter ingests exactly as the concrete one does");
+
+    assert!(
+        ingested
+            .items
+            .iter()
+            .any(|story| story.id == StoryId::new(1)),
+        "a seeded story reaches the caller through the trait object's vtable"
+    );
+}
+
+#[tokio::test]
 async fn ingest_metadata_returns_seeded_stories() {
     let adapter = InMemorySourceAdapter::new();
     adapter.seed_stories(vec![seed_story(1, "first"), seed_story(2, "second")]);

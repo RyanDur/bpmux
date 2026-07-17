@@ -65,69 +65,61 @@ pub fn is_permanent_push_failure(err: &SyncError) -> bool {
     )
 }
 
+pub type BoxedFuture<'a, T> = std::pin::Pin<Box<dyn std::future::Future<Output = T> + Send + 'a>>;
+
+pub type StoryWithPlacement = (Story, Option<StageId>);
+
 pub trait SourceAdapter: Send + Sync {
-    fn ingest_metadata(
-        &self,
-    ) -> impl std::future::Future<Output = Result<Ingested, SyncError>> + Send;
+    fn ingest_metadata(&self) -> BoxedFuture<'_, Result<Ingested, SyncError>>;
 
     fn ingest_metadata_since(
         &self,
         _since: Option<chrono::DateTime<chrono::Utc>>,
-    ) -> impl std::future::Future<Output = Result<Ingested, SyncError>> + Send {
+    ) -> BoxedFuture<'_, Result<Ingested, SyncError>> {
         self.ingest_metadata()
     }
 
     fn fetch_story_metadata(
         &self,
         number: u64,
-    ) -> impl std::future::Future<Output = Result<Option<(Story, Option<StageId>)>, SyncError>> + Send;
+    ) -> BoxedFuture<'_, Result<Option<StoryWithPlacement>, SyncError>>;
 
-    fn fetch_story_body(
-        &self,
-        number: u64,
-    ) -> impl std::future::Future<Output = Result<String, SyncError>> + Send;
+    fn fetch_story_body(&self, number: u64) -> BoxedFuture<'_, Result<String, SyncError>>;
 
     fn fetch_story_body_conditional(
         &self,
         number: u64,
         _prior_etag: Option<String>,
-    ) -> impl std::future::Future<Output = Result<ConditionalBody, SyncError>> + Send {
-        async move {
+    ) -> BoxedFuture<'_, Result<ConditionalBody, SyncError>> {
+        Box::pin(async move {
             self.fetch_story_body(number)
                 .await
                 .map(|body| ConditionalBody::Modified { body, etag: None })
-        }
+        })
     }
 
-    fn fetch_story_labels(
-        &self,
-        number: u64,
-    ) -> impl std::future::Future<Output = Result<Vec<String>, SyncError>> + Send;
+    fn fetch_story_labels(&self, number: u64) -> BoxedFuture<'_, Result<Vec<String>, SyncError>>;
 
     fn fetch_free_comments(
         &self,
         number: u64,
-    ) -> impl std::future::Future<
-        Output = Result<Vec<product_management::story::FreeComment>, SyncError>,
-    > + Send;
+    ) -> BoxedFuture<'_, Result<Vec<product_management::story::FreeComment>, SyncError>>;
 
     fn fetch_verdicts(
         &self,
         number: u64,
-    ) -> impl std::future::Future<
-        Output = Result<Vec<product_management::story::CastVerdict>, SyncError>,
-    > + Send;
+    ) -> BoxedFuture<'_, Result<Vec<product_management::story::CastVerdict>, SyncError>>;
 
-    fn push_event(
-        &self,
-        event: &StoryEvent,
-        context: &PushContext,
-    ) -> impl std::future::Future<Output = Result<Option<StoryEvent>, SyncError>> + Send;
+    fn push_event<'a>(
+        &'a self,
+        event: &'a StoryEvent,
+        context: &'a PushContext,
+    ) -> BoxedFuture<'a, Result<Option<StoryEvent>, SyncError>>;
 
-    fn create_story(
-        &self,
-        title: &str,
-        body: &str,
-        initial_labels: &[&str],
-    ) -> impl std::future::Future<Output = Result<u64, SyncError>> + Send;
+    fn create_story<'a>(
+        &'a self,
+        title: &'a str,
+        body: &'a str,
+        initial_labels: &'a [&'a str],
+    ) -> BoxedFuture<'a, Result<u64, SyncError>>;
 }
