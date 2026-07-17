@@ -124,7 +124,9 @@ async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
             "{label} should NOT be affected by #1402 retire: {result:?}"
         );
     }
-    let story = orch.story(200).expect("story present");
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(200)))
+        .expect("story present");
     assert!(
         story
             .tags
@@ -133,7 +135,9 @@ async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
         story.tags
     );
     orch.refresh_all().await.unwrap();
-    let story = orch.story(200).expect("story present after refresh");
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(200)))
+        .expect("story present after refresh");
     assert_eq!(
         story.parent_epic().map(|e| e.value()),
         Some(1384),

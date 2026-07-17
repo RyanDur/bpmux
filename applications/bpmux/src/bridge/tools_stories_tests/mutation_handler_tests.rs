@@ -42,7 +42,9 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
         handle_comment_on_story(&args, "dev:claude-code", None, Some(&orchestrator), &select).await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = orchestrator.story(123).unwrap();
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(123)))
+        .unwrap();
     let comments = story.free_comments.expect("FreeCommentAppended applied");
     assert_eq!(comments.len(), 1);
     assert_eq!(comments[0].body, "new comment via orchestrator");
@@ -101,7 +103,9 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
     .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = orchestrator.story(200).unwrap();
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(200)))
+        .unwrap();
     assert_eq!(
         story.tags(),
         [Tag::DeskCheckFail],
@@ -182,7 +186,9 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
         "migrated remove path should succeed: {result:?}"
     );
 
-    let story = orchestrator.story(200).unwrap();
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(200)))
+        .unwrap();
     assert!(
         story.tags().is_empty(),
         "tags should be empty after the typed unset"
@@ -260,7 +266,9 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
     .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = orchestrator.story(201).unwrap();
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(201)))
+        .unwrap();
     assert_eq!(story.state, Work::Acceptance);
     let gates = story.verdicts.as_ref().expect("verdicts seeded");
     assert!(
@@ -350,7 +358,9 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = orchestrator.story(202).unwrap();
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(202)))
+        .unwrap();
     assert_eq!(story.state, Work::InProgress);
     let gates = story.verdicts.as_ref().expect("verdicts seeded");
     assert!(

@@ -128,7 +128,10 @@ async fn edit_story_replaces_body_at_canonical_store() {
         "edit_story response carries success message; got {body_resp}"
     );
 
-    let stored = refresh.story(99).expect("story still in store");
+    let stored = app_store
+        .selector()
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(99)))
+        .expect("story still in store");
     assert_eq!(
         stored.body.as_deref(),
         Some(new_body),

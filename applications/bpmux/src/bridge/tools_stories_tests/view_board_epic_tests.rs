@@ -92,7 +92,13 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
     assert_eq!(
-        orchestrator.story(300).unwrap().parent_epic(),
+        select
+            .select(|state| product_management::story::slice::get(
+                &state.stories,
+                StoryId::new(300)
+            ))
+            .unwrap()
+            .parent_epic(),
         Some(EpicId::new(457))
     );
 
@@ -233,7 +239,13 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     orchestrator.refresh_all().await.unwrap();
     let select = store.select();
     assert_eq!(
-        orchestrator.story(301).unwrap().parent_epic(),
+        select
+            .select(|state| product_management::story::slice::get(
+                &state.stories,
+                StoryId::new(301)
+            ))
+            .unwrap()
+            .parent_epic(),
         Some(EpicId::new(457)),
         "precondition: the seeded parent-epic decodes to the typed field on ingest"
     );
@@ -251,7 +263,16 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
     .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    assert_eq!(orchestrator.story(301).unwrap().parent_epic(), None);
+    assert_eq!(
+        select
+            .select(|state| product_management::story::slice::get(
+                &state.stories,
+                StoryId::new(301)
+            ))
+            .unwrap()
+            .parent_epic(),
+        None
+    );
 
     let drained = orchestrator.drain_pending().await.unwrap();
     assert_eq!(drained, 1);

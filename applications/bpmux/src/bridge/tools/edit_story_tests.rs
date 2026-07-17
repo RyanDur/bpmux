@@ -76,7 +76,9 @@ async fn edit_story_title_only_updates_title_preserves_body() {
     .await
     .expect("edit_story with title-only succeeds");
     assert!(result.contains("title"), "result mentions title: {result}");
-    let story = refresh.story(1234).expect("story still exists");
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(1234)))
+        .expect("story still exists");
     assert_eq!(story.title, "[Feature] corrected title", "title updated");
     assert_eq!(
         story.body.as_deref(),
@@ -109,7 +111,9 @@ async fn edit_story_body_only_updates_body_preserves_title() {
     .await
     .expect("edit_story with body-only succeeds");
     assert!(result.contains("body"), "result mentions body: {result}");
-    let story = refresh.story(1234).expect("story still exists");
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(1234)))
+        .expect("story still exists");
     assert_eq!(story.title, "[Feature] original title", "title preserved");
     assert_eq!(
         story.body.as_deref(),
@@ -142,7 +146,9 @@ async fn edit_story_with_both_title_and_body_updates_both() {
         result.contains("title") && result.contains("body"),
         "result mentions both: {result}"
     );
-    let story = refresh.story(1234).expect("story still exists");
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(1234)))
+        .expect("story still exists");
     assert_eq!(story.title, "new title", "title updated");
     assert_eq!(story.body.as_deref(), Some("new body"), "body updated");
 }
@@ -176,7 +182,14 @@ async fn edit_story_body_returns_optimistically_and_pushes_via_the_drain() {
     .expect("edit_story body succeeds");
 
     assert_eq!(
-        orch.story(1234).unwrap().body.as_deref(),
+        select
+            .select(|state| product_management::story::slice::get(
+                &state.stories,
+                StoryId::new(1234)
+            ))
+            .unwrap()
+            .body
+            .as_deref(),
         Some("## What\n\nnew body content"),
         "the store reflects the edit optimistically"
     );
@@ -222,7 +235,13 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
         .unwrap();
     refresh.drain_pending().await.unwrap();
     assert_eq!(
-        refresh.story(1234).unwrap().acceptor(),
+        select
+            .select(|state| product_management::story::slice::get(
+                &state.stories,
+                StoryId::new(1234)
+            ))
+            .unwrap()
+            .acceptor(),
         Some(Acceptor::Dev),
         "precondition: the create-derived acceptor is dev"
     );
@@ -241,7 +260,13 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
     .expect("edit_story with acceptor-only succeeds");
 
     assert_eq!(
-        refresh.story(1234).unwrap().acceptor(),
+        select
+            .select(|state| product_management::story::slice::get(
+                &state.stories,
+                StoryId::new(1234)
+            ))
+            .unwrap()
+            .acceptor(),
         Some(Acceptor::Owner),
         "edit --acceptor owner resets the typed acceptor to owner; the single-acceptor invariant is held by the Option<Acceptor> field, not stale labels"
     );

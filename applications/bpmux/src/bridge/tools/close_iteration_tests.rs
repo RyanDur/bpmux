@@ -144,7 +144,11 @@ mod canonical_via_gh_1300 {
             closed_iteration(&mut rx, 1400).complete,
             "iteration closed — close is terminal (dispatched onto the slice as complete)"
         );
-        let member = refresh.story(200).expect("member 200 exists");
+        let member = select
+            .select(|state| {
+                product_management::story::slice::get(&state.stories, StoryId::new(200))
+            })
+            .expect("member 200 exists");
         assert_eq!(
             member.state,
             Work::NotStarted,
@@ -266,12 +270,20 @@ mod canonical_via_gh_1300 {
         ])
         .await;
         let (dispatch, mut rx) = dispatch_channel();
-        let before = refresh.story(200).expect("member 200 seeded");
+        let before = select
+            .select(|state| {
+                product_management::story::slice::get(&state.stories, StoryId::new(200))
+            })
+            .expect("member 200 seeded");
         let labels_before = adapter.labels_for(200);
         close_iteration_canonical(&refresh, &dispatch, &select, 1400)
             .await
             .unwrap();
-        let after = refresh.story(200).expect("member 200 survives the close");
+        let after = select
+            .select(|state| {
+                product_management::story::slice::get(&state.stories, StoryId::new(200))
+            })
+            .expect("member 200 survives the close");
         assert_eq!(
             after.state, before.state,
             "#1556: close promotes nothing — no member StateTransitioned"

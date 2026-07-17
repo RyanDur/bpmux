@@ -211,8 +211,8 @@ async fn create_iteration_attaches_iteration_label_atomically_at_source() {
         .refresh_story(id)
         .await
         .expect("refetch from source succeeds");
-    refresh
-        .story(id)
+    select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(id)))
         .expect("the issue is present after a source refetch");
     assert!(
         adapter

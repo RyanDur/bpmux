@@ -175,7 +175,11 @@ mod reopen_on_state_transition_tests {
         assert!(result.is_ok(), "start_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
-        let story = orch.story(7200).unwrap();
+        let story = select
+            .select(|state| {
+                product_management::story::slice::get(&state.stories, StoryId::new(7200))
+            })
+            .unwrap();
         assert_eq!(story.state, Work::InProgress);
 
         let mut args = serde_json::Map::new();
@@ -188,7 +192,11 @@ mod reopen_on_state_transition_tests {
             handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
         assert!(result.is_ok(), "deliver_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
-        let story = orch.story(7200).unwrap();
+        let story = select
+            .select(|state| {
+                product_management::story::slice::get(&state.stories, StoryId::new(7200))
+            })
+            .unwrap();
         assert_eq!(story.state, Work::InProgress);
         assert_eq!(
             select.select(|state| board::fine_stage(&story, &state.board)),
@@ -212,7 +220,11 @@ mod reopen_on_state_transition_tests {
         .await;
         assert!(result.is_ok(), "fail_desk_check should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
-        let story = orch.story(7200).unwrap();
+        let story = select
+            .select(|state| {
+                product_management::story::slice::get(&state.stories, StoryId::new(7200))
+            })
+            .unwrap();
         assert_eq!(story.state, Work::InProgress);
         let rework_placement = adapter
             .pushed_events()
@@ -245,7 +257,11 @@ mod reopen_on_state_transition_tests {
             "re-entry deliver_story should succeed: {result:?}"
         );
         orch.drain_pending().await.unwrap();
-        let story = orch.story(7200).unwrap();
+        let story = select
+            .select(|state| {
+                product_management::story::slice::get(&state.stories, StoryId::new(7200))
+            })
+            .unwrap();
         assert_eq!(story.state, Work::InProgress);
         assert_eq!(
             select.select(|state| board::fine_stage(&story, &state.board)),
@@ -269,7 +285,11 @@ mod reopen_on_state_transition_tests {
         assert!(result.is_ok(), "pass_desk_check should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
-        let story = orch.story(7200).unwrap();
+        let story = select
+            .select(|state| {
+                product_management::story::slice::get(&state.stories, StoryId::new(7200))
+            })
+            .unwrap();
         assert_eq!(story.state, Work::Acceptance);
 
         let mut args = serde_json::Map::new();
@@ -283,7 +303,11 @@ mod reopen_on_state_transition_tests {
         assert!(result.is_ok(), "reject_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
-        let story = orch.story(7200).unwrap();
+        let story = select
+            .select(|state| {
+                product_management::story::slice::get(&state.stories, StoryId::new(7200))
+            })
+            .unwrap();
         assert_eq!(story.state, Work::NotStarted);
 
         let mut args = serde_json::Map::new();
@@ -305,7 +329,11 @@ mod reopen_on_state_transition_tests {
         );
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
-        let story = orch.story(7200).unwrap();
+        let story = select
+            .select(|state| {
+                product_management::story::slice::get(&state.stories, StoryId::new(7200))
+            })
+            .unwrap();
         assert_eq!(story.state, Work::InProgress);
 
         let mut args = serde_json::Map::new();
@@ -354,7 +382,11 @@ mod reopen_on_state_transition_tests {
         assert!(result.is_ok(), "accept_story should succeed: {result:?}");
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
-        let story = orch.story(7200).unwrap();
+        let story = select
+            .select(|state| {
+                product_management::story::slice::get(&state.stories, StoryId::new(7200))
+            })
+            .unwrap();
         assert_eq!(
             story.state,
             Work::Accepted,

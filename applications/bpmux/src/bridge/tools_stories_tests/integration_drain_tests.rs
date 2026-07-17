@@ -370,7 +370,9 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
         "reject_story on previously-Accepted must emit StoryReopened: {pushed:?}"
     );
 
-    let story = orch.story(469).unwrap();
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(469)))
+        .unwrap();
     assert_eq!(story.state, Work::NotStarted);
 }
 

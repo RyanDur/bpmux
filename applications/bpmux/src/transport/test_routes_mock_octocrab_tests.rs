@@ -21,7 +21,9 @@ fn fresh_test_hub() -> Arc<hub::Hub> {
     Arc::new(hub::Hub::new(dir.keep(), "test:owner".to_string(), wake_tx))
 }
 
-async fn fixture_mock_octocrab(server: &MockServer) -> (axum::Router, Arc<dyn RefreshDriver>) {
+async fn fixture_mock_octocrab(
+    server: &MockServer,
+) -> (axum::Router, Arc<dyn RefreshDriver>, crate::store::Select) {
     let tracker = OctocrabStoryTracker::with_base_url(
         &format!("{}/", server.base_url()),
         "acme".to_string(),
@@ -50,8 +52,8 @@ async fn fixture_mock_octocrab(server: &MockServer) -> (axum::Router, Arc<dyn Re
         .layer(axum::Extension(orchestrator))
         .layer(axum::Extension(none_tracker))
         .layer(axum::Extension(crate::store::Dispatch::recording().0))
-        .layer(axum::Extension(select));
-    (router, orch)
+        .layer(axum::Extension(select.clone()));
+    (router, orch, select)
 }
 
 async fn read_json(resp: axum::http::Response<Body>) -> Value {
@@ -97,7 +99,7 @@ async fn roundtrip_coherence_create_story_through_real_github_decode_path() {
             .body(issue(42, "[Feature] mock-octocrab-roundtrip", "open", vec![]).to_string());
     });
 
-    let (router, _refresh) = fixture_mock_octocrab(&server).await;
+    let (router, _refresh, _select) = fixture_mock_octocrab(&server).await;
 
     let body = r#"{
         "title":"[Feature] mock-octocrab-roundtrip",
@@ -183,7 +185,7 @@ async fn roundtrip_coherence_user_job_and_falsifier_preserved_through_real_githu
             );
     });
 
-    let (router, refresh) = fixture_mock_octocrab(&server).await;
+    let (router, refresh, _select) = fixture_mock_octocrab(&server).await;
 
     let body = r#"{
         "title":"[Feature] body-preservation-marker",
@@ -238,10 +240,15 @@ async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic_through_re
             .body(Value::Array(vec![]).to_string());
     });
 
-    let (router, refresh) = fixture_mock_octocrab(&server).await;
+    let (router, _refresh, select) = fixture_mock_octocrab(&server).await;
     assert!(
         matches!(
-            refresh.story(99).map(|s| s.story_type()),
+            select
+                .select(|state| product_management::story::slice::get(
+                    &state.stories,
+                    product_management::story::StoryId::new(99)
+                ))
+                .map(|story| story.story_type()),
             Some(product_management::story::StoryKind::Feature)
         ),
         "fixture must seed #99 as a non-Epic (Feature) in the canonical store: create_story \

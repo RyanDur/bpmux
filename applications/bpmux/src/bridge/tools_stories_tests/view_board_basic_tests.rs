@@ -329,7 +329,9 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
     .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = orchestrator.story(301).expect("story exists");
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(301)))
+        .expect("story exists");
     assert_eq!(
         story.state,
         Work::Retired,
@@ -429,7 +431,9 @@ async fn close_story_accept_disposition_transitions_state_to_accepted() {
         "accept-disposition close should succeed: {result:?}"
     );
 
-    let story = orchestrator.story(302).expect("story exists");
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(302)))
+        .expect("story exists");
     assert_eq!(
         story.state,
         Work::Accepted,

@@ -74,7 +74,11 @@ mod stage_verb_behavior {
         )
         .await;
         assert!(result.is_ok(), "the dev judges the dev stage: {result:?}");
-        let story = orch.story(8100).unwrap();
+        let story = select
+            .select(|state| {
+                product_management::story::slice::get(&state.stories, StoryId::new(8100))
+            })
+            .unwrap();
         assert_eq!(story.state, Work::InProgress);
         assert_eq!(
             select.select(|state| board::fine_stage(&story, &state.board)),
@@ -117,7 +121,11 @@ mod stage_verb_behavior {
         assert!(result.is_ok(), "designer judges desk-check: {result:?}");
         orch.drain_pending().await.unwrap();
         orch.refresh_all().await.unwrap();
-        let story = orch.story(8102).unwrap();
+        let story = select
+            .select(|state| {
+                product_management::story::slice::get(&state.stories, StoryId::new(8102))
+            })
+            .unwrap();
         assert_eq!(
             story.state,
             Work::Acceptance,
@@ -138,7 +146,11 @@ mod stage_verb_behavior {
         )
         .await;
         assert!(result.is_ok(), "designer judges desk-check: {result:?}");
-        let story = orch.story(8103).unwrap();
+        let story = select
+            .select(|state| {
+                product_management::story::slice::get(&state.stories, StoryId::new(8103))
+            })
+            .unwrap();
         assert_eq!(story.state, Work::InProgress);
         assert_eq!(
             select.select(|state| board::fine_stage(&story, &state.board)),
@@ -161,7 +173,11 @@ mod stage_verb_behavior {
         .await
         .unwrap();
         orch.drain_pending().await.unwrap();
-        let story = orch.story(8104).unwrap();
+        let story = select
+            .select(|state| {
+                product_management::story::slice::get(&state.stories, StoryId::new(8104))
+            })
+            .unwrap();
         let verdicts = story.verdicts.as_deref().unwrap_or(&[]);
         assert!(
             verdicts.iter().any(|v| matches!(

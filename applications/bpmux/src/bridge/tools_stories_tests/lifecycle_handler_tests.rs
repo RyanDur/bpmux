@@ -58,7 +58,9 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
     .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = orchestrator.story(203).unwrap();
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(203)))
+        .unwrap();
     assert_eq!(story.state, Work::InProgress);
     let gates = story.verdicts.as_ref().expect("verdicts seeded");
     assert!(
@@ -151,7 +153,9 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
     .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = orchestrator.story(204).unwrap();
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(204)))
+        .unwrap();
     assert_eq!(story.state, Work::InProgress);
     let gates = story.verdicts.as_ref().expect("verdicts seeded");
     assert!(
@@ -239,7 +243,9 @@ async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
     .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = orchestrator.story(205).unwrap();
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(205)))
+        .unwrap();
     assert_eq!(story.state, Work::Accepted);
     let gates = story.verdicts.as_ref().expect("verdicts seeded");
     assert!(
@@ -424,7 +430,9 @@ async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
     .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
 
-    let story = orchestrator.story(206).unwrap();
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(206)))
+        .unwrap();
     assert_eq!(story.state, Work::NotStarted);
     let gates = story.verdicts.as_ref().expect("verdicts seeded");
     assert!(
@@ -487,7 +495,7 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
+    let bound_select = crate::store::bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
 
     let mut args = serde_json::Map::new();
@@ -523,8 +531,8 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
         "response should carry the source-assigned id 51 (max+1 over seed 50): {response}"
     );
 
-    let story = orchestrator
-        .story(51)
+    let story = bound_select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(51)))
         .expect("StoryCreated event applied to store");
     assert_eq!(story.title, "[Bug] live-verify failure");
     assert_eq!(story.state, Work::NotStarted);

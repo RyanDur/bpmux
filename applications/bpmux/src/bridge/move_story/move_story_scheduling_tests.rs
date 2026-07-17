@@ -177,7 +177,13 @@ async fn a_move_to_ready_without_a_current_iteration_is_refused_before_mutating(
         "the refusal names the missing designation and the way out; got {err}"
     );
     assert_eq!(
-        orch.story(5001).expect("story stays visible").state(),
+        seed.select()
+            .select(|state| product_management::story::slice::get(
+                &state.stories,
+                StoryId::new(5001)
+            ))
+            .expect("story stays visible")
+            .state(),
         Work::NotStarted,
         "the refusal happens in the validation phase — no state mutation leaked"
     );
@@ -270,7 +276,13 @@ async fn a_move_to_icebox_removes_the_story_from_its_iteration() {
         "icebox means unscheduled — the move removes the story from the iteration (no more 'Icebox in an iteration')"
     );
     assert_eq!(
-        orch.story(5001).expect("story stays visible").state(),
+        seed.select()
+            .select(|state| product_management::story::slice::get(
+                &state.stories,
+                StoryId::new(5001)
+            ))
+            .expect("story stays visible")
+            .state(),
         Work::NotStarted,
         "the story itself returns to icebox"
     );
