@@ -88,7 +88,11 @@ pub async fn run_server(
     if let Some(refresh) = orchestrator.as_ref() {
         refresh.bind_select(store.selector());
         refresh.bind_dispatch(store.dispatcher());
-        startup_tasks::spawn_background_ingest(refresh.clone(), store.dispatcher());
+        startup_tasks::spawn_background_ingest(
+            refresh.clone(),
+            store.dispatcher(),
+            store.selector(),
+        );
     }
     wire_startup_roster(&store, &hub, &pty_registry).await;
     start_polling(&store, orchestrator.is_some()).await;

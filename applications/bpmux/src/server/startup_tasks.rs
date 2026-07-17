@@ -1,9 +1,13 @@
 use std::sync::Arc;
 
-use crate::store::Dispatch;
+use crate::store::{Dispatch, Select};
 use crate::sync::RefreshDriver;
 
-pub(super) fn spawn_background_ingest(orch: Arc<dyn RefreshDriver>, dispatch: Dispatch) {
+pub(super) fn spawn_background_ingest(
+    orch: Arc<dyn RefreshDriver>,
+    dispatch: Dispatch,
+    select: Select,
+) {
     tokio::spawn(async move {
         let backoffs = [0u64, 500, 1500, 4000];
         for (attempt, delay_ms) in backoffs.iter().enumerate() {
@@ -12,12 +16,14 @@ pub(super) fn spawn_background_ingest(orch: Arc<dyn RefreshDriver>, dispatch: Di
             }
             match orch.refresh_all().await {
                 Ok(()) => {
-                    let count = orch.all_stories().len();
+                    let count = select
+                        .select(|state| product_management::story::slice::all(&state.stories))
+                        .len();
                     diag::log_diag(&format!(
                         "server: production orchestrator ingest succeeded on attempt {} ({count} stories)",
                         attempt + 1
                     ));
-                    crate::sync::backfill_shared_history(orch.as_ref(), |action| {
+                    crate::sync::backfill_shared_history(orch.as_ref(), &select, |action| {
                         dispatch.dispatch(action)
                     })
                     .await;

@@ -43,7 +43,10 @@ async fn a_cache_fill_leaves_the_shared_grain_empty_but_the_boot_sweep_fills_it_
         "a VerdictsFetched cache fill is not a gate observation — the shared grain stays empty"
     );
 
-    backfill_shared_history(orch_dyn.as_ref(), |action| handle.dispatch(action)).await;
+    backfill_shared_history(orch_dyn.as_ref(), &handle.select(), |action| {
+        handle.dispatch(action)
+    })
+    .await;
     let after_backfill = handle
         .select()
         .select(|state| state.shared_history.records().to_vec());
@@ -82,7 +85,10 @@ async fn the_boot_sweep_replaces_each_storys_records_per_story() {
     handle.bind_refresh(&orch_dyn);
     orchestrator.ingest_once().await.unwrap();
 
-    backfill_shared_history(orch_dyn.as_ref(), |action| handle.dispatch(action)).await;
+    backfill_shared_history(orch_dyn.as_ref(), &handle.select(), |action| {
+        handle.dispatch(action)
+    })
+    .await;
     let records = handle
         .select()
         .select(|state| state.shared_history.records().to_vec());

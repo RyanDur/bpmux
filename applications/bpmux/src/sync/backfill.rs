@@ -4,9 +4,11 @@ use product_management::history::{SharedHistoryAction, VerdictRecord};
 
 pub(crate) async fn backfill_shared_history(
     refresh: &dyn RefreshDriver,
+    select: &crate::store::Select,
     dispatch: impl Fn(AppAction),
 ) {
-    for story in refresh.all_stories() {
+    let stories = select.select(|state| product_management::story::slice::all(&state.stories));
+    for story in stories {
         let number = story.id.value();
         match refresh.fetch_verdicts(number).await {
             Ok(verdicts) => {
