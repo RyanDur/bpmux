@@ -140,7 +140,7 @@ async fn outcome_iterations(adapter: &Arc<InMemorySourceAdapter>, id: u64) -> Ve
 }
 
 async fn drill_iteration_ids(
-    refresh: &Arc<dyn RefreshDriver>,
+    select: &crate::store::Select,
     adapter: &Arc<InMemorySourceAdapter>,
     id: u64,
 ) -> Vec<u64> {
@@ -148,12 +148,12 @@ async fn drill_iteration_ids(
     let outcome = reingested_outcome(adapter, id).await;
     product_management::roadmap::drill::derive_outcome_drill_in(
         &outcome,
-        &refresh.iterations(),
+        &select.select(|state| product_management::iteration::all(&state.iterations)),
         workflow,
     )
     .iterations
     .iter()
-    .map(|it| it.id.value())
+    .map(|iteration| iteration.id.value())
     .collect()
 }
 
@@ -166,7 +166,7 @@ async fn unmap_removes_the_relation_and_the_drill_drops_the_iteration_1763() {
     ])
     .await;
     assert_eq!(
-        drill_iteration_ids(&refresh, &adapter, 700).await,
+        drill_iteration_ids(&select, &adapter, 700).await,
         vec![710, 720],
         "both iterations build the outcome before unmap"
     );
@@ -183,7 +183,7 @@ async fn unmap_removes_the_relation_and_the_drill_drops_the_iteration_1763() {
         "the parent's ordered iteration list drops the unmapped iteration"
     );
     assert_eq!(
-        drill_iteration_ids(&refresh, &adapter, 700).await,
+        drill_iteration_ids(&select, &adapter, 700).await,
         vec![720],
         "the unmapped iteration drops from the outcome's drill (read<->write over the real derive)"
     );
@@ -222,7 +222,7 @@ async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
     ])
     .await;
     assert_eq!(
-        drill_iteration_ids(&refresh, &adapter, 700).await,
+        drill_iteration_ids(&select, &adapter, 700).await,
         vec![710, 720],
         "before: 710 leads 720"
     );
@@ -242,7 +242,7 @@ async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
         "moving 710 to the end clamps to the band size and lands it last — the parent holds the new order in one write"
     );
     assert_eq!(
-        drill_iteration_ids(&refresh, &adapter, 700).await,
+        drill_iteration_ids(&select, &adapter, 700).await,
         vec![720, 710],
         "the outcome's drill reflects the new priority-order — 710 moved behind 720"
     );

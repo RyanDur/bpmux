@@ -103,9 +103,12 @@ pub async fn post_story_labels(
             );
         }
     }
-    if let Some(mut iteration) =
-        refresh.iteration(product_management::iteration::IterationId::new(id))
-    {
+    if let Some(mut iteration) = select.select(|state| {
+        product_management::iteration::get(
+            &state.iterations,
+            product_management::iteration::IterationId::new(id),
+        )
+    }) {
         let codec = source_codec::gh_label_codec::GhLabelCodec;
         for label in &payload.add {
             if let Some(order) = codec.decode_iteration_order(label) {

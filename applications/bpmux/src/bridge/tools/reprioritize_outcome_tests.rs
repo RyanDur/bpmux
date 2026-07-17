@@ -85,19 +85,19 @@ fn args_full(outcome: u64, to: Option<&str>, position: Option<u32>) -> Map<Strin
     m
 }
 
-fn roadmap_cards(refresh: &Arc<dyn RefreshDriver>) -> Vec<RoadmapOutcomeCard> {
+fn roadmap_cards(select: &crate::store::Select) -> Vec<RoadmapOutcomeCard> {
     product_management::roadmap::selectors::roadmap_cards(
-        &refresh.outcomes(),
-        &refresh.iterations(),
+        &select.select(|state| product_management::outcome::all(&state.outcomes)),
+        &select.select(|state| product_management::iteration::all(&state.iterations)),
         workflow::current_workflow(),
     )
 }
 
-fn band_order(refresh: &Arc<dyn RefreshDriver>, horizon: Horizon) -> Vec<u64> {
-    roadmap_cards(refresh)
+fn band_order(select: &crate::store::Select, horizon: Horizon) -> Vec<u64> {
+    roadmap_cards(select)
         .into_iter()
-        .filter(|c| c.horizon == horizon)
-        .map(|c| c.id.value())
+        .filter(|card| card.horizon == horizon)
+        .map(|card| card.id.value())
         .collect()
 }
 
@@ -124,15 +124,15 @@ async fn build_refresh(
     (store, orch, select)
 }
 
-async fn refresh_with_outcomes(outcomes: Vec<Outcome>) -> Arc<dyn RefreshDriver> {
+async fn refresh_with_outcomes(outcomes: Vec<Outcome>) -> crate::store::Select {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, outcomes, vec![], vec![]);
+    let select = crate::store::bind_seeded_refresh(&orch, outcomes, vec![], vec![]);
     orch.refresh_all().await.unwrap();
-    orch
+    select
 }
 
 fn find_outcome(outcomes: &[Outcome], id: u64) -> &Outcome {
@@ -188,7 +188,7 @@ async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_n
         &["outcome", "horizon.later"],
     )])
     .await;
-    let before = roadmap_cards(&refresh);
+    let before = roadmap_cards(&select);
     assert!(
         before
             .iter()
@@ -209,8 +209,8 @@ async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_n
     .await
     .expect("pm reprioritizes the outcome");
 
-    let after_refresh = refresh_with_outcomes(upserted(&mut rx)).await;
-    let after = roadmap_cards(&after_refresh);
+    let after_select = refresh_with_outcomes(upserted(&mut rx)).await;
+    let after = roadmap_cards(&after_select);
     assert!(
         after
             .iter()
@@ -243,10 +243,10 @@ async fn reprioritize_outcome_is_pm_lane_non_pm_refused_1759() {
     .expect_err("dev cannot reprioritize the roadmap (pm-lane)");
     assert!(err.contains("pm"), "refusal names the pm-lane: {err}");
     assert_eq!(
-        refresh
-            .outcomes()
+        select
+            .select(|state| product_management::outcome::all(&state.outcomes))
             .iter()
-            .find(|o| o.id == OutcomeId::new(700))
+            .find(|outcome| outcome.id == OutcomeId::new(700))
             .expect("outcome present")
             .horizon(),
         Some(Horizon::Next),
@@ -306,10 +306,10 @@ async fn reprioritize_to_the_current_band_is_an_idempotent_noop_1759() {
         "the no-op still prints the current state, exit 0: {result}"
     );
     assert_eq!(
-        refresh
-            .outcomes()
+        select
+            .select(|state| product_management::outcome::all(&state.outcomes))
             .iter()
-            .find(|o| o.id == OutcomeId::new(700))
+            .find(|outcome| outcome.id == OutcomeId::new(700))
             .expect("outcome present")
             .horizon(),
         Some(Horizon::Now),
@@ -327,7 +327,7 @@ async fn position_reorders_an_outcome_within_its_band_observed_through_the_deriv
     let base = outcomes_from(&seeds);
     let (_store, refresh, select) = build_refresh(seeds).await;
     assert_eq!(
-        band_order(&refresh, Horizon::Now),
+        band_order(&select, Horizon::Now),
         vec![700, 710, 720],
         "with no explicit order the band sorts by number"
     );
@@ -345,9 +345,9 @@ async fn position_reorders_an_outcome_within_its_band_observed_through_the_deriv
     .await
     .expect("pm reorders C to the front of Now");
 
-    let after = refresh_with_outcomes(merged(base, upserted(&mut rx))).await;
+    let after_select = refresh_with_outcomes(merged(base, upserted(&mut rx))).await;
     assert_eq!(
-        band_order(&after, Horizon::Now),
+        band_order(&after_select, Horizon::Now),
         vec![720, 700, 710],
         "C now reads first in Now — the within-band reorder reflects through the derive"
     );
@@ -377,9 +377,9 @@ async fn position_overshoot_clamps_to_the_band_end_and_labels_it_1759() {
         result.contains("position 2 of 2"),
         "the overshoot clamps to the band end and labels the real slot count: {result}"
     );
-    let after = refresh_with_outcomes(merged(base, upserted(&mut rx))).await;
+    let after_select = refresh_with_outcomes(merged(base, upserted(&mut rx))).await;
     assert_eq!(
-        band_order(&after, Horizon::Now),
+        band_order(&after_select, Horizon::Now),
         vec![710, 700],
         "A clamped to the last slot of Now"
     );
@@ -406,14 +406,14 @@ async fn band_move_and_position_compose_in_one_verb_1759() {
     )
     .await
     .expect("C moves to Now AND lands at position 1");
-    let after = refresh_with_outcomes(merged(base, upserted(&mut rx))).await;
+    let after_select = refresh_with_outcomes(merged(base, upserted(&mut rx))).await;
     assert_eq!(
-        band_order(&after, Horizon::Now),
+        band_order(&after_select, Horizon::Now),
         vec![720, 700, 710],
         "C moved bands and took the requested slot — --to and --position compose"
     );
     assert!(
-        band_order(&after, Horizon::Next).is_empty(),
+        band_order(&after_select, Horizon::Next).is_empty(),
         "C no longer reads in Next"
     );
 }

@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
 use crate::sync::{ConditionalBody, SyncError};
-use product_management::iteration::{Iteration, IterationId};
-use product_management::outcome::Outcome;
 use product_management::story::events::StoryEvent;
 use product_management::story::{CastVerdict, Story};
 
@@ -49,17 +47,6 @@ pub trait RefreshDriver: Send + Sync {
         initial_labels: Vec<String>,
     ) -> BoxedFuture<'_, Result<u64, SyncError>>;
     fn story(&self, id: u64) -> Option<Story>;
-    fn outcomes(&self) -> Vec<Outcome> {
-        Vec::new()
-    }
-    fn iterations(&self) -> Vec<Iteration> {
-        Vec::new()
-    }
-    fn iteration(&self, iteration_id: IterationId) -> Option<Iteration> {
-        self.iterations()
-            .into_iter()
-            .find(|iteration| iteration.id == iteration_id)
-    }
     fn remove_story(&self, id: u64) -> Option<Story>;
     fn clear_stories(&self);
     fn update_body(&self, id: u64, body: String) -> BoxedFuture<'_, Result<(), SyncError>>;

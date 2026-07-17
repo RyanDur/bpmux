@@ -34,14 +34,6 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.set_select(select);
     }
 
-    fn outcomes(&self) -> Vec<product_management::outcome::Outcome> {
-        self.read_outcomes()
-    }
-
-    fn iterations(&self) -> Vec<product_management::iteration::Iteration> {
-        self.read_iterations()
-    }
-
     fn snapshot_status(&self) -> SyncStatus {
         self.snapshot_status()
     }

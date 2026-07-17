@@ -5,7 +5,6 @@ use source_sync::{MutationId, QueuedWrite};
 
 use crate::sync::SourceAdapter;
 use product_management::iteration::{self, Iteration};
-use product_management::outcome::{self, Outcome};
 use product_management::story::{self, Story, StoryId};
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
@@ -76,13 +75,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
         self.select
             .get()
             .and_then(|s| s.select(|state| story::slice::get(&state.stories, id)))
-    }
-
-    pub(super) fn read_outcomes(&self) -> Vec<Outcome> {
-        self.select
-            .get()
-            .map(|s| s.select(|state| outcome::all(&state.outcomes)))
-            .unwrap_or_default()
     }
 
     pub(super) fn read_iterations(&self) -> Vec<Iteration> {

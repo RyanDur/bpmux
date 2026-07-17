@@ -97,11 +97,18 @@ async fn move_story(
     result
 }
 
-fn current_members(orch: &Arc<dyn RefreshDriver>) -> Vec<u64> {
-    orch.iterations()
+fn current_members(select: &crate::store::Select) -> Vec<u64> {
+    select
+        .select(|state| product_management::iteration::all(&state.iterations))
         .into_iter()
-        .find(|it| it.is_current)
-        .map(|it| it.stories.iter().map(|s| s.value()).collect())
+        .find(|iteration| iteration.is_current)
+        .map(|iteration| {
+            iteration
+                .stories
+                .iter()
+                .map(|story| story.value())
+                .collect()
+        })
         .unwrap_or_default()
 }
 
@@ -122,7 +129,7 @@ async fn a_bare_move_to_ready_joins_the_current_iteration_at_the_end() {
         .expect("a bare ready move succeeds when a current iteration exists");
 
     assert_eq!(
-        current_members(&orch),
+        current_members(&seed.select()),
         vec![5001, 5002],
         "scheduling to ready IS joining the current iteration — the bare move appends"
     );
@@ -151,7 +158,7 @@ async fn a_bare_move_to_ready_keeps_an_existing_members_position() {
         .expect("the rework move back to ready succeeds");
 
     assert_eq!(
-        current_members(&orch),
+        current_members(&seed.select()),
         vec![5001, 5002],
         "a story already scheduled keeps its slot on a bare re-entry — rework does not shove it to the back"
     );
@@ -194,7 +201,7 @@ async fn a_positioned_move_to_icebox_is_refused_because_the_icebox_is_unordered(
         "the refusal names the fact that the icebox is unordered; got {err}"
     );
     assert_eq!(
-        current_members(&orch),
+        current_members(&seed.select()),
         vec![5001],
         "the refusal happens before any mutation leaks — the story keeps its schedule"
     );
@@ -228,7 +235,7 @@ async fn an_epic_move_to_ready_never_schedules_it_into_the_iteration() {
         .expect("a story schedules normally alongside");
 
     assert_eq!(
-        current_members(&orch),
+        current_members(&seed.select()),
         vec![5001],
         "epics group stories and never ride the iteration — only the story joined"
     );
@@ -251,14 +258,14 @@ async fn a_move_to_icebox_removes_the_story_from_its_iteration() {
     move_story(&orch, &seed, 5001, "ready", Some(1))
         .await
         .expect("schedule the story first");
-    assert_eq!(current_members(&orch), vec![5001]);
+    assert_eq!(current_members(&seed.select()), vec![5001]);
 
     move_story(&orch, &seed, 5001, "icebox", None)
         .await
         .expect("the icebox move succeeds");
 
     assert_eq!(
-        current_members(&orch),
+        current_members(&seed.select()),
         Vec::<u64>::new(),
         "icebox means unscheduled — the move removes the story from the iteration (no more 'Icebox in an iteration')"
     );

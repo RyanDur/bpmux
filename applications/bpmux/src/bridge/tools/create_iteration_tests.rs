@@ -254,11 +254,11 @@ async fn create_iteration_appends_order_after_existing_1735() {
     existing_labels.push("iteration-order.100".to_string());
     let (refresh, _adapter, select) =
         build_refresh_with_stories(vec![(existing, existing_labels, existing_closed)]).await;
-    let aquila_order = refresh
-        .iterations()
+    let aquila_order = select
+        .select(|state| product_management::iteration::all(&state.iterations))
         .iter()
-        .find(|it| it.title == "Iteration Aquila")
-        .and_then(|it| it.iteration_order)
+        .find(|iteration| iteration.title == "Iteration Aquila")
+        .and_then(|iteration| iteration.iteration_order)
         .expect("Aquila has a seeded order");
     let (dispatch, mut rx) = dispatch_channel();
     handle_create_iteration(

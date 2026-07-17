@@ -124,9 +124,9 @@ async fn roadmap_numbers_for(outcomes: Vec<Outcome>) -> Vec<u64> {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, outcomes, vec![], vec![]);
+    let select = crate::store::bind_seeded_refresh(&orch, outcomes, vec![], vec![]);
     orch.refresh_all().await.unwrap();
-    band_numbers(&orch)
+    band_numbers(&select)
 }
 
 fn args(outcome: u64, reason: Option<&str>) -> Map<String, Value> {
@@ -138,14 +138,14 @@ fn args(outcome: u64, reason: Option<&str>) -> Map<String, Value> {
     m
 }
 
-fn band_numbers(refresh: &Arc<dyn RefreshDriver>) -> Vec<u64> {
+fn band_numbers(select: &crate::store::Select) -> Vec<u64> {
     product_management::roadmap::selectors::roadmap_cards(
-        &refresh.outcomes(),
-        &refresh.iterations(),
+        &select.select(|state| product_management::outcome::all(&state.outcomes)),
+        &select.select(|state| product_management::iteration::all(&state.iterations)),
         workflow::current_workflow(),
     )
     .into_iter()
-    .map(|c| c.id.value())
+    .map(|card| card.id.value())
     .collect()
 }
 
@@ -158,7 +158,7 @@ async fn retire_mutates_the_domain_and_the_outcome_drops_from_the_roadmap_view_1
     ])
     .await;
     assert_eq!(
-        band_numbers(&refresh),
+        band_numbers(&select),
         vec![700, 710],
         "both outcomes visible before retire"
     );
@@ -221,10 +221,10 @@ async fn retire_with_no_reason_is_rejected_1761() {
         "the error explains the reason is the audit-trail: {err}"
     );
     assert!(
-        !refresh
-            .outcomes()
+        !select
+            .select(|state| product_management::outcome::all(&state.outcomes))
             .iter()
-            .find(|o| o.id == OutcomeId::new(700))
+            .find(|outcome| outcome.id == OutcomeId::new(700))
             .expect("present")
             .is_retired(),
         "a reasonless retire mutates nothing"
@@ -256,9 +256,11 @@ async fn retire_states_the_orphaned_iteration_mapping_count_1761() {
         "the confirm states the orphaned-mapping count so the PM can re-home them: {result}"
     );
     assert!(
-        refresh
-            .iteration(IterationId::new(710))
-            .is_some_and(|it| !it.complete),
+        select
+            .select(|state| {
+                product_management::iteration::get(&state.iterations, IterationId::new(710))
+            })
+            .is_some_and(|iteration| !iteration.complete),
         "retire is soft-delete on the OUTCOME — its iterations are NOT closed (re-mappable)"
     );
 }

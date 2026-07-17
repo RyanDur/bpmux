@@ -116,8 +116,12 @@ async fn dev_ok_records_act_and_flips_dev_ok_readiness_1736() {
 
 #[tokio::test]
 async fn no_dev_ok_on_record_means_not_ready_1736() {
-    let (_store, orch, _select) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
-    let iteration = orch.iteration(IterationId::new(1552)).unwrap();
+    let (_store, _orch, select) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
+    let iteration = select
+        .select(|state| {
+            product_management::iteration::get(&state.iterations, IterationId::new(1552))
+        })
+        .unwrap();
     assert!(
         !iteration_readiness(&iteration, &bundled_default()).dev_ok,
         "no dev-OK on record → the check is unmet (no false-positive)"

@@ -116,8 +116,12 @@ async fn designer_close_records_act_and_flips_review_readiness_1703() {
 
 #[tokio::test]
 async fn no_close_on_record_means_review_not_ready_1703() {
-    let (_store, orch, _select) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
-    let iteration = orch.iteration(IterationId::new(1552)).unwrap();
+    let (_store, _orch, select) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
+    let iteration = select
+        .select(|state| {
+            product_management::iteration::get(&state.iterations, IterationId::new(1552))
+        })
+        .unwrap();
     assert!(
         !iteration_readiness(&iteration, &bundled_default()).review_closed,
         "no review-close on record → the check is unmet (no false-positive)"

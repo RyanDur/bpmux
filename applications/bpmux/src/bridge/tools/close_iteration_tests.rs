@@ -158,8 +158,10 @@ mod canonical_via_gh_1300 {
         current_labels.push("current-iteration".to_string());
         let (refresh, _adapter, select) = build_refresh(vec![(current, current_labels)]).await;
         assert!(
-            refresh
-                .iteration(IterationId::new(1400))
+            select
+                .select(|state| {
+                    product_management::iteration::get(&state.iterations, IterationId::new(1400))
+                })
                 .expect("iteration exists")
                 .is_current,
             "precondition: iteration #1400 is the current designation"

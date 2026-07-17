@@ -200,8 +200,10 @@ async fn remove_member_with_no_reason_is_rejected_1762() {
         "the error names the required reason: {err}"
     );
     assert!(
-        refresh
-            .iteration(IterationId::new(1700))
+        select
+            .select(|state| {
+                product_management::iteration::get(&state.iterations, IterationId::new(1700))
+            })
             .expect("present")
             .stories
             .contains(&StoryId::new(710)),
@@ -355,8 +357,10 @@ async fn rename_updates_the_iteration_title_1762() {
 async fn renaming_a_current_iteration_preserves_its_current_designation() {
     let (_store, refresh, select) = build_refresh(vec![current_iteration(1700, "Vela")]).await;
     assert!(
-        refresh
-            .iteration(IterationId::new(1700))
+        select
+            .select(|state| {
+                product_management::iteration::get(&state.iterations, IterationId::new(1700))
+            })
             .expect("present")
             .is_current,
         "sanity: the seeded iteration is current"
