@@ -10,9 +10,12 @@ pub(crate) async fn dispatch_create_iteration(
     actor_id: Option<&str>,
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
-    tools_stories::handle_create_iteration(&args, agent_name, role, actor_id, refresh, dispatch)
-        .await
+    tools_stories::handle_create_iteration(
+        &args, agent_name, role, actor_id, refresh, dispatch, select,
+    )
+    .await
 }
 
 pub(crate) async fn dispatch_close_iteration(

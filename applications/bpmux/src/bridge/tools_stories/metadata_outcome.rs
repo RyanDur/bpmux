@@ -69,7 +69,10 @@ pub(crate) async fn handle_reprioritize_outcome(
     let mut updates: Vec<Outcome> = Vec::new();
     let position_note = match position {
         Some(p) => {
-            reorder_within_band(driver, &codec, &meta, &moved, target_band, p, &mut updates)?
+            let reorder =
+                reorder_within_band(driver, select, &codec, &meta, &moved, target_band, p)?;
+            updates.extend(reorder.updates);
+            reorder.note
         }
         None => {
             if band_changed {

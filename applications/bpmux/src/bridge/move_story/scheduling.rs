@@ -32,7 +32,7 @@ pub(super) fn resolve_scheduling_target(
 }
 
 pub(super) async fn apply_scheduling(
-    r: &Arc<dyn RefreshDriver>,
+    driver: &Arc<dyn RefreshDriver>,
     select: &crate::store::Select,
     dispatch: &crate::store::Dispatch,
     id: u64,
@@ -42,7 +42,7 @@ pub(super) async fn apply_scheduling(
 ) -> Result<(), String> {
     if matches!(target, TargetState::Icebox) {
         crate::bridge::tools_stories::iteration_members::remove_member_everywhere(
-            r, select, dispatch, id,
+            driver, select, dispatch, id,
         )
         .await
         .map_err(|e| format!("#{id} unschedule (iteration-member removal) failed: {e}"))?;
@@ -50,11 +50,9 @@ pub(super) async fn apply_scheduling(
     let Some(iteration_id) = scheduling_target else {
         return Ok(());
     };
-    let members = r
-        .iterations()
-        .into_iter()
-        .find(|it| it.id == iteration_id)
-        .map(|it| it.stories)
+    let members = select
+        .select(|state| product_management::iteration::get(&state.iterations, iteration_id))
+        .map(|iteration| iteration.stories)
         .unwrap_or_default();
     let join_position = match position {
         Some(pos) => Some(pos as u32),
@@ -63,7 +61,7 @@ pub(super) async fn apply_scheduling(
     };
     if let Some(pos) = join_position {
         crate::bridge::tools_stories::iteration_members::set_member_position(
-            r,
+            driver,
             select,
             dispatch,
             iteration_id.value(),

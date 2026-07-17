@@ -42,18 +42,24 @@ pub(super) fn push_band_change(
     .map_err(|e| format!("#{id} horizon label enqueue failed: {e}"))
 }
 
+pub(super) struct BandReorder {
+    pub note: String,
+    pub updates: Vec<Outcome>,
+}
+
 pub(super) fn reorder_within_band(
-    r: &Arc<dyn RefreshDriver>,
+    driver: &Arc<dyn RefreshDriver>,
+    select: &crate::store::Select,
     codec: &GhLabelCodec,
     meta: &impl Fn() -> EventMeta,
     moved: &Outcome,
     band: Horizon,
     requested_position: u32,
-    updates: &mut Vec<Outcome>,
-) -> Result<String, String> {
+) -> Result<BandReorder, String> {
+    let mut updates: Vec<Outcome> = Vec::new();
     let moved_id = moved.id.value();
-    let mut members: Vec<Outcome> = r
-        .outcomes()
+    let mut members: Vec<Outcome> = select
+        .select(|state| product_management::outcome::all(&state.outcomes))
         .into_iter()
         .filter(|outcome| {
             outcome.horizon() == Some(band) && !outcome.is_retired() && outcome.id != moved.id
@@ -88,24 +94,29 @@ pub(super) fn reorder_within_band(
             continue;
         }
         if let Some(order) = member.horizon_order() {
-            r.mutate_sync(StoryEvent::new(
+            driver
+                .mutate_sync(StoryEvent::new(
+                    meta(),
+                    StoryId::new(*id),
+                    StoryEventKind::TagRemoved {
+                        label: codec.encode_horizon_order(order),
+                    },
+                ))
+                .map_err(|e| format!("#{id} prior-position removal failed: {e}"))?;
+        }
+        driver
+            .mutate_sync(StoryEvent::new(
                 meta(),
                 StoryId::new(*id),
-                StoryEventKind::TagRemoved {
-                    label: codec.encode_horizon_order(order),
+                StoryEventKind::TagAdded {
+                    label: codec.encode_horizon_order(new_position),
                 },
             ))
-            .map_err(|e| format!("#{id} prior-position removal failed: {e}"))?;
-        }
-        r.mutate_sync(StoryEvent::new(
-            meta(),
-            StoryId::new(*id),
-            StoryEventKind::TagAdded {
-                label: codec.encode_horizon_order(new_position),
-            },
-        ))
-        .map_err(|e| format!("#{id} position label enqueue failed: {e}"))?;
+            .map_err(|e| format!("#{id} position label enqueue failed: {e}"))?;
         updates.push(member.with_horizon(Some(band), Some(new_position)));
     }
-    Ok(format!(" (position {clamped} of {band_size})"))
+    Ok(BandReorder {
+        note: format!(" (position {clamped} of {band_size})"),
+        updates,
+    })
 }

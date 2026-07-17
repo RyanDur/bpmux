@@ -3,7 +3,6 @@ use std::sync::Arc;
 use chrono::Utc;
 
 use crate::hub;
-use crate::sync::RefreshDriver;
 use message::{Message, MessageType};
 use message::{StateDeltaPayload, StoryTransitionWire};
 
@@ -43,12 +42,19 @@ pub(crate) fn fire_stories(hub: &Arc<hub::Hub>, select: &crate::store::Select) {
 }
 
 pub(crate) fn story_state_label(
-    refresh: &Arc<dyn RefreshDriver>,
+    select: &crate::store::Select,
     number: u64,
 ) -> Option<&'static str> {
-    refresh.story(number).map(|story| {
-        product_management::scheduling::projected_state(&story, &refresh.iterations()).as_str()
-    })
+    let (story, iterations) = select.select(|state| {
+        (
+            product_management::story::slice::get(
+                &state.stories,
+                product_management::story::StoryId::new(number),
+            ),
+            product_management::iteration::all(&state.iterations),
+        )
+    });
+    story.map(|story| product_management::scheduling::projected_state(&story, &iterations).as_str())
 }
 
 pub(crate) fn fire_story_transition(

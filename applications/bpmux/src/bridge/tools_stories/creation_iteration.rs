@@ -10,6 +10,7 @@ pub(crate) async fn handle_create_iteration(
     actor_id: Option<&str>,
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     let workflow = workflow::current_workflow();
     let pm = workflow.role_name_for_purpose("pm").unwrap_or("pm");
@@ -30,10 +31,16 @@ pub(crate) async fn handle_create_iteration(
     )?;
     let driver = refresh
         .ok_or("create_iteration requires refresh (RefreshDriver) — canonical store unavailable")?;
-    let existing_open_iteration = driver
-        .iterations()
+    let open_iterations: Vec<product_management::iteration::Iteration> = select
+        .select(|state| product_management::iteration::all(&state.iterations))
         .into_iter()
-        .find(|it| !it.complete && it.title.eq_ignore_ascii_case(&format!("Iteration {name}")));
+        .filter(|iteration| !iteration.complete)
+        .collect();
+    let existing_open_iteration = open_iterations.iter().find(|iteration| {
+        iteration
+            .title
+            .eq_ignore_ascii_case(&format!("Iteration {name}"))
+    });
     if let Some(existing) = existing_open_iteration {
         return Err(format!(
             "iteration named '{name}' already open as #{n}; close it first or pick a different name (#1281 sister-discipline: duplicate-collision rejected at create-time)",
@@ -42,11 +49,9 @@ pub(crate) async fn handle_create_iteration(
     }
     let title = format!("Iteration {name}");
     let body = compose_iteration_body(name);
-    let next_order = driver
-        .iterations()
-        .into_iter()
-        .filter(|it| !it.complete)
-        .filter_map(|it| it.iteration_order)
+    let next_order = open_iterations
+        .iter()
+        .filter_map(|iteration| iteration.iteration_order)
         .max()
         .map_or(
             product_management::iteration::label::DEFAULT_FIRST_POSITION,

@@ -85,7 +85,7 @@ pub async fn post_rpc_tool(
     };
     let prior_state = transition_id
         .filter(|_| !is_read_only_tool(&tool))
-        .and_then(|id| story_state_label(&refresh, id));
+        .and_then(|id| story_state_label(&select, id));
     let role = effective_role(&select, &agent, actor_id.as_deref());
     let caller = ToolCaller {
         agent: &agent,
@@ -101,7 +101,7 @@ pub async fn post_rpc_tool(
                 fire_stories(&hub, &select);
                 if let (Some(id), Some(from_state)) = (transition_id, prior_state)
                     && let Some(target_state) =
-                        declared_target_state.or_else(|| story_state_label(&refresh, id))
+                        declared_target_state.or_else(|| story_state_label(&select, id))
                     && target_state != from_state
                 {
                     fire_story_transition(&hub, id, from_state, target_state, &agent);

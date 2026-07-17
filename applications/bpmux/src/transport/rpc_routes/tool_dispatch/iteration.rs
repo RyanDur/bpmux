@@ -17,6 +17,7 @@ pub(super) async fn route(
                 cx.actor_id,
                 cx.refresh_ref,
                 cx.dispatcher,
+                cx.select,
             )
             .await
         }

@@ -33,6 +33,7 @@ pub(crate) async fn handle_reorder_iteration(
     let band_size = renumber_iteration_order(
         driver,
         dispatch,
+        select,
         agent_name,
         actor_id,
         iteration_id,
@@ -46,13 +47,14 @@ pub(crate) async fn handle_reorder_iteration(
 fn renumber_iteration_order(
     driver: &Arc<dyn RefreshDriver>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
     agent_name: &str,
     actor_id: Option<&str>,
     moved: u64,
     requested_position: u32,
 ) -> Result<u32, String> {
-    let mut actives: Vec<Iteration> = driver
-        .iterations()
+    let mut actives: Vec<Iteration> = select
+        .select(|state| product_management::iteration::all(&state.iterations))
         .into_iter()
         .filter(|iteration| !iteration.complete)
         .collect();

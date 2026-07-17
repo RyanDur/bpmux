@@ -25,22 +25,22 @@ pub(crate) async fn handle_designate_current_iteration(
         ));
     }
     let meta = || meta_for(agent_name, actor_id);
-    let prior: Vec<product_management::iteration::Iteration> = driver
-        .iterations()
+    let prior: Vec<product_management::iteration::Iteration> = select
+        .select(|state| product_management::iteration::all(&state.iterations))
         .into_iter()
-        .filter(|it| it.is_current && it.id != IterationId::new(iteration_id))
+        .filter(|iteration| iteration.is_current && iteration.id != IterationId::new(iteration_id))
         .collect();
-    for it in &prior {
+    for iteration in &prior {
         driver
             .mutate_sync(product_management::story::events::StoryEvent::new(
                 meta(),
-                StoryId::new(it.id.value()),
+                StoryId::new(iteration.id.value()),
                 product_management::story::events::StoryEventKind::CurrentIterationCleared,
             ))
             .map_err(|e| {
                 format!(
                     "#{} current-designation-clear enqueue failed: {e}",
-                    it.id.value()
+                    iteration.id.value()
                 )
             })?;
     }

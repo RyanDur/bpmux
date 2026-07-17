@@ -43,7 +43,11 @@ fn seed_iteration_story(id: u64, name: &str, is_closed: bool) -> (Story, Vec<Str
 
 async fn build_refresh_with_stories(
     seeds: Vec<(Story, Vec<String>, bool)>,
-) -> (Arc<dyn RefreshDriver>, Arc<InMemorySourceAdapter>) {
+) -> (
+    Arc<dyn RefreshDriver>,
+    Arc<InMemorySourceAdapter>,
+    crate::store::Select,
+) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     for (story, labels, closed) in &seeds {
         adapter.seed_labels(story.id.value(), labels.clone());
@@ -61,12 +65,16 @@ async fn build_refresh_with_stories(
         .filter(|(_, labels, _)| labels.iter().any(|l| l.eq_ignore_ascii_case("iteration")))
         .map(|(story, labels, closed)| decode_iteration_from_story(story, labels, *closed))
         .collect();
-    crate::store::bind_seeded_refresh(&orch, vec![], iterations, vec![]);
+    let bound_store = crate::store::bind_seeded_refresh(&orch, vec![], iterations, vec![]);
     orch.refresh_all().await.unwrap();
-    (orch, adapter)
+    (orch, adapter, bound_store)
 }
 
-async fn build_empty_refresh() -> (Arc<dyn RefreshDriver>, Arc<InMemorySourceAdapter>) {
+async fn build_empty_refresh() -> (
+    Arc<dyn RefreshDriver>,
+    Arc<InMemorySourceAdapter>,
+    crate::store::Select,
+) {
     build_refresh_with_stories(vec![]).await
 }
 
@@ -77,7 +85,7 @@ fn args(name: &str) -> Map<String, Value> {
 
 #[tokio::test]
 async fn create_iteration_creates_issue_with_iteration_type_and_named_title() {
-    let (refresh, _adapter) = build_empty_refresh().await;
+    let (refresh, _adapter, select) = build_empty_refresh().await;
     let (dispatch, mut rx) = dispatch_channel();
     let result = handle_create_iteration(
         &args("Aquila"),
@@ -86,6 +94,7 @@ async fn create_iteration_creates_issue_with_iteration_type_and_named_title() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("create_iteration succeeds");
@@ -106,7 +115,7 @@ async fn create_iteration_creates_issue_with_iteration_type_and_named_title() {
 
 #[tokio::test]
 async fn create_iteration_rejects_duplicate_open_name() {
-    let (refresh, _adapter) =
+    let (refresh, _adapter, select) =
         build_refresh_with_stories(vec![seed_iteration_story(42, "Aquila", false)]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_create_iteration(
@@ -116,6 +125,7 @@ async fn create_iteration_rejects_duplicate_open_name() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("duplicate Aquila rejected");
@@ -131,7 +141,7 @@ async fn create_iteration_rejects_duplicate_open_name() {
 
 #[tokio::test]
 async fn create_iteration_accepts_same_name_after_previous_closed() {
-    let (refresh, _adapter) =
+    let (refresh, _adapter, select) =
         build_refresh_with_stories(vec![seed_iteration_story(42, "Aquila", true)]).await;
     let (dispatch, _rx) = dispatch_channel();
     let result = handle_create_iteration(
@@ -141,6 +151,7 @@ async fn create_iteration_accepts_same_name_after_previous_closed() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("re-using a closed name succeeds");
@@ -152,7 +163,7 @@ async fn create_iteration_accepts_same_name_after_previous_closed() {
 
 #[tokio::test]
 async fn create_iteration_body_reserves_member_stories_section() {
-    let (refresh, _adapter) = build_empty_refresh().await;
+    let (refresh, _adapter, select) = build_empty_refresh().await;
     let (dispatch, mut rx) = dispatch_channel();
     handle_create_iteration(
         &args("Pegasus"),
@@ -161,6 +172,7 @@ async fn create_iteration_body_reserves_member_stories_section() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .unwrap();
@@ -181,7 +193,7 @@ async fn create_iteration_body_reserves_member_stories_section() {
 
 #[tokio::test]
 async fn create_iteration_attaches_iteration_label_atomically_at_source() {
-    let (refresh, adapter) = build_empty_refresh().await;
+    let (refresh, adapter, select) = build_empty_refresh().await;
     let (dispatch, mut rx) = dispatch_channel();
     handle_create_iteration(
         &args("Aquila"),
@@ -190,6 +202,7 @@ async fn create_iteration_attaches_iteration_label_atomically_at_source() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("create_iteration succeeds");
@@ -213,7 +226,7 @@ async fn create_iteration_attaches_iteration_label_atomically_at_source() {
 
 #[tokio::test]
 async fn create_iteration_assigns_order_at_birth_1735() {
-    let (refresh, _adapter) = build_empty_refresh().await;
+    let (refresh, _adapter, select) = build_empty_refresh().await;
     let (dispatch, mut rx) = dispatch_channel();
     handle_create_iteration(
         &args("Aquila"),
@@ -222,6 +235,7 @@ async fn create_iteration_assigns_order_at_birth_1735() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("create_iteration succeeds");
@@ -238,7 +252,7 @@ async fn create_iteration_appends_order_after_existing_1735() {
     let (existing, mut existing_labels, existing_closed) =
         seed_iteration_story(42, "Aquila", false);
     existing_labels.push("iteration-order.100".to_string());
-    let (refresh, _adapter) =
+    let (refresh, _adapter, select) =
         build_refresh_with_stories(vec![(existing, existing_labels, existing_closed)]).await;
     let aquila_order = refresh
         .iterations()
@@ -254,6 +268,7 @@ async fn create_iteration_appends_order_after_existing_1735() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect("create succeeds");
@@ -266,7 +281,7 @@ async fn create_iteration_appends_order_after_existing_1735() {
 
 #[tokio::test]
 async fn create_iteration_rejects_non_pm_role() {
-    let (refresh, _adapter) = build_empty_refresh().await;
+    let (refresh, _adapter, select) = build_empty_refresh().await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_create_iteration(
         &args("Lyra"),
@@ -275,6 +290,7 @@ async fn create_iteration_rejects_non_pm_role() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("dev role rejected from PM-only tool");
@@ -286,7 +302,7 @@ async fn create_iteration_rejects_non_pm_role() {
 
 #[tokio::test]
 async fn create_iteration_requires_name_arg() {
-    let (refresh, _adapter) = build_empty_refresh().await;
+    let (refresh, _adapter, select) = build_empty_refresh().await;
     let (dispatch, _rx) = dispatch_channel();
     let empty: Map<String, Value> = Map::new();
     let err = handle_create_iteration(
@@ -296,6 +312,7 @@ async fn create_iteration_requires_name_arg() {
         None,
         Some(&refresh),
         &dispatch,
+        &select,
     )
     .await
     .expect_err("missing name rejected");

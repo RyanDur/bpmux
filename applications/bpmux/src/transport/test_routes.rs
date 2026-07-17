@@ -144,13 +144,22 @@ pub async fn post_test_create_iteration(
     axum::Extension(select): axum::Extension<crate::store::Select>,
     Json(req): Json<CreateIterationReq>,
 ) -> impl IntoResponse {
+    let create_select = select.clone();
     run_test_route(hub, refresh, select, |refresh, _hub| async move {
         let mut args = serde_json::Map::new();
         put_str(&mut args, "name", req.name);
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
         let role = bridge::tools_stories::role_from_name(&agent);
-        bridge::dispatch_create_iteration(args, &agent, role, None, Some(&refresh), &dispatcher)
-            .await
+        bridge::dispatch_create_iteration(
+            args,
+            &agent,
+            role,
+            None,
+            Some(&refresh),
+            &dispatcher,
+            &create_select,
+        )
+        .await
     })
     .await
 }
