@@ -7,6 +7,7 @@ use crate::bridge::tools_stories::event_meta::meta_for;
 use crate::bridge::tools_stories::helpers::ensure_story_in_canonical_store;
 use product_management::story::StoryId;
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn handle_accept_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -15,6 +16,7 @@ pub(crate) async fn handle_accept_story(
     refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
     select: &crate::store::Select,
     hub: Option<&std::sync::Arc<crate::hub::Hub>>,
+    race_window: &crate::sync::RaceWindowHandle,
 ) -> Result<String, String> {
     let actor_role = role;
     let workflow = workflow::current_workflow();
@@ -26,7 +28,9 @@ pub(crate) async fn handle_accept_story(
     let r = refresh.ok_or(
         "accept_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
     )?;
-    r.test_race_window_rendezvous().await;
+    if let Some(barrier) = race_window {
+        barrier.arrive().await;
+    }
     let story_opt = select
         .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(id)));
     let class = story_opt
@@ -105,7 +109,9 @@ pub(crate) async fn handle_accept_story(
         }
     }
     accept_via_canonical_store(r, select, id, agent_name, actor_id, bypass).await?;
-    r.test_race_window_complete();
+    if let Some(barrier) = race_window {
+        barrier.complete();
+    }
     Ok(format!("#{id} accepted and closed"))
 }
 

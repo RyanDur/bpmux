@@ -38,7 +38,6 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     pub(super) issue_locks:
         tokio::sync::Mutex<std::collections::HashMap<u64, Arc<tokio::sync::Mutex<()>>>>,
     pub(super) drain_guard: tokio::sync::Mutex<()>,
-    pub(super) race_window_barrier: Option<Arc<RaceWindowBarrier>>,
 }
 
 impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {

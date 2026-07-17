@@ -28,7 +28,7 @@ pub(super) fn test_mode_enabled() -> bool {
         .unwrap_or(false)
 }
 
-pub(super) fn race_window_barrier_from_env() -> Option<Arc<crate::sync::RaceWindowBarrier>> {
+pub(super) fn race_window_barrier_from_env() -> crate::sync::RaceWindowHandle {
     let raw = std::env::var("BPMUX_TEST_RACE_WINDOW_REQUESTS").ok()?;
     let target: usize = raw.trim().parse().ok()?;
     if target < 2 {
@@ -56,30 +56,22 @@ pub(super) fn boot_ci_state() -> crate::store::ci::CiState {
 
 pub(super) async fn build_test_orchestrator(
     hub: Arc<hub::Hub>,
-    race_window_barrier: Option<Arc<crate::sync::RaceWindowBarrier>>,
 ) -> (Arc<dyn RefreshDriver>, Vec<QueuedWrite>) {
     let adapter = Arc::new(crate::integrations::in_memory::InMemorySourceAdapter::new());
     let hydrated = hydrate_outbox(&hub.storage);
-    let mut orch_concrete = SyncOrchestrator::new(adapter, Arc::new(GhLabelCodec));
-    if let Some(barrier) = race_window_barrier {
-        orch_concrete = orch_concrete.with_race_window_barrier(barrier);
-    }
+    let orch_concrete = SyncOrchestrator::new(adapter, Arc::new(GhLabelCodec));
     (Arc::new(orch_concrete), hydrated)
 }
 
 pub(super) fn build_prod_orchestrator(
     hub: Arc<hub::Hub>,
     adapter: Arc<crate::integrations::github::GitHubSourceAdapter>,
-    race_window_barrier: Option<Arc<crate::sync::RaceWindowBarrier>>,
 ) -> (Arc<dyn RefreshDriver>, Vec<QueuedWrite>) {
     let hydrated = hydrate_outbox(&hub.storage);
     diag::log_diag(&format!(
         "server: board-outbox hydrated via storage ({} pending events)",
         hydrated.len()
     ));
-    let mut orch_concrete = SyncOrchestrator::new(adapter, Arc::new(GhLabelCodec));
-    if let Some(barrier) = race_window_barrier {
-        orch_concrete = orch_concrete.with_race_window_barrier(barrier);
-    }
+    let orch_concrete = SyncOrchestrator::new(adapter, Arc::new(GhLabelCodec));
     (Arc::new(orch_concrete), hydrated)
 }

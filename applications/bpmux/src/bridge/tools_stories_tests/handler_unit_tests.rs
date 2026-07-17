@@ -16,6 +16,7 @@ async fn accept_requires_refresh_after_5n_fallback_retirement() {
         None,
         &select,
         None,
+        &None,
     )
     .await;
     assert!(
@@ -46,6 +47,7 @@ async fn accept_rejects_unknown_role_via_handler() {
         Some(&orchestrator),
         &select,
         None,
+        &None,
     )
     .await;
     let err = result.expect_err("intern role should be substrate-refused");
@@ -71,6 +73,7 @@ async fn accept_requires_would_file_bug_arg() {
         None,
         &select,
         None,
+        &None,
     )
     .await
     .expect_err("missing would_file_bug should be rejected");
@@ -96,6 +99,7 @@ async fn accept_blocks_when_would_file_bug_true_without_force() {
         None,
         &select,
         None,
+        &None,
     )
     .await
     .expect_err("would_file_bug=true should block accept");
@@ -121,6 +125,7 @@ async fn accept_force_bypass_requires_bypass_reason() {
         None,
         &select,
         None,
+        &None,
     )
     .await
     .expect_err("force without bypass_reason should be rejected");
@@ -216,6 +221,7 @@ async fn accept_force_bypass_with_reason_records_in_gate_payload() {
         Some(&orchestrator),
         &select,
         None,
+        &None,
     )
     .await;
     assert!(result.is_ok(), "force+reason should succeed: {result:?}");

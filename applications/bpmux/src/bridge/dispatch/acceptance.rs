@@ -3,6 +3,7 @@ use std::sync::Arc;
 use super::super::tools_stories;
 use super::signal_broadcast::broadcast_client_msg_via_hub;
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn dispatch_accept_story(
     args: serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
@@ -11,6 +12,7 @@ pub(crate) async fn dispatch_accept_story(
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     select: &crate::store::Select,
     hub: &Arc<crate::hub::Hub>,
+    race_window: &crate::sync::RaceWindowHandle,
 ) -> Result<String, String> {
     let result = tools_stories::handle_accept_story(
         &args,
@@ -20,6 +22,7 @@ pub(crate) async fn dispatch_accept_story(
         refresh,
         select,
         Some(hub),
+        race_window,
     )
     .await?;
     if let Some(id) = args.get("id").and_then(|v| v.as_u64()) {

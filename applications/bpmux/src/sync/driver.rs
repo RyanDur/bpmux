@@ -52,10 +52,4 @@ pub trait RefreshDriver: Send + Sync {
     fn update_body(&self, id: u64, body: String) -> BoxedFuture<'_, Result<(), SyncError>>;
 
     fn update_title(&self, id: u64, title: String) -> BoxedFuture<'_, Result<(), SyncError>>;
-
-    fn test_race_window_rendezvous(&self) -> BoxedFuture<'_, ()> {
-        Box::pin(async {})
-    }
-
-    fn test_race_window_complete(&self) {}
 }

@@ -90,6 +90,7 @@ pub(super) async fn route(
                 cx.refresh_ref,
                 cx.select,
                 cx.hub,
+                cx.race_window,
             )
             .await
         }

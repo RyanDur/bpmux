@@ -26,11 +26,13 @@ use tool_dispatch::{ToolCaller, dispatch, effective_role};
 pub use validation::{ACTOR_ID_HEADER, AGENT_HEADER, actor_id_from_headers, agent_from_headers};
 use validation::{args_from_value, is_read_only_tool};
 
+#[allow(clippy::too_many_arguments)]
 pub async fn post_rpc_tool(
     State(hub): State<Arc<hub::Hub>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     axum::Extension(dispatcher): axum::Extension<crate::store::Dispatch>,
     axum::Extension(select): axum::Extension<crate::store::Select>,
+    axum::Extension(race_window): axum::Extension<crate::sync::RaceWindowHandle>,
     headers: HeaderMap,
     Path(tool): Path<String>,
     Json(body): Json<Value>,
@@ -92,7 +94,18 @@ pub async fn post_rpc_tool(
         role: &role,
         actor_id: actor_id.as_deref(),
     };
-    match dispatch(&refresh, &tool, caller, args, &hub, &dispatcher, &select).await {
+    match dispatch(
+        &refresh,
+        &tool,
+        caller,
+        args,
+        &hub,
+        &dispatcher,
+        &select,
+        &race_window,
+    )
+    .await
+    {
         Ok(message) => {
             if tool == "view_backlog" {
                 fire_view_backlog_marker(&hub);

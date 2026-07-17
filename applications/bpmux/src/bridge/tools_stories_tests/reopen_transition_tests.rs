@@ -377,6 +377,7 @@ mod reopen_on_state_transition_tests {
             Some(&orch),
             &select,
             None,
+            &None,
         )
         .await;
         assert!(result.is_ok(), "accept_story should succeed: {result:?}");

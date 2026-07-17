@@ -239,6 +239,7 @@ async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
         Some(&orchestrator),
         &select,
         None,
+        &None,
     )
     .await;
     assert!(result.is_ok(), "migrated path should succeed: {result:?}");
@@ -340,6 +341,7 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
         Some(&orch),
         &select,
         None,
+        &None,
     )
     .await
     .unwrap();

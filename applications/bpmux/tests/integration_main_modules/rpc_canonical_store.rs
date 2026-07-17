@@ -115,11 +115,13 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
         .route("/api/rpc/{tool}", axum::routing::post(post_rpc_tool))
         .layer(axum::middleware::from_fn_with_state(auth_state, gate));
 
+    let no_race_window: bpmux::sync::RaceWindowHandle = None;
     let app = axum::Router::new()
         .merge(gated)
         .with_state(Arc::clone(&hub))
         .layer(Extension(test_refresh))
         .layer(Extension(dispatch))
+        .layer(Extension(no_race_window))
         .layer(Extension(app_store.selector()));
 
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");

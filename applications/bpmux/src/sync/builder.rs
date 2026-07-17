@@ -15,12 +15,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             select: std::sync::OnceLock::new(),
             issue_locks: tokio::sync::Mutex::new(std::collections::HashMap::new()),
             drain_guard: tokio::sync::Mutex::new(()),
-            race_window_barrier: None,
         }
-    }
-
-    pub fn with_race_window_barrier(mut self, barrier: Arc<RaceWindowBarrier>) -> Self {
-        self.race_window_barrier = Some(barrier);
-        self
     }
 }

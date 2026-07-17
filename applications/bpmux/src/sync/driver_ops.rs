@@ -97,19 +97,4 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
     fn update_title(&self, number: u64, title: String) -> BoxedFuture<'_, Result<(), SyncError>> {
         Box::pin(std::future::ready(self.update_title(number, title)))
     }
-
-    fn test_race_window_rendezvous(&self) -> BoxedFuture<'_, ()> {
-        let barrier = self.race_window_barrier.clone();
-        Box::pin(async move {
-            if let Some(b) = barrier {
-                b.arrive().await;
-            }
-        })
-    }
-
-    fn test_race_window_complete(&self) {
-        if let Some(b) = self.race_window_barrier.as_ref() {
-            b.complete();
-        }
-    }
 }

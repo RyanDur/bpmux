@@ -1,3 +1,5 @@
+pub type RaceWindowHandle = Option<std::sync::Arc<RaceWindowBarrier>>;
+
 pub struct RaceWindowBarrier {
     target: usize,
     arrival_barrier: tokio::sync::Barrier,

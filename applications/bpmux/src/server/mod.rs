@@ -26,19 +26,17 @@ pub async fn run_server(
     let tracker: transport::rest::TrackerHandle =
         crate::integrations::github::GitHubSourceAdapter::from_env().map(std::sync::Arc::new);
 
-    let race_window_barrier = race_window_barrier_from_env();
+    let race_window = race_window_barrier_from_env();
 
     let (orchestrator, hydrated_outbox): (OrchestratorHandle, Vec<source_sync::QueuedWrite>) =
         if test_mode_enabled() {
             eprintln!(
                 "[bpmux server] BPMUX_TEST_MODE=1 — instantiating in-memory orchestrator for acceptance tests"
             );
-            let (orch, writes) =
-                build_test_orchestrator(hub.clone(), race_window_barrier.clone()).await;
+            let (orch, writes) = build_test_orchestrator(hub.clone()).await;
             (Some(orch), writes)
         } else if let Some(tracker_arc) = tracker.as_ref().cloned() {
-            let (orch, writes) =
-                build_prod_orchestrator(hub.clone(), tracker_arc, race_window_barrier.clone());
+            let (orch, writes) = build_prod_orchestrator(hub.clone(), tracker_arc);
             (Some(orch), writes)
         } else {
             (None, Vec::new())
@@ -108,6 +106,7 @@ pub async fn run_server(
         ci_log_store,
         electron_capture_lock,
         orchestrator,
+        race_window,
         dispatch: store.dispatcher(),
         store,
         pty_registry,

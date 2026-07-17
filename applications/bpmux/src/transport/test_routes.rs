@@ -409,6 +409,7 @@ pub async fn post_test_accept_story(
     State(hub): State<Arc<hub::Hub>>,
     axum::Extension(refresh): axum::Extension<OrchestratorHandle>,
     axum::Extension(select): axum::Extension<crate::store::Select>,
+    axum::Extension(race_window): axum::Extension<crate::sync::RaceWindowHandle>,
     Json(req): Json<AcceptStoryReq>,
 ) -> impl IntoResponse {
     let select_for_dispatch = select.clone();
@@ -425,6 +426,7 @@ pub async fn post_test_accept_story(
             Some(&refresh),
             &select_for_dispatch,
             &hub,
+            &race_window,
         )
         .await
     })

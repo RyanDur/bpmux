@@ -27,6 +27,7 @@ pub(in crate::transport::rpc_routes) struct Ctx<'a> {
     pub(in crate::transport::rpc_routes) hub: &'a Arc<hub::Hub>,
     pub(in crate::transport::rpc_routes) dispatcher: &'a crate::store::Dispatch,
     pub(in crate::transport::rpc_routes) select: &'a crate::store::Select,
+    pub(in crate::transport::rpc_routes) race_window: &'a crate::sync::RaceWindowHandle,
 }
 
 pub(in crate::transport::rpc_routes) enum Routed {
@@ -44,6 +45,7 @@ pub(super) fn effective_role(
         .unwrap_or_else(|| crate::bridge::tools_stories::role_from_name(agent).to_string())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) async fn dispatch(
     refresh: &Arc<dyn RefreshDriver>,
     tool: &str,
@@ -52,6 +54,7 @@ pub(super) async fn dispatch(
     hub: &Arc<hub::Hub>,
     dispatcher: &crate::store::Dispatch,
     select: &crate::store::Select,
+    race_window: &crate::sync::RaceWindowHandle,
 ) -> Result<String, String> {
     let ToolCaller {
         agent,
@@ -67,6 +70,7 @@ pub(super) async fn dispatch(
         hub,
         dispatcher,
         select,
+        race_window,
     };
     let args = match lifecycle::route(tool, args, &cx).await {
         Routed::Handled(result) => return result,
