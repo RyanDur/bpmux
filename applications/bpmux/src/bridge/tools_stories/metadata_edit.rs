@@ -1,6 +1,5 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, require_purpose};
-use crate::sync::RefreshDriver;
 
 pub(crate) async fn handle_edit_story(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -66,14 +65,14 @@ pub(crate) async fn handle_edit_story(
         ensure_story_in_canonical_store(driver, select, id).await?;
         let meta = meta_for(agent_name, actor_id);
         driver
-            .mutate_sync(product_management::story::events::StoryEvent::new(
+            .mutate(product_management::story::events::StoryEvent::new(
                 meta,
                 product_management::story::StoryId::new(id),
                 product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
             ))
             .map_err(|e| format!("#{id} acceptor enqueue failed: {e}"))?;
         driver
-            .drain_pending()
+            .drain_pass()
             .await
             .map_err(|e| format!("#{id} drain after acceptor re-set failed: {e}"))?;
         updated.push("acceptor");

@@ -1,6 +1,5 @@
 use crate::bridge::tools_stories::event_meta::meta_for;
 use crate::bridge::tools_stories::helpers::ensure_story_in_canonical_store;
-use crate::sync::RefreshDriver;
 use product_management::story::StoryId;
 
 const FALSIFIER_CITE_MIN_CHARS: usize = 16;
@@ -106,7 +105,7 @@ pub(crate) async fn handle_fail_desk_check(
                 new_state,
             },
         ));
-        r.mutate_batch_sync(events)
+        r.mutate_batch(events)
             .map_err(|e| format!("#{id} fail-desk-check enqueue failed: {e}"))?;
         return Ok(format!(
             "#{id} failed desk-check: signal sent, label applied"

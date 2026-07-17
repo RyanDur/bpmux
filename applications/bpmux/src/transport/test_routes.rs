@@ -10,7 +10,7 @@ use serde::Deserialize;
 use crate::bridge;
 use crate::hub;
 use crate::sync::OrchestratorHandle;
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use message::{Message, MessageType};
 
 fn fire_board_invalidate(hub: &Arc<hub::Hub>) {
@@ -200,7 +200,7 @@ pub async fn post_test_designate_current_iteration(
     .await
     {
         Ok(message) => {
-            if let Err(e) = refresh.drain_pending().await {
+            if let Err(e) = refresh.drain_pass().await {
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     Json(serde_json::json!({

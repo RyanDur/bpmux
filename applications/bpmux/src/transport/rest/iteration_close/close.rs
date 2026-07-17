@@ -11,7 +11,6 @@ use super::blockers::{
 };
 use super::notify::broadcast_iteration_closed;
 use crate::hub;
-use crate::sync::RefreshDriver;
 use crate::transport::rest::shared::{
     broadcast_board_invalidate, broadcast_stories, err_body, json_headers,
 };
@@ -150,14 +149,14 @@ pub(crate) async fn close_iteration_canonical(
         ts: chrono::Utc::now(),
     };
     refresh
-        .mutate_sync(product_management::story::events::StoryEvent::new(
+        .mutate(product_management::story::events::StoryEvent::new(
             meta(),
             product_management::story::StoryId::new(iteration_id),
             product_management::story::events::StoryEventKind::CurrentIterationCleared,
         ))
         .map_err(|e| format!("#{iteration_id} current-designation-clear enqueue failed: {e}"))?;
     refresh
-        .mutate_sync(product_management::story::events::StoryEvent::new(
+        .mutate(product_management::story::events::StoryEvent::new(
             meta(),
             product_management::story::StoryId::new(iteration_id),
             product_management::story::events::StoryEventKind::StoryClosed {

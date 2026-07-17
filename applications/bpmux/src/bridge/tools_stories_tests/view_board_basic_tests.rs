@@ -338,7 +338,7 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
         "#1570: disposition=retire transitions state to Retired"
     );
 
-    let drained = orchestrator.drain_pending().await.unwrap();
+    let drained = orchestrator.drain_pass().await.unwrap();
     assert_eq!(
         drained, 0,
         "#1142: handler drains internally; nothing left to drain"

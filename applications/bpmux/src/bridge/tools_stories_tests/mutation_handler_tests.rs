@@ -50,7 +50,7 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
     assert_eq!(comments[0].body, "new comment via orchestrator");
     assert_eq!(comments[0].author, "dev");
 
-    let drained = orchestrator.drain_pending().await.unwrap();
+    let drained = orchestrator.drain_pass().await.unwrap();
     assert_eq!(drained, 1, "event must reach the adapter via drain");
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
@@ -112,7 +112,7 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
         "the desk-check-fail label decodes to a typed Tag on the story field, not a raw label round-trip"
     );
 
-    let drained = orchestrator.drain_pending().await.unwrap();
+    let drained = orchestrator.drain_pass().await.unwrap();
     assert_eq!(
         drained, 0,
         "#1142: handler drains internally; nothing left to drain"
@@ -194,7 +194,7 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
         "tags should be empty after the typed unset"
     );
 
-    let drained = orchestrator.drain_pending().await.unwrap();
+    let drained = orchestrator.drain_pass().await.unwrap();
     assert_eq!(
         drained, 0,
         "#1142: handler drains internally per add + remove; nothing left to drain"
@@ -279,7 +279,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         "verdicts should contain PassDeskCheck entry: {gates:?}"
     );
 
-    orchestrator.drain_pending().await.unwrap();
+    orchestrator.drain_pass().await.unwrap();
     let pushed = adapter.pushed_events();
     assert_eq!(
         pushed.len(),
@@ -372,7 +372,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
         "verdicts should contain FailDeskCheck with payload: {gates:?}"
     );
 
-    orchestrator.drain_pending().await.unwrap();
+    orchestrator.drain_pass().await.unwrap();
     let pushed = adapter.pushed_events();
     assert_eq!(
         pushed.len(),

@@ -1,6 +1,6 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use product_management::story::StoryId;
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use std::sync::Arc;
@@ -30,7 +30,7 @@ pub(crate) async fn handle_retire_outcome(
 
     let meta = || meta_for(agent_name, actor_id);
     driver
-        .mutate_sync(StoryEvent::new(
+        .mutate(StoryEvent::new(
             meta(),
             StoryId::new(outcome_id),
             StoryEventKind::StateTransitioned {
@@ -40,7 +40,7 @@ pub(crate) async fn handle_retire_outcome(
         ))
         .map_err(|e| format!("#{outcome_id} retire state-transition failed: {e}"))?;
     driver
-        .mutate_sync(StoryEvent::new(
+        .mutate(StoryEvent::new(
             meta(),
             StoryId::new(outcome_id),
             StoryEventKind::StoryClosed {
@@ -50,7 +50,7 @@ pub(crate) async fn handle_retire_outcome(
         .map_err(|e| format!("#{outcome_id} retire enqueue failed: {e}"))?;
     if !outcome.is_retired() {
         driver
-            .mutate_sync(StoryEvent::new(
+            .mutate(StoryEvent::new(
                 meta(),
                 StoryId::new(outcome_id),
                 StoryEventKind::TagAdded {

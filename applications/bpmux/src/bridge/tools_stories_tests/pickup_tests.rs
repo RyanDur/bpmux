@@ -150,7 +150,7 @@ async fn start_story_stamps_actor_id_from_the_threaded_identify_user_id() {
     .await
     .expect("pickup succeeds");
 
-    orch.drain_pending().await.unwrap();
+    orch.drain_pass().await.unwrap();
     let pushed = adapter.pushed_events();
     let transitioned = pushed
         .iter()

@@ -2,8 +2,6 @@ use std::sync::Weak;
 
 use super::AppAction;
 use super::app::AppState;
-#[cfg(test)]
-use crate::sync::RefreshDriver;
 
 #[derive(Clone)]
 pub struct Select {
@@ -78,7 +76,7 @@ impl SeededStore {
     }
 
     pub(crate) fn bind_refresh(&self, refresh: &std::sync::Arc<crate::sync::SyncOrchestrator>) {
-        refresh.bind_select(self.select());
+        refresh.set_select(self.select());
         refresh.bind_dispatch(self.dispatcher());
     }
 

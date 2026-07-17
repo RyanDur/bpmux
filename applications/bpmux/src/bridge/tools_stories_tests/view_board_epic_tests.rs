@@ -102,7 +102,7 @@ async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
         Some(EpicId::new(457))
     );
 
-    let drained = orchestrator.drain_pending().await.unwrap();
+    let drained = orchestrator.drain_pass().await.unwrap();
     assert_eq!(drained, 1);
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
@@ -274,7 +274,7 @@ async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
         None
     );
 
-    let drained = orchestrator.drain_pending().await.unwrap();
+    let drained = orchestrator.drain_pass().await.unwrap();
     assert_eq!(drained, 1);
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
@@ -362,7 +362,7 @@ async fn create_story_with_parent_epic_emits_story_created_then_parent_epic_set(
     );
     assert!(result.unwrap().contains("under epic #500"));
 
-    let drained = orchestrator.drain_pending().await.unwrap();
+    let drained = orchestrator.drain_pass().await.unwrap();
     assert_eq!(drained, 2, "StoryCreated + ParentEpicSet both drain");
     let pushed = adapter.pushed_events();
     assert!(matches!(
@@ -426,7 +426,7 @@ async fn create_story_with_non_epic_parent_rejects_before_create() {
     .await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("not an Epic"));
-    let drained = orchestrator.drain_pending().await.unwrap();
+    let drained = orchestrator.drain_pass().await.unwrap();
     assert_eq!(drained, 0, "no events emitted on parent-validation reject");
 }
 

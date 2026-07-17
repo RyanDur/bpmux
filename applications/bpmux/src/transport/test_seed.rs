@@ -7,7 +7,6 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 
 use crate::hub;
-use crate::sync::RefreshDriver;
 use product_management::label_codec::LabelCodec;
 
 pub fn seed_api_enabled() -> bool {
@@ -181,7 +180,7 @@ pub async fn post_seed_stories(
             actor_id: None,
             ts: chrono::Utc::now(),
         };
-        if let Err(e) = refresh.mutate_sync(product_management::story::events::StoryEvent::new(
+        if let Err(e) = refresh.mutate(product_management::story::events::StoryEvent::new(
             meta,
             product_management::story::StoryId::new(s.id),
             product_management::story::events::StoryEventKind::StoryCreated {
@@ -216,7 +215,7 @@ pub async fn post_seed_stories(
         } else {
             source_codec::gh_label_codec::GhLabelCodec.encode_story_type(story_type)
         };
-        if let Err(e) = refresh.mutate_sync(product_management::story::events::StoryEvent::new(
+        if let Err(e) = refresh.mutate(product_management::story::events::StoryEvent::new(
             type_label_meta,
             product_management::story::StoryId::new(s.id),
             product_management::story::events::StoryEventKind::TagAdded { label: type_label },
@@ -243,7 +242,7 @@ pub async fn post_seed_stories(
                     label: label.clone(),
                 },
             );
-            if let Err(e) = refresh.mutate_sync(event) {
+            if let Err(e) = refresh.mutate(event) {
                 return (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     format!("seed_stories: label event {label} on #{} failed: {e}", s.id),
@@ -256,7 +255,7 @@ pub async fn post_seed_stories(
                 actor_id: None,
                 ts: chrono::Utc::now(),
             };
-            if let Err(e) = refresh.mutate_sync(product_management::story::events::StoryEvent::new(
+            if let Err(e) = refresh.mutate(product_management::story::events::StoryEvent::new(
                 close_meta,
                 product_management::story::StoryId::new(s.id),
                 product_management::story::events::StoryEventKind::StoryClosed {

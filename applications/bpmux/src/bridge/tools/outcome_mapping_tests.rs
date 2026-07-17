@@ -6,7 +6,6 @@ use crate::bridge::tools_stories::{
 };
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::{AppAction, Dispatch};
-use crate::sync::RefreshDriver;
 use crate::sync::SourceAdapter;
 use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
@@ -175,7 +174,7 @@ async fn unmap_removes_the_relation_and_the_drill_drops_the_iteration_1763() {
         .await
         .expect("pm unmaps the iteration from the outcome");
 
-    refresh.drain_pending().await.unwrap();
+    refresh.drain_pass().await.unwrap();
 
     assert_eq!(
         outcome_iterations(&adapter, 700).await,
@@ -234,7 +233,7 @@ async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
         .await
         .expect("pm reorders the iteration");
 
-    refresh.drain_pending().await.unwrap();
+    refresh.drain_pass().await.unwrap();
 
     assert_eq!(
         outcome_iterations(&adapter, 700).await,

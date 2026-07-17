@@ -1,6 +1,5 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_iteration_in_canonical_store, require_purpose, require_purpose_any};
-use crate::sync::RefreshDriver;
 use product_management::iteration::{Iteration, IterationId};
 use product_management::story::StoryId;
 
@@ -33,7 +32,7 @@ pub(crate) async fn handle_designate_current_iteration(
         .collect();
     for iteration in &prior {
         driver
-            .mutate_sync(product_management::story::events::StoryEvent::new(
+            .mutate(product_management::story::events::StoryEvent::new(
                 meta(),
                 StoryId::new(iteration.id.value()),
                 product_management::story::events::StoryEventKind::CurrentIterationCleared,
@@ -46,7 +45,7 @@ pub(crate) async fn handle_designate_current_iteration(
             })?;
     }
     driver
-        .mutate_sync(product_management::story::events::StoryEvent::new(
+        .mutate(product_management::story::events::StoryEvent::new(
             meta(),
             StoryId::new(iteration_id),
             product_management::story::events::StoryEventKind::CurrentIterationDesignated,
@@ -93,14 +92,14 @@ pub(crate) async fn handle_close_pre_pickup_review(
     let label = source_codec::gh_label_codec::GhLabelCodec.encode_iteration_review_closed(&role);
     let meta = meta_for(agent_name, actor_id);
     driver
-        .mutate_sync(product_management::story::events::StoryEvent::new(
+        .mutate(product_management::story::events::StoryEvent::new(
             meta,
             StoryId::new(iteration_id),
             product_management::story::events::StoryEventKind::TagAdded { label },
         ))
         .map_err(|e| format!("#{iteration_id} review-close enqueue failed: {e}"))?;
     driver
-        .drain_pending()
+        .drain_pass()
         .await
         .map_err(|e| format!("#{iteration_id} review-close push failed: {e}"))?;
     let mut review_closers = iteration.review_closers.clone();
@@ -142,14 +141,14 @@ pub(crate) async fn handle_dev_ok_iteration(
     let label = source_codec::gh_label_codec::GhLabelCodec.encode_iteration_dev_ok(&role);
     let meta = meta_for(agent_name, actor_id);
     driver
-        .mutate_sync(product_management::story::events::StoryEvent::new(
+        .mutate(product_management::story::events::StoryEvent::new(
             meta,
             StoryId::new(iteration_id),
             product_management::story::events::StoryEventKind::TagAdded { label },
         ))
         .map_err(|e| format!("#{iteration_id} dev-OK enqueue failed: {e}"))?;
     driver
-        .drain_pending()
+        .drain_pass()
         .await
         .map_err(|e| format!("#{iteration_id} dev-OK push failed: {e}"))?;
     let mut dev_ok_by = iteration.dev_ok_by.clone();

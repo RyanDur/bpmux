@@ -8,7 +8,6 @@ use serde::Deserialize;
 
 use super::shared::{broadcast_board_invalidate, broadcast_stories, err_body, json_headers};
 use crate::hub;
-use crate::sync::RefreshDriver;
 use product_management::label_codec::LabelCodec;
 
 #[derive(Deserialize)]
@@ -96,7 +95,7 @@ pub async fn post_story_labels(
         let Some(event) = event else {
             continue;
         };
-        if let Err(e) = refresh.mutate_sync(event) {
+        if let Err(e) = refresh.mutate(event) {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 json_headers(),

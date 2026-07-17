@@ -2,7 +2,6 @@ use super::event_meta::meta_for;
 use super::helpers::{
     ensure_epic_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
 };
-use crate::sync::RefreshDriver;
 use product_management::epic::EpicId;
 use product_management::story::StoryId;
 
@@ -31,7 +30,7 @@ pub(crate) async fn handle_set_parent_epic(
     ensure_epic_in_canonical_store(driver, select, epic_id).await?;
     let meta = meta_for(agent_name, actor_id);
     driver
-        .mutate_sync(product_management::story::events::StoryEvent::new(
+        .mutate(product_management::story::events::StoryEvent::new(
             meta,
             StoryId::new(id),
             product_management::story::events::StoryEventKind::ParentEpicSet {
@@ -59,7 +58,7 @@ pub(crate) async fn handle_unset_parent_epic(
     ensure_story_in_canonical_store(driver, select, id).await?;
     let meta = meta_for(agent_name, actor_id);
     driver
-        .mutate_sync(product_management::story::events::StoryEvent::new(
+        .mutate(product_management::story::events::StoryEvent::new(
             meta,
             StoryId::new(id),
             product_management::story::events::StoryEventKind::ParentEpicUnset,

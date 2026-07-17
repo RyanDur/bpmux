@@ -1,6 +1,5 @@
 use super::event_meta::meta_for;
 use super::helpers::{compose_iteration_body, require_nonempty_string};
-use crate::sync::RefreshDriver;
 use product_management::iteration::IterationId;
 use product_management::story::StoryId;
 
@@ -67,7 +66,7 @@ pub(crate) async fn handle_create_iteration(
     let filed_by = meta.actor.clone();
     let filed_at = meta.ts;
     driver
-        .mutate_sync(product_management::story::events::StoryEvent::new(
+        .mutate(product_management::story::events::StoryEvent::new(
             meta.clone(),
             StoryId::new(id),
             product_management::story::events::StoryEventKind::TagAdded {
@@ -77,7 +76,7 @@ pub(crate) async fn handle_create_iteration(
         .map_err(|e| format!("#{id} iteration label enqueue failed: {e}"))?;
     let order_label = source_codec::gh_label_codec::GhLabelCodec.encode_iteration_order(next_order);
     driver
-        .mutate_sync(product_management::story::events::StoryEvent::new(
+        .mutate(product_management::story::events::StoryEvent::new(
             meta,
             StoryId::new(id),
             product_management::story::events::StoryEventKind::TagAdded {

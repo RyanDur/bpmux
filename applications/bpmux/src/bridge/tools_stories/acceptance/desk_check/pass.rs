@@ -3,7 +3,6 @@ use crate::bridge::tools_stories::acceptance::helpers::{
 };
 use crate::bridge::tools_stories::event_meta::meta_for;
 use crate::bridge::tools_stories::helpers::ensure_story_in_canonical_store;
-use crate::sync::RefreshDriver;
 use product_management::story::StoryId;
 
 fn parse_acceptor_arg(
@@ -138,7 +137,7 @@ pub(crate) async fn handle_pass_desk_check(
                 placement,
             },
         ));
-        r.mutate_batch_sync(events)
+        r.mutate_batch(events)
             .map_err(|e| format!("#{id} pass-desk-check enqueue failed: {e}"))?;
         return Ok(format!(
             "#{id} passed desk-check: signal sent, label applied"

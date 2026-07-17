@@ -1,7 +1,7 @@
 use super::acceptance_test_path::validate_acceptance_test_path_at_deliver;
 use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string};
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use product_management::story::{Story, StoryId, Verdict};
 
@@ -109,7 +109,7 @@ pub(crate) async fn handle_deliver_story(
                 placement,
             },
         ));
-        r.mutate_batch_sync(events)
+        r.mutate_batch(events)
             .map_err(|e| format!("#{id} deliver enqueue failed: {e}"))?;
         return Ok(format!("#{id} delivered: signals sent, labels updated"));
     }

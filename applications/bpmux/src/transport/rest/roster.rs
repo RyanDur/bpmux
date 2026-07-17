@@ -5,7 +5,6 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 
 use super::shared::{err_body, json_headers};
-use crate::sync::RefreshDriver;
 
 #[derive(serde::Serialize)]
 pub struct RosterEntry {
@@ -57,7 +56,7 @@ pub async fn post_force_sync(
             err_body("orchestrator not configured"),
         );
     };
-    match r.drain_pending().await {
+    match r.drain_pass().await {
         Ok(n) => (
             StatusCode::OK,
             json_headers(),

@@ -1,6 +1,5 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, require_purpose};
-use crate::sync::RefreshDriver;
 use product_management::story::StoryId;
 
 pub(crate) fn is_retired_iteration_label_axis(label: &str) -> bool {
@@ -98,9 +97,9 @@ pub(crate) async fn handle_label_story(
                 ));
             }
         };
-        r.mutate_sync(event)
+        r.mutate(event)
             .map_err(|e| format!("#{id} enqueue failed: {e}"))?;
-        r.drain_pending()
+        r.drain_pass()
             .await
             .map_err(|e| format!("#{id} label push failed: {e}"))?;
         return Ok(ok_msg);
@@ -138,7 +137,7 @@ pub(crate) async fn handle_comment_on_story(
                 body: body.to_string(),
             },
         );
-        r.mutate_sync(event)
+        r.mutate(event)
             .map_err(|e| format!("#{id} enqueue failed: {e}"))?;
         return Ok(format!("#{id} commented"));
     }

@@ -1,6 +1,6 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string};
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use product_management::story::{Story, StoryId, Verdict, Work};
 use workflow::StageId;
@@ -132,7 +132,7 @@ fn cast_and_transition(
     placement: Option<StageId>,
 ) -> Result<(), String> {
     driver
-        .mutate_batch_sync(vec![
+        .mutate_batch(vec![
             StoryEvent::new(
                 meta.clone(),
                 StoryId::new(id),

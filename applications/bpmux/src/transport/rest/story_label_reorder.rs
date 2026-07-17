@@ -3,7 +3,7 @@
 use super::labels::{LabelMutationPayload, post_story_labels};
 use crate::hub::Hub;
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::response::IntoResponse;
@@ -65,7 +65,7 @@ async fn reordering_a_member_through_the_label_endpoint_never_orphans_it_1524() 
     .await
     .into_response();
     assert_eq!(response.status(), axum::http::StatusCode::OK);
-    refresh.drain_pending().await.unwrap();
+    refresh.drain_pass().await.unwrap();
 
     select
         .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(1687)))

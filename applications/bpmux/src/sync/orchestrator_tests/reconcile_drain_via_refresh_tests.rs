@@ -3,7 +3,6 @@ use std::sync::Arc;
 use super::{meta, seed_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::bind_seeded_refresh;
-use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use product_management::story::{StoryId, Work};
@@ -19,7 +18,7 @@ async fn drain_pending_via_refresh_driver_drains_the_pending_queue() {
     bind_seeded_refresh(&orchestrator, vec![], vec![], vec![]);
     orchestrator.refresh_all().await.unwrap();
     orchestrator
-        .mutate_sync(StoryEvent::new(
+        .mutate(StoryEvent::new(
             meta(),
             StoryId::new(1),
             StoryEventKind::StateTransitioned {
@@ -28,7 +27,7 @@ async fn drain_pending_via_refresh_driver_drains_the_pending_queue() {
             },
         ))
         .unwrap();
-    let drained = orchestrator.drain_pending().await.unwrap();
+    let drained = orchestrator.drain_pass().await.unwrap();
     assert_eq!(drained, 1);
     assert_eq!(adapter.pushed_events().len(), 1);
 }

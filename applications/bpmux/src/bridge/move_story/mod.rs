@@ -4,7 +4,7 @@ use serde_json::Map;
 use serde_json::Value;
 
 use crate::bridge::tools_stories::event_meta::meta_for;
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use product_management::story::{StoryId, Work};
 
@@ -82,7 +82,7 @@ pub(in crate::bridge) async fn handle_move_story(
     let story_id = StoryId::new(id);
 
     if was_closed && !target.closes_issue() {
-        r.mutate_sync(StoryEvent::new(
+        r.mutate(StoryEvent::new(
             meta.clone(),
             story_id,
             StoryEventKind::StoryReopened,
@@ -97,7 +97,7 @@ pub(in crate::bridge) async fn handle_move_story(
             .map(|s| s.state() == target_state)
             .unwrap_or(false);
         if !already_labeled {
-            r.mutate_sync(StoryEvent::new(
+            r.mutate(StoryEvent::new(
                 meta.clone(),
                 story_id,
                 StoryEventKind::TagAdded {
@@ -113,7 +113,7 @@ pub(in crate::bridge) async fn handle_move_story(
             let state = target
                 .workflow_state()
                 .ok_or_else(|| format!("#{id} move target has no workflow state"))?;
-            r.mutate_sync(StoryEvent::new(
+            r.mutate(StoryEvent::new(
                 meta.clone(),
                 story_id,
                 StoryEventKind::StateTransitioned {
@@ -126,7 +126,7 @@ pub(in crate::bridge) async fn handle_move_story(
             ))
             .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
             if matches!(state, Work::Accepted) && !was_closed {
-                r.mutate_sync(StoryEvent::new(
+                r.mutate(StoryEvent::new(
                     meta.clone(),
                     story_id,
                     StoryEventKind::StoryClosed {
@@ -137,7 +137,7 @@ pub(in crate::bridge) async fn handle_move_story(
             }
         }
         TargetState::Retired => {
-            r.mutate_sync(StoryEvent::new(
+            r.mutate(StoryEvent::new(
                 meta.clone(),
                 story_id,
                 StoryEventKind::StateTransitioned {
@@ -146,7 +146,7 @@ pub(in crate::bridge) async fn handle_move_story(
                 },
             ))
             .map_err(|e| format!("#{id} retire-state enqueue failed: {e}"))?;
-            r.mutate_sync(StoryEvent::new(
+            r.mutate(StoryEvent::new(
                 meta.clone(),
                 story_id,
                 StoryEventKind::StoryClosed {
@@ -169,7 +169,7 @@ pub(in crate::bridge) async fn handle_move_story(
     .await?;
 
     let body = audit_comment_body(&actor_short, &from_display, &target, position, &rationale);
-    r.mutate_sync(StoryEvent::new(
+    r.mutate(StoryEvent::new(
         meta,
         story_id,
         StoryEventKind::FreeCommentAppended { body },

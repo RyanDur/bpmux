@@ -71,7 +71,7 @@ mod reopen_on_state_transition_tests {
         let result =
             handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
         assert!(result.is_ok(), "start_story should succeed: {result:?}");
-        orch.drain_pending().await.unwrap();
+        orch.drain_pass().await.unwrap();
         let pushed = adapter.pushed_events();
         assert!(
             pushed.iter().any(
@@ -92,7 +92,7 @@ mod reopen_on_state_transition_tests {
         handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select)
             .await
             .unwrap();
-        orch.drain_pending().await.unwrap();
+        orch.drain_pass().await.unwrap();
         let pushed = adapter.pushed_events();
         assert!(
             !pushed.iter().any(
@@ -115,7 +115,7 @@ mod reopen_on_state_transition_tests {
         let result =
             handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
         assert!(result.is_ok(), "deliver_story should succeed: {result:?}");
-        orch.drain_pending().await.unwrap();
+        orch.drain_pass().await.unwrap();
         let pushed = adapter.pushed_events();
         assert!(
             pushed.iter().any(
@@ -144,7 +144,7 @@ mod reopen_on_state_transition_tests {
         )
         .await;
         assert!(result.is_ok(), "pass_desk_check should succeed: {result:?}");
-        orch.drain_pending().await.unwrap();
+        orch.drain_pass().await.unwrap();
         let pushed = adapter.pushed_events();
         assert!(
             pushed.iter().any(
@@ -173,7 +173,7 @@ mod reopen_on_state_transition_tests {
         let result =
             handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
         assert!(result.is_ok(), "start_story should succeed: {result:?}");
-        orch.drain_pending().await.unwrap();
+        orch.drain_pass().await.unwrap();
         orch.refresh_all().await.unwrap();
         let story = select
             .select(|state| {
@@ -191,7 +191,7 @@ mod reopen_on_state_transition_tests {
         let result =
             handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
         assert!(result.is_ok(), "deliver_story should succeed: {result:?}");
-        orch.drain_pending().await.unwrap();
+        orch.drain_pass().await.unwrap();
         let story = select
             .select(|state| {
                 product_management::story::slice::get(&state.stories, StoryId::new(7200))
@@ -219,7 +219,7 @@ mod reopen_on_state_transition_tests {
         )
         .await;
         assert!(result.is_ok(), "fail_desk_check should succeed: {result:?}");
-        orch.drain_pending().await.unwrap();
+        orch.drain_pass().await.unwrap();
         let story = select
             .select(|state| {
                 product_management::story::slice::get(&state.stories, StoryId::new(7200))
@@ -256,7 +256,7 @@ mod reopen_on_state_transition_tests {
             result.is_ok(),
             "re-entry deliver_story should succeed: {result:?}"
         );
-        orch.drain_pending().await.unwrap();
+        orch.drain_pass().await.unwrap();
         let story = select
             .select(|state| {
                 product_management::story::slice::get(&state.stories, StoryId::new(7200))
@@ -283,7 +283,7 @@ mod reopen_on_state_transition_tests {
         )
         .await;
         assert!(result.is_ok(), "pass_desk_check should succeed: {result:?}");
-        orch.drain_pending().await.unwrap();
+        orch.drain_pass().await.unwrap();
         orch.refresh_all().await.unwrap();
         let story = select
             .select(|state| {
@@ -301,7 +301,7 @@ mod reopen_on_state_transition_tests {
         let result =
             handle_reject_story(&args, "pm:claude-code", "pm", None, Some(&orch), &select).await;
         assert!(result.is_ok(), "reject_story should succeed: {result:?}");
-        orch.drain_pending().await.unwrap();
+        orch.drain_pass().await.unwrap();
         orch.refresh_all().await.unwrap();
         let story = select
             .select(|state| {
@@ -327,7 +327,7 @@ mod reopen_on_state_transition_tests {
             ok.contains("REWORK") && ok.contains("scope drifted from the accepted falsifier"),
             "re-entry start_story should surface the prior-reject rework context: {ok}"
         );
-        orch.drain_pending().await.unwrap();
+        orch.drain_pass().await.unwrap();
         orch.refresh_all().await.unwrap();
         let story = select
             .select(|state| {
@@ -345,7 +345,7 @@ mod reopen_on_state_transition_tests {
         handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select)
             .await
             .unwrap();
-        orch.drain_pending().await.unwrap();
+        orch.drain_pass().await.unwrap();
         orch.refresh_all().await.unwrap();
 
         let mut args = serde_json::Map::new();
@@ -363,7 +363,7 @@ mod reopen_on_state_transition_tests {
         )
         .await
         .unwrap();
-        orch.drain_pending().await.unwrap();
+        orch.drain_pass().await.unwrap();
         orch.refresh_all().await.unwrap();
 
         let mut args = serde_json::Map::new();
@@ -381,7 +381,7 @@ mod reopen_on_state_transition_tests {
         )
         .await;
         assert!(result.is_ok(), "accept_story should succeed: {result:?}");
-        orch.drain_pending().await.unwrap();
+        orch.drain_pass().await.unwrap();
         orch.refresh_all().await.unwrap();
         let story = select
             .select(|state| {

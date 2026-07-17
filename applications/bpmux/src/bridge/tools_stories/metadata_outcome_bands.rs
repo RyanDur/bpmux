@@ -1,4 +1,4 @@
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use product_management::outcome::Outcome;
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::{Horizon, StoryId};
@@ -25,14 +25,14 @@ pub(super) fn push_band_change(
         stale.push(codec.encode_horizon_order(order));
     }
     for label in stale {
-        r.mutate_sync(StoryEvent::new(
+        r.mutate(StoryEvent::new(
             meta(),
             StoryId::new(id),
             StoryEventKind::TagRemoved { label },
         ))
         .map_err(|e| format!("#{id} band-change label removal failed: {e}"))?;
     }
-    r.mutate_sync(StoryEvent::new(
+    r.mutate(StoryEvent::new(
         meta(),
         StoryId::new(id),
         StoryEventKind::TagAdded {
@@ -95,7 +95,7 @@ pub(super) fn reorder_within_band(
         }
         if let Some(order) = member.horizon_order() {
             driver
-                .mutate_sync(StoryEvent::new(
+                .mutate(StoryEvent::new(
                     meta(),
                     StoryId::new(*id),
                     StoryEventKind::TagRemoved {
@@ -105,7 +105,7 @@ pub(super) fn reorder_within_band(
                 .map_err(|e| format!("#{id} prior-position removal failed: {e}"))?;
         }
         driver
-            .mutate_sync(StoryEvent::new(
+            .mutate(StoryEvent::new(
                 meta(),
                 StoryId::new(*id),
                 StoryEventKind::TagAdded {

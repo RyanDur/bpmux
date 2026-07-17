@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 
 use crate::store::{AppAction, AppState};
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
 
 pub struct GithubDrain {
@@ -30,7 +30,7 @@ impl Listener<AppState, AppAction> for GithubDrain {
         tokio::spawn(async move {
             let outcome = tokio::select! {
                 _ = token.cancelled() => return,
-                drained = refresh.drain_pending() => drained,
+                drained = refresh.drain_pass() => drained,
             };
             match outcome {
                 Ok(0) => {}

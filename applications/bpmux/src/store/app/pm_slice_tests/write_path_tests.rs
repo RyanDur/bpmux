@@ -56,7 +56,7 @@ fn minimal_story(id: u64, title: &str) -> Story {
 fn an_orchestrator_write_is_synchronously_visible_through_its_own_reads() {
     let (handle, orch) = bound_orchestrator();
     let select = handle.select();
-    orch.mutate_sync(created(42, "written")).unwrap();
+    orch.mutate(created(42, "written")).unwrap();
     let read_back = select
         .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(42)))
         .expect(
@@ -71,8 +71,8 @@ fn an_orchestrator_write_is_synchronously_visible_through_its_own_reads() {
 fn generic_tag_churn_has_no_domain_side_effect_after_the_middleware_retire() {
     let (handle, orch) = bound_orchestrator();
     let select = handle.select();
-    orch.mutate_sync(created(7, "labeled")).unwrap();
-    orch.mutate_sync(StoryEvent::new(
+    orch.mutate(created(7, "labeled")).unwrap();
+    orch.mutate(StoryEvent::new(
         meta(),
         StoryId::new(7),
         StoryEventKind::TagAdded {
@@ -140,7 +140,7 @@ fn an_unbound_orchestrator_drops_writes_and_reads_come_back_empty() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    orch.mutate_sync(created(1, "dropped")).unwrap();
+    orch.mutate(created(1, "dropped")).unwrap();
     assert!(
         orch.story(1).is_none(),
         "an unbound write is dropped — reads stay empty instead of panicking"

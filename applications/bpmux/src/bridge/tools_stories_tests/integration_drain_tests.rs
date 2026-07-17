@@ -236,7 +236,7 @@ async fn reject_story_returns_optimistically_and_defers_gh_push_to_the_async_dra
         adapter.pushed_events()
     );
 
-    orch.drain_pending().await.unwrap();
+    orch.drain_pass().await.unwrap();
 
     let pushed = adapter.pushed_events();
     assert!(
@@ -305,7 +305,7 @@ async fn fail_desk_check_returns_optimistically_and_defers_gh_push_to_the_async_
         adapter.pushed_events()
     );
 
-    orch.drain_pending().await.unwrap();
+    orch.drain_pass().await.unwrap();
 
     let pushed = adapter.pushed_events();
     assert!(
@@ -353,7 +353,7 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
         handle_reject_story(&args, "owner:human", "owner", None, Some(&orch), &select).await;
     assert!(result.is_ok(), "reject should succeed: {result:?}");
 
-    orch.drain_pending().await.unwrap();
+    orch.drain_pass().await.unwrap();
     let pushed = adapter.pushed_events();
 
     let labels = adapter.labels_for(469);
@@ -412,7 +412,7 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
         .await
         .unwrap();
 
-    orch.drain_pending().await.unwrap();
+    orch.drain_pass().await.unwrap();
     let pushed = adapter.pushed_events();
     let any_reopen = pushed
         .iter()
@@ -471,7 +471,7 @@ async fn a_transition_out_of_the_board_pushes_no_state_label_and_strips_the_stal
     crate::store::bind_seeded_refresh(&orch, vec![], current_iteration_of(&[]), vec![]);
     orch.refresh_all().await.unwrap();
 
-    orch.mutate_sync(StoryEvent::new(
+    orch.mutate(StoryEvent::new(
         crate::sync::cache_fill_meta(),
         StoryId::new(471),
         StoryEventKind::StateTransitioned {
@@ -480,7 +480,7 @@ async fn a_transition_out_of_the_board_pushes_no_state_label_and_strips_the_stal
         },
     ))
     .unwrap();
-    orch.drain_pending().await.unwrap();
+    orch.drain_pass().await.unwrap();
 
     let labels = adapter.labels_for(471);
     assert!(
@@ -530,7 +530,7 @@ async fn a_transition_to_ready_for_a_current_iteration_member_pushes_the_ready_l
     crate::store::bind_seeded_refresh(&orch, vec![], current_iteration_of(&[472]), vec![]);
     orch.refresh_all().await.unwrap();
 
-    orch.mutate_sync(StoryEvent::new(
+    orch.mutate(StoryEvent::new(
         crate::sync::cache_fill_meta(),
         StoryId::new(472),
         StoryEventKind::StateTransitioned {
@@ -539,7 +539,7 @@ async fn a_transition_to_ready_for_a_current_iteration_member_pushes_the_ready_l
         },
     ))
     .unwrap();
-    orch.drain_pending().await.unwrap();
+    orch.drain_pass().await.unwrap();
 
     let labels = adapter.labels_for(472);
     assert!(
@@ -591,7 +591,7 @@ async fn deliver_story_returns_optimistically_and_defers_push_failure_to_the_asy
         "deliver_story returns optimistically — the write succeeds locally even when the GH push will fail; the failure is reconciled on the async drain, not surfaced at return: {result:?}"
     );
 
-    let drain = orch.drain_pending().await;
+    let drain = orch.drain_pass().await;
     assert!(
         drain.is_err(),
         "the deferred push failure surfaces on the async drain, not at deliver-return: {drain:?}"

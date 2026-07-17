@@ -5,7 +5,6 @@
 use crate::bridge::tools_stories::handle_edit_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::Dispatch;
-use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
 use product_management::story::{Story, StoryId, Work};
@@ -199,7 +198,7 @@ async fn edit_story_body_returns_optimistically_and_pushes_via_the_drain() {
         adapter.pushed_events()
     );
 
-    orch.drain_pending().await.unwrap();
+    orch.drain_pass().await.unwrap();
 
     assert!(
         adapter.pushed_events().iter().any(|e| matches!(
@@ -225,7 +224,7 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
         ts: Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
     };
     refresh
-        .mutate_sync(StoryEvent::new(
+        .mutate(StoryEvent::new(
             meta,
             StoryId::new(1234),
             StoryEventKind::AcceptorAssigned {
@@ -233,7 +232,7 @@ async fn edit_story_acceptor_resets_and_clears_the_stale_acceptor() {
             },
         ))
         .unwrap();
-    refresh.drain_pending().await.unwrap();
+    refresh.drain_pass().await.unwrap();
     assert_eq!(
         select
             .select(|state| product_management::story::slice::get(

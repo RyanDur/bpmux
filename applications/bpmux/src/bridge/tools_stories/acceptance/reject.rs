@@ -1,6 +1,5 @@
 use crate::bridge::tools_stories::event_meta::meta_for;
 use crate::bridge::tools_stories::helpers::ensure_story_in_canonical_store;
-use crate::sync::RefreshDriver;
 use product_management::story::StoryId;
 
 pub(crate) async fn handle_reject_story(
@@ -115,7 +114,7 @@ pub(crate) async fn reject_via_canonical_store(
         },
     ));
     refresh
-        .mutate_batch_sync(events)
+        .mutate_batch(events)
         .map_err(|e| format!("#{id} reject enqueue failed: {e}"))?;
     Ok(())
 }

@@ -5,7 +5,6 @@ use super::helpers::{
 use crate::bridge::tools_stories::build_verdict_reprompt_signal;
 use crate::bridge::tools_stories::event_meta::meta_for;
 use crate::bridge::tools_stories::helpers::ensure_story_in_canonical_store;
-use crate::sync::RefreshDriver;
 use product_management::story::StoryId;
 
 #[allow(clippy::too_many_arguments)]
@@ -146,7 +145,7 @@ pub(crate) async fn accept_via_canonical_store(
     })?;
     let meta = meta_for(agent_name, actor_id);
     refresh
-        .mutate_batch_sync(vec![
+        .mutate_batch(vec![
             product_management::story::events::StoryEvent::new(
                 meta.clone(),
                 StoryId::new(id),

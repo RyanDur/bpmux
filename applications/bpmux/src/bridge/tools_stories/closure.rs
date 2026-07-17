@@ -1,6 +1,5 @@
 use super::event_meta::meta_for;
 use super::helpers::ensure_story_in_canonical_store;
-use crate::sync::RefreshDriver;
 use product_management::story::StoryId;
 
 const REASON_CITE_MIN_CHARS: usize = 16;
@@ -59,7 +58,7 @@ pub(crate) async fn handle_close_story(
         ensure_story_in_canonical_store(r, select, id).await?;
         let meta = meta_for(agent_name, actor_id);
         if matches!(terminal_state, product_management::story::Work::Retired) {
-            r.mutate_sync(product_management::story::events::StoryEvent::new(
+            r.mutate(product_management::story::events::StoryEvent::new(
                 meta.clone(),
                 StoryId::new(id),
                 product_management::story::events::StoryEventKind::TagAdded {
@@ -68,7 +67,7 @@ pub(crate) async fn handle_close_story(
             ))
             .map_err(|e| format!("#{id} retired-tag enqueue failed: {e}"))?;
         }
-        r.mutate_sync(product_management::story::events::StoryEvent::new(
+        r.mutate(product_management::story::events::StoryEvent::new(
             meta.clone(),
             StoryId::new(id),
             product_management::story::events::StoryEventKind::StateTransitioned {
@@ -77,7 +76,7 @@ pub(crate) async fn handle_close_story(
             },
         ))
         .map_err(|e| format!("#{id} close-state enqueue failed: {e}"))?;
-        r.mutate_sync(product_management::story::events::StoryEvent::new(
+        r.mutate(product_management::story::events::StoryEvent::new(
             meta,
             StoryId::new(id),
             product_management::story::events::StoryEventKind::StoryClosed {
@@ -85,7 +84,7 @@ pub(crate) async fn handle_close_story(
             },
         ))
         .map_err(|e| format!("#{id} close enqueue failed: {e}"))?;
-        r.drain_pending()
+        r.drain_pass()
             .await
             .map_err(|e| format!("#{id} close push failed: {e}"))?;
         return Ok(format!("#{id} closed: {reason}"));

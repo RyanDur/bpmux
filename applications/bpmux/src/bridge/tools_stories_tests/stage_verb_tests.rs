@@ -119,7 +119,7 @@ mod stage_verb_behavior {
         )
         .await;
         assert!(result.is_ok(), "designer judges desk-check: {result:?}");
-        orch.drain_pending().await.unwrap();
+        orch.drain_pass().await.unwrap();
         orch.refresh_all().await.unwrap();
         let story = select
             .select(|state| {
@@ -172,7 +172,7 @@ mod stage_verb_behavior {
         )
         .await
         .unwrap();
-        orch.drain_pending().await.unwrap();
+        orch.drain_pass().await.unwrap();
         let story = select
             .select(|state| {
                 product_management::story::slice::get(&state.stories, StoryId::new(8104))

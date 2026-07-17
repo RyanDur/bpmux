@@ -1,6 +1,5 @@
 use super::event_meta::meta_for;
 use super::helpers::require_nonempty_string;
-use crate::sync::RefreshDriver;
 use product_management::story::StoryId;
 
 pub(crate) async fn handle_create_outcome(
@@ -58,7 +57,7 @@ pub(crate) async fn handle_create_outcome(
     let meta = meta_for(agent_name, actor_id);
     let horizon_label = source_codec::gh_label_codec::GhLabelCodec.encode_horizon(horizon);
     driver
-        .mutate_sync(product_management::story::events::StoryEvent::new(
+        .mutate(product_management::story::events::StoryEvent::new(
             meta,
             StoryId::new(id),
             product_management::story::events::StoryEventKind::TagAdded {

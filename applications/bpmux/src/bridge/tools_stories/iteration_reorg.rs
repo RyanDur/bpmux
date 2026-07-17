@@ -1,6 +1,6 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_iteration_in_canonical_store, require_purpose};
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use product_management::iteration::Iteration;
 use product_management::story::StoryId;
 use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -84,7 +84,7 @@ fn renumber_iteration_order(
         }
         if let Some(old_position) = iteration.iteration_order {
             driver
-                .mutate_sync(StoryEvent::new(
+                .mutate(StoryEvent::new(
                     meta_for(agent_name, actor_id),
                     StoryId::new(*number),
                     StoryEventKind::TagRemoved {
@@ -94,7 +94,7 @@ fn renumber_iteration_order(
                 .map_err(|e| format!("#{number} iteration-order clear enqueue failed: {e}"))?;
         }
         driver
-            .mutate_sync(StoryEvent::new(
+            .mutate(StoryEvent::new(
                 meta_for(agent_name, actor_id),
                 StoryId::new(*number),
                 StoryEventKind::TagAdded {

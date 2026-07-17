@@ -1,6 +1,5 @@
 use super::event_meta::meta_for;
 use super::helpers::{compose_story_body, require_nonempty_string};
-use crate::sync::RefreshDriver;
 use product_management::epic::EpicId;
 use product_management::story::StoryId;
 
@@ -164,7 +163,7 @@ async fn create_and_broadcast_story_events(
         .await
         .map_err(|e| format!("create_story failed: {e}"))?;
     driver
-        .mutate_sync(product_management::story::events::StoryEvent::new(
+        .mutate(product_management::story::events::StoryEvent::new(
             meta.clone(),
             StoryId::new(id),
             product_management::story::events::StoryEventKind::StoryCreated {
@@ -177,7 +176,7 @@ async fn create_and_broadcast_story_events(
         .map_err(|e| format!("#{id} created but enqueue failed: {e}"))?;
     if let Some(acceptor) = acceptor {
         driver
-            .mutate_sync(product_management::story::events::StoryEvent::new(
+            .mutate(product_management::story::events::StoryEvent::new(
                 meta.clone(),
                 StoryId::new(id),
                 product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
@@ -186,7 +185,7 @@ async fn create_and_broadcast_story_events(
     }
     if let Some(epic_id) = parent_epic {
         driver
-            .mutate_sync(product_management::story::events::StoryEvent::new(
+            .mutate(product_management::story::events::StoryEvent::new(
                 meta,
                 StoryId::new(id),
                 product_management::story::events::StoryEventKind::ParentEpicSet { epic_id },
