@@ -29,7 +29,7 @@ mod outbox_persistence {
         sink: OutboxSink,
         initial: Vec<QueuedWrite>,
         stories: Vec<Story>,
-    ) -> (Arc<SyncOrchestrator<InMemorySourceAdapter>>, SeededStore) {
+    ) -> (Arc<SyncOrchestrator>, SeededStore) {
         let orch = Arc::new(SyncOrchestrator::new(
             Arc::clone(adapter),
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),

@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use crate::sync::SourceAdapter;
 
-impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
-    pub fn new(
+impl SyncOrchestrator {
+    pub fn new<A: SourceAdapter + 'static>(
         adapter: Arc<A>,
         codec: Arc<dyn product_management::label_codec::LabelCodec + Send + Sync>,
     ) -> Self {

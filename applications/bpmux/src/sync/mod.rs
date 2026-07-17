@@ -30,9 +30,9 @@ pub use outbox_persister::{OutboxPersister, OutboxSink};
 pub use race_window::*;
 pub use types::*;
 
-pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
+pub struct SyncOrchestrator {
     pub(super) dispatch: std::sync::OnceLock<crate::store::Dispatch>,
-    pub(super) adapter: Arc<A>,
+    pub(super) adapter: Arc<dyn SourceAdapter>,
     pub(super) codec: Arc<dyn product_management::label_codec::LabelCodec + Send + Sync>,
     pub(super) select: std::sync::OnceLock<crate::store::Select>,
     pub(super) issue_locks:
@@ -40,7 +40,7 @@ pub struct SyncOrchestrator<A: SourceAdapter + 'static> {
     pub(super) drain_guard: tokio::sync::Mutex<()>,
 }
 
-impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
+impl SyncOrchestrator {
     pub async fn issue_lock(&self, issue: u64) -> Arc<tokio::sync::Mutex<()>> {
         let mut locks = self.issue_locks.lock().await;
         Arc::clone(

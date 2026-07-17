@@ -1,4 +1,4 @@
-use crate::sync::{SourceAdapter, SyncError};
+use crate::sync::SyncError;
 use product_management::story::events::{StoryEvent, StoryEventKind};
 
 use source_sync::PendingWrite;
@@ -13,7 +13,7 @@ mod listener_tests;
 
 pub use listener::GithubDrain;
 
-impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
+impl SyncOrchestrator {
     pub fn mutate(&self, event: StoryEvent) -> Result<(), SyncError> {
         self.apply_story_event(&event);
         let write = PendingWrite::from_event(&*self.codec, event);

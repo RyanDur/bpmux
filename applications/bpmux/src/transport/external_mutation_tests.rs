@@ -44,10 +44,7 @@ fn comment(body: &str) -> Value {
 
 async fn fixture_orchestrator(
     server: &MockServer,
-) -> (
-    Arc<SyncOrchestrator<GitHubSourceAdapter>>,
-    crate::store::Select,
-) {
+) -> (Arc<SyncOrchestrator>, crate::store::Select) {
     let tracker = OctocrabStoryTracker::with_base_url(
         &format!("{}/", server.base_url()),
         "acme".to_string(),

@@ -1,7 +1,7 @@
 use super::SyncOrchestrator;
-use crate::sync::{SourceAdapter, SyncError};
+use crate::sync::SyncError;
 
-impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
+impl SyncOrchestrator {
     pub async fn ingest_once(&self) -> Result<(), SyncError> {
         self.ingest_once_since(None).await
     }

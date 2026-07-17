@@ -1,11 +1,11 @@
-use crate::sync::{SourceAdapter, SyncError};
+use crate::sync::SyncError;
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use product_management::story::slice::StoryAction;
 use product_management::story::{Story, StoryId};
 
 use super::{SyncOrchestrator, cache_fill_meta};
 
-impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
+impl SyncOrchestrator {
     pub(super) fn remove_story(&self, id: StoryId) -> Option<Story> {
         let removed = self.read_story(id);
         self.dispatch_story(StoryAction::Removed(id));

@@ -3,11 +3,10 @@ use std::collections::HashSet;
 use super::SyncOrchestrator;
 use source_sync::{MutationId, QueuedWrite};
 
-use crate::sync::SourceAdapter;
 use product_management::iteration::{self, Iteration};
 use product_management::story::{self, Story, StoryId};
 
-impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
+impl SyncOrchestrator {
     pub(super) fn set_select(&self, select: crate::store::Select) {
         let _ = self.select.set(select);
     }

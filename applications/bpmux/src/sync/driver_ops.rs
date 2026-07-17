@@ -1,4 +1,4 @@
-use crate::sync::{ConditionalBody, SourceAdapter, SyncError};
+use crate::sync::{ConditionalBody, SyncError};
 use product_management::story::events::StoryEvent;
 use product_management::story::{CastVerdict, Story, StoryId};
 
@@ -6,7 +6,7 @@ use source_sync::SyncStatus;
 
 use super::{BoxedFuture, RefreshDriver, SyncOrchestrator};
 
-impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
+impl RefreshDriver for SyncOrchestrator {
     fn refresh_story(&self, number: u64) -> BoxedFuture<'_, Result<Option<Story>, SyncError>> {
         Box::pin(self.refresh_story(number))
     }

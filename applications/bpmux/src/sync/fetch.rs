@@ -1,10 +1,10 @@
 use super::cache_fill_meta;
 use super::{CastVerdict, FreeComment, SyncOrchestrator};
-use crate::sync::{ConditionalBody, SourceAdapter, SyncError};
+use crate::sync::{ConditionalBody, SyncError};
 use product_management::story::StoryId;
 use product_management::story::events::{StoryEvent, StoryEventKind};
 
-impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
+impl SyncOrchestrator {
     pub async fn fetch_body(&self, number: u64) -> Result<String, SyncError> {
         match self.adapter.fetch_story_body(number).await {
             Ok(body) => {

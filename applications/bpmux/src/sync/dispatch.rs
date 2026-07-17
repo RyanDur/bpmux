@@ -1,12 +1,11 @@
 use chrono::Utc;
 
 use crate::store::SyncHealthAction;
-use crate::sync::SourceAdapter;
 use product_management::story::events::StoryEvent;
 
 use super::SyncOrchestrator;
 
-impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
+impl SyncOrchestrator {
     pub fn bind_dispatch(&self, dispatch: crate::store::Dispatch) {
         let _ = self.dispatch.set(dispatch);
     }

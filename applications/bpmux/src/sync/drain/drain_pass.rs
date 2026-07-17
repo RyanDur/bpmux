@@ -2,11 +2,11 @@ use std::collections::HashSet;
 
 use source_sync::MutationId;
 
-use crate::sync::{SourceAdapter, SyncError, is_permanent_push_failure};
+use crate::sync::{SyncError, is_permanent_push_failure};
 
 use super::super::SyncOrchestrator;
 
-impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
+impl SyncOrchestrator {
     pub async fn drain_pass(&self) -> Result<usize, SyncError> {
         let _flight = self.drain_guard.lock().await;
         let mut drained = 0usize;
