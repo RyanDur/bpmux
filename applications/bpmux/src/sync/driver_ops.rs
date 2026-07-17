@@ -90,10 +90,6 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.read_all_stories()
     }
 
-    fn store_is_empty(&self) -> bool {
-        self.read_store_is_empty()
-    }
-
     fn bind_dispatch(&self, dispatch: crate::store::Dispatch) {
         self.bind_dispatch(dispatch);
     }

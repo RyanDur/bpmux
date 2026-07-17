@@ -89,7 +89,9 @@ fn generic_tag_churn_has_no_domain_side_effect_after_the_middleware_retire() {
 fn seed_remove_and_clear_act_on_the_bound_central_store() {
     let (handle, orch) = bound_orchestrator();
     assert!(
-        orch.store_is_empty(),
+        handle
+            .select()
+            .select(|state| product_management::story::slice::is_empty(&state.stories)),
         "a freshly bound central store starts empty"
     );
     let seeded = minimal_story(9, "seeded");
@@ -115,7 +117,9 @@ fn seed_remove_and_clear_act_on_the_bound_central_store() {
     )])));
     orch.clear_stories();
     assert!(
-        orch.store_is_empty(),
+        handle
+            .select()
+            .select(|state| product_management::story::slice::is_empty(&state.stories)),
         "clear_stories empties the bound store"
     );
 }
@@ -133,5 +137,4 @@ fn an_unbound_orchestrator_drops_writes_and_reads_come_back_empty() {
         "an unbound write is dropped — reads stay empty instead of panicking"
     );
     assert!(orch.all_stories().is_empty());
-    assert!(orch.store_is_empty());
 }

@@ -61,9 +61,6 @@ pub trait RefreshDriver: Send + Sync {
             .into_iter()
             .find(|iteration| iteration.id == iteration_id)
     }
-    fn store_is_empty(&self) -> bool {
-        self.all_stories().is_empty()
-    }
     fn remove_story(&self, id: u64) -> Option<Story>;
     fn clear_stories(&self);
     fn update_body(&self, id: u64, body: String) -> BoxedFuture<'_, Result<(), SyncError>>;

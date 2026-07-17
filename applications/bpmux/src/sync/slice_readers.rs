@@ -85,13 +85,6 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             .unwrap_or_default()
     }
 
-    pub(super) fn read_store_is_empty(&self) -> bool {
-        self.select
-            .get()
-            .map(|s| s.select(|state| story::slice::is_empty(&state.stories)))
-            .unwrap_or(true)
-    }
-
     pub(super) fn read_outcomes(&self) -> Vec<Outcome> {
         self.select
             .get()

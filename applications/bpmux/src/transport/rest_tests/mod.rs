@@ -7,6 +7,7 @@ mod chat_misc_tests;
 mod chat_post_tests;
 mod excerpt_enrichment_tests;
 mod reaction_event_tests;
+mod roadmap_tests;
 mod terminal_spawn_register_tests;
 mod wait_event_tests;
 

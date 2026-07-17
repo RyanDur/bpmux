@@ -15,6 +15,7 @@ pub struct RoadmapQuery {
 
 pub async fn get_roadmap(
     axum::Extension(orchestrator): axum::Extension<crate::sync::OrchestratorHandle>,
+    axum::Extension(select): axum::Extension<crate::store::Select>,
     Query(query): Query<RoadmapQuery>,
 ) -> impl IntoResponse {
     let Some(refresh) = orchestrator.as_ref() else {
@@ -24,14 +25,15 @@ pub async fn get_roadmap(
             err_body("roadmap view requires the canonical store"),
         );
     };
-    if refresh.store_is_empty() {
+    if select.select(|state| product_management::story::slice::is_empty(&state.stories)) {
         let _ = refresh.refresh_all().await;
     }
     let body = match query.outcome {
         Some(number) => {
-            let all_iterations = refresh.iterations();
-            let outcome = refresh
-                .outcomes()
+            let all_iterations =
+                select.select(|state| product_management::iteration::all(&state.iterations));
+            let outcome = select
+                .select(|state| product_management::outcome::all(&state.outcomes))
                 .into_iter()
                 .find(|outcome| outcome.id.value() == number);
             let drill = outcome
@@ -65,10 +67,13 @@ pub async fn get_roadmap(
                 .as_deref()
                 .and_then(product_management::roadmap::filter::RoadmapOrder::from_cli)
                 .unwrap_or(product_management::roadmap::filter::RoadmapOrder::Priority);
+            let outcomes = select.select(|state| product_management::outcome::all(&state.outcomes));
+            let iterations =
+                select.select(|state| product_management::iteration::all(&state.iterations));
             let filtered = product_management::roadmap::filter::filter_roadmap(
                 product_management::roadmap::selectors::roadmap_cards(
-                    &refresh.outcomes(),
-                    &refresh.iterations(),
+                    &outcomes,
+                    &iterations,
                     workflow::current_workflow(),
                 ),
                 state,
