@@ -41,7 +41,7 @@ pub(crate) async fn handle_unmap_outcome_iteration(
         .and_then(serde_json::Value::as_u64)
         .ok_or("missing 'iteration_id' argument")?;
 
-    let driver = refresh.ok_or("unmap_outcome_iteration requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("unmap_outcome_iteration requires refresh")?;
     let outcome = verify_iteration_mapped(driver, select, outcome_id, iteration_id).await?;
 
     let mut parent = outcome
@@ -109,7 +109,7 @@ pub(crate) async fn handle_reorder_outcome_iteration(
         .ok_or("outcome reorder needs --to <P> (the new 1-indexed priority-order)")?
         as u32;
 
-    let driver = refresh.ok_or("reorder_outcome_iteration requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("reorder_outcome_iteration requires refresh")?;
     let outcome = verify_iteration_mapped(driver, select, outcome_id, iteration_id).await?;
 
     let (band_size, new_body) = reorder_iterations_within_outcome(

@@ -10,7 +10,7 @@ async fn handler_requires_refresh_as_the_canonical_read_handle() {
     let err = result.expect_err("missing-refresh path errors");
     assert!(
         err.contains("requires refresh"),
-        "the RefreshDriver is the single canonical read handle post-dissolution-S2; got: {err}"
+        "the orchestrator is the single canonical read handle post-dissolution-S2; got: {err}"
     );
 }
 

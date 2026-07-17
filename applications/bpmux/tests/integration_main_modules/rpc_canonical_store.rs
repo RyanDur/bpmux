@@ -31,7 +31,7 @@ use tokio_util::sync::CancellationToken;
 use bpmux::auth as auth_token;
 use bpmux::hub::Hub;
 use bpmux::integrations::in_memory::InMemorySourceAdapter;
-use bpmux::sync::{RefreshDriver, SyncOrchestrator};
+use bpmux::sync::SyncOrchestrator;
 use bpmux::transport::auth::{AuthState, gate};
 use bpmux::transport::rpc_routes::post_rpc_tool;
 use product_management::story::{Story, StoryId, Work};
@@ -104,7 +104,7 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
         None,
         CancellationToken::new(),
     ));
-    refresh.bind_select(app_store.selector());
+    refresh.set_select(app_store.selector());
     refresh.bind_dispatch(app_store.dispatcher());
     orch.ingest_once().await.expect("seed ingest");
     let auth_state = AuthState::new(token.clone());

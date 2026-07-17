@@ -21,7 +21,7 @@ pub(crate) async fn handle_edit_outcome(
         return Err("outcome edit needs a change: pass --title <T> and/or --body <B>".to_string());
     }
 
-    let driver = refresh.ok_or("edit_outcome requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("edit_outcome requires refresh")?;
     let mut outcome = ensure_outcome_in_canonical_store(driver, select, outcome_id).await?;
 
     let mut updated: Vec<&str> = Vec::new();

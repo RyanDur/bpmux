@@ -12,7 +12,7 @@ use crate::store::{AppAction, SeededStore};
 use source_sync::{PendingWrite, QueuedWrite};
 use storage::{FileStorage, load_outbox_from_disk};
 
-use crate::sync::{OutboxSink, RefreshDriver, SyncOrchestrator};
+use crate::sync::{OutboxSink, SyncOrchestrator};
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::slice::StoryAction;
 use product_management::story::{Stage, Story, StoryId, Work};

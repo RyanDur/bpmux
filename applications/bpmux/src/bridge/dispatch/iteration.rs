@@ -27,7 +27,7 @@ pub(crate) async fn dispatch_close_iteration(
     select: &crate::store::Select,
 ) -> Result<String, String> {
     tools_stories::helpers::require_purpose(role, &["pm"], "close iteration")?;
-    let driver = refresh.ok_or("close_iteration requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("close_iteration requires refresh")?;
     let iteration_id = args
         .get("iteration_id")
         .and_then(|v| v.as_u64())

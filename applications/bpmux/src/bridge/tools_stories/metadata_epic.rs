@@ -25,7 +25,7 @@ pub(crate) async fn handle_set_parent_epic(
     if id == epic_id {
         return Err(format!("story #{id} cannot be its own parent epic"));
     }
-    let driver = refresh.ok_or("set_parent_epic requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("set_parent_epic requires refresh")?;
     ensure_story_in_canonical_store(driver, select, id).await?;
     ensure_epic_in_canonical_store(driver, select, epic_id).await?;
     let meta = meta_for(agent_name, actor_id);
@@ -54,7 +54,7 @@ pub(crate) async fn handle_unset_parent_epic(
         .get("id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'id' argument")?;
-    let driver = refresh.ok_or("unset_parent_epic requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("unset_parent_epic requires refresh")?;
     ensure_story_in_canonical_store(driver, select, id).await?;
     let meta = meta_for(agent_name, actor_id);
     driver

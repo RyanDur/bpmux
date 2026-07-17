@@ -7,7 +7,7 @@ use product_management::iteration::{self, Iteration};
 use product_management::story::{self, Story, StoryId};
 
 impl SyncOrchestrator {
-    pub(crate) fn set_select(&self, select: crate::store::Select) {
+    pub fn set_select(&self, select: crate::store::Select) {
         let _ = self.select.set(select);
     }
 
@@ -70,7 +70,7 @@ impl SyncOrchestrator {
         }
     }
 
-    pub(super) fn read_story(&self, id: StoryId) -> Option<Story> {
+    pub(crate) fn read_story(&self, id: StoryId) -> Option<Story> {
         self.select
             .get()
             .and_then(|s| s.select(|state| story::slice::get(&state.stories, id)))

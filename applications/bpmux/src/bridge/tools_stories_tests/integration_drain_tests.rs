@@ -7,7 +7,6 @@ use protocol::ClientMessage;
 #[tokio::test]
 async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use product_management::story::{Story, Work};
@@ -49,7 +48,6 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
 #[tokio::test]
 async fn start_story_passes_chore_without_acceptance_test_path() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use product_management::story::{Story, Work};
@@ -86,7 +84,6 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
 #[tokio::test]
 async fn start_story_keeps_the_stores_optimistic_reject_when_the_adapter_verdicts_lag_the_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use product_management::story::{CastVerdict, Story, Verdict, Work};
@@ -145,7 +142,6 @@ async fn start_story_keeps_the_stores_optimistic_reject_when_the_adapter_verdict
 #[tokio::test]
 async fn start_story_fetches_the_rework_lead_when_the_store_has_no_cached_verdicts() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use product_management::story::{CastVerdict, Story, Verdict, Work};
@@ -197,7 +193,6 @@ async fn start_story_fetches_the_rework_lead_when_the_store_has_no_cached_verdic
 #[tokio::test]
 async fn reject_story_returns_optimistically_and_defers_gh_push_to_the_async_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -259,7 +254,6 @@ async fn reject_story_returns_optimistically_and_defers_gh_push_to_the_async_dra
 #[tokio::test]
 async fn fail_desk_check_returns_optimistically_and_defers_gh_push_to_the_async_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -320,7 +314,6 @@ async fn fail_desk_check_returns_optimistically_and_defers_gh_push_to_the_async_
 #[tokio::test]
 async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -379,7 +372,6 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
 #[tokio::test]
 async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -445,7 +437,6 @@ fn current_iteration_of(members: &[u64]) -> Vec<product_management::iteration::I
 #[tokio::test]
 async fn a_transition_out_of_the_board_pushes_no_state_label_and_strips_the_stale_one() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use product_management::label_codec::LabelCodec;
@@ -506,7 +497,6 @@ async fn a_transition_out_of_the_board_pushes_no_state_label_and_strips_the_stal
 #[tokio::test]
 async fn a_transition_to_ready_for_a_current_iteration_member_pushes_the_ready_label() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -551,7 +541,6 @@ async fn a_transition_to_ready_for_a_current_iteration_member_pushes_the_ready_l
 #[tokio::test]
 async fn deliver_story_returns_optimistically_and_defers_push_failure_to_the_async_drain() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use product_management::story::{Stage, Story, Work};

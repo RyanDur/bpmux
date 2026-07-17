@@ -29,8 +29,8 @@ pub(crate) async fn handle_create_iteration(
         "name",
         "name is required: short name for the iteration (e.g., 'Aquila', 'Pegasus'). Surfaces as the GH issue title 'Iteration {name}'.",
     )?;
-    let driver = refresh
-        .ok_or("create_iteration requires refresh (RefreshDriver) — canonical store unavailable")?;
+    let driver =
+        refresh.ok_or("create_iteration requires refresh — canonical store unavailable")?;
     let open_iterations: Vec<product_management::iteration::Iteration> = select
         .select(|state| product_management::iteration::all(&state.iterations))
         .into_iter()

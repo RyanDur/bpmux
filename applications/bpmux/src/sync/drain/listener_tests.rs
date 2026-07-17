@@ -18,7 +18,7 @@ use source_codec::gh_label_codec::GhLabelCodec;
 use source_sync::{MutationId, PendingWrite, QueuedWrite};
 use storage::StorageBackend;
 
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use message::Message;
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::{Story, StoryId, Work};
@@ -76,7 +76,7 @@ async fn write_queued_burst_single_flights_one_drain_that_pushes_each_write_once
         Duration::from_secs(60),
         Duration::from_secs(15),
     ));
-    refresh.bind_select(store.selector());
+    refresh.set_select(store.selector());
     refresh.bind_dispatch(store.dispatcher());
 
     orch.mutate(tag_added(5001, "one")).unwrap();
@@ -136,7 +136,7 @@ async fn polling_liveness_facts_never_drain_a_seeded_outbox() {
         Duration::from_secs(60),
         Duration::from_secs(15),
     ));
-    refresh.bind_select(store.selector());
+    refresh.set_select(store.selector());
     refresh.bind_dispatch(store.dispatcher());
 
     store
@@ -203,7 +203,7 @@ async fn a_mutated_write_is_selectable_the_moment_mutate_returns() {
         Duration::from_secs(60),
         Duration::from_secs(15),
     ));
-    refresh.bind_select(store.selector());
+    refresh.set_select(store.selector());
     refresh.bind_dispatch(store.dispatcher());
 
     orch.mutate(tag_added(7001, "awaiting team")).unwrap();
@@ -253,7 +253,7 @@ async fn an_ingested_upsert_is_selectable_the_moment_refresh_returns() {
         Duration::from_secs(60),
         Duration::from_secs(15),
     ));
-    refresh.bind_select(store.selector());
+    refresh.set_select(store.selector());
     refresh.bind_dispatch(store.dispatcher());
 
     refresh.refresh_all().await.unwrap();

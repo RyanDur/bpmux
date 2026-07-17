@@ -75,7 +75,7 @@ fn transport_edge_names_no_composition_root() {
          (composition root) wires transport — never the reverse. A crate::server reference \
          means an edge reached up into the root for a type it should get from a support or \
          feature component (the OrchestratorHandle case: home it in crate::sync beside \
-         RefreshDriver). Files reaching crate::server:\n{}",
+         SyncOrchestrator). Files reaching crate::server:\n{}",
         reaching.join("\n")
     );
 }

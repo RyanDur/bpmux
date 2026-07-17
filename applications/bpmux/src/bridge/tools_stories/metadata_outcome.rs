@@ -39,7 +39,7 @@ pub(crate) async fn handle_reprioritize_outcome(
         })
         .transpose()?;
 
-    let driver = refresh.ok_or("reprioritize_outcome requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("reprioritize_outcome requires refresh")?;
     let outcome = ensure_outcome_in_canonical_store(driver, select, outcome_id).await?;
 
     let target_band = match requested_band {

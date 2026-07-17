@@ -3,7 +3,7 @@
 use super::super::tools_stories::*;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::{AppAction, Dispatch};
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
 use product_management::iteration::{Iteration, IterationAction, IterationId};
 use product_management::story::{Story, StoryId, Work};

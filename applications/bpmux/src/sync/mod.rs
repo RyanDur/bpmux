@@ -13,8 +13,6 @@ use source_sync::{SyncStatus, is_stale, is_startup_fail, staleness_threshold_sec
 mod backfill;
 mod dispatch;
 mod drain;
-mod driver;
-mod driver_ops;
 mod fetch;
 mod ingest;
 mod outbox_persister;
@@ -25,7 +23,6 @@ mod write_through;
 
 pub(crate) use backfill::backfill_shared_history;
 pub(crate) use drain::GithubDrain;
-pub use driver::*;
 pub use outbox_persister::{OutboxPersister, OutboxSink};
 pub use race_window::*;
 pub use types::*;

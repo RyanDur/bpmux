@@ -42,7 +42,7 @@ pub(crate) async fn handle_add_story_to_iteration(
             "story #{story_id} cannot be added to itself as iteration-member"
         ));
     }
-    let driver = refresh.ok_or("add_story_to_iteration requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("add_story_to_iteration requires refresh")?;
     ensure_story_in_canonical_store(driver, select, story_id).await?;
     super::iteration_members::set_member_position(
         driver,
@@ -78,7 +78,7 @@ pub(crate) async fn handle_map_iteration_to_outcome(
         .get("position")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'position' argument")? as u32;
-    let driver = refresh.ok_or("map_iteration_to_outcome requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("map_iteration_to_outcome requires refresh")?;
     let iteration = ensure_iteration_in_canonical_store(driver, select, iteration_id).await?;
     let outcome = ensure_outcome_in_canonical_store(driver, select, outcome_id).await?;
 

@@ -25,7 +25,7 @@ pub(crate) async fn handle_retire_outcome(
         .filter(|r| !r.trim().is_empty())
         .ok_or("outcome retire needs --reason <R> (retire is destructive; the reason is the audit-trail)")?;
 
-    let driver = refresh.ok_or("retire_outcome requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("retire_outcome requires refresh")?;
     let outcome = ensure_outcome_in_canonical_store(driver, select, outcome_id).await?;
 
     let meta = || meta_for(agent_name, actor_id);

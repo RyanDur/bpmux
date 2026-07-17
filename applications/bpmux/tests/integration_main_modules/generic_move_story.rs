@@ -20,7 +20,6 @@ use std::sync::Arc;
 
 use bpmux::hub::Hub;
 use bpmux::integrations::in_memory::InMemorySourceAdapter;
-use bpmux::sync::RefreshDriver;
 use bpmux::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
 use product_management::story::events::EventMeta;
@@ -60,7 +59,7 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
         None,
         CancellationToken::new(),
     ));
-    orch.bind_select(app_store.selector());
+    orch.set_select(app_store.selector());
     orch.bind_dispatch(app_store.dispatcher());
     orch.refresh_all().await.unwrap();
 
@@ -83,7 +82,7 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
         "rejected",
         "accepted",
     ] {
-        orch.mutate_sync(StoryEvent::new(
+        orch.mutate(StoryEvent::new(
             meta.clone(),
             StoryId::new(909),
             StoryEventKind::TagRemoved {
@@ -92,7 +91,7 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
         ))
         .unwrap();
     }
-    let drained = orch.drain_pending().await.unwrap();
+    let drained = orch.drain_pass().await.unwrap();
     assert_eq!(
         drained, 8,
         "8 strips expected — one per non-target ALL_STATE_LABELS entry"

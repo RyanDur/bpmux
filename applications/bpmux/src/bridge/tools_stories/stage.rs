@@ -100,7 +100,7 @@ async fn judged_stage_of<'r>(
         .get("id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'id' argument")?;
-    let driver = refresh.ok_or("stage verbs require refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("stage verbs require refresh")?;
     let story = ensure_story_in_canonical_store(driver, select, id).await?;
     if !matches!(story.state, Work::InProgress) {
         return Err(format!(

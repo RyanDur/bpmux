@@ -60,8 +60,7 @@ pub(in crate::bridge) async fn handle_move_story(
         }
     }
 
-    let r = refresh
-        .ok_or("move_story requires refresh (RefreshDriver) — tracker fallback not supported")?;
+    let r = refresh.ok_or("move_story requires refresh — tracker fallback not supported")?;
     let prior =
         Some(crate::bridge::tools_stories::ensure_story_in_canonical_store(r, select, id).await?);
     let from_fine = prior

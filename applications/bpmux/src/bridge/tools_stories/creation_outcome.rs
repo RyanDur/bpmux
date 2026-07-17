@@ -48,8 +48,7 @@ pub(crate) async fn handle_create_outcome(
         .and_then(|v| v.as_str())
         .map(ToString::to_string)
         .unwrap_or_else(|| format!("## {title}\n"));
-    let driver = refresh
-        .ok_or("create_outcome requires refresh (RefreshDriver) — canonical store unavailable")?;
+    let driver = refresh.ok_or("create_outcome requires refresh — canonical store unavailable")?;
     let id = driver
         .create_story(&title, &body, &["outcome"])
         .await

@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::{AppAction, SeededStore};
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::slice::StoryAction;
@@ -142,7 +142,7 @@ fn an_unbound_orchestrator_drops_writes_and_reads_come_back_empty() {
     ));
     orch.mutate(created(1, "dropped")).unwrap();
     assert!(
-        orch.story(1).is_none(),
+        orch.read_story(StoryId::new(1)).is_none(),
         "an unbound write is dropped — reads stay empty instead of panicking"
     );
 }

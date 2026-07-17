@@ -7,7 +7,6 @@ mod stage_verb_behavior {
     #![allow(clippy::unwrap_used)]
     use super::*;
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use product_management::story::events::StoryEvent;

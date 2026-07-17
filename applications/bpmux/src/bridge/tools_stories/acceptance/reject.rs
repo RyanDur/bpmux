@@ -32,9 +32,8 @@ pub(crate) async fn handle_reject_story(
             .as_json_string()
         })?
         .to_string();
-    let r = refresh.ok_or(
-        "reject_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
-    )?;
+    let r =
+        refresh.ok_or("reject_story requires refresh — tracker fallback retired in slice 5n")?;
     let story_opt = select
         .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(id)));
     let class = story_opt

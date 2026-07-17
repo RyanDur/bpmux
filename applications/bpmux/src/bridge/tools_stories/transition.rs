@@ -102,8 +102,5 @@ pub(crate) async fn handle_start_story(
             None => format!("#{id} marked as in progress"),
         });
     }
-    Err(
-        "start_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
-            .into(),
-    )
+    Err("start_story requires refresh — tracker fallback retired in slice 5n".into())
 }

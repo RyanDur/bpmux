@@ -19,7 +19,7 @@ use tokio_util::sync::CancellationToken;
 use bpmux::auth as auth_token;
 use bpmux::hub::Hub;
 use bpmux::integrations::in_memory::InMemorySourceAdapter;
-use bpmux::sync::{RefreshDriver, SyncOrchestrator};
+use bpmux::sync::SyncOrchestrator;
 use bpmux::transport::auth::{AuthState, gate};
 use bpmux::transport::rpc_routes::post_rpc_tool;
 use product_management::story::{Story, StoryId, Work};
@@ -73,7 +73,7 @@ async fn edit_story_replaces_body_at_canonical_store() {
         None,
         CancellationToken::new(),
     ));
-    refresh.bind_select(app_store.selector());
+    refresh.set_select(app_store.selector());
     refresh.bind_dispatch(app_store.dispatcher());
     orch.ingest_once().await.expect("seed ingest");
     let auth_state = AuthState::new(token.clone());

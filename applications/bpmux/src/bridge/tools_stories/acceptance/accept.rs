@@ -25,9 +25,8 @@ pub(crate) async fn handle_accept_story(
         .and_then(|v| v.as_u64())
         .ok_or("missing 'id' argument")?;
     let bypass = verify_bug_question_or_bypass(args, BugGate::Accept)?;
-    let r = refresh.ok_or(
-        "accept_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
-    )?;
+    let r =
+        refresh.ok_or("accept_story requires refresh — tracker fallback retired in slice 5n")?;
     if let Some(barrier) = race_window {
         barrier.arrive().await;
     }

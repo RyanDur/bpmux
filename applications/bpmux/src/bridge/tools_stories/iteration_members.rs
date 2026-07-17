@@ -119,7 +119,7 @@ pub(crate) async fn handle_remove_iteration_member(
         .filter(|r| !r.trim().is_empty())
         .ok_or("remove-member needs --reason <R> (destructive scope-cut; the reason is the audit-trail)")?;
 
-    let driver = refresh.ok_or("remove_iteration_member requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("remove_iteration_member requires refresh")?;
     let (iteration, story) = member_of(driver, select, iteration_id, story_id).await?;
 
     let mut stories = iteration.stories.clone();
@@ -156,7 +156,7 @@ pub(crate) async fn handle_move_iteration_member(
             .and_then(serde_json::Value::as_u64)
             .ok_or("move-member needs --to <P> (the new 1-indexed position)")? as u32;
 
-    let driver = refresh.ok_or("move_iteration_member requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("move_iteration_member requires refresh")?;
     let (iteration, _) = member_of(driver, select, iteration_id, story_id).await?;
 
     let mut stories = iteration.stories.clone();

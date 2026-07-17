@@ -27,7 +27,7 @@ pub(crate) async fn handle_reorder_iteration(
         .ok_or("iteration reorder needs --to <P> (the new 1-indexed planning order)")?
         as u32;
 
-    let driver = refresh.ok_or("reorder_iteration requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("reorder_iteration requires refresh")?;
     ensure_iteration_in_canonical_store(driver, select, iteration_id).await?;
 
     let band_size = renumber_iteration_order(
@@ -133,7 +133,7 @@ pub(crate) async fn handle_rename_iteration(
         .filter(|t| !t.trim().is_empty())
         .ok_or("iteration rename needs --name <N>")?;
 
-    let driver = refresh.ok_or("rename_iteration requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("rename_iteration requires refresh")?;
     let iteration = ensure_iteration_in_canonical_store(driver, select, iteration_id).await?;
     let title = format!("Iteration {name}");
     driver

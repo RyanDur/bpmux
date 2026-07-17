@@ -17,7 +17,7 @@ pub(crate) async fn handle_designate_current_iteration(
         .get("iteration_id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'iteration_id' argument")?;
-    let driver = refresh.ok_or("designate_current_iteration requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("designate_current_iteration requires refresh")?;
     let iteration = ensure_iteration_in_canonical_store(driver, select, iteration_id).await?;
     if iteration.complete {
         return Err(format!(
@@ -86,7 +86,7 @@ pub(crate) async fn handle_close_pre_pickup_review(
         .get("iteration_id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'iteration_id' argument")?;
-    let driver = refresh.ok_or("close_pre_pickup_review requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("close_pre_pickup_review requires refresh")?;
     let iteration = ensure_iteration_in_canonical_store(driver, select, iteration_id).await?;
     let role = role.to_string();
     let label = source_codec::gh_label_codec::GhLabelCodec.encode_iteration_review_closed(&role);
@@ -135,7 +135,7 @@ pub(crate) async fn handle_dev_ok_iteration(
         .get("iteration_id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'iteration_id' argument")?;
-    let driver = refresh.ok_or("dev_ok_iteration requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("dev_ok_iteration requires refresh")?;
     let iteration = ensure_iteration_in_canonical_store(driver, select, iteration_id).await?;
     let role = role.to_string();
     let label = source_codec::gh_label_codec::GhLabelCodec.encode_iteration_dev_ok(&role);

@@ -113,8 +113,5 @@ pub(crate) async fn handle_deliver_story(
             .map_err(|e| format!("#{id} deliver enqueue failed: {e}"))?;
         return Ok(format!("#{id} delivered: signals sent, labels updated"));
     }
-    Err(
-        "deliver_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
-            .into(),
-    )
+    Err("deliver_story requires refresh — tracker fallback retired in slice 5n".into())
 }

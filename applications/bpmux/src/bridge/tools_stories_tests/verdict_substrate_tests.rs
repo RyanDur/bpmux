@@ -12,7 +12,6 @@ mod verdict_substrate_integration_1407 {
     use crate::hub::Hub;
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::store::{AppAction, SeededStore};
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use product_management::evidence::{EvidenceAction, evidence_for_story};

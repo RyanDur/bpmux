@@ -143,8 +143,5 @@ pub(crate) async fn handle_pass_desk_check(
             "#{id} passed desk-check: signal sent, label applied"
         ));
     }
-    Err(
-        "pass_desk_check requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
-            .into(),
-    )
+    Err("pass_desk_check requires refresh — tracker fallback retired in slice 5n".into())
 }

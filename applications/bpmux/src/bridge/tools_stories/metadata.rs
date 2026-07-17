@@ -104,10 +104,7 @@ pub(crate) async fn handle_label_story(
             .map_err(|e| format!("#{id} label push failed: {e}"))?;
         return Ok(ok_msg);
     }
-    Err(
-        "label_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
-            .into(),
-    )
+    Err("label_story requires refresh — tracker fallback retired in slice 5n".into())
 }
 
 pub(crate) async fn handle_comment_on_story(
@@ -141,8 +138,5 @@ pub(crate) async fn handle_comment_on_story(
             .map_err(|e| format!("#{id} enqueue failed: {e}"))?;
         return Ok(format!("#{id} commented"));
     }
-    Err(
-        "comment_on_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n"
-            .into(),
-    )
+    Err("comment_on_story requires refresh — tracker fallback retired in slice 5n".into())
 }

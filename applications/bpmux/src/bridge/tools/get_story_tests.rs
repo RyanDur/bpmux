@@ -95,7 +95,7 @@ async fn handler_requires_refresh_as_the_canonical_read_handle() {
     assert!(result.is_err());
     assert!(
         result.unwrap_err().contains("requires refresh"),
-        "the RefreshDriver is the single canonical read handle post-dissolution-S2"
+        "the orchestrator is the single canonical read handle post-dissolution-S2"
     );
 }
 

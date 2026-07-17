@@ -31,8 +31,7 @@ pub(crate) async fn handle_edit_story(
                 .to_string(),
         );
     }
-    let driver = refresh
-        .ok_or("edit_story requires refresh (RefreshDriver) — no canonical store available")?;
+    let driver = refresh.ok_or("edit_story requires refresh — no canonical store available")?;
     let iteration = select.select(|state| {
         product_management::iteration::get(
             &state.iterations,

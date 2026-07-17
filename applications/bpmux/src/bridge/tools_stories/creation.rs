@@ -51,9 +51,8 @@ pub(crate) async fn handle_create_story(
         .get("parent_epic")
         .and_then(|v| v.as_u64())
         .map(EpicId::new);
-    let driver = refresh.ok_or(
-        "create_story requires refresh (RefreshDriver) — tracker fallback retired in slice 5n",
-    )?;
+    let driver =
+        refresh.ok_or("create_story requires refresh — tracker fallback retired in slice 5n")?;
     validate_parent_epic(select, parent_epic)?;
     let acceptor = match args.get("acceptor").and_then(|v| v.as_str()) {
         Some(raw) => Some(

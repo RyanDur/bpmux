@@ -5,9 +5,7 @@ pub(crate) async fn handle_view_board(
     refresh: Option<&std::sync::Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
 ) -> Result<String, String> {
-    let r = refresh.ok_or(
-        "view_board requires refresh (RefreshDriver) — tracker fallback retired in slice 5l",
-    )?;
+    let r = refresh.ok_or("view_board requires refresh — tracker fallback retired in slice 5l")?;
     let mut stories = select.select(|state| product_management::story::slice::all(&state.stories));
     if select.select(|state| product_management::story::slice::is_empty(&state.stories)) {
         match r.refresh_all().await {
