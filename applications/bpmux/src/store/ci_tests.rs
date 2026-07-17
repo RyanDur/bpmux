@@ -461,12 +461,8 @@ async fn live_loop_broadcasts_frozen_poll_time_on_failure() {
     );
 }
 
-fn refresh_for_tests() -> Arc<crate::sync::SyncOrchestrator> {
-    let adapter = Arc::new(crate::integrations::in_memory::InMemorySourceAdapter::new());
-    Arc::new(crate::sync::SyncOrchestrator::new(
-        adapter,
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ))
+fn adapter_for_tests() -> Arc<crate::integrations::in_memory::InMemorySourceAdapter> {
+    Arc::new(crate::integrations::in_memory::InMemorySourceAdapter::new())
 }
 
 #[tokio::test]
@@ -508,15 +504,17 @@ async fn stop_hydration_without_start_no_op() {
 #[tokio::test]
 async fn start_ingest_polling_spawns_loop_with_refresh() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store_with_refresh(
+    let (store_inner, _refresh) = build_store_with_refresh(
         hub,
         None,
         CancellationToken::new(),
         Vec::new(),
-        refresh_for_tests(),
+        adapter_for_tests(),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         Duration::from_secs(60),
         Duration::from_secs(15),
-    ));
+    );
+    let orch: Arc<Store> = Arc::new(store_inner);
     orch.dispatch(AppAction::Sync(SyncAction::StartIngestPolling))
         .await;
     assert!(
@@ -539,15 +537,17 @@ async fn start_ingest_polling_spawns_loop_with_refresh() {
 #[tokio::test]
 async fn start_hydration_polling_spawns_loop_with_refresh() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store_with_refresh(
+    let (store_inner, _refresh) = build_store_with_refresh(
         hub,
         None,
         CancellationToken::new(),
         Vec::new(),
-        refresh_for_tests(),
+        adapter_for_tests(),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         Duration::from_secs(60),
         Duration::from_secs(15),
-    ));
+    );
+    let orch: Arc<Store> = Arc::new(store_inner);
     orch.dispatch(AppAction::Sync(SyncAction::StartHydrationPolling))
         .await;
     assert!(
@@ -570,15 +570,17 @@ async fn start_hydration_polling_spawns_loop_with_refresh() {
 #[tokio::test]
 async fn start_ingest_idempotent_no_op_when_already_running() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store_with_refresh(
+    let (store_inner, _refresh) = build_store_with_refresh(
         hub,
         None,
         CancellationToken::new(),
         Vec::new(),
-        refresh_for_tests(),
+        adapter_for_tests(),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         Duration::from_secs(60),
         Duration::from_secs(15),
-    ));
+    );
+    let orch: Arc<Store> = Arc::new(store_inner);
     orch.dispatch(AppAction::Sync(SyncAction::StartIngestPolling))
         .await;
     assert!(orch.is_running(PollKind::Ingest).await);
@@ -600,15 +602,17 @@ async fn start_ingest_idempotent_no_op_when_already_running() {
 #[tokio::test]
 async fn start_hydration_idempotent_no_op_when_already_running() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store_with_refresh(
+    let (store_inner, _refresh) = build_store_with_refresh(
         hub,
         None,
         CancellationToken::new(),
         Vec::new(),
-        refresh_for_tests(),
+        adapter_for_tests(),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         Duration::from_secs(60),
         Duration::from_secs(15),
-    ));
+    );
+    let orch: Arc<Store> = Arc::new(store_inner);
     orch.dispatch(AppAction::Sync(SyncAction::StartHydrationPolling))
         .await;
     assert!(orch.is_running(PollKind::Hydration).await);

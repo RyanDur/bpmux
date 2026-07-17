@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use super::app::{AppAction, validate_and_log};
+use super::app::{AppAction, AppState, validate_and_log};
 use crate::store::{PollKind, Store};
 
 #[derive(Clone)]
@@ -11,6 +11,16 @@ pub struct Dispatch {
 impl Dispatch {
     pub fn new(dispatch: kernel::Dispatch<AppAction>) -> Self {
         Self { dispatch }
+    }
+
+    pub(crate) fn for_app_store(app_store: &Arc<kernel::Store<AppState, AppAction>>) -> Self {
+        let weak = Arc::downgrade(app_store);
+        Self::new(Arc::new(move |action: AppAction| {
+            if let Some(store) = weak.upgrade() {
+                validate_and_log(&action);
+                store.dispatch(action);
+            }
+        }))
     }
 
     pub fn dispatch(&self, action: AppAction) {
@@ -31,13 +41,7 @@ impl Dispatch {
 
 impl Store {
     pub fn dispatcher(&self) -> Dispatch {
-        let weak = Arc::downgrade(&self.app_store);
-        Dispatch::new(Arc::new(move |action: AppAction| {
-            if let Some(store) = weak.upgrade() {
-                validate_and_log(&action);
-                store.dispatch(action);
-            }
-        }))
+        Dispatch::for_app_store(&self.app_store)
     }
 
     pub async fn dispatch(self: &Arc<Self>, action: AppAction) {

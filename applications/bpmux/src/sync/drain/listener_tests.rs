@@ -18,7 +18,6 @@ use source_codec::gh_label_codec::GhLabelCodec;
 use source_sync::{MutationId, PendingWrite, QueuedWrite};
 use storage::StorageBackend;
 
-use crate::sync::SyncOrchestrator;
 use message::Message;
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::{Story, StoryId, Work};
@@ -61,24 +60,17 @@ async fn write_queued_burst_single_flights_one_drain_that_pushes_each_write_once
     std::mem::forget(dir);
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&adapter),
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let refresh: Arc<SyncOrchestrator> = orch.clone();
-
-    let store: Arc<Store> = Arc::new(build_store_with_refresh(
+    let (store_inner, orch) = build_store_with_refresh(
         hub,
         None,
         CancellationToken::new(),
         Vec::new(),
-        orch.clone(),
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         Duration::from_secs(60),
         Duration::from_secs(15),
-    ));
-    refresh.set_select(store.selector());
-    refresh.bind_dispatch(store.dispatcher());
-
+    );
+    let store: Arc<Store> = Arc::new(store_inner);
     orch.mutate(tag_added(5001, "one")).unwrap();
     orch.mutate(tag_added(5002, "two")).unwrap();
     orch.mutate(tag_added(5003, "three")).unwrap();
@@ -121,24 +113,17 @@ async fn polling_liveness_facts_never_drain_a_seeded_outbox() {
     std::mem::forget(dir);
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&adapter),
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let refresh: Arc<SyncOrchestrator> = orch.clone();
-
-    let store: Arc<Store> = Arc::new(build_store_with_refresh(
+    let (store_inner, _orch) = build_store_with_refresh(
         hub,
         None,
         CancellationToken::new(),
         vec![seeded_write(9101, "one", 1), seeded_write(9102, "two", 2)],
-        orch.clone(),
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         Duration::from_secs(60),
         Duration::from_secs(15),
-    ));
-    refresh.set_select(store.selector());
-    refresh.bind_dispatch(store.dispatcher());
-
+    );
+    let store: Arc<Store> = Arc::new(store_inner);
     store
         .dispatch(AppAction::SyncHealth(
             SyncHealthAction::IngestPollingStarted,
@@ -188,24 +173,17 @@ async fn a_mutated_write_is_selectable_the_moment_mutate_returns() {
     std::mem::forget(dir);
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&adapter),
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let refresh: Arc<SyncOrchestrator> = orch.clone();
-
-    let store: Arc<Store> = Arc::new(build_store_with_refresh(
+    let (store_inner, orch) = build_store_with_refresh(
         hub,
         None,
         CancellationToken::new(),
         Vec::new(),
-        orch.clone(),
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         Duration::from_secs(60),
         Duration::from_secs(15),
-    ));
-    refresh.set_select(store.selector());
-    refresh.bind_dispatch(store.dispatcher());
-
+    );
+    let store: Arc<Store> = Arc::new(store_inner);
     orch.mutate(tag_added(7001, "awaiting team")).unwrap();
 
     let pending = store
@@ -238,25 +216,18 @@ async fn an_ingested_upsert_is_selectable_the_moment_refresh_returns() {
         "pm".to_string(),
     )]);
     adapter.seed_labels(8001, vec!["outcome".to_string()]);
-    let orch = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&adapter),
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    let refresh: Arc<SyncOrchestrator> = orch.clone();
-
-    let store: Arc<Store> = Arc::new(build_store_with_refresh(
+    let (store_inner, orch) = build_store_with_refresh(
         hub,
         None,
         CancellationToken::new(),
         Vec::new(),
-        orch.clone(),
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         Duration::from_secs(60),
         Duration::from_secs(15),
-    ));
-    refresh.set_select(store.selector());
-    refresh.bind_dispatch(store.dispatcher());
-
-    refresh.refresh_all().await.unwrap();
+    );
+    let store: Arc<Store> = Arc::new(store_inner);
+    orch.refresh_all().await.unwrap();
 
     let outcomes = store
         .selector()

@@ -36,17 +36,24 @@ pub(crate) fn build_store_with_outbox(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn build_store_with_refresh(
+pub(crate) fn build_store_with_refresh<A: sync::SourceAdapter + 'static>(
     hub: Arc<hub::Hub>,
     tracker: Option<Arc<dyn CiPollFetch>>,
     parent_ct: CancellationToken,
     initial_outbox: Vec<source_sync::QueuedWrite>,
-    refresh: Arc<SyncOrchestrator>,
+    adapter: Arc<A>,
+    codec: Arc<dyn product_management::label_codec::LabelCodec + Send + Sync>,
     ingest_interval: Duration,
     hydration_interval: Duration,
-) -> Store {
+) -> (Store, Arc<SyncOrchestrator>) {
     let parts = assemble(hub, tracker, parent_ct.clone(), initial_outbox);
     let store_select = crate::store::Select::new(std::sync::Arc::downgrade(&parts.app_store));
+    let refresh = Arc::new(SyncOrchestrator::new_bound(
+        adapter,
+        codec,
+        store_select.clone(),
+        crate::store::Dispatch::for_app_store(&parts.app_store),
+    ));
     let sync_poll = Arc::new(crate::bridge::polling::SyncPoll::new(
         refresh.clone(),
         store_select.clone(),
@@ -100,8 +107,8 @@ pub(crate) fn build_store_with_refresh(
         )));
     parts
         .app_store
-        .add_listener(Arc::new(sync::GithubDrain::new(refresh, parent_ct)));
-    Store::from_parts(parts)
+        .add_listener(Arc::new(sync::GithubDrain::new(refresh.clone(), parent_ct)));
+    (Store::from_parts(parts), refresh)
 }
 
 fn assemble(

@@ -28,57 +28,64 @@ pub async fn run_server(
 
     let race_window = race_window_barrier_from_env();
 
-    let (orchestrator, hydrated_outbox): (
+    let hydrated_outbox = hydrate_outbox(&hub.storage);
+    let ci_tracker = tracker
+        .as_ref()
+        .cloned()
+        .map(|t| t as std::sync::Arc<dyn crate::store::CiPollFetch>);
+    let codec: std::sync::Arc<dyn product_management::label_codec::LabelCodec + Send + Sync> =
+        std::sync::Arc::new(source_codec::gh_label_codec::GhLabelCodec);
+
+    let (store_inner, orchestrator): (
+        crate::store::Store,
         Option<Arc<crate::sync::SyncOrchestrator>>,
-        Vec<source_sync::QueuedWrite>,
     ) = if test_mode_enabled() {
         eprintln!(
             "[bpmux server] BPMUX_TEST_MODE=1 — instantiating in-memory orchestrator for acceptance tests"
         );
-        let (orch, writes) = build_test_orchestrator(hub.clone()).await;
-        (Some(orch), writes)
-    } else if let Some(tracker_arc) = tracker.as_ref().cloned() {
-        let (orch, writes) = build_prod_orchestrator(hub.clone(), tracker_arc);
-        (Some(orch), writes)
-    } else {
-        (None, Vec::new())
-    };
-
-    if let Some(refresh) = orchestrator.as_ref().cloned() {
-        tokio::spawn(crate::bridge::run_drain_loop(
-            refresh.clone(),
+        let adapter = Arc::new(crate::integrations::in_memory::InMemorySourceAdapter::new());
+        let (store, refresh) = store_wiring::build_store_with_refresh(
             hub.clone(),
-            crate::bridge::drain_interval_from_env(),
+            ci_tracker,
+            ct.clone(),
+            hydrated_outbox,
+            adapter,
+            codec,
+            crate::bridge::poll_interval_from_env(),
+            crate::bridge::hydration_interval_from_env(),
+        );
+        (store, Some(refresh))
+    } else if let Some(tracker_arc) = tracker.as_ref().cloned() {
+        diag::log_diag(&format!(
+            "server: board-outbox hydrated via storage ({} pending events)",
+            hydrated_outbox.len()
         ));
-    }
+        let (store, refresh) = store_wiring::build_store_with_refresh(
+            hub.clone(),
+            ci_tracker,
+            ct.clone(),
+            hydrated_outbox,
+            tracker_arc,
+            codec,
+            crate::bridge::poll_interval_from_env(),
+            crate::bridge::hydration_interval_from_env(),
+        );
+        (store, Some(refresh))
+    } else {
+        let store = store_wiring::build_store_with_outbox(
+            hub.clone(),
+            ci_tracker,
+            ct.clone(),
+            hydrated_outbox,
+        );
+        (store, None)
+    };
+    let store = std::sync::Arc::new(store_inner);
+
     let ci_log_store = crate::ci::CiLogStore::new();
     let electron_capture_lock: std::sync::Arc<tokio::sync::Mutex<()>> =
         std::sync::Arc::new(tokio::sync::Mutex::new(()));
     let pty_registry = std::sync::Arc::new(crate::room::LivePtyRegistry::new());
-    let store_inner = match orchestrator.as_ref().cloned() {
-        Some(refresh) => store_wiring::build_store_with_refresh(
-            hub.clone(),
-            tracker
-                .as_ref()
-                .cloned()
-                .map(|t| t as std::sync::Arc<dyn crate::store::CiPollFetch>),
-            ct.clone(),
-            hydrated_outbox,
-            refresh,
-            crate::bridge::poll_interval_from_env(),
-            crate::bridge::hydration_interval_from_env(),
-        ),
-        None => store_wiring::build_store_with_outbox(
-            hub.clone(),
-            tracker
-                .as_ref()
-                .cloned()
-                .map(|t| t as std::sync::Arc<dyn crate::store::CiPollFetch>),
-            ct.clone(),
-            hydrated_outbox,
-        ),
-    };
-    let store = std::sync::Arc::new(store_inner);
     crate::room::spawn_terminal_delivery_loop(
         hub.clone(),
         pty_registry.clone(),
@@ -86,8 +93,11 @@ pub async fn run_server(
         store.dispatcher(),
     );
     if let Some(refresh) = orchestrator.as_ref() {
-        refresh.set_select(store.selector());
-        refresh.bind_dispatch(store.dispatcher());
+        tokio::spawn(crate::bridge::run_drain_loop(
+            refresh.clone(),
+            hub.clone(),
+            crate::bridge::drain_interval_from_env(),
+        ));
         startup_tasks::spawn_background_ingest(
             refresh.clone(),
             store.dispatcher(),
