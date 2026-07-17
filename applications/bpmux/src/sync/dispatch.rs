@@ -7,10 +7,7 @@ use super::SyncOrchestrator;
 
 impl SyncOrchestrator {
     fn emit(&self, action: crate::store::AppAction) {
-        match self.dispatch.get() {
-            Some(dispatch) => dispatch.dispatch(action),
-            None => diag::log_diag("orchestrator: dispatch unbound; write dropped"),
-        }
+        self.dispatch.dispatch(action);
     }
 
     pub(super) fn dispatch_story(&self, action: product_management::story::slice::StoryAction) {

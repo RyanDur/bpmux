@@ -97,7 +97,7 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
         None,
         CancellationToken::new(),
     ));
-    let orch = Arc::new(SyncOrchestrator::new_bound(
+    let orch = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         app_store.selector(),

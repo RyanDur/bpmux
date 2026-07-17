@@ -131,17 +131,3 @@ fn seed_remove_and_clear_act_on_the_bound_central_store() {
         "clear_stories empties the bound store"
     );
 }
-
-#[test]
-fn an_unbound_orchestrator_drops_writes_and_reads_come_back_empty() {
-    let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
-        adapter,
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
-    orch.mutate(created(1, "dropped")).unwrap();
-    assert!(
-        orch.read_story(StoryId::new(1)).is_none(),
-        "an unbound write is dropped — reads stay empty instead of panicking"
-    );
-}

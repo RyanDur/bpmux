@@ -27,10 +27,16 @@ fn active_outcome(id: u64, title: &str) -> Outcome {
 }
 
 fn idle_orchestrator() -> crate::sync::OrchestratorHandle {
-    Some(Arc::new(crate::sync::SyncOrchestrator::new(
-        Arc::new(crate::integrations::in_memory::InMemorySourceAdapter::new()),
-        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    )))
+    Some(
+        crate::store::build_seeded_orch(
+            Arc::new(crate::integrations::in_memory::InMemorySourceAdapter::new()),
+            Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+            vec![],
+            vec![],
+            vec![],
+        )
+        .0,
+    )
 }
 
 async fn roadmap_body(seeded: &SeededStore) -> serde_json::Value {

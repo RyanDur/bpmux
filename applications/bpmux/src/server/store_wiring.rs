@@ -48,7 +48,7 @@ pub(crate) fn build_store_with_refresh<A: sync::SourceAdapter + 'static>(
 ) -> (Store, Arc<SyncOrchestrator>) {
     let parts = assemble(hub, tracker, parent_ct.clone(), initial_outbox);
     let store_select = crate::store::Select::new(std::sync::Arc::downgrade(&parts.app_store));
-    let refresh = Arc::new(SyncOrchestrator::new_bound(
+    let refresh = Arc::new(SyncOrchestrator::new(
         adapter,
         codec,
         store_select.clone(),

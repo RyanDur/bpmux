@@ -60,11 +60,16 @@ async fn post_labels(
     id: u64,
     body: &str,
 ) -> axum::http::StatusCode {
-    let orchestrator: crate::sync::OrchestratorHandle =
-        Some(Arc::new(crate::sync::SyncOrchestrator::new(
+    let orchestrator: crate::sync::OrchestratorHandle = Some(
+        crate::store::build_seeded_orch(
             Arc::new(crate::integrations::in_memory::InMemorySourceAdapter::new()),
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-        )));
+            vec![],
+            vec![],
+            vec![],
+        )
+        .0,
+    );
     let (hub, _hub_dir) = fresh_test_hub();
     let router = axum::Router::new()
         .route(

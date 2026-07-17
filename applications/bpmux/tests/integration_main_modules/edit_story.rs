@@ -66,7 +66,7 @@ async fn edit_story_replaces_body_at_canonical_store() {
         None,
         CancellationToken::new(),
     ));
-    let orch = Arc::new(SyncOrchestrator::new_bound(
+    let orch = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         app_store.selector(),

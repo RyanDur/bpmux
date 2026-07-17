@@ -32,11 +32,14 @@ async fn accept_rejects_unknown_role_via_handler() {
     use crate::sync::SyncOrchestrator;
     use std::sync::Arc;
 
-    let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&adapter),
+    let orchestrator: Arc<SyncOrchestrator> = crate::store::build_seeded_orch(
+        Arc::new(InMemorySourceAdapter::new()),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
+        vec![],
+        vec![],
+        vec![],
+    )
+    .0;
     let args = serde_json::json!({"id": 1, "would_file_bug": false});
     let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_accept_story(
@@ -275,11 +278,14 @@ async fn reject_rejects_unknown_role_via_handler() {
     use crate::sync::SyncOrchestrator;
     use std::sync::Arc;
 
-    let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
-        Arc::clone(&adapter),
+    let orchestrator: Arc<SyncOrchestrator> = crate::store::build_seeded_orch(
+        Arc::new(InMemorySourceAdapter::new()),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
-    ));
+        vec![],
+        vec![],
+        vec![],
+    )
+    .0;
     let args = serde_json::json!({"id": 1, "reason": "test"});
     let select = crate::store::Select::new(std::sync::Weak::new());
     let result = handle_reject_story(

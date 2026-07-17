@@ -80,7 +80,7 @@ impl SeededStore {
         adapter: std::sync::Arc<A>,
         codec: std::sync::Arc<dyn product_management::label_codec::LabelCodec + Send + Sync>,
     ) -> std::sync::Arc<crate::sync::SyncOrchestrator> {
-        std::sync::Arc::new(crate::sync::SyncOrchestrator::new_bound(
+        std::sync::Arc::new(crate::sync::SyncOrchestrator::new(
             adapter,
             codec,
             self.select(),

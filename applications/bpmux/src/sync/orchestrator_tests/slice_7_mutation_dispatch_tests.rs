@@ -172,7 +172,8 @@ mod slice_7_3_drain_pass {
     #[tokio::test]
     async fn drain_pass_over_empty_queue_is_a_noop() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let orch = SyncOrchestrator::new(
+        let handle = SeededStore::new(vec![], vec![], vec![]);
+        let orch = handle.build_orch(
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         );

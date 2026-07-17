@@ -28,10 +28,10 @@ pub use race_window::*;
 pub use types::*;
 
 pub struct SyncOrchestrator {
-    pub(super) dispatch: std::sync::OnceLock<crate::store::Dispatch>,
+    pub(super) dispatch: crate::store::Dispatch,
     pub(super) adapter: Arc<dyn SourceAdapter>,
     pub(super) codec: Arc<dyn product_management::label_codec::LabelCodec + Send + Sync>,
-    pub(super) select: std::sync::OnceLock<crate::store::Select>,
+    pub(super) select: crate::store::Select,
     pub(super) issue_locks:
         tokio::sync::Mutex<std::collections::HashMap<u64, Arc<tokio::sync::Mutex<()>>>>,
     pub(super) drain_guard: tokio::sync::Mutex<()>,

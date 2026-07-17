@@ -55,7 +55,7 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
         None,
         CancellationToken::new(),
     ));
-    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new_bound(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         app_store.selector(),
