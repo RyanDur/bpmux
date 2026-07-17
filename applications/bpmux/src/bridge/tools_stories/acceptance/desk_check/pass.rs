@@ -46,14 +46,13 @@ pub(crate) async fn handle_pass_desk_check(
         .ok_or("missing 'id' argument")?;
     let acceptor = parse_acceptor_arg(args)?;
     let bypass = verify_bug_question_or_bypass(args, BugGate::PassDeskCheck)?;
-    let r_opt = refresh;
-    let story_opt = r_opt.and_then(|_| {
+    let story_opt = refresh.and_then(|_| {
         select
             .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(id)))
     });
     let class = story_opt
         .as_ref()
-        .map(|s| product_management::story::gate_class_from_acceptor(s.acceptor()))
+        .map(|story| product_management::story::gate_class_from_acceptor(story.acceptor()))
         .unwrap_or(workflow::GateClass::TeamVerifiable);
     let transition = workflow::resolve_transition(workflow, "pass-desk-check", class)
         .map_err(|e| e.as_json_string())?;
@@ -63,10 +62,8 @@ pub(crate) async fn handle_pass_desk_check(
         workflow.owner_role_name().unwrap_or(""),
     )
     .map_err(|e| e.as_json_string())?;
-    if hub.is_some()
-        && let Some(r) = refresh
-    {
-        let evidence = recent_evidence_for_story(r, id);
+    if hub.is_some() && refresh.is_some() {
+        let evidence = recent_evidence_for_story(select, id);
         workflow::check_evidence_present(
             transition,
             actor_role,

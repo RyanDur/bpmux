@@ -47,7 +47,7 @@ pub(crate) async fn handle_accept_story(
     )
     .map_err(|e| e.as_json_string())?;
     if let Some(s) = hub {
-        let evidence = recent_evidence_for_story(r, id);
+        let evidence = recent_evidence_for_story(select, id);
         let current_head = crate::bridge::tools::git_repo::current_head_sha();
         if let Err(e) = workflow::check_evidence_present(
             transition,

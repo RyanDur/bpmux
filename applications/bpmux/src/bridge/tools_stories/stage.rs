@@ -15,7 +15,7 @@ pub(crate) async fn handle_pass_stage(
     refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
     select: &crate::store::Select,
 ) -> Result<String, String> {
-    let (id, r, story, held) = judged_stage_of(args, refresh, select).await?;
+    let (id, driver, story, held) = judged_stage_of(args, refresh, select).await?;
     enforce_judge(&held, role, agent_name)?;
     let observation = require_nonempty_string(
         args,
@@ -32,7 +32,7 @@ pub(crate) async fn handle_pass_stage(
     } = board::advance(&verdict, workflow)
         .ok_or_else(|| format!("#{id} pass_stage has no forward state from '{}'", held))?;
     cast_and_transition(
-        r,
+        driver,
         id,
         meta_for(agent_name, actor_id),
         verdict,
@@ -52,7 +52,7 @@ pub(crate) async fn handle_fail_stage(
     refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
     select: &crate::store::Select,
 ) -> Result<String, String> {
-    let (id, r, story, held) = judged_stage_of(args, refresh, select).await?;
+    let (id, driver, story, held) = judged_stage_of(args, refresh, select).await?;
     enforce_judge(&held, role, agent_name)?;
     let reason = args
         .get("reason")
@@ -79,7 +79,7 @@ pub(crate) async fn handle_fail_stage(
     } = board::advance(&verdict, workflow)
         .ok_or_else(|| format!("#{id} fail_stage has no fail target from '{}'", held))?;
     cast_and_transition(
-        r,
+        driver,
         id,
         meta_for(agent_name, actor_id),
         verdict,
@@ -100,8 +100,8 @@ async fn judged_stage_of<'r>(
         .get("id")
         .and_then(|v| v.as_u64())
         .ok_or("missing 'id' argument")?;
-    let r = refresh.ok_or("stage verbs require refresh (RefreshDriver)")?;
-    let story = ensure_story_in_canonical_store(r, select, id).await?;
+    let driver = refresh.ok_or("stage verbs require refresh (RefreshDriver)")?;
+    let story = ensure_story_in_canonical_store(driver, select, id).await?;
     if !matches!(story.state, Work::InProgress) {
         return Err(format!(
             "#{id} is not in the board's middle (state={}); stage judgments apply only between pickup and acceptance",
@@ -109,11 +109,11 @@ async fn judged_stage_of<'r>(
         ));
     }
     let workflow = workflow::current_workflow();
-    let held = r
-        .story_held_stage(&story)
+    let held = select
+        .select(|state| board::held_stage(&story, &state.board))
         .or_else(|| workflow::board_middle_stage_ids(workflow).first().cloned());
     let held = held.ok_or_else(|| format!("#{id} the configured workflow has no middle stages"))?;
-    Ok((id, r, story, held))
+    Ok((id, driver, story, held))
 }
 
 fn enforce_judge(held: &StageId, role: &str, agent_name: &str) -> Result<(), String> {
@@ -123,7 +123,7 @@ fn enforce_judge(held: &StageId, role: &str, agent_name: &str) -> Result<(), Str
 }
 
 fn cast_and_transition(
-    r: &std::sync::Arc<dyn RefreshDriver>,
+    driver: &std::sync::Arc<dyn RefreshDriver>,
     id: u64,
     meta: product_management::story::events::EventMeta,
     verdict: Verdict,
@@ -131,20 +131,21 @@ fn cast_and_transition(
     new_state: Work,
     placement: Option<StageId>,
 ) -> Result<(), String> {
-    r.mutate_batch_sync(vec![
-        StoryEvent::new(
-            meta.clone(),
-            StoryId::new(id),
-            StoryEventKind::VerdictCast { verdict, payload },
-        ),
-        StoryEvent::new(
-            meta,
-            StoryId::new(id),
-            StoryEventKind::StateTransitioned {
-                new_state,
-                placement,
-            },
-        ),
-    ])
-    .map_err(|e| format!("#{id} stage judgment enqueue failed: {e}"))
+    driver
+        .mutate_batch_sync(vec![
+            StoryEvent::new(
+                meta.clone(),
+                StoryId::new(id),
+                StoryEventKind::VerdictCast { verdict, payload },
+            ),
+            StoryEvent::new(
+                meta,
+                StoryId::new(id),
+                StoryEventKind::StateTransitioned {
+                    new_state,
+                    placement,
+                },
+            ),
+        ])
+        .map_err(|e| format!("#{id} stage judgment enqueue failed: {e}"))
 }

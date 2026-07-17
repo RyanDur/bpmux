@@ -86,16 +86,8 @@ impl<A: SourceAdapter + 'static> RefreshDriver for SyncOrchestrator<A> {
         self.read_story(StoryId::new(number))
     }
 
-    fn story_held_stage(&self, story: &Story) -> Option<workflow::StageId> {
-        self.read_story_held_stage(story)
-    }
-
     fn all_stories(&self) -> Vec<Story> {
         self.read_all_stories()
-    }
-
-    fn evidence_for_story(&self, id: u64) -> Vec<product_management::evidence::Evidence> {
-        self.read_evidence_for_story(StoryId::new(id))
     }
 
     fn store_is_empty(&self) -> bool {

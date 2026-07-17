@@ -46,16 +46,21 @@ pub(crate) fn verdict_to_id(verdict: &product_management::story::Verdict) -> &'s
 }
 
 pub(crate) fn recent_evidence_for_story(
-    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    select: &crate::store::Select,
     story_id: u64,
 ) -> Vec<EvidenceMessage> {
-    refresh
-        .evidence_for_story(story_id)
+    select
+        .select(|state| {
+            product_management::evidence::evidence_for_story(
+                &state.evidence,
+                product_management::story::StoryId::new(story_id),
+            )
+        })
         .into_iter()
-        .map(|v| EvidenceMessage {
-            from_role: v.from_role,
-            ts: v.ts,
-            grounded_head: v.grounded_head,
+        .map(|evidence| EvidenceMessage {
+            from_role: evidence.from_role,
+            ts: evidence.ts,
+            grounded_head: evidence.grounded_head,
         })
         .collect()
 }

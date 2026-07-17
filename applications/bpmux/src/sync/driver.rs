@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use crate::sync::{ConditionalBody, SyncError};
-use product_management::evidence::Evidence;
 use product_management::iteration::{Iteration, IterationId};
 use product_management::outcome::Outcome;
 use product_management::story::events::StoryEvent;
@@ -50,13 +49,7 @@ pub trait RefreshDriver: Send + Sync {
         initial_labels: Vec<String>,
     ) -> BoxedFuture<'_, Result<u64, SyncError>>;
     fn story(&self, id: u64) -> Option<Story>;
-    fn story_held_stage(&self, story: &Story) -> Option<workflow::StageId> {
-        board::held_stage(story, &board::BoardPlacements::default())
-    }
     fn all_stories(&self) -> Vec<Story>;
-    fn evidence_for_story(&self, _id: u64) -> Vec<Evidence> {
-        Vec::new()
-    }
     fn outcomes(&self) -> Vec<Outcome> {
         Vec::new()
     }

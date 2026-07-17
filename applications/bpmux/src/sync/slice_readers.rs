@@ -85,32 +85,11 @@ impl<A: SourceAdapter + 'static> SyncOrchestrator<A> {
             .unwrap_or_default()
     }
 
-    pub(super) fn read_story_held_stage(&self, story: &Story) -> Option<workflow::StageId> {
-        self.select
-            .get()
-            .and_then(|s| s.select(|state| Some(board::held_stage(story, &state.board))))
-            .unwrap_or_else(|| board::held_stage(story, &board::BoardPlacements::default()))
-    }
-
     pub(super) fn read_store_is_empty(&self) -> bool {
         self.select
             .get()
             .map(|s| s.select(|state| story::slice::is_empty(&state.stories)))
             .unwrap_or(true)
-    }
-
-    pub(super) fn read_evidence_for_story(
-        &self,
-        story_id: StoryId,
-    ) -> Vec<product_management::evidence::Evidence> {
-        self.select
-            .get()
-            .map(|s| {
-                s.select(|state| {
-                    product_management::evidence::evidence_for_story(&state.evidence, story_id)
-                })
-            })
-            .unwrap_or_default()
     }
 
     pub(super) fn read_outcomes(&self) -> Vec<Outcome> {
