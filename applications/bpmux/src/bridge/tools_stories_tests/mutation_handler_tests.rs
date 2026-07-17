@@ -108,10 +108,16 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
         "the desk-check-fail label decodes to a typed Tag on the story field, not a raw label round-trip"
     );
 
+    assert!(
+        adapter.pushed_events().is_empty(),
+        "label_story returns optimistically — the GH push is deferred to the async GithubDrain reconciler, so nothing is pushed before the handler returns: {:?}",
+        adapter.pushed_events()
+    );
+
     let drained = orchestrator.drain_pass().await.unwrap();
     assert_eq!(
-        drained, 0,
-        "#1142: handler drains internally; nothing left to drain"
+        drained, 1,
+        "the deferred TagSet reaches the adapter on the reconciler's drain pass"
     );
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
@@ -188,10 +194,15 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
         "tags should be empty after the typed unset"
     );
 
+    assert!(
+        adapter.pushed_events().is_empty(),
+        "both label ops return optimistically — nothing is pushed before the reconciler drains: {:?}",
+        adapter.pushed_events()
+    );
     let drained = orchestrator.drain_pass().await.unwrap();
     assert_eq!(
-        drained, 0,
-        "#1142: handler drains internally per add + remove; nothing left to drain"
+        drained, 2,
+        "the deferred TagSet + TagUnset both reach the adapter on one reconciler drain pass — TagSet/TagUnset do not coalesce (only iteration-class TagAdded/TagRemoved do)"
     );
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 2);

@@ -99,9 +99,6 @@ pub(crate) async fn handle_label_story(
         };
         r.mutate(event)
             .map_err(|e| format!("#{id} enqueue failed: {e}"))?;
-        r.drain_pass()
-            .await
-            .map_err(|e| format!("#{id} label push failed: {e}"))?;
         return Ok(ok_msg);
     }
     Err("label_story requires refresh — tracker fallback retired in slice 5n".into())

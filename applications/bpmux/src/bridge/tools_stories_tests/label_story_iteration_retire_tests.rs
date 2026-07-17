@@ -132,6 +132,7 @@ async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
         "the desk-check-fail label classifies into the typed tag at the tool edge; got {:?}",
         story.tags
     );
+    orch.drain_pass().await.unwrap();
     orch.refresh_all().await.unwrap();
     let story = select
         .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(200)))
