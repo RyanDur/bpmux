@@ -7,6 +7,7 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 
 use crate::hub;
+use crate::sync::RefreshDriver;
 use product_management::label_codec::LabelCodec;
 
 pub fn seed_api_enabled() -> bool {

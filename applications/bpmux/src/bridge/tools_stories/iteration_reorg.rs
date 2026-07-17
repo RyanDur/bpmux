@@ -1,6 +1,6 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_iteration_in_canonical_store, require_purpose};
-use crate::sync::RefreshDriver;
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use product_management::iteration::Iteration;
 use product_management::story::StoryId;
 use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -12,7 +12,7 @@ pub(crate) async fn handle_reorder_iteration(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn RefreshDriver>>,
+    refresh: Option<&Arc<SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -45,7 +45,7 @@ pub(crate) async fn handle_reorder_iteration(
 }
 
 fn renumber_iteration_order(
-    driver: &Arc<dyn RefreshDriver>,
+    driver: &Arc<SyncOrchestrator>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
     agent_name: &str,
@@ -118,7 +118,7 @@ fn renumber_iteration_order(
 pub(crate) async fn handle_rename_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     role: &str,
-    refresh: Option<&Arc<dyn RefreshDriver>>,
+    refresh: Option<&Arc<SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -138,7 +138,6 @@ pub(crate) async fn handle_rename_iteration(
     let title = format!("Iteration {name}");
     driver
         .update_title(iteration_id, title.clone())
-        .await
         .map_err(|e| format!("#{iteration_id} name update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Iteration(
         product_management::iteration::IterationAction::Upserted(vec![Iteration {

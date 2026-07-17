@@ -1,5 +1,6 @@
 use super::event_meta::meta_for;
 use super::helpers::require_nonempty_string;
+use crate::sync::RefreshDriver;
 use product_management::story::StoryId;
 
 pub(crate) async fn handle_create_outcome(
@@ -7,7 +8,7 @@ pub(crate) async fn handle_create_outcome(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<crate::sync::SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
     let workflow = workflow::current_workflow();
@@ -51,7 +52,7 @@ pub(crate) async fn handle_create_outcome(
     let driver = refresh
         .ok_or("create_outcome requires refresh (RefreshDriver) — canonical store unavailable")?;
     let id = driver
-        .create_story(title.clone(), body.clone(), vec!["outcome".to_string()])
+        .create_story(&title, &body, &["outcome"])
         .await
         .map_err(|e| format!("create_outcome adapter call failed: {e}"))?;
     let meta = meta_for(agent_name, actor_id);

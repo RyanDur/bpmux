@@ -3,7 +3,7 @@
 use crate::bridge::dispatch::{dispatch_list_ready, dispatch_move_story};
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::{AppAction, Dispatch, SeededStore};
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
 use product_management::iteration::{Iteration, IterationAction};
 use product_management::story::{Story, StoryId, Work};
@@ -46,13 +46,13 @@ fn current_iteration_story(id: u64) -> (Story, Vec<String>) {
 
 async fn build_orchestrator(
     seeds: Vec<(Story, Vec<String>)>,
-) -> (Arc<dyn RefreshDriver>, SeededStore) {
+) -> (Arc<SyncOrchestrator>, SeededStore) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     for (story, labels) in &seeds {
         adapter.seed_labels(story.id.value(), labels.clone());
     }
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -68,7 +68,7 @@ async fn build_orchestrator(
 }
 
 async fn move_to_ready_position(
-    orch: &Arc<dyn RefreshDriver>,
+    orch: &Arc<SyncOrchestrator>,
     seed: &SeededStore,
     id: u64,
     position: u64,

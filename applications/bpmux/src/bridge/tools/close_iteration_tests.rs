@@ -6,7 +6,6 @@
 mod canonical_via_gh_1300 {
     use crate::integrations::in_memory::InMemorySourceAdapter;
     use crate::store::{AppAction, Dispatch};
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use crate::transport::rest::iteration_close::{CloseIterationError, close_iteration};
     use crate::transport::rest::{close_iteration_canonical, collect_ready_queue_blockers};
@@ -93,7 +92,7 @@ mod canonical_via_gh_1300 {
     async fn build_refresh(
         seeds: Vec<(Story, Vec<String>)>,
     ) -> (
-        Arc<dyn RefreshDriver>,
+        Arc<SyncOrchestrator>,
         Arc<InMemorySourceAdapter>,
         crate::store::Select,
     ) {
@@ -102,7 +101,7 @@ mod canonical_via_gh_1300 {
             adapter.seed_labels(story.id.value(), labels.clone());
         }
         adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
-        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
             Arc::clone(&adapter),
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));

@@ -11,6 +11,7 @@ use super::blockers::{
 };
 use super::notify::broadcast_iteration_closed;
 use crate::hub;
+use crate::sync::RefreshDriver;
 use crate::transport::rest::shared::{
     broadcast_board_invalidate, broadcast_stories, err_body, json_headers,
 };
@@ -96,7 +97,7 @@ pub async fn post_close_iteration(
 
 pub(crate) async fn close_iteration(
     hub: &hub::Hub,
-    refresh: &Arc<dyn crate::sync::RefreshDriver>,
+    refresh: &Arc<crate::sync::SyncOrchestrator>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
     iteration_id: u64,
@@ -138,7 +139,7 @@ pub(crate) async fn close_iteration(
 }
 
 pub(crate) async fn close_iteration_canonical(
-    refresh: &Arc<dyn crate::sync::RefreshDriver>,
+    refresh: &Arc<crate::sync::SyncOrchestrator>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
     iteration_id: u64,

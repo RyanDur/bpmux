@@ -1,4 +1,4 @@
-use crate::sync::RefreshDriver;
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use product_management::outcome::Outcome;
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::{Horizon, StoryId};
@@ -6,7 +6,7 @@ use source_codec::gh_label_codec::GhLabelCodec;
 use std::sync::Arc;
 
 pub(super) fn push_band_change(
-    r: &Arc<dyn RefreshDriver>,
+    r: &Arc<SyncOrchestrator>,
     codec: &GhLabelCodec,
     meta: &impl Fn() -> EventMeta,
     outcome: &Outcome,
@@ -48,7 +48,7 @@ pub(super) struct BandReorder {
 }
 
 pub(super) fn reorder_within_band(
-    driver: &Arc<dyn RefreshDriver>,
+    driver: &Arc<SyncOrchestrator>,
     select: &crate::store::Select,
     codec: &GhLabelCodec,
     meta: &impl Fn() -> EventMeta,

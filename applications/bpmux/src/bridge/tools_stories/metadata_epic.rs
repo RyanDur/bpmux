@@ -2,6 +2,7 @@ use super::event_meta::meta_for;
 use super::helpers::{
     ensure_epic_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
 };
+use crate::sync::RefreshDriver;
 use product_management::epic::EpicId;
 use product_management::story::StoryId;
 
@@ -10,7 +11,7 @@ pub(crate) async fn handle_set_parent_epic(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
 ) -> Result<String, String> {
     require_purpose(role, &["pm"], "set parent epic")?;
@@ -46,7 +47,7 @@ pub(crate) async fn handle_unset_parent_epic(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
 ) -> Result<String, String> {
     require_purpose(role, &["pm"], "unset parent epic")?;

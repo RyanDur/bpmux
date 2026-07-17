@@ -20,7 +20,7 @@ mod stage_verb_behavior {
         labels: &[&str],
     ) -> (
         crate::store::SeededStore,
-        Arc<dyn RefreshDriver>,
+        Arc<SyncOrchestrator>,
         crate::store::Select,
     ) {
         let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -33,7 +33,7 @@ mod stage_verb_behavior {
         );
         adapter.seed_labels(id, labels.iter().map(|l| l.to_string()).collect());
         adapter.seed_stories(vec![story]);
-        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));

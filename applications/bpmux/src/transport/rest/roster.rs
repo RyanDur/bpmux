@@ -5,6 +5,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 
 use super::shared::{err_body, json_headers};
+use crate::sync::RefreshDriver;
 
 #[derive(serde::Serialize)]
 pub struct RosterEntry {

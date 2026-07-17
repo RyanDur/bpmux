@@ -1,12 +1,12 @@
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
-use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 use source_codec::mapper::outcome_with_body;
 use std::sync::Arc;
 
 pub(crate) async fn handle_edit_outcome(
     args: &serde_json::Map<String, serde_json::Value>,
     role: &str,
-    refresh: Option<&Arc<dyn RefreshDriver>>,
+    refresh: Option<&Arc<SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -28,7 +28,6 @@ pub(crate) async fn handle_edit_outcome(
     if let Some(t) = title {
         driver
             .update_title(outcome_id, t.to_string())
-            .await
             .map_err(|e| format!("#{outcome_id} title update failed: {e}"))?;
         outcome = outcome.with_title(t);
         updated.push("title");
@@ -36,7 +35,6 @@ pub(crate) async fn handle_edit_outcome(
     if let Some(b) = body {
         driver
             .update_body(outcome_id, b.to_string())
-            .await
             .map_err(|e| format!("#{outcome_id} why update failed: {e}"))?;
         outcome = outcome_with_body(&outcome, b);
         updated.push("why");

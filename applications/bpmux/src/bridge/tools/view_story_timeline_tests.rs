@@ -17,12 +17,11 @@ async fn handler_requires_refresh_as_the_canonical_read_handle() {
 #[tokio::test]
 async fn handler_errors_when_story_not_in_board() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use std::sync::Arc;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -41,7 +40,6 @@ async fn handler_errors_when_story_not_in_board() {
 #[tokio::test]
 async fn handler_reads_gates_from_canonical_store() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use product_management::story::slice::StoryAction;
@@ -65,7 +63,7 @@ async fn handler_reads_gates_from_canonical_store() {
         actor: "dev".into(),
         payload: Some("ran end-to-end".into()),
     }]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -95,7 +93,6 @@ async fn handler_reads_gates_from_canonical_store() {
 #[tokio::test]
 async fn handler_returns_filed_only_with_unhydrated_flag_when_verdicts_missing() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use product_management::story::slice::StoryAction;
@@ -111,7 +108,7 @@ async fn handler_returns_filed_only_with_unhydrated_flag_when_verdicts_missing()
         Utc.with_ymd_and_hms(2026, 4, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -233,7 +230,6 @@ fn build_timeline_from_board_renders_full_rework_cycle() {
 #[tokio::test]
 async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use product_management::story::{CastVerdict, Story, StoryId, Verdict, Work};
@@ -260,7 +256,7 @@ async fn timeline_hydrates_reject_gate_verbatim_via_read_through() {
             payload: Some(reason.into()),
         }],
     );
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

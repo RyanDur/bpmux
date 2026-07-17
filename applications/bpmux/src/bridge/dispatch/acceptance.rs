@@ -9,7 +9,7 @@ pub(crate) async fn dispatch_accept_story(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
     hub: &Arc<crate::hub::Hub>,
     race_window: &crate::sync::RaceWindowHandle,
@@ -41,7 +41,7 @@ pub(crate) async fn dispatch_fail_desk_check(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
     hub: &Arc<crate::hub::Hub>,
 ) -> Result<String, String> {
@@ -67,7 +67,7 @@ pub(crate) async fn dispatch_pass_desk_check(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
     hub: &Arc<crate::hub::Hub>,
 ) -> Result<String, String> {
@@ -103,7 +103,7 @@ pub(crate) async fn dispatch_reject_story(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
     hub: &Arc<crate::hub::Hub>,
 ) -> Result<String, String> {

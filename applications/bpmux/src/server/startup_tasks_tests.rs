@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use product_management::story::{Story, StoryId, Work};
 
 use super::startup_tasks::spawn_background_ingest;
@@ -19,7 +19,7 @@ async fn ingest_runs_in_background_not_inline() {
         chrono::Utc::now(),
         "test".to_string(),
     )]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 async fn build_orchestrator() -> (
     crate::store::SeededStore,
-    Arc<dyn RefreshDriver>,
+    Arc<SyncOrchestrator>,
     crate::store::Select,
 ) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -22,7 +22,7 @@ async fn build_orchestrator() -> (
         "pm".into(),
     );
     adapter.seed_stories(vec![story]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

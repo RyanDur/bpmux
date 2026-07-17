@@ -34,7 +34,7 @@ mod outbox_persistence {
             Arc::clone(adapter),
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         let handle = SeededStore::new_wired_outbox(sink, initial);
         handle.bind_refresh(&orch_dyn);
         if !stories.is_empty() {
@@ -401,7 +401,7 @@ mod outbox_persistence {
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         let select = handle.select();
@@ -427,7 +427,7 @@ mod outbox_persistence {
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         let select = handle.select();

@@ -23,7 +23,7 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -79,7 +79,7 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -144,7 +144,7 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
         "pm".into(),
     );
     adapter.seed_stories(vec![seeded]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -234,7 +234,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     );
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
+    let orchestrator: Arc<SyncOrchestrator> = Arc::new(orch_concrete);
     let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
     store.bind_refresh(&orchestrator);
     store.dispatch(crate::store::AppAction::Ci(
@@ -334,7 +334,7 @@ async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events()
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(202, vec!["desk-check".to_string()]);
-    let orchestrator: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orchestrator: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

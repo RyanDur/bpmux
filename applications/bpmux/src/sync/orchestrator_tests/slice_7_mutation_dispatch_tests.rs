@@ -24,7 +24,7 @@ mod slice_7_2_mutation_id_dispatch {
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
@@ -67,7 +67,7 @@ mod slice_7_2_mutation_id_dispatch {
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
         orch.ingest_once().await.unwrap();
         orch.mutate(StoryEvent::new(
@@ -88,7 +88,7 @@ mod slice_7_2_mutation_id_dispatch {
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
@@ -124,7 +124,7 @@ mod slice_7_3_drain_pass {
             Arc::clone(&adapter),
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
@@ -154,7 +154,7 @@ mod slice_7_3_drain_pass {
             Arc::clone(&adapter),
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
@@ -199,7 +199,7 @@ mod slice_7_4_drain_pass_falsifiers {
             Arc::clone(&adapter),
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
@@ -230,7 +230,7 @@ mod slice_7_4_drain_pass_falsifiers {
             Arc::clone(&adapter),
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
@@ -274,7 +274,7 @@ mod slice_7_4_drain_pass_falsifiers {
             Arc::clone(&adapter),
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(

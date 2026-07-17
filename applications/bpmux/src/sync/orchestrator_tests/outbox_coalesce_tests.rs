@@ -40,7 +40,7 @@ mod outbox_coalesce_1339_step_2e {
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed])));
@@ -112,7 +112,7 @@ mod outbox_coalesce_1339_step_2e {
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
@@ -163,7 +163,7 @@ mod outbox_coalesce_1339_step_2e {
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
@@ -221,7 +221,7 @@ mod outbox_coalesce_1339_step_2e {
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
@@ -269,7 +269,7 @@ mod outbox_coalesce_1339_step_2e {
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(

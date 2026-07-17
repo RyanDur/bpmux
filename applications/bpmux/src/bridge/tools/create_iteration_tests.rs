@@ -6,7 +6,6 @@
 use crate::bridge::tools_stories::handle_create_iteration;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::{AppAction, Dispatch};
-use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
 use product_management::iteration::{Iteration, IterationAction};
@@ -44,7 +43,7 @@ fn seed_iteration_story(id: u64, name: &str, is_closed: bool) -> (Story, Vec<Str
 async fn build_refresh_with_stories(
     seeds: Vec<(Story, Vec<String>, bool)>,
 ) -> (
-    Arc<dyn RefreshDriver>,
+    Arc<SyncOrchestrator>,
     Arc<InMemorySourceAdapter>,
     crate::store::Select,
 ) {
@@ -56,7 +55,7 @@ async fn build_refresh_with_stories(
         }
     }
     adapter.seed_stories(seeds.iter().map(|(s, _, _)| s.clone()).collect());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -71,7 +70,7 @@ async fn build_refresh_with_stories(
 }
 
 async fn build_empty_refresh() -> (
-    Arc<dyn RefreshDriver>,
+    Arc<SyncOrchestrator>,
     Arc<InMemorySourceAdapter>,
     crate::store::Select,
 ) {

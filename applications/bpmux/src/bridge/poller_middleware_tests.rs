@@ -7,7 +7,7 @@ use chrono::{TimeZone, Utc};
 use crate::bridge::tools::handle_get_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::{AppAction, SeededStore};
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use product_management::iteration::{Iteration, IterationId};
 use product_management::story::slice::StoryAction;
 use product_management::story::{Story, StoryId, Work};
@@ -43,7 +43,7 @@ fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
 async fn get_story_canonical_only_returns_placeholder_when_body_missing() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.set_ingest_failures(true);
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let refresh: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -79,7 +79,7 @@ async fn get_story_serves_cached_body_from_canonical_store() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let mut story = seed_minimal(8002, Work::NotStarted);
     story.body = Some("# real body\n\ncached body content from prior hydrate".to_string());
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let refresh: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -106,7 +106,7 @@ async fn get_story_serves_cached_body_from_canonical_store() {
 async fn get_story_does_not_call_adapter_fetch_body_when_body_missing() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.set_ingest_failures(true);
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let refresh: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -182,7 +182,7 @@ async fn select_stories_to_hydrate_returns_empty_when_all_hydrated() {
 async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
     use product_management::story::events::{StoryEvent, StoryEventKind};
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -212,7 +212,7 @@ async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
 async fn local_body_mutate_invalidates_prior_etag() {
     use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -250,7 +250,7 @@ async fn local_body_mutate_invalidates_prior_etag() {
 async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh() {
     use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -288,7 +288,7 @@ async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_minimal(9001, Work::NotStarted)]);
     adapter.seed_body(9001, "real body".into());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -369,7 +369,7 @@ async fn select_stories_to_revalidate_caps_at_limit() {
 #[tokio::test]
 async fn get_story_returns_hydrated_flag_in_response() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let refresh: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

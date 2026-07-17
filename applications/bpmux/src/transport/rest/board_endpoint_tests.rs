@@ -2,7 +2,7 @@
 
 use super::board::{board_iterations, board_outcomes, ordered_board_stories};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
 use product_management::iteration::{Iteration, IterationId};
 use product_management::outcome::OutcomeId;
@@ -17,7 +17,7 @@ async fn seeded_store(seeds: Vec<(Story, Vec<String>)>) -> crate::store::SeededS
         adapter.seed_labels(story.id.value(), labels.clone());
     }
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -157,7 +157,7 @@ fn flagged_iteration(id: u64, is_current: bool, complete: bool, stories: Vec<u64
 async fn board_ready_order(stories: Vec<Story>, iterations: Vec<Iteration>) -> Vec<u64> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(stories);
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let refresh: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -215,7 +215,7 @@ async fn an_optimistic_reject_is_visible_on_the_board_snapshot_before_it_reaches
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     )]);
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let refresh: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

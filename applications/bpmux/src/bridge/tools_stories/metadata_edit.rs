@@ -1,12 +1,13 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, require_purpose};
+use crate::sync::RefreshDriver;
 
 pub(crate) async fn handle_edit_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
@@ -52,14 +53,12 @@ pub(crate) async fn handle_edit_story(
     if let Some(t) = title {
         driver
             .update_title(id, t.to_string())
-            .await
             .map_err(|e| format!("#{id} title update failed: {e}"))?;
         updated.push("title");
     }
     if let Some(b) = body {
         driver
             .update_body(id, b.to_string())
-            .await
             .map_err(|e| format!("#{id} body update failed: {e}"))?;
         updated.push("body");
     }

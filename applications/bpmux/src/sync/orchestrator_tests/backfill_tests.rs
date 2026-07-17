@@ -5,7 +5,7 @@ use chrono::{TimeZone, Utc};
 use super::seed_story;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::SeededStore;
-use crate::sync::{RefreshDriver, SyncOrchestrator, backfill_shared_history};
+use crate::sync::{SyncOrchestrator, backfill_shared_history};
 use product_management::story::{CastVerdict, StoryId, Verdict, Work};
 
 fn ready_verdict(hour: u32, actor: &str) -> CastVerdict {
@@ -29,7 +29,7 @@ async fn a_cache_fill_leaves_the_shared_grain_empty_but_the_boot_sweep_fills_it_
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     orchestrator.ingest_once().await.unwrap();
@@ -80,7 +80,7 @@ async fn the_boot_sweep_replaces_each_storys_records_per_story() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     orchestrator.ingest_once().await.unwrap();

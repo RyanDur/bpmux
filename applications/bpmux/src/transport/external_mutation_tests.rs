@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 use crate::bridge::test_fixtures::issue;
 use crate::integrations::github::GitHubSourceAdapter;
 use crate::integrations::github::tracker::OctocrabStoryTracker;
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 
 fn comment(body: &str) -> Value {
     json!({
@@ -56,7 +56,7 @@ async fn fixture_orchestrator(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+    let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
     let select = crate::store::bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
     orch.refresh_all().await.expect("seed-empty ingest");
     (orch, select)

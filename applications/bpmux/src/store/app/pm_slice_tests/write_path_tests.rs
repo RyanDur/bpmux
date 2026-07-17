@@ -18,9 +18,9 @@ fn meta() -> EventMeta {
     }
 }
 
-fn bound_orchestrator() -> (SeededStore, Arc<dyn RefreshDriver>) {
+fn bound_orchestrator() -> (SeededStore, Arc<SyncOrchestrator>) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -107,10 +107,10 @@ fn seed_remove_and_clear_act_on_the_bound_central_store() {
         Some(seeded.clone())
     );
     assert!(
-        orch.remove_story(404).is_none(),
+        orch.remove_story(StoryId::new(404)).is_none(),
         "removing an absent story yields nothing"
     );
-    let removed = orch.remove_story(9);
+    let removed = orch.remove_story(StoryId::new(9));
     assert_eq!(
         removed,
         Some(seeded),
@@ -136,7 +136,7 @@ fn seed_remove_and_clear_act_on_the_bound_central_store() {
 #[test]
 fn an_unbound_orchestrator_drops_writes_and_reads_come_back_empty() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

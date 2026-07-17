@@ -126,7 +126,7 @@ async fn start_story_stamps_actor_id_from_the_threaded_identify_user_id() {
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(886, vec!["chore".to_string()]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

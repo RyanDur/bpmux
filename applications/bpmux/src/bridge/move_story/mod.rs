@@ -4,7 +4,7 @@ use serde_json::Map;
 use serde_json::Value;
 
 use crate::bridge::tools_stories::event_meta::meta_for;
-use crate::sync::RefreshDriver;
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use product_management::story::{StoryId, Work};
 
@@ -21,7 +21,7 @@ pub(in crate::bridge) async fn handle_move_story(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn RefreshDriver>>,
+    refresh: Option<&Arc<SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {

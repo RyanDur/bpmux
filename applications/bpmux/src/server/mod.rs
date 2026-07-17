@@ -101,7 +101,7 @@ pub async fn run_server(
         std::sync::Arc::new(transport::unfurl::UnfurlCache::new());
 
     let orchestrator_handle: OrchestratorHandle = orchestrator.map(|orch| {
-        let handle: Arc<dyn crate::sync::RefreshDriver> = orch;
+        let handle: Arc<crate::sync::SyncOrchestrator> = orch;
         handle
     });
 

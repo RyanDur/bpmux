@@ -5,7 +5,7 @@ use crate::bridge::tools::handle_submit_verdict;
 use crate::hub::Hub;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::SeededStore;
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -16,9 +16,9 @@ fn make_hub(dir: PathBuf) -> Arc<Hub> {
     Arc::new(Hub::new(dir, "owner".to_string(), tx))
 }
 
-fn orch_and_store() -> (Arc<dyn RefreshDriver>, SeededStore) {
+fn orch_and_store() -> (Arc<SyncOrchestrator>, SeededStore) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

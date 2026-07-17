@@ -10,7 +10,7 @@ use serde::Deserialize;
 use crate::bridge;
 use crate::hub;
 use crate::sync::OrchestratorHandle;
-use crate::sync::RefreshDriver;
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use message::{Message, MessageType};
 
 fn fire_board_invalidate(hub: &Arc<hub::Hub>) {
@@ -55,7 +55,7 @@ async fn run_test_route<F, Fut>(
     dispatch: F,
 ) -> (StatusCode, Json<serde_json::Value>)
 where
-    F: FnOnce(Arc<dyn RefreshDriver>, Arc<hub::Hub>) -> Fut,
+    F: FnOnce(Arc<SyncOrchestrator>, Arc<hub::Hub>) -> Fut,
     Fut: std::future::Future<Output = Result<String, String>>,
 {
     let Some(refresh) = refresh else {
@@ -187,7 +187,7 @@ pub async fn post_test_designate_current_iteration(
     );
     let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
     let role = bridge::tools_stories::role_from_name(&agent);
-    let refresh_ref: &Arc<dyn RefreshDriver> = &refresh;
+    let refresh_ref: &Arc<SyncOrchestrator> = &refresh;
     match bridge::dispatch_designate_current_iteration(
         args,
         &agent,

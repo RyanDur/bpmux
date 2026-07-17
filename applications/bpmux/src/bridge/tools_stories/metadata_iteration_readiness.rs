@@ -1,5 +1,6 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_iteration_in_canonical_store, require_purpose, require_purpose_any};
+use crate::sync::RefreshDriver;
 use product_management::iteration::{Iteration, IterationId};
 use product_management::story::StoryId;
 
@@ -8,7 +9,7 @@ pub(crate) async fn handle_designate_current_iteration(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<crate::sync::SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -73,7 +74,7 @@ pub(crate) async fn handle_close_pre_pickup_review(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<crate::sync::SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -122,7 +123,7 @@ pub(crate) async fn handle_dev_ok_iteration(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<crate::sync::SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {

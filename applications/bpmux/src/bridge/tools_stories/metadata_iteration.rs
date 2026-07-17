@@ -10,7 +10,7 @@ use source_codec::relationships::{IterationRelationships, OutcomeRelationships, 
 pub(crate) async fn handle_add_story_to_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     role: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<crate::sync::SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -61,7 +61,7 @@ pub(crate) async fn handle_add_story_to_iteration(
 pub(crate) async fn handle_map_iteration_to_outcome(
     args: &serde_json::Map<String, serde_json::Value>,
     role: &str,
-    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<crate::sync::SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -98,7 +98,6 @@ pub(crate) async fn handle_map_iteration_to_outcome(
     let optimistic = outcome_with_body(&outcome, &outcome_body);
     driver
         .update_body(outcome_id, outcome_body)
-        .await
         .map_err(|e| format!("#{outcome_id} iteration-map body update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Outcome(
         product_management::outcome::OutcomeAction::Upserted(vec![optimistic]),
@@ -113,7 +112,6 @@ pub(crate) async fn handle_map_iteration_to_outcome(
     let iteration_body = child.write_into_body(iteration.body.as_deref().unwrap_or_default());
     driver
         .update_body(iteration_id, iteration_body.clone())
-        .await
         .map_err(|e| format!("#{iteration_id} outcome-FK-set body update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Iteration(
         product_management::iteration::IterationAction::Upserted(vec![

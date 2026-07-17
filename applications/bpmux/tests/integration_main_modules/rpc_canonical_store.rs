@@ -89,8 +89,8 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let refresh: Arc<dyn RefreshDriver> = orch.clone();
-    let test_refresh: Option<Arc<dyn RefreshDriver>> = Some(Arc::clone(&refresh));
+    let refresh: Arc<SyncOrchestrator> = orch.clone();
+    let test_refresh: Option<Arc<SyncOrchestrator>> = Some(Arc::clone(&refresh));
 
     let hub_dir = tempfile::tempdir().expect("hub dir");
     let (wake_tx, _) = broadcast::channel(64);

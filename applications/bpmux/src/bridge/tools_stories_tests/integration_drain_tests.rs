@@ -23,7 +23,7 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(882, vec!["feature".to_string()]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -65,7 +65,7 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(883, vec!["chore".to_string()]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -120,7 +120,7 @@ async fn start_story_keeps_the_stores_optimistic_reject_when_the_adapter_verdict
     ]);
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(884, vec!["chore".to_string()]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -172,7 +172,7 @@ async fn start_story_fetches_the_rework_lead_when_the_store_has_no_cached_verdic
             payload: Some("rejected while the cache was cold".into()),
         }],
     );
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -214,7 +214,7 @@ async fn reject_story_returns_optimistically_and_defers_gh_push_to_the_async_dra
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(4690, vec!["bug".to_string()]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -276,7 +276,7 @@ async fn fail_desk_check_returns_optimistically_and_defers_gh_push_to_the_async_
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(4691, vec!["bug".to_string(), "desk-check".to_string()]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -337,7 +337,7 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(469, vec!["bug".to_string()]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -396,7 +396,7 @@ async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(470, vec!["bug".to_string()]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -464,7 +464,7 @@ async fn a_transition_out_of_the_board_pushes_no_state_label_and_strips_the_stal
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(471, vec!["bug".to_string(), "ready".to_string()]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -523,7 +523,7 @@ async fn a_transition_to_ready_for_a_current_iteration_member_pushes_the_ready_l
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(472, vec!["feature".to_string()]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -567,7 +567,7 @@ async fn deliver_story_returns_optimistically_and_defers_push_failure_to_the_asy
     );
     adapter.seed_stories(vec![seeded]);
     adapter.seed_labels(450, vec!["chore".to_string()]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

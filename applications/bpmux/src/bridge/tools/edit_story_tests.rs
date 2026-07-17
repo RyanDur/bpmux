@@ -32,12 +32,12 @@ async fn build_refresh(
     stories: Vec<Story>,
 ) -> (
     crate::store::SeededStore,
-    Arc<dyn RefreshDriver>,
+    Arc<SyncOrchestrator>,
     crate::store::Select,
 ) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(stories);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -159,7 +159,7 @@ async fn edit_story_body_returns_optimistically_and_pushes_via_the_drain() {
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![seed_story(1234, "[Feature] t", "old body")]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

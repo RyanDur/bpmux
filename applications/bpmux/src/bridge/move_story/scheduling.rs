@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 use product_management::iteration::IterationId;
 use product_management::iteration::label::current_iteration_id;
 use product_management::story::StoryId;
@@ -32,7 +32,7 @@ pub(super) fn resolve_scheduling_target(
 }
 
 pub(super) async fn apply_scheduling(
-    driver: &Arc<dyn RefreshDriver>,
+    driver: &Arc<SyncOrchestrator>,
     select: &crate::store::Select,
     dispatch: &crate::store::Dispatch,
     id: u64,

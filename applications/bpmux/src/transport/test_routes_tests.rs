@@ -11,7 +11,7 @@ use crate::bridge;
 use crate::hub::{self, BROADCAST_CHANNEL_CAPACITY};
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::sync::OrchestratorHandle;
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 
 fn fresh_test_hub() -> Arc<hub::Hub> {
     let dir = tempfile::tempdir().expect("tempdir");
@@ -23,9 +23,9 @@ fn stories_in_store(select: &crate::store::Select) -> Vec<product_management::st
     select.select(|state| product_management::story::slice::all(&state.stories))
 }
 
-async fn fixture_test_mode_on() -> (axum::Router, Arc<dyn RefreshDriver>, crate::store::Select) {
+async fn fixture_test_mode_on() -> (axum::Router, Arc<SyncOrchestrator>, crate::store::Select) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -233,7 +233,7 @@ async fn rest_get_board_auto_reingests_when_orchestrator_store_is_empty() {
         ts,
         "dev".into(),
     )]);
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

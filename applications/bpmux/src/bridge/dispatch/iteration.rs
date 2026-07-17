@@ -8,7 +8,7 @@ pub(crate) async fn dispatch_create_iteration(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -21,7 +21,7 @@ pub(crate) async fn dispatch_create_iteration(
 pub(crate) async fn dispatch_close_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     role: &str,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     hub: &Arc<crate::hub::Hub>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
@@ -64,7 +64,7 @@ pub(crate) async fn dispatch_set_parent_epic(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
 ) -> Result<String, String> {
     tools_stories::handle_set_parent_epic(&args, agent_name, role, actor_id, refresh, select).await
@@ -75,7 +75,7 @@ pub(crate) async fn dispatch_unset_parent_epic(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
 ) -> Result<String, String> {
     tools_stories::handle_unset_parent_epic(&args, agent_name, role, actor_id, refresh, select)
@@ -85,7 +85,7 @@ pub(crate) async fn dispatch_unset_parent_epic(
 pub(crate) async fn dispatch_add_story_to_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     role: &str,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -97,7 +97,7 @@ pub(crate) async fn dispatch_designate_current_iteration(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -112,7 +112,7 @@ pub(crate) async fn dispatch_close_pre_pickup_review(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -127,7 +127,7 @@ pub(crate) async fn dispatch_dev_ok_iteration(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -140,7 +140,7 @@ pub(crate) async fn dispatch_dev_ok_iteration(
 pub(crate) async fn dispatch_remove_iteration_member(
     args: serde_json::Map<String, serde_json::Value>,
     role: &str,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -150,7 +150,7 @@ pub(crate) async fn dispatch_remove_iteration_member(
 pub(crate) async fn dispatch_move_iteration_member(
     args: serde_json::Map<String, serde_json::Value>,
     role: &str,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -160,7 +160,7 @@ pub(crate) async fn dispatch_move_iteration_member(
 pub(crate) async fn dispatch_rename_iteration(
     args: serde_json::Map<String, serde_json::Value>,
     role: &str,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -172,7 +172,7 @@ pub(crate) async fn dispatch_reorder_iteration(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {

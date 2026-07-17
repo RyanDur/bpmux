@@ -13,7 +13,7 @@ use crate::hub::{self, BROADCAST_CHANNEL_CAPACITY};
 use crate::integrations::github::GitHubSourceAdapter;
 use crate::integrations::github::tracker::OctocrabStoryTracker;
 use crate::sync::OrchestratorHandle;
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 
 fn fresh_test_hub() -> Arc<hub::Hub> {
     let dir = tempfile::tempdir().expect("tempdir");
@@ -23,7 +23,7 @@ fn fresh_test_hub() -> Arc<hub::Hub> {
 
 async fn fixture_mock_octocrab(
     server: &MockServer,
-) -> (axum::Router, Arc<dyn RefreshDriver>, crate::store::Select) {
+) -> (axum::Router, Arc<SyncOrchestrator>, crate::store::Select) {
     let tracker = OctocrabStoryTracker::with_base_url(
         &format!("{}/", server.base_url()),
         "acme".to_string(),
@@ -31,7 +31,7 @@ async fn fixture_mock_octocrab(
     )
     .expect("build tracker against mock");
     let adapter = Arc::new(GitHubSourceAdapter::new(tracker));
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

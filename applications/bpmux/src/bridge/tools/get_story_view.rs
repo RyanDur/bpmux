@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 use product_management::iteration::section::{
     derive_iteration_member_section, substitute_member_stories_section,
 };
@@ -9,7 +9,7 @@ pub(super) const NOT_HYDRATED_PLACEHOLDER: &str =
     "(body not yet hydrated; no refresh driver available to live-fetch.)";
 
 pub(super) async fn render_iteration_detail(
-    r: &Arc<dyn RefreshDriver>,
+    r: &Arc<SyncOrchestrator>,
     iteration: &product_management::iteration::Iteration,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -60,7 +60,7 @@ pub(super) async fn render_iteration_detail(
 }
 
 pub(super) async fn render_epic_detail(
-    refresh: Option<&Arc<dyn RefreshDriver>>,
+    refresh: Option<&Arc<SyncOrchestrator>>,
     epic: &product_management::epic::Epic,
     select: &crate::store::Select,
 ) -> Result<String, String> {

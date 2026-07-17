@@ -3,7 +3,7 @@
 
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::{AppAction, SeededStore};
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::slice::StoryAction;
@@ -72,7 +72,7 @@ fn iteration_label_decoder_does_not_populate_a_story_field() {
 
 #[test]
 fn create_story_event_does_not_seed_iteration_membership() {
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::new(InMemorySourceAdapter::new()),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

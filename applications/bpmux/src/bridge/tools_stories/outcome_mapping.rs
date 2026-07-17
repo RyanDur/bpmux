@@ -1,7 +1,7 @@
 use super::helpers::{
     ensure_iteration_in_canonical_store, ensure_outcome_in_canonical_store, require_purpose,
 };
-use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 use product_management::iteration::IterationId;
 use product_management::outcome::Outcome;
 use source_codec::mapper::outcome_with_body;
@@ -9,7 +9,7 @@ use source_codec::relationships::{IterationRelationships, OutcomeRelationships, 
 use std::sync::Arc;
 
 async fn verify_iteration_mapped(
-    driver: &Arc<dyn RefreshDriver>,
+    driver: &Arc<SyncOrchestrator>,
     select: &crate::store::Select,
     outcome_id: u64,
     iteration_id: u64,
@@ -27,7 +27,7 @@ async fn verify_iteration_mapped(
 pub(crate) async fn handle_unmap_outcome_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     role: &str,
-    refresh: Option<&Arc<dyn RefreshDriver>>,
+    refresh: Option<&Arc<SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -56,7 +56,6 @@ pub(crate) async fn handle_unmap_outcome_iteration(
     let optimistic = outcome_with_body(&outcome, &outcome_body);
     driver
         .update_body(outcome_id, outcome_body)
-        .await
         .map_err(|e| format!("#{outcome_id} iteration-unmap body update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Outcome(
         product_management::outcome::OutcomeAction::Upserted(vec![optimistic]),
@@ -72,7 +71,6 @@ pub(crate) async fn handle_unmap_outcome_iteration(
     let iteration_body = child.write_into_body(iteration.body.as_deref().unwrap_or_default());
     driver
         .update_body(iteration_id, iteration_body.clone())
-        .await
         .map_err(|e| format!("#{iteration_id} outcome-FK-clear body update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Iteration(
         product_management::iteration::IterationAction::Upserted(vec![
@@ -92,7 +90,7 @@ pub(crate) async fn handle_unmap_outcome_iteration(
 pub(crate) async fn handle_reorder_outcome_iteration(
     args: &serde_json::Map<String, serde_json::Value>,
     role: &str,
-    refresh: Option<&Arc<dyn RefreshDriver>>,
+    refresh: Option<&Arc<SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -133,7 +131,7 @@ pub(crate) async fn handle_reorder_outcome_iteration(
 }
 
 async fn reorder_iterations_within_outcome(
-    driver: &Arc<dyn RefreshDriver>,
+    driver: &Arc<SyncOrchestrator>,
     outcome_id: u64,
     outcome_body: Option<&str>,
     iteration_id: u64,
@@ -156,7 +154,6 @@ async fn reorder_iterations_within_outcome(
     let body = parent.write_into_body(outcome_body.unwrap_or_default());
     driver
         .update_body(outcome_id, body.clone())
-        .await
         .map_err(|e| format!("#{outcome_id} outcome-reorder body update failed: {e}"))?;
     Ok((band_size, body))
 }

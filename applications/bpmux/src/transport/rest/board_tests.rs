@@ -3,7 +3,6 @@
 
 use super::board::{board_iterations, board_roadmap, sort_ready_by_membership};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
 use product_management::iteration::{Iteration, IterationId};
@@ -41,7 +40,7 @@ async fn seeded_store(seeds: Vec<(Story, Vec<String>)>) -> crate::store::SeededS
         adapter.seed_labels(story.id.value(), labels.clone());
     }
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

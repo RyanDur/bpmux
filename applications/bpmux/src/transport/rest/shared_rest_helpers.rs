@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::hub::{self, BROADCAST_CHANNEL_CAPACITY};
 use crate::integrations::in_memory::InMemorySourceAdapter;
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 use message::StateDeltaPayload;
 
 #[tokio::test]
@@ -12,7 +12,7 @@ async fn stories_delta_wakes_subscribers_but_is_not_persisted_durably() {
     let dir = tempfile::tempdir().expect("tempdir");
     let (wake_tx, _wake_rx) = tokio::sync::broadcast::channel(BROADCAST_CHANNEL_CAPACITY);
     let hub = hub::Hub::new(dir.path().to_path_buf(), "test:owner".to_string(), wake_tx);
-    let refresh: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let refresh: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         Arc::new(InMemorySourceAdapter::new()),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

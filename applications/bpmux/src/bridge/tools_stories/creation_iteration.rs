@@ -1,5 +1,6 @@
 use super::event_meta::meta_for;
 use super::helpers::{compose_iteration_body, require_nonempty_string};
+use crate::sync::RefreshDriver;
 use product_management::iteration::IterationId;
 use product_management::story::StoryId;
 
@@ -8,7 +9,7 @@ pub(crate) async fn handle_create_iteration(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<crate::sync::SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -59,7 +60,7 @@ pub(crate) async fn handle_create_iteration(
         );
     let iteration_label = "iteration".to_string();
     let id = driver
-        .create_story(title.clone(), body.clone(), vec![iteration_label.clone()])
+        .create_story(&title, &body, &[iteration_label.as_str()])
         .await
         .map_err(|e| format!("create_iteration adapter call failed: {e}"))?;
     let meta = meta_for(agent_name, actor_id);

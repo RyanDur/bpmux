@@ -1,5 +1,6 @@
 use crate::bridge::tools_stories::event_meta::meta_for;
 use crate::bridge::tools_stories::helpers::ensure_story_in_canonical_store;
+use crate::sync::RefreshDriver;
 use product_management::story::StoryId;
 
 pub(crate) async fn handle_reject_story(
@@ -7,7 +8,7 @@ pub(crate) async fn handle_reject_story(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
 ) -> Result<String, String> {
     let actor_role = role;
@@ -63,7 +64,7 @@ pub(crate) async fn handle_reject_story(
 }
 
 pub(crate) async fn reject_via_canonical_store(
-    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    refresh: &std::sync::Arc<crate::sync::SyncOrchestrator>,
     select: &crate::store::Select,
     id: u64,
     agent_name: &str,

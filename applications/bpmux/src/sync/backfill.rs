@@ -1,9 +1,9 @@
 use crate::store::AppAction;
-use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 use product_management::history::{SharedHistoryAction, VerdictRecord};
 
 pub(crate) async fn backfill_shared_history(
-    refresh: &dyn RefreshDriver,
+    refresh: &SyncOrchestrator,
     select: &crate::store::Select,
     dispatch: impl Fn(AppAction),
 ) {

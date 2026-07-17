@@ -65,7 +65,7 @@ async fn write_queued_burst_single_flights_one_drain_that_pushes_each_write_once
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let refresh: Arc<dyn RefreshDriver> = orch.clone();
+    let refresh: Arc<SyncOrchestrator> = orch.clone();
 
     let store: Arc<Store> = Arc::new(build_store_with_refresh(
         hub,
@@ -125,7 +125,7 @@ async fn polling_liveness_facts_never_drain_a_seeded_outbox() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let refresh: Arc<dyn RefreshDriver> = orch.clone();
+    let refresh: Arc<SyncOrchestrator> = orch.clone();
 
     let store: Arc<Store> = Arc::new(build_store_with_refresh(
         hub,
@@ -192,7 +192,7 @@ async fn a_mutated_write_is_selectable_the_moment_mutate_returns() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let refresh: Arc<dyn RefreshDriver> = orch.clone();
+    let refresh: Arc<SyncOrchestrator> = orch.clone();
 
     let store: Arc<Store> = Arc::new(build_store_with_refresh(
         hub,
@@ -242,7 +242,7 @@ async fn an_ingested_upsert_is_selectable_the_moment_refresh_returns() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let refresh: Arc<dyn RefreshDriver> = orch.clone();
+    let refresh: Arc<SyncOrchestrator> = orch.clone();
 
     let store: Arc<Store> = Arc::new(build_store_with_refresh(
         hub,

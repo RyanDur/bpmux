@@ -1,6 +1,6 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
-use crate::sync::RefreshDriver;
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use product_management::story::StoryId;
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use std::sync::Arc;
@@ -10,7 +10,7 @@ pub(crate) async fn handle_retire_outcome(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn RefreshDriver>>,
+    refresh: Option<&Arc<SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {

@@ -30,7 +30,7 @@ mod reopen_on_state_transition_tests {
         seeded: (Story, Vec<String>),
     ) -> (
         crate::store::SeededStore,
-        Arc<dyn RefreshDriver>,
+        Arc<SyncOrchestrator>,
         Arc<InMemorySourceAdapter>,
         crate::store::Select,
     ) {
@@ -42,7 +42,7 @@ mod reopen_on_state_transition_tests {
             Arc::clone(&adapter),
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         );
-        let orch: Arc<dyn RefreshDriver> = Arc::new(orch_concrete);
+        let orch: Arc<SyncOrchestrator> = Arc::new(orch_concrete);
         let store = crate::store::SeededStore::new(vec![], vec![], vec![]);
         store.bind_refresh(&orch);
         store.dispatch(crate::store::AppAction::Ci(

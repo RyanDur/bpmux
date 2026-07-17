@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use super::validation::known_tools;
 use crate::hub;
-use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 
 mod iteration;
 mod lifecycle;
@@ -23,7 +23,7 @@ pub(in crate::transport::rpc_routes) struct Ctx<'a> {
     pub(in crate::transport::rpc_routes) agent: &'a str,
     pub(in crate::transport::rpc_routes) role: &'a str,
     pub(in crate::transport::rpc_routes) actor_id: Option<&'a str>,
-    pub(in crate::transport::rpc_routes) refresh_ref: Option<&'a Arc<dyn RefreshDriver>>,
+    pub(in crate::transport::rpc_routes) refresh_ref: Option<&'a Arc<SyncOrchestrator>>,
     pub(in crate::transport::rpc_routes) hub: &'a Arc<hub::Hub>,
     pub(in crate::transport::rpc_routes) dispatcher: &'a crate::store::Dispatch,
     pub(in crate::transport::rpc_routes) select: &'a crate::store::Select,
@@ -47,7 +47,7 @@ pub(super) fn effective_role(
 
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn dispatch(
-    refresh: &Arc<dyn RefreshDriver>,
+    refresh: &Arc<SyncOrchestrator>,
     tool: &str,
     caller: ToolCaller<'_>,
     args: serde_json::Map<String, Value>,
@@ -61,7 +61,7 @@ pub(super) async fn dispatch(
         role,
         actor_id,
     } = caller;
-    let refresh_ref: Option<&Arc<dyn RefreshDriver>> = Some(refresh);
+    let refresh_ref: Option<&Arc<SyncOrchestrator>> = Some(refresh);
     let cx = Ctx {
         agent,
         role,

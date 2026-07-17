@@ -1,6 +1,6 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string};
-use crate::sync::RefreshDriver;
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use product_management::story::{Story, StoryId, Verdict, Work};
 use workflow::StageId;
@@ -12,7 +12,7 @@ pub(crate) async fn handle_pass_stage(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<SyncOrchestrator>>,
     select: &crate::store::Select,
 ) -> Result<String, String> {
     let (id, driver, story, held) = judged_stage_of(args, refresh, select).await?;
@@ -49,7 +49,7 @@ pub(crate) async fn handle_fail_stage(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<SyncOrchestrator>>,
     select: &crate::store::Select,
 ) -> Result<String, String> {
     let (id, driver, story, held) = judged_stage_of(args, refresh, select).await?;
@@ -93,9 +93,9 @@ pub(crate) async fn handle_fail_stage(
 
 async fn judged_stage_of<'r>(
     args: &serde_json::Map<String, serde_json::Value>,
-    refresh: Option<&'r std::sync::Arc<dyn RefreshDriver>>,
+    refresh: Option<&'r std::sync::Arc<SyncOrchestrator>>,
     select: &crate::store::Select,
-) -> Result<(u64, &'r std::sync::Arc<dyn RefreshDriver>, Story, StageId), String> {
+) -> Result<(u64, &'r std::sync::Arc<SyncOrchestrator>, Story, StageId), String> {
     let id = args
         .get("id")
         .and_then(|v| v.as_u64())
@@ -123,7 +123,7 @@ fn enforce_judge(held: &StageId, role: &str, agent_name: &str) -> Result<(), Str
 }
 
 fn cast_and_transition(
-    driver: &std::sync::Arc<dyn RefreshDriver>,
+    driver: &std::sync::Arc<SyncOrchestrator>,
     id: u64,
     meta: product_management::story::events::EventMeta,
     verdict: Verdict,

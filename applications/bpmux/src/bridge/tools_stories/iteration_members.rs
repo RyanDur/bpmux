@@ -1,14 +1,14 @@
 use super::helpers::{
     ensure_iteration_in_canonical_store, ensure_story_in_canonical_store, require_purpose,
 };
-use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 use product_management::iteration::Iteration;
 use product_management::story::{Story, StoryId, Work};
 use source_codec::relationships::{IterationRelationships, Relationships};
 use std::sync::Arc;
 
 async fn member_of(
-    driver: &Arc<dyn RefreshDriver>,
+    driver: &Arc<SyncOrchestrator>,
     select: &crate::store::Select,
     iteration_id: u64,
     story_id: u64,
@@ -24,7 +24,7 @@ async fn member_of(
 }
 
 async fn rewrite_members(
-    driver: &Arc<dyn RefreshDriver>,
+    driver: &Arc<SyncOrchestrator>,
     dispatch: &crate::store::Dispatch,
     iteration: &Iteration,
     stories: Vec<StoryId>,
@@ -39,7 +39,6 @@ async fn rewrite_members(
     let body = rel.write_into_body(iteration.body.as_deref().unwrap_or_default());
     driver
         .update_body(id, body)
-        .await
         .map_err(|e| format!("#{id} iteration-member body update failed: {e}"))?;
     dispatch.dispatch(crate::store::AppAction::Iteration(
         product_management::iteration::IterationAction::Upserted(vec![Iteration {
@@ -51,7 +50,7 @@ async fn rewrite_members(
 }
 
 pub(crate) async fn set_member_position(
-    driver: &Arc<dyn RefreshDriver>,
+    driver: &Arc<SyncOrchestrator>,
     select: &crate::store::Select,
     dispatch: &crate::store::Dispatch,
     iteration_id: u64,
@@ -79,7 +78,7 @@ pub(crate) async fn set_member_position(
 }
 
 pub(crate) async fn remove_member_everywhere(
-    driver: &Arc<dyn RefreshDriver>,
+    driver: &Arc<SyncOrchestrator>,
     select: &crate::store::Select,
     dispatch: &crate::store::Dispatch,
     story_id: u64,
@@ -101,7 +100,7 @@ pub(crate) async fn remove_member_everywhere(
 pub(crate) async fn handle_remove_iteration_member(
     args: &serde_json::Map<String, serde_json::Value>,
     role: &str,
-    refresh: Option<&Arc<dyn RefreshDriver>>,
+    refresh: Option<&Arc<SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {
@@ -139,7 +138,7 @@ pub(crate) async fn handle_remove_iteration_member(
 pub(crate) async fn handle_move_iteration_member(
     args: &serde_json::Map<String, serde_json::Value>,
     role: &str,
-    refresh: Option<&Arc<dyn RefreshDriver>>,
+    refresh: Option<&Arc<SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {

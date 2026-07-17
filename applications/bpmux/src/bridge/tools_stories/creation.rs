@@ -1,5 +1,6 @@
 use super::event_meta::meta_for;
 use super::helpers::{compose_story_body, require_nonempty_string};
+use crate::sync::RefreshDriver;
 use product_management::epic::EpicId;
 use product_management::story::StoryId;
 
@@ -8,7 +9,7 @@ pub(crate) async fn handle_create_story(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
     dispatch: &crate::store::Dispatch,
 ) -> Result<String, String> {
@@ -87,7 +88,7 @@ pub(crate) async fn handle_create_story(
         dispatch.dispatch(crate::store::AppAction::Epic(
             product_management::epic::EpicAction::Upserted(vec![epic]),
         ));
-        driver.remove_story(id);
+        driver.remove_story(StoryId::new(id));
     }
     Ok(match parent_epic {
         Some(epic) => {
@@ -150,7 +151,7 @@ fn validate_parent_epic(
 }
 
 async fn create_and_broadcast_story_events(
-    driver: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    driver: &std::sync::Arc<crate::sync::SyncOrchestrator>,
     meta: product_management::story::events::EventMeta,
     title: &str,
     composed_body: String,
@@ -159,7 +160,7 @@ async fn create_and_broadcast_story_events(
     acceptor: Option<product_management::story::Acceptor>,
 ) -> Result<u64, String> {
     let id = driver
-        .create_story(title.to_string(), composed_body.clone(), Vec::new())
+        .create_story(title, &composed_body, &[])
         .await
         .map_err(|e| format!("create_story failed: {e}"))?;
     driver

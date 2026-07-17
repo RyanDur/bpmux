@@ -20,7 +20,7 @@ async fn refresh_story_pulls_single_story_from_adapter_into_store() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     let select = handle.select();
@@ -49,7 +49,7 @@ async fn refresh_story_returns_none_when_story_missing_at_source() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     let select = handle.select();
@@ -74,7 +74,7 @@ async fn refresh_story_fails_fast_when_source_unreachable() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     let result = orchestrator.refresh_story(1).await;
@@ -96,7 +96,7 @@ async fn refresh_all_is_alias_for_ingest_once() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     orchestrator.refresh_all().await.unwrap();
@@ -117,7 +117,7 @@ async fn end_to_end_seeded_adapter_through_mutate_and_drain() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     let select = handle.select();
@@ -166,7 +166,7 @@ async fn fetch_body_caches_the_body_on_the_story() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     let select = handle.select();
@@ -200,7 +200,7 @@ async fn fetch_body_records_error_when_source_fails() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     let err = orchestrator.fetch_body(7).await.unwrap_err();
@@ -224,7 +224,7 @@ async fn fetch_free_comments_caches_comments_on_the_story() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     let select = handle.select();
@@ -267,7 +267,7 @@ async fn fetch_verdicts_caches_comments_on_the_story() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     let select = handle.select();
@@ -301,7 +301,7 @@ async fn fetch_verdicts_records_error_when_source_fails() {
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
+    let orch_dyn: Arc<SyncOrchestrator> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
     let err = orchestrator.fetch_verdicts(11).await.unwrap_err();

@@ -4,7 +4,6 @@
 mod gate_retire_1348 {
     use crate::bridge::tools_stories::{handle_deliver_story, handle_start_story};
     use crate::integrations::in_memory::InMemorySourceAdapter;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncOrchestrator;
     use chrono::{TimeZone, Utc};
     use product_management::story::{Story, StoryId, StoryKind, Work};
@@ -18,7 +17,7 @@ mod gate_retire_1348 {
         body: &str,
     ) -> (
         crate::store::SeededStore,
-        Arc<dyn RefreshDriver>,
+        Arc<SyncOrchestrator>,
         crate::store::Select,
     ) {
         let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -35,7 +34,7 @@ mod gate_retire_1348 {
         );
         adapter.seed_stories(vec![seeded]);
         adapter.seed_body(id, body.into());
-        let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+        let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));

@@ -30,7 +30,7 @@ pub(crate) async fn dispatch_view_commit_diff(
 
 pub(crate) async fn dispatch_view_board(
     args: serde_json::Map<String, serde_json::Value>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
 ) -> Result<String, String> {
     tools_stories::handle_view_board(&args, refresh, select).await
@@ -38,7 +38,7 @@ pub(crate) async fn dispatch_view_board(
 
 pub(crate) async fn dispatch_get_story(
     args: serde_json::Map<String, serde_json::Value>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
 ) -> Result<String, String> {
     tools::handle_get_story(&args, refresh, select).await
@@ -64,7 +64,7 @@ pub(crate) async fn dispatch_dev_in_flight(
 
 pub(crate) async fn dispatch_view_story_timeline(
     args: serde_json::Map<String, serde_json::Value>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
 ) -> Result<String, String> {
     tools::handle_view_story_timeline(&args, refresh, select).await

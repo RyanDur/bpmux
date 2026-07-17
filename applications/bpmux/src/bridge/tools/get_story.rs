@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 use product_management::scheduling::ProjectedState;
 use product_management::story::{CastVerdict, Stage, Verdict, most_recent_needs_work};
 use workflow::StageId;
@@ -57,7 +57,7 @@ fn latest_reject_json(gates: &[CastVerdict]) -> Option<serde_json::Value> {
 
 pub(in crate::bridge) async fn handle_get_story(
     args: &serde_json::Map<String, serde_json::Value>,
-    refresh: Option<&Arc<dyn RefreshDriver>>,
+    refresh: Option<&Arc<SyncOrchestrator>>,
     select: &crate::store::Select,
 ) -> Result<String, String> {
     let id = args

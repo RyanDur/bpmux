@@ -1,7 +1,7 @@
 use super::acceptance_test_path::validate_acceptance_test_path_at_pickup;
 use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, require_nonempty_string};
-use crate::sync::RefreshDriver;
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use product_management::story::{StoryId, Verdict, Work};
 
@@ -10,7 +10,7 @@ pub(crate) async fn handle_start_story(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&std::sync::Arc<dyn RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<SyncOrchestrator>>,
     select: &crate::store::Select,
 ) -> Result<String, String> {
     let actor_role = role;

@@ -11,7 +11,7 @@ pub(crate) fn reorder_story_retired_error() -> String {
 pub(crate) async fn handle_reorder_story(
     _args: &serde_json::Map<String, serde_json::Value>,
     _agent_name: &str,
-    _refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    _refresh: Option<&std::sync::Arc<crate::sync::SyncOrchestrator>>,
 ) -> Result<String, String> {
     Err(reorder_story_retired_error())
 }

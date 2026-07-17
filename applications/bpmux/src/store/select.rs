@@ -2,6 +2,8 @@ use std::sync::Weak;
 
 use super::AppAction;
 use super::app::AppState;
+#[cfg(test)]
+use crate::sync::RefreshDriver;
 
 #[derive(Clone)]
 pub struct Select {
@@ -75,7 +77,7 @@ impl SeededStore {
         Select::new(std::sync::Arc::downgrade(&self.store))
     }
 
-    pub(crate) fn bind_refresh(&self, refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>) {
+    pub(crate) fn bind_refresh(&self, refresh: &std::sync::Arc<crate::sync::SyncOrchestrator>) {
         refresh.bind_select(self.select());
         refresh.bind_dispatch(self.dispatcher());
     }
@@ -96,7 +98,7 @@ impl SeededStore {
 
 #[cfg(test)]
 pub(crate) fn bind_seeded_refresh(
-    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    refresh: &std::sync::Arc<crate::sync::SyncOrchestrator>,
     outcomes: Vec<product_management::outcome::Outcome>,
     iterations: Vec<product_management::iteration::Iteration>,
     epics: Vec<product_management::epic::Epic>,

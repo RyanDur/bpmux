@@ -1,5 +1,5 @@
 pub(crate) async fn ensure_story_in_canonical_store(
-    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    refresh: &std::sync::Arc<crate::sync::SyncOrchestrator>,
     select: &crate::store::Select,
     id: u64,
 ) -> Result<product_management::story::Story, String> {
@@ -21,7 +21,7 @@ pub(crate) async fn ensure_story_in_canonical_store(
 }
 
 pub(crate) async fn ensure_outcome_in_canonical_store(
-    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    refresh: &std::sync::Arc<crate::sync::SyncOrchestrator>,
     select: &crate::store::Select,
     id: u64,
 ) -> Result<product_management::outcome::Outcome, String> {
@@ -76,7 +76,7 @@ fn not_an_outcome_message(id: u64) -> String {
 }
 
 pub(crate) async fn ensure_iteration_in_canonical_store(
-    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    refresh: &std::sync::Arc<crate::sync::SyncOrchestrator>,
     select: &crate::store::Select,
     id: u64,
 ) -> Result<product_management::iteration::Iteration, String> {
@@ -116,7 +116,7 @@ fn not_an_iteration_message(id: u64) -> String {
 }
 
 pub(crate) async fn ensure_epic_in_canonical_store(
-    refresh: &std::sync::Arc<dyn crate::sync::RefreshDriver>,
+    refresh: &std::sync::Arc<crate::sync::SyncOrchestrator>,
     select: &crate::store::Select,
     id: u64,
 ) -> Result<product_management::epic::Epic, String> {

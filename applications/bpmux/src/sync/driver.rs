@@ -6,9 +6,9 @@ use product_management::story::{CastVerdict, Story};
 
 use source_sync::SyncStatus;
 
-use super::BoxedFuture;
+use super::{BoxedFuture, SyncOrchestrator};
 
-pub type OrchestratorHandle = Option<Arc<dyn RefreshDriver>>;
+pub type OrchestratorHandle = Option<Arc<SyncOrchestrator>>;
 
 pub trait RefreshDriver: Send + Sync {
     fn bind_select(&self, _select: crate::store::Select) {}

@@ -72,7 +72,7 @@ mod staleness {
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
         orch.ingest_once().await.unwrap();
         let snap = orch.snapshot_status();
@@ -117,7 +117,7 @@ mod staleness {
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         ));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
         let _ = orch.ingest_once().await;
         let snap = orch.snapshot_status();

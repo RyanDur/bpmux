@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use crate::store::{Dispatch, Select};
-use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 
 pub(super) fn spawn_background_ingest(
-    orch: Arc<dyn RefreshDriver>,
+    orch: Arc<SyncOrchestrator>,
     dispatch: Dispatch,
     select: Select,
 ) {

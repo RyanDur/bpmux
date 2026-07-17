@@ -31,7 +31,7 @@ async fn build_orchestrator(
     seeds: Vec<(Story, Vec<String>)>,
 ) -> (
     crate::store::SeededStore,
-    Arc<dyn RefreshDriver>,
+    Arc<SyncOrchestrator>,
     crate::store::Select,
 ) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -39,7 +39,7 @@ async fn build_orchestrator(
         adapter.seed_labels(story.id.value(), labels.clone());
     }
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

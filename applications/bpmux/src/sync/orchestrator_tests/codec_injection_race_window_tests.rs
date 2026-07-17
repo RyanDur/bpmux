@@ -107,7 +107,7 @@ mod codec_injection_substrate {
     async fn coalescer_uses_injected_codec_classification() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let orch = Arc::new(SyncOrchestrator::new(adapter, Arc::new(StubLabelCodec)));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
@@ -143,7 +143,7 @@ mod codec_injection_substrate {
     async fn coalescer_keeps_distinct_stub_iteration_namespaces_apart() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let orch = Arc::new(SyncOrchestrator::new(adapter, Arc::new(StubLabelCodec)));
-        let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
+        let orch_dyn: Arc<SyncOrchestrator> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(

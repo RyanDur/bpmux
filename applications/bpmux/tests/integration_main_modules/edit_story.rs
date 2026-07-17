@@ -58,8 +58,8 @@ async fn edit_story_replaces_body_at_canonical_store() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    let refresh: Arc<dyn RefreshDriver> = orch.clone();
-    let test_refresh: Option<Arc<dyn RefreshDriver>> = Some(Arc::clone(&refresh));
+    let refresh: Arc<SyncOrchestrator> = orch.clone();
+    let test_refresh: Option<Arc<SyncOrchestrator>> = Some(Arc::clone(&refresh));
 
     let hub_dir = tempfile::tempdir().expect("hub dir");
     let (wake_tx, _) = broadcast::channel(64);

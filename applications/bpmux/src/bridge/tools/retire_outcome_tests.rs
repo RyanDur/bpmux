@@ -4,7 +4,6 @@
 use crate::bridge::tools_stories::handle_retire_outcome;
 use crate::integrations::in_memory::InMemorySourceAdapter;
 use crate::store::{AppAction, Dispatch};
-use crate::sync::RefreshDriver;
 use crate::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
 use product_management::iteration::{Iteration, IterationId};
@@ -89,7 +88,7 @@ async fn build_refresh(
     seeds: Vec<(Story, Vec<String>)>,
 ) -> (
     crate::store::SeededStore,
-    Arc<dyn RefreshDriver>,
+    Arc<SyncOrchestrator>,
     crate::store::Select,
 ) {
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -97,7 +96,7 @@ async fn build_refresh(
         adapter.seed_labels(story.id.value(), labels.clone());
     }
     adapter.seed_stories(seeds.iter().map(|(s, _)| s.clone()).collect());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
@@ -120,7 +119,7 @@ async fn build_refresh(
 
 async fn roadmap_numbers_for(outcomes: Vec<Outcome>) -> Vec<u64> {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let orch: Arc<dyn RefreshDriver> = Arc::new(SyncOrchestrator::new(
+    let orch: Arc<SyncOrchestrator> = Arc::new(SyncOrchestrator::new(
         adapter,
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));

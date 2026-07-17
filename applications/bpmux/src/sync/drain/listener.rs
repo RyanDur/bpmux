@@ -3,16 +3,16 @@ use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 
 use crate::store::{AppAction, AppState};
-use crate::sync::RefreshDriver;
+use crate::sync::{RefreshDriver, SyncOrchestrator};
 use kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
 
 pub struct GithubDrain {
-    refresh: Arc<dyn RefreshDriver>,
+    refresh: Arc<SyncOrchestrator>,
     parent_ct: CancellationToken,
 }
 
 impl GithubDrain {
-    pub fn new(refresh: Arc<dyn RefreshDriver>, parent_ct: CancellationToken) -> Self {
+    pub fn new(refresh: Arc<SyncOrchestrator>, parent_ct: CancellationToken) -> Self {
         Self { refresh, parent_ct }
     }
 }

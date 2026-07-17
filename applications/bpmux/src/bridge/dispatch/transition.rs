@@ -8,7 +8,7 @@ pub(crate) async fn dispatch_deliver_story(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
     hub: &Arc<crate::hub::Hub>,
 ) -> Result<String, String> {
@@ -37,7 +37,7 @@ pub(crate) async fn dispatch_start_story(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
     hub: &Arc<crate::hub::Hub>,
 ) -> Result<String, String> {
@@ -55,7 +55,7 @@ pub(crate) async fn dispatch_pass_stage(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
     hub: &Arc<crate::hub::Hub>,
 ) -> Result<String, String> {
@@ -80,7 +80,7 @@ pub(crate) async fn dispatch_fail_stage(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
     hub: &Arc<crate::hub::Hub>,
 ) -> Result<String, String> {

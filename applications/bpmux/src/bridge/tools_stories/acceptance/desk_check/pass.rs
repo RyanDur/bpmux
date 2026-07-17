@@ -3,6 +3,7 @@ use crate::bridge::tools_stories::acceptance::helpers::{
 };
 use crate::bridge::tools_stories::event_meta::meta_for;
 use crate::bridge::tools_stories::helpers::ensure_story_in_canonical_store;
+use crate::sync::RefreshDriver;
 use product_management::story::StoryId;
 
 fn parse_acceptor_arg(
@@ -34,7 +35,7 @@ pub(crate) async fn handle_pass_desk_check(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
     hub: Option<&std::sync::Arc<crate::hub::Hub>>,
 ) -> Result<String, String> {

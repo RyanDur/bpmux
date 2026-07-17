@@ -1,7 +1,7 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_outcome_in_canonical_store, require_purpose};
 use super::metadata_outcome_bands::{push_band_change, reorder_within_band};
-use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 use product_management::outcome::{Outcome, OutcomeAction};
 use product_management::story::Horizon;
 use source_codec::gh_label_codec::GhLabelCodec;
@@ -12,7 +12,7 @@ pub(crate) async fn handle_reprioritize_outcome(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&Arc<dyn RefreshDriver>>,
+    refresh: Option<&Arc<SyncOrchestrator>>,
     dispatch: &crate::store::Dispatch,
     select: &crate::store::Select,
 ) -> Result<String, String> {

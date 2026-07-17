@@ -1,5 +1,6 @@
 use super::event_meta::meta_for;
 use super::helpers::{ensure_story_in_canonical_store, require_purpose};
+use crate::sync::RefreshDriver;
 use product_management::story::StoryId;
 
 pub(crate) fn is_retired_iteration_label_axis(label: &str) -> bool {
@@ -30,7 +31,7 @@ pub(crate) async fn handle_label_story(
     agent_name: &str,
     role: &str,
     actor_id: Option<&str>,
-    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
 ) -> Result<String, String> {
     require_purpose(role, &["pm"], "label")?;
@@ -114,7 +115,7 @@ pub(crate) async fn handle_comment_on_story(
     args: &serde_json::Map<String, serde_json::Value>,
     agent_name: &str,
     actor_id: Option<&str>,
-    refresh: Option<&std::sync::Arc<dyn crate::sync::RefreshDriver>>,
+    refresh: Option<&std::sync::Arc<crate::sync::SyncOrchestrator>>,
     select: &crate::store::Select,
 ) -> Result<String, String> {
     let id = args
