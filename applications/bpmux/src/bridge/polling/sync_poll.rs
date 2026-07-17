@@ -4,12 +4,12 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use crate::store::{AppAction, AppState, SyncAction, SyncHealthAction};
-use crate::sync::RefreshDriver;
+use crate::sync::SyncOrchestrator;
 use kernel::{DeliveryMode, Dispatch, Listener, ListenerFuture, Reaction};
 use rate_limit::RateLimitObserver;
 
 pub struct SyncPoll {
-    refresh: Arc<dyn RefreshDriver>,
+    refresh: Arc<SyncOrchestrator>,
     select: crate::store::Select,
     observer: RateLimitObserver,
     ingest_interval: Duration,
@@ -21,7 +21,7 @@ pub struct SyncPoll {
 
 impl SyncPoll {
     pub fn new(
-        refresh: Arc<dyn RefreshDriver>,
+        refresh: Arc<SyncOrchestrator>,
         select: crate::store::Select,
         observer: RateLimitObserver,
         ingest_interval: Duration,

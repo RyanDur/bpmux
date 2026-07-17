@@ -250,66 +250,51 @@ fn pick_most_recent_visible_chat_treats_null_message_type_as_chat() {
     );
 }
 
-mod ingest_poll_loop_tests {
+mod poll_loop_tests {
     use std::sync::Arc;
     use std::sync::Mutex;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::Duration;
 
     use crate::bridge::run_ingest_poll_loop;
+    use crate::bridge::{DrainTicker, IngestTicker};
     use crate::sync::BoxedFuture;
-    use crate::sync::RefreshDriver;
     use crate::sync::SyncError;
-    use product_management::story::events::StoryEvent;
     use source_sync::SyncStatus;
 
-    struct CountingDriver {
-        refresh_all: AtomicUsize,
-        drain_pending: AtomicUsize,
+    struct CountingIngest {
+        ticks: AtomicUsize,
         fail_after: Option<usize>,
-        drain_returns_n: usize,
         since_args: Mutex<Vec<Option<chrono::DateTime<chrono::Utc>>>>,
     }
 
-    impl CountingDriver {
+    impl CountingIngest {
         fn new() -> Self {
             Self {
-                refresh_all: AtomicUsize::new(0),
-                drain_pending: AtomicUsize::new(0),
+                ticks: AtomicUsize::new(0),
                 fail_after: None,
-                drain_returns_n: 0,
                 since_args: Mutex::new(Vec::new()),
             }
         }
         fn failing_after(n: usize) -> Self {
             Self {
-                refresh_all: AtomicUsize::new(0),
-                drain_pending: AtomicUsize::new(0),
+                ticks: AtomicUsize::new(0),
                 fail_after: Some(n),
-                drain_returns_n: 0,
-                since_args: Mutex::new(Vec::new()),
-            }
-        }
-        fn draining_n_per_tick(n: usize) -> Self {
-            Self {
-                refresh_all: AtomicUsize::new(0),
-                drain_pending: AtomicUsize::new(0),
-                fail_after: None,
-                drain_returns_n: n,
                 since_args: Mutex::new(Vec::new()),
             }
         }
     }
 
-    impl RefreshDriver for CountingDriver {
-        fn refresh_story(
+    impl IngestTicker for CountingIngest {
+        fn ingest(
             &self,
-            _n: u64,
-        ) -> BoxedFuture<'_, Result<Option<product_management::story::Story>, SyncError>> {
-            Box::pin(async { Ok(None) })
-        }
-        fn refresh_all(&self) -> BoxedFuture<'_, Result<(), SyncError>> {
-            let prev = self.refresh_all.fetch_add(1, Ordering::SeqCst);
+            since: Option<chrono::DateTime<chrono::Utc>>,
+        ) -> BoxedFuture<'_, Result<(), SyncError>> {
+            self.since_args
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .push(since);
+            let prev = self.ticks.fetch_add(1, Ordering::SeqCst);
             let should_fail = self.fail_after.is_some_and(|n| prev >= n);
             Box::pin(async move {
                 if should_fail {
@@ -319,87 +304,52 @@ mod ingest_poll_loop_tests {
                 }
             })
         }
-        fn refresh_all_since(
-            &self,
-            since: Option<chrono::DateTime<chrono::Utc>>,
-        ) -> BoxedFuture<'_, Result<(), SyncError>> {
-            self.since_args
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .push(since);
-            self.refresh_all()
+    }
+
+    struct CountingDrain {
+        ticks: AtomicUsize,
+        drain_returns_n: usize,
+    }
+
+    impl CountingDrain {
+        fn new() -> Self {
+            Self {
+                ticks: AtomicUsize::new(0),
+                drain_returns_n: 0,
+            }
         }
-        fn mutate_sync(&self, _e: StoryEvent) -> Result<(), SyncError> {
-            Ok(())
+        fn draining_n_per_tick(n: usize) -> Self {
+            Self {
+                ticks: AtomicUsize::new(0),
+                drain_returns_n: n,
+            }
         }
-        fn mutate_batch_sync(&self, _events: Vec<StoryEvent>) -> Result<(), SyncError> {
-            Ok(())
-        }
-        fn snapshot_status(&self) -> SyncStatus {
-            SyncStatus::default()
-        }
-        fn acknowledge_dropped(&self) -> usize {
-            0
-        }
-        fn drain_pending(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
-            self.drain_pending.fetch_add(1, Ordering::SeqCst);
+    }
+
+    impl DrainTicker for CountingDrain {
+        fn drain(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
+            self.ticks.fetch_add(1, Ordering::SeqCst);
             let n = self.drain_returns_n;
             Box::pin(async move { Ok(n) })
         }
-        fn fetch_body(&self, _n: u64) -> BoxedFuture<'_, Result<String, SyncError>> {
-            Box::pin(async { Ok(String::new()) })
-        }
-        fn fetch_verdicts(
-            &self,
-            _n: u64,
-        ) -> BoxedFuture<'_, Result<Vec<product_management::story::CastVerdict>, SyncError>>
-        {
-            Box::pin(async { Ok(Vec::new()) })
-        }
-        fn create_story(
-            &self,
-            _title: String,
-            _body: String,
-            _initial_labels: Vec<String>,
-        ) -> BoxedFuture<'_, Result<u64, SyncError>> {
-            Box::pin(async { Ok(0) })
-        }
-        fn story(&self, _number: u64) -> Option<product_management::story::Story> {
-            None
-        }
-        fn remove_story(&self, _id: u64) -> Option<product_management::story::Story> {
-            None
-        }
-        fn clear_stories(&self) {}
-        fn update_body(
-            &self,
-            _number: u64,
-            _body: String,
-        ) -> BoxedFuture<'_, Result<(), SyncError>> {
-            Box::pin(async { Ok(()) })
-        }
-        fn update_title(
-            &self,
-            _number: u64,
-            _title: String,
-        ) -> BoxedFuture<'_, Result<(), SyncError>> {
-            Box::pin(async { Ok(()) })
+        fn status(&self) -> SyncStatus {
+            SyncStatus::default()
         }
     }
 
     #[tokio::test(start_paused = true)]
     async fn refresh_all_fires_on_each_interval_tick() {
-        let driver = Arc::new(CountingDriver::new());
-        let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
+        let driver = Arc::new(CountingIngest::new());
+        let driver_dyn: Arc<dyn IngestTicker> = driver.clone();
         let handle = tokio::spawn(run_ingest_poll_loop(
             driver_dyn,
             Duration::from_millis(50),
             None,
         ));
         tokio::time::sleep(Duration::from_millis(25)).await;
-        assert_eq!(driver.refresh_all.load(Ordering::SeqCst), 0);
+        assert_eq!(driver.ticks.load(Ordering::SeqCst), 0);
         tokio::time::sleep(Duration::from_millis(250)).await;
-        let count = driver.refresh_all.load(Ordering::SeqCst);
+        let count = driver.ticks.load(Ordering::SeqCst);
         assert_eq!(
             count, 5,
             "exactly 5 ticks fire in a 275ms window at 50ms interval under the virtual clock, saw {count}"
@@ -409,15 +359,15 @@ mod ingest_poll_loop_tests {
 
     #[tokio::test(start_paused = true)]
     async fn loop_survives_refresh_errors() {
-        let driver = Arc::new(CountingDriver::failing_after(1));
-        let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
+        let driver = Arc::new(CountingIngest::failing_after(1));
+        let driver_dyn: Arc<dyn IngestTicker> = driver.clone();
         let handle = tokio::spawn(run_ingest_poll_loop(
             driver_dyn,
             Duration::from_millis(30),
             None,
         ));
         tokio::time::sleep(Duration::from_millis(200)).await;
-        let count = driver.refresh_all.load(Ordering::SeqCst);
+        let count = driver.ticks.load(Ordering::SeqCst);
         assert_eq!(
             count, 6,
             "loop keeps ticking across errors — exactly 6 ticks in a 200ms window at 30ms interval, saw {count}"
@@ -428,8 +378,8 @@ mod ingest_poll_loop_tests {
 
     #[tokio::test(start_paused = true)]
     async fn ingest_loop_first_tick_passes_none_then_subsequent_ticks_pass_prior_start_time() {
-        let driver = Arc::new(CountingDriver::new());
-        let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
+        let driver = Arc::new(CountingIngest::new());
+        let driver_dyn: Arc<dyn IngestTicker> = driver.clone();
         let handle = tokio::spawn(run_ingest_poll_loop(
             driver_dyn,
             Duration::from_millis(50),
@@ -469,8 +419,8 @@ mod ingest_poll_loop_tests {
 
     #[tokio::test(start_paused = true)]
     async fn ingest_loop_does_not_advance_since_on_failure() {
-        let driver = Arc::new(CountingDriver::failing_after(1));
-        let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
+        let driver = Arc::new(CountingIngest::failing_after(1));
+        let driver_dyn: Arc<dyn IngestTicker> = driver.clone();
         let handle = tokio::spawn(run_ingest_poll_loop(
             driver_dyn,
             Duration::from_millis(40),
@@ -506,13 +456,13 @@ mod ingest_poll_loop_tests {
             "test".to_string(),
             tx,
         ));
-        let driver = Arc::new(CountingDriver::new());
-        let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
+        let driver = Arc::new(CountingDrain::new());
+        let driver_dyn: Arc<dyn DrainTicker> = driver.clone();
         let handle = tokio::spawn(run_drain_loop(driver_dyn, hub, Duration::from_millis(50)));
         tokio::time::sleep(Duration::from_millis(25)).await;
-        assert_eq!(driver.drain_pending.load(Ordering::SeqCst), 0);
+        assert_eq!(driver.ticks.load(Ordering::SeqCst), 0);
         tokio::time::sleep(Duration::from_millis(250)).await;
-        let count = driver.drain_pending.load(Ordering::SeqCst);
+        let count = driver.ticks.load(Ordering::SeqCst);
         assert_eq!(
             count, 5,
             "exactly 5 drain ticks in a 275ms window at 50ms interval under the virtual clock, saw {count}"
@@ -531,8 +481,8 @@ mod ingest_poll_loop_tests {
             "test".to_string(),
             tx,
         ));
-        let driver = Arc::new(CountingDriver::draining_n_per_tick(1));
-        let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
+        let driver = Arc::new(CountingDrain::draining_n_per_tick(1));
+        let driver_dyn: Arc<dyn DrainTicker> = driver.clone();
         let handle = tokio::spawn(run_drain_loop(driver_dyn, hub, Duration::from_millis(50)));
         let received = tokio::time::timeout(Duration::from_millis(500), rx.recv())
             .await
@@ -560,8 +510,8 @@ mod ingest_poll_loop_tests {
             "test".to_string(),
             tx,
         ));
-        let driver = Arc::new(CountingDriver::new());
-        let driver_dyn: Arc<dyn RefreshDriver> = driver.clone();
+        let driver = Arc::new(CountingDrain::new());
+        let driver_dyn: Arc<dyn DrainTicker> = driver.clone();
         let handle = tokio::spawn(run_drain_loop(driver_dyn, hub, Duration::from_millis(50)));
         let received = tokio::time::timeout(Duration::from_millis(500), rx.recv())
             .await

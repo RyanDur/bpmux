@@ -1,8 +1,26 @@
 use std::sync::Arc;
 
+use crate::sync::{BoxedFuture, SyncError, SyncOrchestrator};
+
+pub trait IngestTicker: Send + Sync {
+    fn ingest(
+        &self,
+        since: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> BoxedFuture<'_, Result<(), SyncError>>;
+}
+
+impl IngestTicker for SyncOrchestrator {
+    fn ingest(
+        &self,
+        since: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> BoxedFuture<'_, Result<(), SyncError>> {
+        Box::pin(self.ingest_once_since(since))
+    }
+}
+
 #[cfg(test)]
 pub(crate) async fn run_ingest_poll_loop(
-    refresh: Arc<dyn crate::sync::RefreshDriver>,
+    refresh: Arc<dyn IngestTicker>,
     interval: std::time::Duration,
     observer: Option<rate_limit::RateLimitObserver>,
 ) {
@@ -16,7 +34,7 @@ pub(crate) async fn run_ingest_poll_loop(
 }
 
 pub async fn run_ingest_poll_loop_cancellable(
-    refresh: Arc<dyn crate::sync::RefreshDriver>,
+    refresh: Arc<dyn IngestTicker>,
     interval: std::time::Duration,
     observer: Option<rate_limit::RateLimitObserver>,
     ct: tokio_util::sync::CancellationToken,
@@ -34,7 +52,7 @@ pub async fn run_ingest_poll_loop_cancellable(
             _ = ticker.tick() => {}
         }
         let poll_started_at = chrono::Utc::now();
-        match refresh.refresh_all_since(last_poll_since).await {
+        match refresh.ingest(last_poll_since).await {
             Ok(()) => {
                 backoff = base_backoff;
                 last_poll_since = Some(poll_started_at);

@@ -72,7 +72,7 @@ async fn write_queued_burst_single_flights_one_drain_that_pushes_each_write_once
         None,
         CancellationToken::new(),
         Vec::new(),
-        refresh.clone(),
+        orch.clone(),
         Duration::from_secs(60),
         Duration::from_secs(15),
     ));
@@ -132,7 +132,7 @@ async fn polling_liveness_facts_never_drain_a_seeded_outbox() {
         None,
         CancellationToken::new(),
         vec![seeded_write(9101, "one", 1), seeded_write(9102, "two", 2)],
-        refresh.clone(),
+        orch.clone(),
         Duration::from_secs(60),
         Duration::from_secs(15),
     ));
@@ -199,7 +199,7 @@ async fn a_mutated_write_is_selectable_the_moment_mutate_returns() {
         None,
         CancellationToken::new(),
         Vec::new(),
-        refresh.clone(),
+        orch.clone(),
         Duration::from_secs(60),
         Duration::from_secs(15),
     ));
@@ -249,7 +249,7 @@ async fn an_ingested_upsert_is_selectable_the_moment_refresh_returns() {
         None,
         CancellationToken::new(),
         Vec::new(),
-        refresh.clone(),
+        orch.clone(),
         Duration::from_secs(60),
         Duration::from_secs(15),
     ));

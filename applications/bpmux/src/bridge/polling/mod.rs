@@ -13,3 +13,5 @@ pub(crate) use ingest::poll_interval_from_env;
 pub(crate) use ingest::run_ingest_poll_loop;
 pub use ingest::run_ingest_poll_loop_cancellable;
 pub(crate) use sync_poll::SyncPoll;
+#[cfg(test)]
+pub(crate) use {drain::DrainTicker, ingest::IngestTicker};

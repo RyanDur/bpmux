@@ -10,7 +10,7 @@ use crate::store::{
     ReactionsListeners, ReactionsPersister, RosterBroadcast, RosterListeners, RoutingPersister,
     SharedHistoryPersister, Store, StoreParts, app_reduce, ci,
 };
-use crate::sync::{self, RefreshDriver};
+use crate::sync::{self, SyncOrchestrator};
 use crate::transport::rest::broadcast_listeners::{
     EpicBroadcast, IterationBroadcast, OutcomeBroadcast, StoryBroadcast,
 };
@@ -41,7 +41,7 @@ pub(crate) fn build_store_with_refresh(
     tracker: Option<Arc<dyn CiPollFetch>>,
     parent_ct: CancellationToken,
     initial_outbox: Vec<source_sync::QueuedWrite>,
-    refresh: Arc<dyn RefreshDriver>,
+    refresh: Arc<SyncOrchestrator>,
     ingest_interval: Duration,
     hydration_interval: Duration,
 ) -> Store {

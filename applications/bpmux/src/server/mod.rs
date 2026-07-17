@@ -28,19 +28,21 @@ pub async fn run_server(
 
     let race_window = race_window_barrier_from_env();
 
-    let (orchestrator, hydrated_outbox): (OrchestratorHandle, Vec<source_sync::QueuedWrite>) =
-        if test_mode_enabled() {
-            eprintln!(
-                "[bpmux server] BPMUX_TEST_MODE=1 — instantiating in-memory orchestrator for acceptance tests"
-            );
-            let (orch, writes) = build_test_orchestrator(hub.clone()).await;
-            (Some(orch), writes)
-        } else if let Some(tracker_arc) = tracker.as_ref().cloned() {
-            let (orch, writes) = build_prod_orchestrator(hub.clone(), tracker_arc);
-            (Some(orch), writes)
-        } else {
-            (None, Vec::new())
-        };
+    let (orchestrator, hydrated_outbox): (
+        Option<Arc<crate::sync::SyncOrchestrator>>,
+        Vec<source_sync::QueuedWrite>,
+    ) = if test_mode_enabled() {
+        eprintln!(
+            "[bpmux server] BPMUX_TEST_MODE=1 — instantiating in-memory orchestrator for acceptance tests"
+        );
+        let (orch, writes) = build_test_orchestrator(hub.clone()).await;
+        (Some(orch), writes)
+    } else if let Some(tracker_arc) = tracker.as_ref().cloned() {
+        let (orch, writes) = build_prod_orchestrator(hub.clone(), tracker_arc);
+        (Some(orch), writes)
+    } else {
+        (None, Vec::new())
+    };
 
     if let Some(refresh) = orchestrator.as_ref().cloned() {
         tokio::spawn(crate::bridge::run_drain_loop(
@@ -84,7 +86,7 @@ pub async fn run_server(
         store.dispatcher(),
     );
     if let Some(refresh) = orchestrator.as_ref() {
-        refresh.bind_select(store.selector());
+        refresh.set_select(store.selector());
         refresh.bind_dispatch(store.dispatcher());
         startup_tasks::spawn_background_ingest(
             refresh.clone(),
@@ -98,6 +100,11 @@ pub async fn run_server(
     let unfurl_cache: transport::unfurl::UnfurlCacheHandle =
         std::sync::Arc::new(transport::unfurl::UnfurlCache::new());
 
+    let orchestrator_handle: OrchestratorHandle = orchestrator.map(|orch| {
+        let handle: Arc<dyn crate::sync::RefreshDriver> = orch;
+        handle
+    });
+
     let router = build_router(RouterDeps {
         auth_state,
         unfurl_cache,
@@ -105,7 +112,7 @@ pub async fn run_server(
         tracker,
         ci_log_store,
         electron_capture_lock,
-        orchestrator,
+        orchestrator: orchestrator_handle,
         race_window,
         dispatch: store.dispatcher(),
         store,

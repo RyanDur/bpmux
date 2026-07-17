@@ -4,7 +4,7 @@ use crate::hub;
 use source_codec::gh_label_codec::GhLabelCodec;
 use source_sync::{PendingWrite, QueuedWrite};
 
-use crate::sync::{RefreshDriver, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 
 fn hydrate_outbox(storage: &Arc<dyn storage::Storage>) -> Vec<QueuedWrite> {
     let codec = source_codec::gh_label_codec::GhLabelCodec;
@@ -56,22 +56,22 @@ pub(super) fn boot_ci_state() -> crate::store::ci::CiState {
 
 pub(super) async fn build_test_orchestrator(
     hub: Arc<hub::Hub>,
-) -> (Arc<dyn RefreshDriver>, Vec<QueuedWrite>) {
+) -> (Arc<SyncOrchestrator>, Vec<QueuedWrite>) {
     let adapter = Arc::new(crate::integrations::in_memory::InMemorySourceAdapter::new());
     let hydrated = hydrate_outbox(&hub.storage);
-    let orch_concrete = SyncOrchestrator::new(adapter, Arc::new(GhLabelCodec));
-    (Arc::new(orch_concrete), hydrated)
+    let orch = SyncOrchestrator::new(adapter, Arc::new(GhLabelCodec));
+    (Arc::new(orch), hydrated)
 }
 
 pub(super) fn build_prod_orchestrator(
     hub: Arc<hub::Hub>,
     adapter: Arc<crate::integrations::github::GitHubSourceAdapter>,
-) -> (Arc<dyn RefreshDriver>, Vec<QueuedWrite>) {
+) -> (Arc<SyncOrchestrator>, Vec<QueuedWrite>) {
     let hydrated = hydrate_outbox(&hub.storage);
     diag::log_diag(&format!(
         "server: board-outbox hydrated via storage ({} pending events)",
         hydrated.len()
     ));
-    let orch_concrete = SyncOrchestrator::new(adapter, Arc::new(GhLabelCodec));
-    (Arc::new(orch_concrete), hydrated)
+    let orch = SyncOrchestrator::new(adapter, Arc::new(GhLabelCodec));
+    (Arc::new(orch), hydrated)
 }
