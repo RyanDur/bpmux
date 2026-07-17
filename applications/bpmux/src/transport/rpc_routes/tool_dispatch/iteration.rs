@@ -21,8 +21,15 @@ pub(super) async fn route(
             .await
         }
         "close_iteration" => {
-            bridge::dispatch_close_iteration(args, cx.role, cx.refresh_ref, cx.hub, cx.dispatcher)
-                .await
+            bridge::dispatch_close_iteration(
+                args,
+                cx.role,
+                cx.refresh_ref,
+                cx.hub,
+                cx.dispatcher,
+                cx.select,
+            )
+            .await
         }
         "add_story_to_iteration" => {
             bridge::dispatch_add_story_to_iteration(

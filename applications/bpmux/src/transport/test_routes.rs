@@ -506,12 +506,21 @@ pub async fn post_test_close_iteration(
     axum::Extension(select): axum::Extension<crate::store::Select>,
     Json(req): Json<CloseIterationReq>,
 ) -> impl IntoResponse {
+    let close_select = select.clone();
     run_test_route(hub, refresh, select, |refresh, hub| async move {
         let mut args = serde_json::Map::new();
         put_num(&mut args, "iteration_id", req.iteration_id);
         let agent = req.agent.unwrap_or_else(|| "pm:test".to_string());
         let role = bridge::tools_stories::role_from_name(&agent);
-        bridge::dispatch_close_iteration(args, role, Some(&refresh), &hub, &dispatcher).await
+        bridge::dispatch_close_iteration(
+            args,
+            role,
+            Some(&refresh),
+            &hub,
+            &dispatcher,
+            &close_select,
+        )
+        .await
     })
     .await
 }

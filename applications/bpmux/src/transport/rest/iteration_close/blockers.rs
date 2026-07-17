@@ -9,20 +9,24 @@ pub(crate) struct IterationCloseBlocker {
     pub state: String,
 }
 
-pub(crate) async fn collect_ready_queue_blockers(
-    refresh: &dyn crate::sync::RefreshDriver,
+pub(crate) fn collect_ready_queue_blockers(
+    select: &crate::store::Select,
 ) -> Vec<IterationCloseBlocker> {
-    let iterations = refresh.iterations();
-    refresh
-        .all_stories()
+    let (iterations, stories) = select.select(|state| {
+        (
+            product_management::iteration::all(&state.iterations),
+            product_management::story::slice::all(&state.stories),
+        )
+    });
+    stories
         .into_iter()
-        .filter(|s| {
-            product_management::scheduling::projected_state(s, &iterations)
+        .filter(|story| {
+            product_management::scheduling::projected_state(story, &iterations)
                 == product_management::scheduling::ProjectedState::Ready
         })
-        .map(|s| IterationCloseBlocker {
-            id: s.id.value(),
-            title: s.title,
+        .map(|story| IterationCloseBlocker {
+            id: story.id.value(),
+            title: story.title,
             state: "ready".to_string(),
         })
         .collect()

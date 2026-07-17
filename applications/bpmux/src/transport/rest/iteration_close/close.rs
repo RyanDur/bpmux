@@ -21,6 +21,7 @@ pub struct CloseIterationRequest {
     pub iteration_id: Option<u64>,
 }
 
+#[derive(Debug)]
 pub(crate) enum CloseIterationError {
     NotAnIteration(u64),
     NotFound(u64),
@@ -52,7 +53,7 @@ pub async fn post_close_iteration(
             ),
         );
     };
-    match close_iteration(&hub, refresh, &dispatch, iteration_id).await {
+    match close_iteration(&hub, refresh, &dispatch, &select, iteration_id).await {
         Ok(()) => {
             broadcast_board_invalidate(&hub);
             broadcast_stories(&hub, &select);
@@ -97,14 +98,25 @@ pub(crate) async fn close_iteration(
     hub: &hub::Hub,
     refresh: &Arc<dyn crate::sync::RefreshDriver>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
     iteration_id: u64,
 ) -> Result<(), CloseIterationError> {
-    let iteration = match refresh.iteration(product_management::iteration::IterationId::new(
-        iteration_id,
-    )) {
-        Some(it) => it,
+    let iteration = match select.select(|state| {
+        product_management::iteration::get(
+            &state.iterations,
+            product_management::iteration::IterationId::new(iteration_id),
+        )
+    }) {
+        Some(iteration) => iteration,
         None => {
-            return Err(if refresh.story(iteration_id).is_some() {
+            let story_exists = select.select(|state| {
+                product_management::story::slice::get(
+                    &state.stories,
+                    product_management::story::StoryId::new(iteration_id),
+                )
+                .is_some()
+            });
+            return Err(if story_exists {
                 CloseIterationError::NotAnIteration(iteration_id)
             } else {
                 CloseIterationError::NotFound(iteration_id)
@@ -114,11 +126,11 @@ pub(crate) async fn close_iteration(
     if iteration.complete {
         return Err(CloseIterationError::AlreadyClosed(iteration_id));
     }
-    let blockers = collect_ready_queue_blockers(refresh.as_ref()).await;
+    let blockers = collect_ready_queue_blockers(select);
     if !blockers.is_empty() {
         return Err(CloseIterationError::ReadyQueueBlocked(blockers));
     }
-    close_iteration_canonical(refresh, dispatch, iteration_id)
+    close_iteration_canonical(refresh, dispatch, select, iteration_id)
         .await
         .map_err(CloseIterationError::Canonical)?;
     broadcast_iteration_closed(hub);
@@ -128,6 +140,7 @@ pub(crate) async fn close_iteration(
 pub(crate) async fn close_iteration_canonical(
     refresh: &Arc<dyn crate::sync::RefreshDriver>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
     iteration_id: u64,
 ) -> Result<(), String> {
     let meta = || product_management::story::events::EventMeta {
@@ -153,9 +166,12 @@ pub(crate) async fn close_iteration_canonical(
             },
         ))
         .map_err(|e| format!("#{iteration_id} iteration-close enqueue failed: {e}"))?;
-    if let Some(iteration) = refresh.iteration(product_management::iteration::IterationId::new(
-        iteration_id,
-    )) {
+    if let Some(iteration) = select.select(|state| {
+        product_management::iteration::get(
+            &state.iterations,
+            product_management::iteration::IterationId::new(iteration_id),
+        )
+    }) {
         dispatch.dispatch(crate::store::AppAction::Iteration(
             product_management::iteration::IterationAction::Upserted(vec![
                 product_management::iteration::Iteration {

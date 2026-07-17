@@ -21,15 +21,22 @@ pub(crate) async fn dispatch_close_iteration(
     refresh: Option<&Arc<dyn crate::sync::RefreshDriver>>,
     hub: &Arc<crate::hub::Hub>,
     dispatch: &crate::store::Dispatch,
+    select: &crate::store::Select,
 ) -> Result<String, String> {
     tools_stories::helpers::require_purpose(role, &["pm"], "close iteration")?;
-    let r = refresh.ok_or("close_iteration requires refresh (RefreshDriver)")?;
+    let driver = refresh.ok_or("close_iteration requires refresh (RefreshDriver)")?;
     let iteration_id = args
         .get("iteration_id")
         .and_then(|v| v.as_u64())
         .ok_or("close_iteration requires iteration_id (canonical Iteration issue#).")?;
-    crate::transport::rest::iteration_close::close_iteration(hub, r, dispatch, iteration_id)
-        .await
+    crate::transport::rest::iteration_close::close_iteration(
+        hub,
+        driver,
+        dispatch,
+        select,
+        iteration_id,
+    )
+    .await
         .map_err(|e| match e {
             CloseIterationError::NotAnIteration(id) => {
                 format!("close_iteration: #{id} is not an Iteration")

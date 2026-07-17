@@ -100,8 +100,10 @@ pub(crate) fn bind_seeded_refresh(
     outcomes: Vec<product_management::outcome::Outcome>,
     iterations: Vec<product_management::iteration::Iteration>,
     epics: Vec<product_management::epic::Epic>,
-) {
+) -> Select {
     let handle = SeededStore::new(outcomes, iterations, epics);
     handle.bind_refresh(refresh);
+    let select = handle.select();
     std::mem::forget(handle);
+    select
 }
