@@ -200,7 +200,10 @@ async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
             etag: Some("W/\"deadbeef\"".to_string()),
         },
     ))));
-    let story = orch.story(9000).expect("story present");
+    let story = seed
+        .select()
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(9000)))
+        .expect("story present");
     assert_eq!(story.body.as_deref(), Some("hydrated body content"));
     assert_eq!(story.body_etag.as_deref(), Some("W/\"deadbeef\""));
 }
@@ -215,6 +218,7 @@ async fn local_body_mutate_invalidates_prior_etag() {
     ));
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch);
+    let select = handle.select();
     let mut seed = seed_minimal(9100, Work::NotStarted);
     seed.body = Some("v1".to_string());
     seed.body_etag = Some("W/\"etag-v1\"".to_string());
@@ -232,7 +236,9 @@ async fn local_body_mutate_invalidates_prior_etag() {
             story: Box::new(updated),
         },
     ))));
-    let after = orch.story(9100).expect("story present");
+    let after = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(9100)))
+        .expect("story present");
     assert_eq!(after.body.as_deref(), Some("v2"));
     assert_eq!(
         after.body_etag, None,
@@ -250,6 +256,7 @@ async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh(
     ));
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch);
+    let select = handle.select();
     let seed = seed_minimal(9200, Work::InProgress);
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed])));
     let labels = vec!["in progress".to_string(), "awaiting owner".to_string()];
@@ -264,7 +271,9 @@ async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh(
             fields: source_codec::mapper::project_labels(&labels),
         },
     ))));
-    let after = orch.story(9200).expect("story present");
+    let after = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(9200)))
+        .expect("story present");
     assert_eq!(
         after.acceptor(),
         Some(product_management::story::Acceptor::Owner),
@@ -283,14 +292,24 @@ async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
-    crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
+    let select = crate::store::bind_seeded_refresh(&orch, vec![], vec![], vec![]);
     orch.refresh_all().await.unwrap();
     let result = orch
         .fetch_body_conditional(9001, None)
         .await
         .expect("conditional fetch ok");
     assert!(matches!(result, ConditionalBody::Modified { .. }));
-    assert_eq!(orch.story(9001).unwrap().body.as_deref(), Some("real body"));
+    assert_eq!(
+        select
+            .select(|state| product_management::story::slice::get(
+                &state.stories,
+                StoryId::new(9001)
+            ))
+            .unwrap()
+            .body
+            .as_deref(),
+        Some("real body")
+    );
 }
 
 #[tokio::test]

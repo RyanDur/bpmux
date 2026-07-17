@@ -404,11 +404,17 @@ mod outbox_persistence {
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
+        let select = handle.select();
 
         orch.mutate(state_write(999, Work::InProgress)).unwrap();
 
         assert!(
-            orch.story(999).is_none(),
+            select
+                .select(|state| product_management::story::slice::get(
+                    &state.stories,
+                    StoryId::new(999)
+                ))
+                .is_none(),
             "reducer silently no-ops when story not in store; #1197 fix is at gate-tool layer"
         );
     }
@@ -424,22 +430,38 @@ mod outbox_persistence {
         let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
         let handle = SeededStore::new(vec![], vec![], vec![]);
         handle.bind_refresh(&orch_dyn);
+        let select = handle.select();
 
         orch.mutate(state_write(777, Work::InProgress)).unwrap();
         assert!(
-            orch.story(777).is_none(),
+            select
+                .select(|state| product_management::story::slice::get(
+                    &state.stories,
+                    StoryId::new(777)
+                ))
+                .is_none(),
             "pre-refresh mutate silently no-ops"
         );
 
         orch.refresh_story(777).await.unwrap();
         assert!(
-            orch.story(777).is_some(),
+            select
+                .select(|state| product_management::story::slice::get(
+                    &state.stories,
+                    StoryId::new(777)
+                ))
+                .is_some(),
             "refresh_story populates the store from adapter"
         );
 
         orch.mutate(state_write(777, Work::InProgress)).unwrap();
         assert_eq!(
-            orch.story(777).map(|s| s.state),
+            select
+                .select(|state| product_management::story::slice::get(
+                    &state.stories,
+                    StoryId::new(777)
+                ))
+                .map(|story| story.state),
             Some(Work::InProgress),
             "post-refresh mutate lands"
         );

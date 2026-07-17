@@ -54,19 +54,23 @@ fn minimal_story(id: u64, title: &str) -> Story {
 
 #[test]
 fn an_orchestrator_write_is_synchronously_visible_through_its_own_reads() {
-    let (_handle, orch) = bound_orchestrator();
+    let (handle, orch) = bound_orchestrator();
+    let select = handle.select();
     orch.mutate_sync(created(42, "written")).unwrap();
-    let read_back = orch.story(42).expect(
-        "the story is readable the moment mutate_sync returns \
+    let read_back = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(42)))
+        .expect(
+            "the story is readable the moment mutate_sync returns \
          (synchronous dispatch — read-your-write holds)",
-    );
+        );
     assert_eq!(read_back.title, "written");
     assert_eq!(read_back.state, Work::NotStarted);
 }
 
 #[test]
 fn generic_tag_churn_has_no_domain_side_effect_after_the_middleware_retire() {
-    let (_handle, orch) = bound_orchestrator();
+    let (handle, orch) = bound_orchestrator();
+    let select = handle.select();
     orch.mutate_sync(created(7, "labeled")).unwrap();
     orch.mutate_sync(StoryEvent::new(
         meta(),
@@ -76,7 +80,9 @@ fn generic_tag_churn_has_no_domain_side_effect_after_the_middleware_retire() {
         },
     ))
     .unwrap();
-    let story = orch.story(7).unwrap();
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(7)))
+        .unwrap();
     assert!(
         story.tags().is_empty(),
         "a generic TagAdded is edge-bound only — no reducer arm and no middleware \
@@ -88,15 +94,18 @@ fn generic_tag_churn_has_no_domain_side_effect_after_the_middleware_retire() {
 #[test]
 fn seed_remove_and_clear_act_on_the_bound_central_store() {
     let (handle, orch) = bound_orchestrator();
+    let select = handle.select();
     assert!(
-        handle
-            .select()
-            .select(|state| product_management::story::slice::is_empty(&state.stories)),
+        select.select(|state| product_management::story::slice::is_empty(&state.stories)),
         "a freshly bound central store starts empty"
     );
     let seeded = minimal_story(9, "seeded");
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seeded.clone()])));
-    assert_eq!(orch.story(9), Some(seeded.clone()));
+    assert_eq!(
+        select
+            .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(9))),
+        Some(seeded.clone())
+    );
     assert!(
         orch.remove_story(404).is_none(),
         "removing an absent story yields nothing"
@@ -108,7 +117,9 @@ fn seed_remove_and_clear_act_on_the_bound_central_store() {
         "remove_story returns the story it removed"
     );
     assert!(
-        orch.story(9).is_none(),
+        select
+            .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(9)))
+            .is_none(),
         "the removed story is gone from reads"
     );
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![minimal_story(
@@ -117,9 +128,7 @@ fn seed_remove_and_clear_act_on_the_bound_central_store() {
     )])));
     orch.clear_stories();
     assert!(
-        handle
-            .select()
-            .select(|state| product_management::story::slice::is_empty(&state.stories)),
+        select.select(|state| product_management::story::slice::is_empty(&state.stories)),
         "clear_stories empties the bound store"
     );
 }

@@ -42,7 +42,12 @@ fn comment(body: &str) -> Value {
     })
 }
 
-async fn fixture_orchestrator(server: &MockServer) -> Arc<SyncOrchestrator<GitHubSourceAdapter>> {
+async fn fixture_orchestrator(
+    server: &MockServer,
+) -> (
+    Arc<SyncOrchestrator<GitHubSourceAdapter>>,
+    crate::store::Select,
+) {
     let tracker = OctocrabStoryTracker::with_base_url(
         &format!("{}/", server.base_url()),
         "acme".to_string(),
@@ -55,9 +60,9 @@ async fn fixture_orchestrator(server: &MockServer) -> Arc<SyncOrchestrator<GitHu
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     ));
     let orch_dyn: Arc<dyn RefreshDriver> = orch.clone();
-    crate::store::bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
+    let select = crate::store::bind_seeded_refresh(&orch_dyn, vec![], vec![], vec![]);
     orch.refresh_all().await.expect("seed-empty ingest");
-    orch
+    (orch, select)
 }
 
 #[tokio::test]
@@ -71,9 +76,14 @@ async fn external_create_via_gh_cli_appears_in_bpmux_after_refresh() {
             .body(Value::Array(vec![]).to_string());
     });
 
-    let refresh = fixture_orchestrator(&server).await;
+    let (refresh, select) = fixture_orchestrator(&server).await;
     assert!(
-        refresh.story(101).is_none(),
+        select
+            .select(|state| product_management::story::slice::get(
+                &state.stories,
+                product_management::story::StoryId::new(101)
+            ))
+            .is_none(),
         "fresh adapter has no #101 before external creation"
     );
 
@@ -91,7 +101,14 @@ async fn external_create_via_gh_cli_appears_in_bpmux_after_refresh() {
         "post-refresh, bpmux observes the externally-created story"
     );
 
-    let story = refresh.story(101).expect("story in store");
+    let story = select
+        .select(|state| {
+            product_management::story::slice::get(
+                &state.stories,
+                product_management::story::StoryId::new(101),
+            )
+        })
+        .expect("story in store");
     assert_eq!(story.id, product_management::story::StoryId::new(101));
     assert_eq!(story.title, "[Feature] external-via-gh-cli");
 }
@@ -107,7 +124,7 @@ async fn external_label_change_propagates_to_bpmux_state_after_refresh() {
             .body(Value::Array(vec![]).to_string());
     });
 
-    let refresh = fixture_orchestrator(&server).await;
+    let (refresh, select) = fixture_orchestrator(&server).await;
 
     let mut initial_labels_mock = server.mock(|when, then| {
         when.method(Method::GET)
@@ -118,7 +135,14 @@ async fn external_label_change_propagates_to_bpmux_state_after_refresh() {
     });
 
     refresh.refresh_story(202).await.expect("first refresh");
-    let initial = refresh.story(202).expect("seeded story");
+    let initial = select
+        .select(|state| {
+            product_management::story::slice::get(
+                &state.stories,
+                product_management::story::StoryId::new(202),
+            )
+        })
+        .expect("seeded story");
     assert_eq!(
         initial.state,
         product_management::story::Work::NotStarted,
@@ -146,7 +170,14 @@ async fn external_label_change_propagates_to_bpmux_state_after_refresh() {
         .refresh_story(202)
         .await
         .expect("second refresh after external label change");
-    let updated = refresh.story(202).expect("story still present");
+    let updated = select
+        .select(|state| {
+            product_management::story::slice::get(
+                &state.stories,
+                product_management::story::StoryId::new(202),
+            )
+        })
+        .expect("story still present");
     assert_eq!(
         updated.state,
         product_management::story::Work::InProgress,
@@ -165,7 +196,7 @@ async fn external_comment_appears_via_fetch_free_comments_after_refresh() {
             .body(Value::Array(vec![]).to_string());
     });
 
-    let refresh = fixture_orchestrator(&server).await;
+    let (refresh, _select) = fixture_orchestrator(&server).await;
 
     let mut empty_comments_mock = server.mock(|when, then| {
         when.method(Method::GET)
@@ -222,7 +253,7 @@ async fn external_re_open_returns_the_story_to_the_label_derived_state_after_ref
             .body(Value::Array(vec![]).to_string());
     });
 
-    let refresh = fixture_orchestrator(&server).await;
+    let (refresh, select) = fixture_orchestrator(&server).await;
 
     let mut closed_mock = server.mock(|when, then| {
         when.method(Method::GET)
@@ -233,7 +264,14 @@ async fn external_re_open_returns_the_story_to_the_label_derived_state_after_ref
     });
 
     refresh.refresh_story(505).await.expect("first refresh");
-    let initial = refresh.story(505).expect("seeded story");
+    let initial = select
+        .select(|state| {
+            product_management::story::slice::get(
+                &state.stories,
+                product_management::story::StoryId::new(505),
+            )
+        })
+        .expect("seeded story");
     assert_eq!(
         initial.state,
         product_management::story::Work::Accepted,
@@ -253,7 +291,14 @@ async fn external_re_open_returns_the_story_to_the_label_derived_state_after_ref
         .refresh_story(505)
         .await
         .expect("second refresh after external re-open");
-    let updated = refresh.story(505).expect("story still present");
+    let updated = select
+        .select(|state| {
+            product_management::story::slice::get(
+                &state.stories,
+                product_management::story::StoryId::new(505),
+            )
+        })
+        .expect("story still present");
     assert_eq!(
         updated.state,
         product_management::story::Work::NotStarted,
@@ -272,7 +317,7 @@ async fn external_label_remove_clears_state_back_to_icebox_after_refresh() {
             .body(Value::Array(vec![]).to_string());
     });
 
-    let refresh = fixture_orchestrator(&server).await;
+    let (refresh, select) = fixture_orchestrator(&server).await;
 
     let mut labeled_mock = server.mock(|when, then| {
         when.method(Method::GET)
@@ -291,7 +336,14 @@ async fn external_label_remove_clears_state_back_to_icebox_after_refresh() {
     });
 
     refresh.refresh_story(606).await.expect("first refresh");
-    let initial = refresh.story(606).expect("seeded story");
+    let initial = select
+        .select(|state| {
+            product_management::story::slice::get(
+                &state.stories,
+                product_management::story::StoryId::new(606),
+            )
+        })
+        .expect("seeded story");
     assert_eq!(
         initial.state,
         product_management::story::Work::InProgress,
@@ -311,7 +363,14 @@ async fn external_label_remove_clears_state_back_to_icebox_after_refresh() {
         .refresh_story(606)
         .await
         .expect("second refresh after external label remove");
-    let updated = refresh.story(606).expect("story still present");
+    let updated = select
+        .select(|state| {
+            product_management::story::slice::get(
+                &state.stories,
+                product_management::story::StoryId::new(606),
+            )
+        })
+        .expect("story still present");
     assert_eq!(
         updated.state,
         product_management::story::Work::NotStarted,
@@ -330,7 +389,7 @@ async fn external_body_change_propagates_via_fetch_body_after_refresh() {
             .body(Value::Array(vec![]).to_string());
     });
 
-    let refresh = fixture_orchestrator(&server).await;
+    let (refresh, _select) = fixture_orchestrator(&server).await;
 
     let mut original_mock = server.mock(|when, then| {
         when.method(Method::GET)
@@ -385,7 +444,7 @@ async fn external_close_propagates_to_bpmux_accepted_state_after_refresh() {
             .body(Value::Array(vec![]).to_string());
     });
 
-    let refresh = fixture_orchestrator(&server).await;
+    let (refresh, select) = fixture_orchestrator(&server).await;
 
     let mut open_mock = server.mock(|when, then| {
         when.method(Method::GET)
@@ -396,7 +455,14 @@ async fn external_close_propagates_to_bpmux_accepted_state_after_refresh() {
     });
 
     refresh.refresh_story(303).await.expect("first refresh");
-    let initial = refresh.story(303).expect("seeded story");
+    let initial = select
+        .select(|state| {
+            product_management::story::slice::get(
+                &state.stories,
+                product_management::story::StoryId::new(303),
+            )
+        })
+        .expect("seeded story");
     assert!(
         !initial.is_concluded(),
         "fresh story is not concluded before external close"
@@ -415,7 +481,14 @@ async fn external_close_propagates_to_bpmux_accepted_state_after_refresh() {
         .refresh_story(303)
         .await
         .expect("second refresh after external close");
-    let updated = refresh.story(303).expect("story still present");
+    let updated = select
+        .select(|state| {
+            product_management::story::slice::get(
+                &state.stories,
+                product_management::story::StoryId::new(303),
+            )
+        })
+        .expect("story still present");
     assert_eq!(
         updated.state,
         product_management::story::Work::Accepted,

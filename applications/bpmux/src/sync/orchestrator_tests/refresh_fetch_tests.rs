@@ -23,10 +23,22 @@ async fn refresh_story_pulls_single_story_from_adapter_into_store() {
     let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
-    assert!(orchestrator.story(42).is_none(), "store starts empty");
+    let select = handle.select();
+    assert!(
+        select
+            .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(42)))
+            .is_none(),
+        "store starts empty"
+    );
     let result = orchestrator.refresh_story(42).await.unwrap();
     assert!(result.is_some());
-    assert_eq!(orchestrator.story(42).unwrap().state, Work::NotStarted);
+    assert_eq!(
+        select
+            .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(42)))
+            .unwrap()
+            .state,
+        Work::NotStarted
+    );
     assert!(orchestrator.snapshot_status().last_ingest_at.is_some());
 }
 
@@ -40,9 +52,17 @@ async fn refresh_story_returns_none_when_story_missing_at_source() {
     let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
+    let select = handle.select();
     let result = orchestrator.refresh_story(999).await.unwrap();
     assert!(result.is_none());
-    assert!(orchestrator.story(999).is_none());
+    assert!(
+        select
+            .select(|state| product_management::story::slice::get(
+                &state.stories,
+                StoryId::new(999)
+            ))
+            .is_none()
+    );
 }
 
 #[tokio::test]
@@ -100,8 +120,15 @@ async fn end_to_end_seeded_adapter_through_mutate_and_drain() {
     let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
+    let select = handle.select();
     orchestrator.ingest_once().await.unwrap();
-    assert_eq!(orchestrator.story(42).unwrap().state, Work::NotStarted);
+    assert_eq!(
+        select
+            .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(42)))
+            .unwrap()
+            .state,
+        Work::NotStarted
+    );
     orchestrator
         .mutate(StoryEvent::new(
             meta(),
@@ -112,7 +139,13 @@ async fn end_to_end_seeded_adapter_through_mutate_and_drain() {
             },
         ))
         .unwrap();
-    assert_eq!(orchestrator.story(42).unwrap().state, Work::InProgress);
+    assert_eq!(
+        select
+            .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(42)))
+            .unwrap()
+            .state,
+        Work::InProgress
+    );
     orchestrator.drain_pass().await.unwrap();
     let pushed = adapter.pushed_events();
     assert_eq!(pushed.len(), 1);
@@ -136,13 +169,24 @@ async fn fetch_body_caches_the_body_on_the_story() {
     let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
+    let select = handle.select();
     orchestrator.ingest_once().await.unwrap();
-    assert_eq!(orchestrator.story(7).unwrap().body, None);
+    assert_eq!(
+        select
+            .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(7)))
+            .unwrap()
+            .body,
+        None
+    );
 
     let returned = orchestrator.fetch_body(7).await.unwrap();
     assert_eq!(returned, "the body text");
     assert_eq!(
-        orchestrator.story(7).unwrap().body.as_deref(),
+        select
+            .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(7)))
+            .unwrap()
+            .body
+            .as_deref(),
         Some("the body text")
     );
 }
@@ -183,13 +227,24 @@ async fn fetch_free_comments_caches_comments_on_the_story() {
     let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
+    let select = handle.select();
     orchestrator.ingest_once().await.unwrap();
-    assert_eq!(orchestrator.story(9).unwrap().free_comments, None);
+    assert_eq!(
+        select
+            .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(9)))
+            .unwrap()
+            .free_comments,
+        None
+    );
 
     let returned = orchestrator.fetch_free_comments(9).await.unwrap();
     assert_eq!(returned, seeded);
     assert_eq!(
-        orchestrator.story(9).unwrap().free_comments.unwrap(),
+        select
+            .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(9)))
+            .unwrap()
+            .free_comments
+            .unwrap(),
         seeded
     );
 }
@@ -215,12 +270,26 @@ async fn fetch_verdicts_caches_comments_on_the_story() {
     let orch_dyn: Arc<dyn RefreshDriver> = orchestrator.clone();
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch_dyn);
+    let select = handle.select();
     orchestrator.ingest_once().await.unwrap();
-    assert_eq!(orchestrator.story(11).unwrap().verdicts, None);
+    assert_eq!(
+        select
+            .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(11)))
+            .unwrap()
+            .verdicts,
+        None
+    );
 
     let returned = orchestrator.fetch_verdicts(11).await.unwrap();
     assert_eq!(returned, seeded);
-    assert_eq!(orchestrator.story(11).unwrap().verdicts.unwrap(), seeded);
+    assert_eq!(
+        select
+            .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(11)))
+            .unwrap()
+            .verdicts
+            .unwrap(),
+        seeded
+    );
 }
 
 #[tokio::test]

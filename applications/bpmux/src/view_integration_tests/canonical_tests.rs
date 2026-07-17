@@ -78,6 +78,7 @@ fn create_story_event_does_not_seed_iteration_membership() {
     ));
     let handle = SeededStore::new(vec![], vec![], vec![]);
     handle.bind_refresh(&orch);
+    let select = handle.select();
     handle.dispatch(AppAction::Story(StoryAction::Event(StoryEvent::new(
         meta(),
         StoryId::new(200),
@@ -88,8 +89,10 @@ fn create_story_event_does_not_seed_iteration_membership() {
             story_type: StoryKind::Feature,
         },
     ))));
-    let s = orch.story(200).expect("story present");
-    let json = view::board::story_to_board_json(&GhLabelCodec, &s, s.state.as_str());
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(200)))
+        .expect("story present");
+    let json = view::board::story_to_board_json(&GhLabelCodec, &story, story.state.as_str());
     let obj = json.as_object().expect("object");
     assert!(
         !obj.contains_key("iteration_id"),
