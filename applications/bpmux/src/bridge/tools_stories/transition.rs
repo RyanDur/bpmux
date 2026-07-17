@@ -33,9 +33,14 @@ pub(crate) async fn handle_start_story(
         if prior.verdicts.is_none() {
             let _ = r.fetch_verdicts(id).await;
         }
-        let lead = r
-            .story(id)
-            .and_then(|s| s.verdicts)
+        let lead = select
+            .select(|state| {
+                product_management::story::slice::get(
+                    &state.stories,
+                    product_management::story::StoryId::new(id),
+                )
+            })
+            .and_then(|story| story.verdicts)
             .as_deref()
             .and_then(super::super::tools::rework_context::latest_reject)
             .and_then(super::super::tools::rework_context::reject_lead);
