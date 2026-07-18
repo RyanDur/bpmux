@@ -7,8 +7,7 @@ test.describe('#1517 iteration-row reorder persists across a real-GH reload roun
   test('iterations seeded WITHOUT an order label (as create_iteration makes them) reorder by drag and the order survives drain-to-GitHub + ingest + reload', async () => {
     const { app, win, mockGh } = await launchWithMockGh({
       extraEnv: {
-        BPMUX_POLL_INTERVAL_SECS: '2',
-        BPMUX_DRAIN_INTERVAL_SECS: '1'
+        BPMUX_POLL_INTERVAL_SECS: '2'
       }
     })
     try {
@@ -67,8 +66,7 @@ test.describe('#1517 iteration-row reorder persists across a real-GH reload roun
   test('repeated reorders keep EXACTLY ONE order-label per iteration — no stale-label accumulation that corrupts the order on reload', async () => {
     const { app, win, mockGh } = await launchWithMockGh({
       extraEnv: {
-        BPMUX_POLL_INTERVAL_SECS: '2',
-        BPMUX_DRAIN_INTERVAL_SECS: '5'
+        BPMUX_POLL_INTERVAL_SECS: '2'
       }
     })
     try {

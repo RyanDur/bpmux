@@ -1,24 +1,19 @@
 use std::sync::Arc;
 
-use crate::sync::{BoxedFuture, SyncError, SyncOrchestrator};
+use crate::sync::SyncOrchestrator;
 
-pub trait DrainTicker: Send + Sync {
-    fn drain(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
+pub trait SyncStatusSource: Send + Sync {
     fn status(&self) -> source_sync::SyncStatus;
 }
 
-impl DrainTicker for SyncOrchestrator {
-    fn drain(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
-        Box::pin(self.drain_pass())
-    }
-
+impl SyncStatusSource for SyncOrchestrator {
     fn status(&self) -> source_sync::SyncStatus {
         self.snapshot_status()
     }
 }
 
-pub(crate) async fn run_drain_loop(
-    refresh: Arc<dyn DrainTicker>,
+pub(crate) async fn run_sync_status_heartbeat(
+    source: Arc<dyn SyncStatusSource>,
     hub: Arc<crate::hub::Hub>,
     interval: std::time::Duration,
 ) {
@@ -27,16 +22,7 @@ pub(crate) async fn run_drain_loop(
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         ticker.tick().await;
-        match refresh.drain().await {
-            Ok(0) => {}
-            Ok(n) => {
-                diag::log_diag(&format!("bridge: background drain pushed {n} event(s)"));
-            }
-            Err(e) => {
-                diag::log_diag(&format!("bridge: background drain: {e}"));
-            }
-        }
-        let snapshot = refresh.status();
+        let snapshot = source.status();
         broadcast_sync_status_heartbeat(&hub, &snapshot);
     }
 }
@@ -57,8 +43,8 @@ pub(crate) fn broadcast_sync_status_heartbeat(
     hub.broadcast_ephemeral(&msg);
 }
 
-pub(crate) fn drain_interval_from_env() -> std::time::Duration {
-    let secs = std::env::var("BPMUX_DRAIN_INTERVAL_SECS")
+pub(crate) fn sync_status_heartbeat_interval_from_env() -> std::time::Duration {
+    let secs = std::env::var("BPMUX_SYNC_HEARTBEAT_SECS")
         .ok()
         .and_then(|s| s.parse::<u64>().ok())
         .unwrap_or(5);

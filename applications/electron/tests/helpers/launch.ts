@@ -382,17 +382,6 @@ export const launchWithMockGh = async (opts: LaunchOpts = {}): Promise<MockGhLau
       BPMUX_REPO: 'acme/bpmux',
       GH_TOKEN: 'mock-gh-token',
       BPMUX_AUTH_TOKEN_PATH: authTokenPath,
-      // Drain loop pushes pending BoardStore events (TagAdded /
-      // TagRemoved / StoryClosed / etc.) to mock GH at this interval.
-      // Production default is 5s; tests need fast turnaround so the
-      // next gate's `refresh_story` sees the mutations the previous
-      // gate enqueued.
-      BPMUX_DRAIN_INTERVAL_SECS: '1',
-      // Ingest poll re-fetches all stories from GH and seed_all-
-      // replaces BoardStore. With drain at 1s, ingest at 1s would
-      // race and clobber gate-handler-set state when ingest fires
-      // BEFORE drain. Push ingest out of the test window (default
-      // 60s, but pin explicitly to make the intent obvious).
       BPMUX_POLL_INTERVAL_SECS: '600',
       ...(opts.extraEnv ?? {})
     }

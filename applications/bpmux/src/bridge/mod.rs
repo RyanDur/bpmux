@@ -28,11 +28,12 @@ pub use chat_relevance::message_type_reaches_llm_stream;
 
 #[cfg(test)]
 pub(crate) use polling::{
-    DrainTicker, IngestTicker, run_ingest_poll_loop, select_stories_to_hydrate,
+    IngestTicker, SyncStatusSource, run_ingest_poll_loop, select_stories_to_hydrate,
     select_stories_to_revalidate,
 };
 pub(crate) use polling::{
-    drain_interval_from_env, hydration_interval_from_env, poll_interval_from_env, run_drain_loop,
+    hydration_interval_from_env, poll_interval_from_env, run_sync_status_heartbeat,
+    sync_status_heartbeat_interval_from_env,
 };
 pub use polling::{run_hydration_loop_cancellable, run_ingest_poll_loop_cancellable};
 

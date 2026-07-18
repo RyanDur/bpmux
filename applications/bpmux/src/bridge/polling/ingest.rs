@@ -7,6 +7,8 @@ pub trait IngestTicker: Send + Sync {
         &self,
         since: Option<chrono::DateTime<chrono::Utc>>,
     ) -> BoxedFuture<'_, Result<(), SyncError>>;
+
+    fn flush_pending_writes(&self) -> BoxedFuture<'_, Result<usize, SyncError>>;
 }
 
 impl IngestTicker for SyncOrchestrator {
@@ -15,6 +17,10 @@ impl IngestTicker for SyncOrchestrator {
         since: Option<chrono::DateTime<chrono::Utc>>,
     ) -> BoxedFuture<'_, Result<(), SyncError>> {
         Box::pin(self.ingest_once_since(since))
+    }
+
+    fn flush_pending_writes(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
+        Box::pin(self.drain_pass())
     }
 }
 
@@ -56,6 +62,13 @@ pub async fn run_ingest_poll_loop_cancellable(
             Ok(()) => {
                 backoff = base_backoff;
                 last_poll_since = Some(poll_started_at);
+                match refresh.flush_pending_writes().await {
+                    Ok(0) => {}
+                    Ok(n) => diag::log_diag(&format!(
+                        "bridge: ingest-recovery flushed {n} pending write(s)"
+                    )),
+                    Err(e) => diag::log_diag(&format!("bridge: ingest-recovery flush failed: {e}")),
+                }
             }
             Err(e) => {
                 let msg = e.to_string();

@@ -257,13 +257,14 @@ mod poll_loop_tests {
     use std::time::Duration;
 
     use crate::bridge::run_ingest_poll_loop;
-    use crate::bridge::{DrainTicker, IngestTicker};
+    use crate::bridge::{IngestTicker, SyncStatusSource};
     use crate::sync::BoxedFuture;
     use crate::sync::SyncError;
     use source_sync::SyncStatus;
 
     struct CountingIngest {
         ticks: AtomicUsize,
+        flushes: AtomicUsize,
         fail_after: Option<usize>,
         since_args: Mutex<Vec<Option<chrono::DateTime<chrono::Utc>>>>,
     }
@@ -272,6 +273,7 @@ mod poll_loop_tests {
         fn new() -> Self {
             Self {
                 ticks: AtomicUsize::new(0),
+                flushes: AtomicUsize::new(0),
                 fail_after: None,
                 since_args: Mutex::new(Vec::new()),
             }
@@ -279,6 +281,7 @@ mod poll_loop_tests {
         fn failing_after(n: usize) -> Self {
             Self {
                 ticks: AtomicUsize::new(0),
+                flushes: AtomicUsize::new(0),
                 fail_after: Some(n),
                 since_args: Mutex::new(Vec::new()),
             }
@@ -304,34 +307,16 @@ mod poll_loop_tests {
                 }
             })
         }
-    }
 
-    struct CountingDrain {
-        ticks: AtomicUsize,
-        drain_returns_n: usize,
-    }
-
-    impl CountingDrain {
-        fn new() -> Self {
-            Self {
-                ticks: AtomicUsize::new(0),
-                drain_returns_n: 0,
-            }
-        }
-        fn draining_n_per_tick(n: usize) -> Self {
-            Self {
-                ticks: AtomicUsize::new(0),
-                drain_returns_n: n,
-            }
+        fn flush_pending_writes(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
+            self.flushes.fetch_add(1, Ordering::SeqCst);
+            Box::pin(async { Ok(0) })
         }
     }
 
-    impl DrainTicker for CountingDrain {
-        fn drain(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {
-            self.ticks.fetch_add(1, Ordering::SeqCst);
-            let n = self.drain_returns_n;
-            Box::pin(async move { Ok(n) })
-        }
+    struct StubStatusSource;
+
+    impl SyncStatusSource for StubStatusSource {
         fn status(&self) -> SyncStatus {
             SyncStatus::default()
         }
@@ -355,6 +340,41 @@ mod poll_loop_tests {
             "exactly 5 ticks fire in a 275ms window at 50ms interval under the virtual clock, saw {count}"
         );
         handle.abort();
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn ingest_poll_flushes_pending_writes_on_success_but_not_on_a_failed_poll() {
+        let ok_driver = Arc::new(CountingIngest::new());
+        let ok_dyn: Arc<dyn IngestTicker> = ok_driver.clone();
+        let ok_handle = tokio::spawn(run_ingest_poll_loop(
+            ok_dyn,
+            Duration::from_millis(50),
+            None,
+        ));
+        tokio::time::sleep(Duration::from_millis(120)).await;
+        ok_handle.abort();
+        assert!(
+            ok_driver.flushes.load(Ordering::SeqCst) >= 1,
+            "a successful ingest poll proves GitHub is reachable, so the loop flushes writes stuck behind an earlier transient failure — the event-driven retry that replaces the removed drain timer; saw {} flush(es) over {} tick(s)",
+            ok_driver.flushes.load(Ordering::SeqCst),
+            ok_driver.ticks.load(Ordering::SeqCst)
+        );
+
+        let failing_driver = Arc::new(CountingIngest::failing_after(0));
+        let failing_dyn: Arc<dyn IngestTicker> = failing_driver.clone();
+        let failing_handle = tokio::spawn(run_ingest_poll_loop(
+            failing_dyn,
+            Duration::from_millis(50),
+            None,
+        ));
+        tokio::time::sleep(Duration::from_millis(120)).await;
+        failing_handle.abort();
+        assert_eq!(
+            failing_driver.flushes.load(Ordering::SeqCst),
+            0,
+            "a failed ingest poll means GitHub is unreachable — a flush would be pointless, so the retry is tied strictly to the success (recovery) event; saw {} tick(s)",
+            failing_driver.ticks.load(Ordering::SeqCst)
+        );
     }
 
     #[tokio::test(start_paused = true)]
@@ -446,33 +466,8 @@ mod poll_loop_tests {
     }
 
     #[tokio::test(start_paused = true)]
-    async fn drain_loop_fires_drain_pending_on_each_tick() {
-        use crate::bridge::run_drain_loop;
-        use tempfile::TempDir;
-        let dir = TempDir::new().expect("tmp");
-        let (tx, _rx) = tokio::sync::broadcast::channel(16);
-        let hub = Arc::new(crate::hub::Hub::new(
-            dir.path().to_path_buf(),
-            "test".to_string(),
-            tx,
-        ));
-        let driver = Arc::new(CountingDrain::new());
-        let driver_dyn: Arc<dyn DrainTicker> = driver.clone();
-        let handle = tokio::spawn(run_drain_loop(driver_dyn, hub, Duration::from_millis(50)));
-        tokio::time::sleep(Duration::from_millis(25)).await;
-        assert_eq!(driver.ticks.load(Ordering::SeqCst), 0);
-        tokio::time::sleep(Duration::from_millis(250)).await;
-        let count = driver.ticks.load(Ordering::SeqCst);
-        assert_eq!(
-            count, 5,
-            "exactly 5 drain ticks in a 275ms window at 50ms interval under the virtual clock, saw {count}"
-        );
-        handle.abort();
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn drain_loop_heartbeats_sync_status_each_tick() {
-        use crate::bridge::run_drain_loop;
+    async fn sync_status_heartbeat_broadcasts_syncpoll_each_tick() {
+        use crate::bridge::run_sync_status_heartbeat;
         use tempfile::TempDir;
         let dir = TempDir::new().expect("tmp");
         let (tx, mut rx) = tokio::sync::broadcast::channel(16);
@@ -481,9 +476,12 @@ mod poll_loop_tests {
             "test".to_string(),
             tx,
         ));
-        let driver = Arc::new(CountingDrain::draining_n_per_tick(1));
-        let driver_dyn: Arc<dyn DrainTicker> = driver.clone();
-        let handle = tokio::spawn(run_drain_loop(driver_dyn, hub, Duration::from_millis(50)));
+        let source: Arc<dyn SyncStatusSource> = Arc::new(StubStatusSource);
+        let handle = tokio::spawn(run_sync_status_heartbeat(
+            source,
+            hub,
+            Duration::from_millis(50),
+        ));
         let received = tokio::time::timeout(Duration::from_millis(500), rx.recv())
             .await
             .expect("a sync-status heartbeat must broadcast within 500ms of the first tick")
@@ -500,8 +498,9 @@ mod poll_loop_tests {
     }
 
     #[tokio::test(start_paused = true)]
-    async fn drain_loop_heartbeats_even_when_drain_returns_zero() {
-        use crate::bridge::run_drain_loop;
+    async fn sync_status_heartbeat_fires_every_tick_so_the_frontend_stale_watch_advances_without_a_client_poll()
+     {
+        use crate::bridge::run_sync_status_heartbeat;
         use tempfile::TempDir;
         let dir = TempDir::new().expect("tmp");
         let (tx, mut rx) = tokio::sync::broadcast::channel(16);
@@ -510,20 +509,30 @@ mod poll_loop_tests {
             "test".to_string(),
             tx,
         ));
-        let driver = Arc::new(CountingDrain::new());
-        let driver_dyn: Arc<dyn DrainTicker> = driver.clone();
-        let handle = tokio::spawn(run_drain_loop(driver_dyn, hub, Duration::from_millis(50)));
-        let received = tokio::time::timeout(Duration::from_millis(500), rx.recv())
+        let source: Arc<dyn SyncStatusSource> = Arc::new(StubStatusSource);
+        let handle = tokio::spawn(run_sync_status_heartbeat(
+            source,
+            hub,
+            Duration::from_millis(50),
+        ));
+        let first = tokio::time::timeout(Duration::from_millis(500), rx.recv())
             .await
-            .expect("heartbeat must fire on a zero-drain tick — the frontend stale-watch depends on it with no frontend poll")
+            .expect("first heartbeat must fire within 500ms")
+            .expect("broadcast channel still open");
+        let second = tokio::time::timeout(Duration::from_millis(500), rx.recv())
+            .await
+            .expect("a second heartbeat must fire on the next tick with no client poll")
             .expect("broadcast channel still open");
         handle.abort();
         assert!(
             matches!(
-                received.state_delta,
+                first.state_delta,
+                Some(message::StateDeltaPayload::SyncPoll { .. })
+            ) && matches!(
+                second.state_delta,
                 Some(message::StateDeltaPayload::SyncPoll { .. })
             ),
-            "zero-drain ticks still heartbeat sync_poll; got: {received:?}"
+            "the heartbeat is periodic — every tick emits a sync_poll regardless of drain activity (there is no drain now), so a quiescent system still advances the wall-clock stale-watch; got first={first:?} second={second:?}"
         );
     }
 }

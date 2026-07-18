@@ -93,10 +93,10 @@ pub async fn run_server(
         store.dispatcher(),
     );
     if let Some(refresh) = orchestrator.as_ref() {
-        tokio::spawn(crate::bridge::run_drain_loop(
+        tokio::spawn(crate::bridge::run_sync_status_heartbeat(
             refresh.clone(),
             hub.clone(),
-            crate::bridge::drain_interval_from_env(),
+            crate::bridge::sync_status_heartbeat_interval_from_env(),
         ));
         startup_tasks::spawn_background_ingest(
             refresh.clone(),
