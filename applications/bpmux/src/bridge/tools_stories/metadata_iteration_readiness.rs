@@ -98,10 +98,6 @@ pub(crate) async fn handle_close_pre_pickup_review(
             product_management::story::events::StoryEventKind::TagAdded { label },
         ))
         .map_err(|e| format!("#{iteration_id} review-close enqueue failed: {e}"))?;
-    driver
-        .drain_pass()
-        .await
-        .map_err(|e| format!("#{iteration_id} review-close push failed: {e}"))?;
     let mut review_closers = iteration.review_closers.clone();
     if !review_closers.contains(&role) {
         review_closers.push(role.clone());
@@ -147,10 +143,6 @@ pub(crate) async fn handle_dev_ok_iteration(
             product_management::story::events::StoryEventKind::TagAdded { label },
         ))
         .map_err(|e| format!("#{iteration_id} dev-OK enqueue failed: {e}"))?;
-    driver
-        .drain_pass()
-        .await
-        .map_err(|e| format!("#{iteration_id} dev-OK push failed: {e}"))?;
     let mut dev_ok_by = iteration.dev_ok_by.clone();
     if !dev_ok_by.contains(&role) {
         dev_ok_by.push(role.clone());

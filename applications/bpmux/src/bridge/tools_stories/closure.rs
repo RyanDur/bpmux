@@ -84,9 +84,6 @@ pub(crate) async fn handle_close_story(
             },
         ))
         .map_err(|e| format!("#{id} close enqueue failed: {e}"))?;
-        r.drain_pass()
-            .await
-            .map_err(|e| format!("#{id} close push failed: {e}"))?;
         return Ok(format!("#{id} closed: {reason}"));
     }
     Err("close_story requires refresh — tracker fallback retired in slice 5n".into())

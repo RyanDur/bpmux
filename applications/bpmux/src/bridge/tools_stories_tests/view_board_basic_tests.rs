@@ -326,10 +326,15 @@ async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
         "#1570: disposition=retire transitions state to Retired"
     );
 
+    assert!(
+        adapter.pushed_events().is_empty(),
+        "close_story returns optimistically — the GH push is deferred to the async GithubDrain reconciler: {:?}",
+        adapter.pushed_events()
+    );
     let drained = orchestrator.drain_pass().await.unwrap();
     assert_eq!(
-        drained, 0,
-        "#1142: handler drains internally; nothing left to drain"
+        drained, 3,
+        "the deferred TagAdded 'retired' + StateTransitioned + StoryClosed all reach the adapter on the reconciler's drain pass"
     );
     let pushed = adapter.pushed_events();
     assert_eq!(
@@ -426,6 +431,12 @@ async fn close_story_accept_disposition_transitions_state_to_accepted() {
         "disposition=accept concludes the story in the workflow — closing IS transitioning to a terminal state, never a bare GH-side close"
     );
 
+    assert!(
+        adapter.pushed_events().is_empty(),
+        "close_story returns optimistically — nothing is pushed before the reconciler drains: {:?}",
+        adapter.pushed_events()
+    );
+    orchestrator.drain_pass().await.unwrap();
     let pushed = adapter.pushed_events();
     assert!(
         pushed.iter().any(|e| matches!(

@@ -70,10 +70,6 @@ pub(crate) async fn handle_edit_story(
                 product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
             ))
             .map_err(|e| format!("#{id} acceptor enqueue failed: {e}"))?;
-        driver
-            .drain_pass()
-            .await
-            .map_err(|e| format!("#{id} drain after acceptor re-set failed: {e}"))?;
         updated.push("acceptor");
     }
     if let Some(iteration) = iteration
