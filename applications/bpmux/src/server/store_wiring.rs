@@ -8,7 +8,7 @@ use crate::store::{
     AppState, BoardPlacementPersister, BoardPlacementReconciler, CiBroadcast, CiListeners,
     CiPollFetch, EvidencePersister, LocalHistoryPersister, OwnerParkListener, ReactionsBroadcast,
     ReactionsListeners, ReactionsPersister, RosterBroadcast, RosterListeners, RoutingPersister,
-    SharedHistoryPersister, Store, StoreParts, app_reduce, ci,
+    SharedHistoryPersister, Store, StoreParts, app_reduce,
 };
 use crate::sync::{self, SyncOrchestrator};
 use crate::transport::rest::broadcast_listeners::{
@@ -153,7 +153,7 @@ fn assemble(
         reactions_listeners.clone(),
     )));
     app_store.add_listener(Arc::new(CiBroadcast::new(ci_listeners.clone())));
-    let ci_poll = Arc::new(ci::CiPoll::new(
+    let ci_poll = Arc::new(crate::ci::slice::CiPoll::new(
         tracker.clone(),
         hub.clone(),
         parent_ct,
@@ -166,11 +166,8 @@ fn assemble(
         hub,
         rate_limit_observer,
         app_store,
-        #[cfg(test)]
         ci_listeners,
-        #[cfg(test)]
         roster_listeners,
-        #[cfg(test)]
         reactions_listeners,
     }
 }

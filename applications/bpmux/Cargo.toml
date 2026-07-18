@@ -30,6 +30,7 @@ self_update = { path = "../../components/self_update" }
 source_codec = { path = "../../components/source_codec" }
 source_sync = { path = "../../components/source_sync" }
 storage = { path = "../../components/storage" }
+store = { path = "../../components/store" }
 unfurl = { path = "../../components/unfurl" }
 user_routing = { path = "../../components/user_routing" }
 view = { path = "../../components/view" }
@@ -63,6 +64,7 @@ strip-ansi-escapes = "0.2"
 tempfile = { workspace = true }
 
 [dev-dependencies]
+store = { path = "../../components/store", features = ["test-support"] }
 reqwest = { workspace = true, features = ["json"] }
 tokio = { workspace = true, features = ["full", "test-util"] }
 tokio-tungstenite = "0.26"

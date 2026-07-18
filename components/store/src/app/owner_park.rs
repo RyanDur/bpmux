@@ -1,4 +1,4 @@
-use crate::store::{Presence, RosterMember};
+use crate::{Presence, RosterMember};
 use product_management::iteration::Iteration;
 use product_management::scheduling::{ProjectedState, projected_state};
 use product_management::story::{Acceptor, Story, Work};
@@ -56,12 +56,12 @@ pub fn owner_park_presence(
 
 pub struct OwnerParkListener;
 
-impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for OwnerParkListener {
+impl kernel::Listener<crate::AppState, crate::AppAction> for OwnerParkListener {
     fn on_action(
         &self,
-        reaction: kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
+        reaction: kernel::Reaction<crate::AppState, crate::AppAction>,
     ) -> kernel::ListenerFuture {
-        let crate::store::AppAction::Story(story_action) = &reaction.action else {
+        let crate::AppAction::Story(story_action) = &reaction.action else {
             return Box::pin(async {});
         };
         let actor_if_delivered =
@@ -88,13 +88,13 @@ impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for Owner
         };
         let stories: Vec<Story> = reaction.current.stories.values().cloned().collect();
         let iterations = product_management::iteration::all(&reaction.current.iterations);
-        let roster = crate::store::roster::members(&reaction.current.roster);
+        let roster = crate::roster::members(&reaction.current.roster);
         let changes = owner_park_presence(&stories, &iterations, &roster, delivering.as_ref());
         let dispatch = std::sync::Arc::clone(&reaction.dispatch);
         Box::pin(async move {
             for (routing_id, presence) in changes {
-                dispatch(crate::store::AppAction::Roster(
-                    crate::store::RosterAction::RosterPresenceChanged {
+                dispatch(crate::AppAction::Roster(
+                    crate::RosterAction::RosterPresenceChanged {
                         routing_id,
                         presence,
                     },

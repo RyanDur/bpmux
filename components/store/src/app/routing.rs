@@ -12,16 +12,15 @@ impl RoutingPersister {
     }
 }
 
-impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for RoutingPersister {
+impl kernel::Listener<crate::AppState, crate::AppAction> for RoutingPersister {
     fn on_action(
         &self,
-        reaction: kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
+        reaction: kernel::Reaction<crate::AppState, crate::AppAction>,
     ) -> kernel::ListenerFuture {
         if Arc::ptr_eq(&reaction.previous.routing, &reaction.current.routing) {
             return Box::pin(async {});
         }
-        let plan =
-            crate::store::routing::reconcile(&reaction.previous.routing, &reaction.current.routing);
+        let plan = crate::routing::reconcile(&reaction.previous.routing, &reaction.current.routing);
         let repo = self.repo.clone();
         Box::pin(async move {
             for (id, name, role) in &plan.upserts {

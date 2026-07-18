@@ -7,9 +7,9 @@ use tempfile::TempDir;
 use tokio::sync::broadcast;
 
 use super::history::{LocalHistoryPersister, SharedHistoryPersister};
-use crate::hub::Hub;
-use crate::store::{AppAction, AppState, app_reduce};
+use crate::{AppAction, AppState, app_reduce};
 use board::history_persistence as local_persistence;
+use hub::Hub;
 use kernel::{Dispatch, Listener, Reaction};
 use message::Message;
 use product_management::history_persistence as shared_persistence;

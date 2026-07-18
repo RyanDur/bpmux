@@ -1,8 +1,8 @@
-use crate::store::ci::CiAction;
-use crate::store::commitments::CommitmentsAction;
-use crate::store::routing::RoutingAction;
-use crate::store::sync::SyncAction;
-use crate::store::sync_health::SyncHealthAction;
+use crate::ci::CiAction;
+use crate::commitments::CommitmentsAction;
+use crate::routing::RoutingAction;
+use crate::sync::SyncAction;
+use crate::sync_health::SyncHealthAction;
 
 use super::AppAction;
 

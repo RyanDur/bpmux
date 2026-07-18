@@ -221,7 +221,7 @@ fn a_cold_start_hydrates_the_desk_check_placement_from_the_file() {
     )
     .unwrap();
     board::persistence::save(&dir, &placed).unwrap();
-    let state = crate::store::AppState::with_board(board::persistence::load(&dir));
+    let state = crate::AppState::with_board(board::persistence::load(&dir));
     assert_eq!(
         board::placement_of(&state.board, StoryId::new(9)),
         Some(Stage::DeskCheck.id()),

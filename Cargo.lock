@@ -327,6 +327,7 @@ dependencies = [
  "source_codec",
  "source_sync",
  "storage",
+ "store",
  "strip-ansi-escapes",
  "tempfile",
  "thiserror 2.0.18",
@@ -2847,6 +2848,32 @@ dependencies = [
  "tokio",
  "user_routing",
  "uuid",
+]
+
+[[package]]
+name = "store"
+version = "0.1.0"
+dependencies = [
+ "board",
+ "chrono",
+ "ci",
+ "diag",
+ "hub",
+ "kernel",
+ "message",
+ "owner_session",
+ "product_management",
+ "rate_limit",
+ "reactions",
+ "roster",
+ "serde_json",
+ "source_codec",
+ "source_sync",
+ "storage",
+ "tempfile",
+ "tokio",
+ "user_routing",
+ "workflow",
 ]
 
 [[package]]

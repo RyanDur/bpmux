@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::owner_park::{Delivering, owner_park_presence};
-use crate::store::{Presence, RosterMember};
+use crate::{Presence, RosterMember};
 use chrono::{TimeZone, Utc};
 use product_management::iteration::{Iteration, IterationId};
 use product_management::story::{Acceptor, Story, StoryId, Work};

@@ -1,0 +1,37 @@
+[package]
+name = "store"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The one redux-shaped store: AppState composition, Dispatch/Select, over kernel"
+
+[dependencies]
+kernel = { path = "../kernel" }
+board = { path = "../board" }
+ci = { path = "../ci" }
+reactions = { path = "../reactions" }
+roster = { path = "../roster" }
+source_sync = { path = "../source_sync" }
+user_routing = { path = "../user_routing" }
+rate_limit = { path = "../rate_limit" }
+hub = { path = "../hub" }
+message = { path = "../message" }
+product_management = { path = "../product_management" }
+owner_session = { path = "../owner_session" }
+diag = { path = "../diag" }
+serde_json = { workspace = true }
+tokio = { workspace = true, optional = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+chrono = { workspace = true }
+source_codec = { path = "../source_codec" }
+storage = { path = "../storage" }
+workflow = { path = "../workflow" }
+
+[features]
+test-support = ["dep:tokio"]
+
+[lints]
+workspace = true

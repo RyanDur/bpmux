@@ -1,29 +1,6 @@
-use std::sync::Weak;
-
-use super::AppAction;
-use super::app::AppState;
-
-#[derive(Clone)]
-pub struct Select {
-    app: Weak<kernel::Store<AppState, AppAction>>,
-}
-
-impl Select {
-    pub fn new(app: Weak<kernel::Store<AppState, AppAction>>) -> Self {
-        Self { app }
-    }
-
-    pub fn select<T: Default>(&self, selector: impl FnOnce(&AppState) -> T) -> T {
-        match self.app.upgrade() {
-            Some(store) => store.select(selector),
-            None => T::default(),
-        }
-    }
-}
-
 #[cfg(test)]
 pub(crate) struct SeededStore {
-    store: std::sync::Arc<kernel::Store<AppState, AppAction>>,
+    store: std::sync::Arc<kernel::Store<store::AppState, store::AppAction>>,
 }
 
 #[cfg(test)]
@@ -34,20 +11,20 @@ impl SeededStore {
         epics: Vec<product_management::epic::Epic>,
     ) -> Self {
         let handle = Self {
-            store: kernel::Store::new(AppState::default(), Box::new(super::app::app_reduce)),
+            store: kernel::Store::new(store::AppState::default(), Box::new(store::app_reduce)),
         };
         if !outcomes.is_empty() {
-            handle.dispatch(AppAction::Outcome(
+            handle.dispatch(store::AppAction::Outcome(
                 product_management::outcome::OutcomeAction::Upserted(outcomes),
             ));
         }
         if !iterations.is_empty() {
-            handle.dispatch(AppAction::Iteration(
+            handle.dispatch(store::AppAction::Iteration(
                 product_management::iteration::IterationAction::Upserted(iterations),
             ));
         }
         if !epics.is_empty() {
-            handle.dispatch(AppAction::Epic(
+            handle.dispatch(store::AppAction::Epic(
                 product_management::epic::EpicAction::Upserted(epics),
             ));
         }
@@ -59,8 +36,8 @@ impl SeededStore {
         initial: Vec<source_sync::QueuedWrite>,
     ) -> Self {
         let store = kernel::Store::new(
-            AppState::default().with_outbox(initial),
-            Box::new(super::app::app_reduce),
+            store::AppState::default().with_outbox(initial),
+            Box::new(store::app_reduce),
         );
         store.add_listener(std::sync::Arc::new(crate::sync::OutboxPersister::new(sink)));
         Self { store }
@@ -71,8 +48,8 @@ impl SeededStore {
             .select(|state| state.sync.queue.iter().cloned().collect())
     }
 
-    pub(crate) fn select(&self) -> Select {
-        Select::new(std::sync::Arc::downgrade(&self.store))
+    pub(crate) fn select(&self) -> store::Select {
+        store::Select::new(std::sync::Arc::downgrade(&self.store))
     }
 
     pub(crate) fn build_orch<A: crate::sync::SourceAdapter + 'static>(
@@ -88,16 +65,16 @@ impl SeededStore {
         ))
     }
 
-    pub(crate) fn dispatcher(&self) -> crate::store::Dispatch {
+    pub(crate) fn dispatcher(&self) -> store::Dispatch {
         let weak = std::sync::Arc::downgrade(&self.store);
-        crate::store::Dispatch::new(std::sync::Arc::new(move |action| {
+        store::Dispatch::new(std::sync::Arc::new(move |action| {
             if let Some(store) = weak.upgrade() {
                 store.dispatch(action);
             }
         }))
     }
 
-    pub(crate) fn dispatch(&self, action: AppAction) {
+    pub(crate) fn dispatch(&self, action: store::AppAction) {
         self.store.dispatch(action);
     }
 }
@@ -109,7 +86,7 @@ pub(crate) fn build_seeded_orch<A: crate::sync::SourceAdapter + 'static>(
     outcomes: Vec<product_management::outcome::Outcome>,
     iterations: Vec<product_management::iteration::Iteration>,
     epics: Vec<product_management::epic::Epic>,
-) -> (std::sync::Arc<crate::sync::SyncOrchestrator>, Select) {
+) -> (std::sync::Arc<crate::sync::SyncOrchestrator>, store::Select) {
     let handle = SeededStore::new(outcomes, iterations, epics);
     let orch = handle.build_orch(adapter, codec);
     let select = handle.select();

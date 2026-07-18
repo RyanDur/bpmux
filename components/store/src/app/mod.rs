@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
-use crate::store::board::history::PlacementHistory;
-use crate::store::board::{BoardAction, BoardPlacements};
-use crate::store::ci::{CiAction, CiState};
-use crate::store::commitments::{CommitmentsAction, CommitmentsState};
-use crate::store::reactions::{ReactionsAction, ReactionsState};
-use crate::store::roster::{RosterAction, RosterState};
-use crate::store::routing::{RoutingAction, RoutingState};
-use crate::store::sync::{SyncAction, SyncState};
-use crate::store::sync_health::{SyncHealthAction, SyncHealthState};
+use crate::board::history::PlacementHistory;
+use crate::board::{BoardAction, BoardPlacements};
+use crate::ci::{CiAction, CiState};
+use crate::commitments::{CommitmentsAction, CommitmentsState};
+use crate::reactions::{ReactionsAction, ReactionsState};
+use crate::roster::{RosterAction, RosterState};
+use crate::routing::{RoutingAction, RoutingState};
+use crate::sync::{SyncAction, SyncState};
+use crate::sync_health::{SyncHealthAction, SyncHealthState};
 use owner_session::{OwnerSessionAction, OwnerSessionState};
 use product_management::epic::{EpicAction, EpicState};
 use product_management::evidence::{EvidenceAction, EvidenceState};
@@ -45,8 +45,6 @@ mod evidence_tests;
 mod history_tests;
 #[cfg(test)]
 mod owner_park_tests;
-#[cfg(test)]
-mod pm_slice_tests;
 #[cfg(test)]
 mod reactions_tests;
 #[cfg(test)]

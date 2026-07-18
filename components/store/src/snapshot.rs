@@ -31,11 +31,11 @@ impl Store {
             head_sha: s.head_sha,
             display_title: s.display_title,
             last_successful_poll_at: None,
-            url: Some(crate::ci::github_actions_url()),
+            url: Some(::ci::github_actions_url()),
         });
         let selector = self.selector();
         let roster = roster::members_wire(&self.roster_members(), |routing_id| {
-            selector.select(|state| crate::store::routing::role_for(&state.routing, routing_id))
+            selector.select(|state| crate::routing::role_for(&state.routing, routing_id))
         });
         StateSnapshotPayload {
             reactions,

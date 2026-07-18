@@ -6,8 +6,8 @@ use tempfile::TempDir;
 use tokio::sync::broadcast;
 
 use super::evidence::EvidencePersister;
-use crate::hub::Hub;
-use crate::store::{AppAction, AppState, Presence, RosterAction, app_reduce};
+use crate::{AppAction, AppState, Presence, RosterAction, app_reduce};
+use hub::Hub;
 use kernel::{Dispatch, Listener, Reaction};
 use message::Message;
 use product_management::evidence::{

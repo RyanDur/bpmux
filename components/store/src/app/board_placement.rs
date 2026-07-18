@@ -20,14 +20,12 @@ pub(super) fn unplace_departed(stories: &Stories, board: &BoardPlacements) -> Ve
 
 pub struct BoardPlacementReconciler;
 
-impl kernel::Listener<crate::store::AppState, crate::store::AppAction>
-    for BoardPlacementReconciler
-{
+impl kernel::Listener<crate::AppState, crate::AppAction> for BoardPlacementReconciler {
     fn on_action(
         &self,
-        reaction: kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
+        reaction: kernel::Reaction<crate::AppState, crate::AppAction>,
     ) -> kernel::ListenerFuture {
-        let crate::store::AppAction::Story(_) = &reaction.action else {
+        let crate::AppAction::Story(_) = &reaction.action else {
             return Box::pin(async {});
         };
         let changes = unplace_departed(&reaction.current.stories, &reaction.current.board);
@@ -37,7 +35,7 @@ impl kernel::Listener<crate::store::AppState, crate::store::AppAction>
         let dispatch = std::sync::Arc::clone(&reaction.dispatch);
         Box::pin(async move {
             for action in changes {
-                dispatch(crate::store::AppAction::Board(action));
+                dispatch(crate::AppAction::Board(action));
             }
         })
     }
@@ -48,19 +46,19 @@ impl kernel::Listener<crate::store::AppState, crate::store::AppAction>
 }
 
 pub struct BoardPlacementPersister {
-    hub: Arc<crate::hub::Hub>,
+    hub: Arc<hub::Hub>,
 }
 
 impl BoardPlacementPersister {
-    pub fn new(hub: Arc<crate::hub::Hub>) -> Self {
+    pub fn new(hub: Arc<hub::Hub>) -> Self {
         Self { hub }
     }
 }
 
-impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for BoardPlacementPersister {
+impl kernel::Listener<crate::AppState, crate::AppAction> for BoardPlacementPersister {
     fn on_action(
         &self,
-        reaction: kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
+        reaction: kernel::Reaction<crate::AppState, crate::AppAction>,
     ) -> kernel::ListenerFuture {
         if Arc::ptr_eq(&reaction.previous.board, &reaction.current.board) {
             return Box::pin(async {});

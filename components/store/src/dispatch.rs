@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::app::{AppAction, AppState, validate_and_log};
-use crate::store::{PollKind, Store};
+use crate::{PollKind, Store};
 
 #[derive(Clone)]
 pub struct Dispatch {
@@ -13,7 +13,7 @@ impl Dispatch {
         Self { dispatch }
     }
 
-    pub(crate) fn for_app_store(app_store: &Arc<kernel::Store<AppState, AppAction>>) -> Self {
+    pub fn for_app_store(app_store: &Arc<kernel::Store<AppState, AppAction>>) -> Self {
         let weak = Arc::downgrade(app_store);
         Self::new(Arc::new(move |action: AppAction| {
             if let Some(store) = weak.upgrade() {
@@ -27,8 +27,8 @@ impl Dispatch {
         (self.dispatch)(action);
     }
 
-    #[cfg(test)]
-    pub(crate) fn recording() -> (Self, tokio::sync::mpsc::UnboundedReceiver<AppAction>) {
+    #[cfg(feature = "test-support")]
+    pub fn recording() -> (Self, tokio::sync::mpsc::UnboundedReceiver<AppAction>) {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<AppAction>();
         (
             Self::new(Arc::new(move |action| {

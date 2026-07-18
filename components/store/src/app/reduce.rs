@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use crate::store::board;
-use crate::store::ci;
-use crate::store::reactions;
-use crate::store::roster;
+use crate::board;
+use crate::ci;
+use crate::reactions;
+use crate::roster;
 use product_management::epic;
 use product_management::evidence;
 use product_management::iteration;
@@ -42,7 +42,7 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
             },
             None => state.clone(),
         },
-        AppAction::Sync(action) => match crate::store::sync::reduce(&state.sync, action) {
+        AppAction::Sync(action) => match crate::sync::reduce(&state.sync, action) {
             Some(sync) => AppState {
                 sync: Arc::new(sync),
                 ..state.clone()
@@ -50,7 +50,7 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
             None => state.clone(),
         },
         AppAction::SyncHealth(action) => {
-            match crate::store::sync_health::reduce(&state.sync_health, action) {
+            match crate::sync_health::reduce(&state.sync_health, action) {
                 Some(sync_health) => AppState {
                     sync_health: Arc::new(sync_health),
                     ..state.clone()
@@ -59,7 +59,7 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
             }
         }
         AppAction::Commitments(action) => {
-            match crate::store::commitments::reduce(&state.commitments, action) {
+            match crate::commitments::reduce(&state.commitments, action) {
                 Some(commitments) => AppState {
                     commitments: Arc::new(commitments),
                     ..state.clone()
@@ -67,7 +67,7 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
                 None => state.clone(),
             }
         }
-        AppAction::Routing(action) => match crate::store::routing::reduce(&state.routing, action) {
+        AppAction::Routing(action) => match crate::routing::reduce(&state.routing, action) {
             Some(routing) => AppState {
                 routing: Arc::new(routing),
                 ..state.clone()

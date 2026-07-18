@@ -1,19 +1,19 @@
 use std::sync::Arc;
 
 pub struct SharedHistoryPersister {
-    hub: Arc<crate::hub::Hub>,
+    hub: Arc<hub::Hub>,
 }
 
 impl SharedHistoryPersister {
-    pub fn new(hub: Arc<crate::hub::Hub>) -> Self {
+    pub fn new(hub: Arc<hub::Hub>) -> Self {
         Self { hub }
     }
 }
 
-impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for SharedHistoryPersister {
+impl kernel::Listener<crate::AppState, crate::AppAction> for SharedHistoryPersister {
     fn on_action(
         &self,
-        reaction: kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
+        reaction: kernel::Reaction<crate::AppState, crate::AppAction>,
     ) -> kernel::ListenerFuture {
         if Arc::ptr_eq(
             &reaction.previous.shared_history,
@@ -36,19 +36,19 @@ impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for Share
 }
 
 pub struct LocalHistoryPersister {
-    hub: Arc<crate::hub::Hub>,
+    hub: Arc<hub::Hub>,
 }
 
 impl LocalHistoryPersister {
-    pub fn new(hub: Arc<crate::hub::Hub>) -> Self {
+    pub fn new(hub: Arc<hub::Hub>) -> Self {
         Self { hub }
     }
 }
 
-impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for LocalHistoryPersister {
+impl kernel::Listener<crate::AppState, crate::AppAction> for LocalHistoryPersister {
     fn on_action(
         &self,
-        reaction: kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
+        reaction: kernel::Reaction<crate::AppState, crate::AppAction>,
     ) -> kernel::ListenerFuture {
         if Arc::ptr_eq(
             &reaction.previous.local_history,

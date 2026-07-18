@@ -3,9 +3,9 @@ use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 
 use crate::hub::Hub;
-use crate::store::AppAction;
 use kernel::Dispatch;
 use rate_limit::RateLimitObserver;
+use store::AppAction;
 
 pub use ::ci::slice::{
     BoxedFuture, CiAction, CiBroadcastListener, CiPollFetch, CiSnapshot, CiState, hydrated,

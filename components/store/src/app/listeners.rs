@@ -1,9 +1,9 @@
 use std::sync::{Arc, Mutex};
 
 use super::{AppAction, AppState};
-use crate::store::ci::{self, CiBroadcastListener};
-use crate::store::reactions::{self, ReactionsAction, ReactionsBroadcastListener};
-use crate::store::roster::{self, RosterBroadcastListener};
+use crate::ci::{self, CiBroadcastListener};
+use crate::reactions::{self, ReactionsAction, ReactionsBroadcastListener};
+use crate::roster::{self, RosterBroadcastListener};
 use kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
 
 pub type RosterListeners = Arc<Mutex<Vec<Arc<dyn RosterBroadcastListener>>>>;

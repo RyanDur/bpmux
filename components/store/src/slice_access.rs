@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::{AggregatedReaction, CiSnapshot, RosterMember, Select, Store, ci, reactions, roster};
-#[cfg(test)]
+#[cfg(feature = "test-support")]
 use super::{CiBroadcastListener, ReactionsBroadcastListener, RosterBroadcastListener};
 
 impl Store {
@@ -13,7 +13,7 @@ impl Store {
         self.app_store.select(|state| ci::snapshot(&state.ci))
     }
 
-    #[cfg(test)]
+    #[cfg(feature = "test-support")]
     pub fn add_ci_listener(&self, listener: Arc<dyn CiBroadcastListener>) {
         self.ci_listeners
             .lock()
@@ -48,7 +48,7 @@ impl Store {
         })
     }
 
-    #[cfg(test)]
+    #[cfg(feature = "test-support")]
     pub fn add_reactions_listener(&self, listener: Arc<dyn ReactionsBroadcastListener>) {
         self.reactions_listeners
             .lock()
@@ -56,7 +56,7 @@ impl Store {
             .push(listener);
     }
 
-    #[cfg(test)]
+    #[cfg(feature = "test-support")]
     pub fn add_roster_listener(&self, listener: Arc<dyn RosterBroadcastListener>) {
         self.roster_listeners
             .lock()

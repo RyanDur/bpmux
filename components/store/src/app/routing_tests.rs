@@ -5,8 +5,8 @@ use std::sync::Arc;
 use tempfile::TempDir;
 
 use super::routing::RoutingPersister;
-use crate::store::routing::{RoutingAction, from_users};
-use crate::store::{AppAction, AppState, app_reduce};
+use crate::routing::{RoutingAction, from_users};
+use crate::{AppAction, AppState, app_reduce};
 use kernel::{Dispatch, Listener, Reaction};
 use storage::SqliteStorage;
 use user_routing::UserRepo;
@@ -72,12 +72,12 @@ async fn a_register_then_cursor_advance_round_trips_through_the_users_table_into
 
     let hydrated = from_users(&repo.load_users().unwrap());
     assert_eq!(
-        crate::store::routing::resolve(&hydrated, "dev:claude-code"),
+        crate::routing::resolve(&hydrated, "dev:claude-code"),
         vec!["sess-dev".to_string()],
         "the write-behind persisted the registration; a fresh hydrate resolves it identically"
     );
     assert_eq!(
-        crate::store::routing::cursor(&hydrated, "sess-dev")
+        crate::routing::cursor(&hydrated, "sess-dev")
             .as_deref()
             .map(instant),
         Some(instant("2026-06-11T20:00:05Z")),
@@ -148,12 +148,12 @@ async fn a_rename_persists_the_new_display_so_only_it_resolves_on_reload() {
 
     let hydrated = from_users(&repo.load_users().unwrap());
     assert_eq!(
-        crate::store::routing::resolve(&hydrated, "dev-renamed"),
+        crate::routing::resolve(&hydrated, "dev-renamed"),
         vec!["sess-1".to_string()],
         "the rename persisted — the new display resolves to the fixed id across a reload"
     );
     assert!(
-        crate::store::routing::resolve(&hydrated, "dev").is_empty(),
+        crate::routing::resolve(&hydrated, "dev").is_empty(),
         "the old display no longer resolves — the durable row moved with the rename"
     );
 }

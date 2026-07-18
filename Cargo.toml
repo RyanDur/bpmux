@@ -26,6 +26,7 @@ members = [
     "components/source_codec",
     "components/source_sync",
     "components/storage",
+    "components/store",
     "components/unfurl",
     "components/user_routing",
     "components/view",

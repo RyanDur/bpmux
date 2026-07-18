@@ -5,11 +5,10 @@ use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::sync::broadcast;
 
-use super::app::OwnerParkListener;
-use super::app::{self, AppAction, AppState, RosterBroadcast};
 use super::{
-    AggregatedReaction, CiAction, Presence, ReactionsBroadcastListener, RosterBroadcastListener,
-    RosterMember,
+    AggregatedReaction, AppAction, AppState, BoardPlacementPersister, BoardPlacementReconciler,
+    CiAction, CiBroadcast, CiListeners, OwnerParkListener, Presence, ReactionsBroadcastListener,
+    RosterBroadcast, RosterBroadcastListener, RosterListeners, RosterMember, app_reduce,
 };
 use crate::ci::CiState;
 use crate::hub::Hub;
@@ -22,9 +21,9 @@ use message::{Message, MessageType, StateDeltaPayload};
 use product_management::story::slice::StoryAction;
 
 fn owner_park_kernel(hub: Arc<Hub>) -> Arc<kernel::Store<AppState, AppAction>> {
-    let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));
+    let store = kernel::Store::new(AppState::default(), Box::new(app_reduce));
     let select = crate::store::Select::new(Arc::downgrade(&store));
-    let roster_listeners: app::RosterListeners =
+    let roster_listeners: RosterListeners =
         Arc::new(std::sync::Mutex::new(vec![
             Arc::new(RosterHubBroadcaster::new(hub, select)) as Arc<dyn RosterBroadcastListener>,
         ]));
@@ -88,12 +87,12 @@ impl CiBroadcastListener for RecordingCiListener {
 
 #[tokio::test]
 async fn ci_broadcast_fires_once_when_an_updated_lands_a_new_snapshot_key() {
-    let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));
+    let store = kernel::Store::new(AppState::default(), Box::new(app_reduce));
     let recorder = Arc::new(RecordingCiListener::default());
-    let listeners: app::CiListeners = Arc::new(std::sync::Mutex::new(vec![
+    let listeners: CiListeners = Arc::new(std::sync::Mutex::new(vec![
         recorder.clone() as Arc<dyn CiBroadcastListener>
     ]));
-    store.add_listener(Arc::new(app::CiBroadcast::new(listeners)));
+    store.add_listener(Arc::new(CiBroadcast::new(listeners)));
 
     store.dispatch(AppAction::Ci(CiAction::Updated(ci_snap(42, "success"))));
 
@@ -113,10 +112,10 @@ async fn ci_broadcast_ignores_a_ci_slice_change_that_keeps_the_snapshot_key() {
     use kernel::Listener;
 
     let recorder = Arc::new(RecordingCiListener::default());
-    let listeners: app::CiListeners = Arc::new(std::sync::Mutex::new(vec![
+    let listeners: CiListeners = Arc::new(std::sync::Mutex::new(vec![
         recorder.clone() as Arc<dyn CiBroadcastListener>
     ]));
-    let broadcast = app::CiBroadcast::new(listeners);
+    let broadcast = CiBroadcast::new(listeners);
 
     let seeded = crate::store::ci::reduce(
         &crate::store::ci::CiState::default(),
@@ -153,12 +152,12 @@ async fn ci_broadcast_ignores_a_ci_slice_change_that_keeps_the_snapshot_key() {
 
 #[tokio::test]
 async fn polling_liveness_facts_never_refire_the_ci_fan_out() {
-    let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));
+    let store = kernel::Store::new(AppState::default(), Box::new(app_reduce));
     let recorder = Arc::new(RecordingCiListener::default());
-    let listeners: app::CiListeners = Arc::new(std::sync::Mutex::new(vec![
+    let listeners: CiListeners = Arc::new(std::sync::Mutex::new(vec![
         recorder.clone() as Arc<dyn CiBroadcastListener>
     ]));
-    store.add_listener(Arc::new(app::CiBroadcast::new(listeners)));
+    store.add_listener(Arc::new(CiBroadcast::new(listeners)));
 
     store.dispatch(AppAction::Ci(CiAction::Updated(ci_snap(42, "success"))));
     crate::store::test_support::eventually("the seeded Updated reaches the fan-out once", || {
@@ -516,8 +515,8 @@ async fn owner_park_worker_reentrant_dispatch_lands_the_presence_change_in_durab
 
 #[tokio::test]
 async fn board_placement_reconciler_worker_reentrant_dispatch_unplaces_a_departed_story() {
-    let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));
-    store.add_listener(Arc::new(app::BoardPlacementReconciler));
+    let store = kernel::Store::new(AppState::default(), Box::new(app_reduce));
+    store.add_listener(Arc::new(BoardPlacementReconciler));
 
     let story = product_management::story::StoryId::new(1);
     store.dispatch(AppAction::Board(board::BoardAction::StoryPlaced {
@@ -538,8 +537,8 @@ async fn board_placement_reconciler_worker_reentrant_dispatch_unplaces_a_departe
 #[tokio::test]
 async fn a_board_placement_burst_persists_the_final_board_with_no_placement_lost() {
     let (hub, _rx, _dir) = fresh_hub();
-    let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));
-    store.add_listener(Arc::new(app::BoardPlacementPersister::new(hub.clone())));
+    let store = kernel::Store::new(AppState::default(), Box::new(app_reduce));
+    store.add_listener(Arc::new(BoardPlacementPersister::new(hub.clone())));
 
     for id in [1u64, 2, 3] {
         store.dispatch(AppAction::Board(board::BoardAction::StoryPlaced {
@@ -591,7 +590,7 @@ async fn roster_listener_emits_typed_state_delta() {
 #[tokio::test]
 async fn roster_listener_reports_the_registered_assignment_not_the_display() {
     let (hub, mut rx, _dir) = fresh_hub();
-    let store = kernel::Store::new(AppState::default(), Box::new(app::app_reduce));
+    let store = kernel::Store::new(AppState::default(), Box::new(app_reduce));
     let select = crate::store::Select::new(Arc::downgrade(&store));
     let listener = RosterHubBroadcaster::new(hub, select);
     store.dispatch(AppAction::Routing(

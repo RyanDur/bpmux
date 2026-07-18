@@ -1,24 +1,24 @@
 use std::sync::Arc;
 
 pub struct ReactionsPersister {
-    hub: Arc<crate::hub::Hub>,
+    hub: Arc<hub::Hub>,
 }
 
 impl ReactionsPersister {
-    pub fn new(hub: Arc<crate::hub::Hub>) -> Self {
+    pub fn new(hub: Arc<hub::Hub>) -> Self {
         Self { hub }
     }
 }
 
-impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for ReactionsPersister {
+impl kernel::Listener<crate::AppState, crate::AppAction> for ReactionsPersister {
     fn on_action(
         &self,
-        reaction: kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
+        reaction: kernel::Reaction<crate::AppState, crate::AppAction>,
     ) -> kernel::ListenerFuture {
         if Arc::ptr_eq(&reaction.previous.reactions, &reaction.current.reactions) {
             return Box::pin(async {});
         }
-        let store = crate::store::reactions::to_store(&reaction.current.reactions);
+        let store = crate::reactions::to_store(&reaction.current.reactions);
         let dir = self.hub.dir.clone();
         Box::pin(async move {
             if let Err(e) = reactions::save(&dir, &store) {

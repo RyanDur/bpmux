@@ -6,9 +6,9 @@ use tempfile::TempDir;
 use tokio::sync::broadcast;
 
 use super::reactions::ReactionsPersister;
-use crate::hub::Hub;
-use crate::store::reactions::{aggregated_for_channel, from_store, to_store};
-use crate::store::{AppAction, AppState, Presence, ReactionsAction, RosterAction, app_reduce};
+use crate::reactions::{aggregated_for_channel, from_store, to_store};
+use crate::{AppAction, AppState, Presence, ReactionsAction, RosterAction, app_reduce};
+use hub::Hub;
 use kernel::{Dispatch, Listener, Reaction};
 use message::Message;
 

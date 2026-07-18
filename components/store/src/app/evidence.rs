@@ -1,19 +1,19 @@
 use std::sync::Arc;
 
 pub struct EvidencePersister {
-    hub: Arc<crate::hub::Hub>,
+    hub: Arc<hub::Hub>,
 }
 
 impl EvidencePersister {
-    pub fn new(hub: Arc<crate::hub::Hub>) -> Self {
+    pub fn new(hub: Arc<hub::Hub>) -> Self {
         Self { hub }
     }
 }
 
-impl kernel::Listener<crate::store::AppState, crate::store::AppAction> for EvidencePersister {
+impl kernel::Listener<crate::AppState, crate::AppAction> for EvidencePersister {
     fn on_action(
         &self,
-        reaction: kernel::Reaction<crate::store::AppState, crate::store::AppAction>,
+        reaction: kernel::Reaction<crate::AppState, crate::AppAction>,
     ) -> kernel::ListenerFuture {
         if Arc::ptr_eq(&reaction.previous.evidence, &reaction.current.evidence) {
             return Box::pin(async {});

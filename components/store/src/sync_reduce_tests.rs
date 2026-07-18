@@ -7,7 +7,7 @@ use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use source_codec::gh_label_codec::GhLabelCodec;
 use source_sync::{MutationId, PendingWrite, QueuedWrite};
 
-use crate::store::sync::{SyncAction, SyncState, reduce};
+use crate::sync::{SyncAction, SyncState, reduce};
 
 fn meta() -> EventMeta {
     EventMeta {
@@ -149,8 +149,7 @@ fn writes_queued_mints_sequential_ids_in_vec_order() {
 
 #[test]
 fn hydrated_max_id_seeds_next_mint_so_a_fresh_write_never_collides() {
-    let hydrated =
-        crate::store::app::AppState::default().with_outbox(vec![hydrated_write(9, "ready", 7)]);
+    let hydrated = crate::app::AppState::default().with_outbox(vec![hydrated_write(9, "ready", 7)]);
     let state = (*hydrated.sync).clone();
     let state = queued(
         &state,
