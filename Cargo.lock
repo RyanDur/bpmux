@@ -301,6 +301,7 @@ dependencies = [
  "http",
  "http-body-util",
  "httpmock",
+ "hub",
  "integrations",
  "kernel",
  "local_url",
@@ -1121,6 +1122,23 @@ dependencies = [
  "tokio",
  "tracing",
  "url",
+]
+
+[[package]]
+name = "hub"
+version = "0.1.0"
+dependencies = [
+ "awareness",
+ "chrono",
+ "comprehension",
+ "memory",
+ "message",
+ "message_log",
+ "serde_json",
+ "storage",
+ "tempfile",
+ "tokio",
+ "user_routing",
 ]
 
 [[package]]

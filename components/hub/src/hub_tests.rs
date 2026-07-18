@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use crate::hub::{BROADCAST_CHANNEL_CAPACITY, Hub};
+use crate::{BROADCAST_CHANNEL_CAPACITY, Hub};
 use chrono::Utc;
 use message::Message;
 use tempfile::TempDir;

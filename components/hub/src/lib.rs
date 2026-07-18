@@ -12,6 +12,8 @@ use storage::{Storage, StorageBackend};
 mod awareness_host;
 #[cfg(test)]
 mod awareness_host_tests;
+#[cfg(test)]
+mod hub_tests;
 
 pub const BROADCAST_CHANNEL_CAPACITY: usize = 10_000;
 

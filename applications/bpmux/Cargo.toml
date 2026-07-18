@@ -12,6 +12,7 @@ ci = { path = "../../components/ci" }
 comprehension = { path = "../../components/comprehension" }
 diag = { path = "../../components/diag" }
 electron_capture = { path = "../../components/electron_capture" }
+hub = { path = "../../components/hub" }
 integrations = { path = "../../components/integrations" }
 kernel = { path = "../../components/kernel" }
 local_url = { path = "../../components/local_url" }

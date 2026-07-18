@@ -14,9 +14,7 @@ pub mod ci;
 #[cfg(test)]
 mod ci_tests;
 mod cli;
-pub mod hub;
-#[cfg(test)]
-mod hub_tests;
+pub use ::hub;
 pub use ::integrations;
 #[cfg(test)]
 mod local_url_lock_tests;

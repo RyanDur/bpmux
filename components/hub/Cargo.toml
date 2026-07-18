@@ -1,0 +1,25 @@
+[package]
+name = "hub"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Broadcast hub: pub/sub host over the message log + storage, with roster + awareness-host"
+
+[dependencies]
+message = { path = "../message" }
+message_log = { path = "../message_log" }
+storage = { path = "../storage" }
+awareness = { path = "../awareness" }
+memory = { path = "../memory" }
+user_routing = { path = "../user_routing" }
+tokio = { workspace = true, features = ["sync"] }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+comprehension = { path = "../comprehension" }
+chrono = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt", "rt-multi-thread", "time"] }
+
+[lints]
+workspace = true
