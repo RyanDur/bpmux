@@ -153,3 +153,36 @@ The two storage boundary locks (super-trait-only composition;
 rusqlite/refinery confined to the edge) stay LIVE in bpmux until
 storage extracts — they read feature dirs by path and re-home with the
 moves that affect them.
+
+## Station log catch-up (2026-07-21) — through mcp_tools
+
+The doc fell behind the lift; commit messages carried the narrative.
+Recorded here so the doc stays the map. Landed CI-green since the
+storage re-derivation, in order: comprehension `8755b34f` → memory
+`0aea0c39` → product_management `cafbc2c1` → board `add6a82c` + view
+projections `2c8033b9` → reactions `57f2cfaa` → awareness `f73e778b`
+(the hub gate cleared) → roster `bc827eb1` → owner_session `499df259`
+→ source_sync `22d8c66a` → storage `255b758d` (the re-derived order
+proved out: domains first, edge last) → source_codec `25a7e639` →
+rate_limit `427cb73a` → ci `13cb3b8b` → integrations `c551b3e4` →
+local_url `890655d0` → protocol `af2d7493` → self_update `ab677dd8` →
+electron_capture `689bf8dc` → unfurl `88c295c8` → hub `dbcc5ab5` →
+store `f4cc0a41` → mcp_tools `75e72b31`. Thirty component crates.
+
+mcp_tools (2026-07-21): the app's mcp module surveyed as the strongest
+remaining leaf — 1,648 LOC, zero crate:: references (full-text grep,
+per the hub census lesson), one consumer (bridge tool_registry), one
+identity: the MCP tool-schema catalog (every file an rmcp Tool
+builder). Named by mechanism because `mcp` is reserved for the future
+application shell. Shimmed as `pub use ::mcp_tools as mcp;` — no
+consumer touched. rmcp promoted to workspace.dependencies on its
+second consumer.
+
+What remains in applications/bpmux: bridge (~27k), transport (~13k),
+sync, room, store composition residue, server + cli shells, and small
+leaves — telemetry (630 LOC, blocked only on the open
+diag-consolidation question), location, the ci store-slice remnant,
+auth/bookmark/briefing. The write-path tail (bridge, transport, sync)
+still waits on the store↔sync and store↔transport cycle cuts; the
+sync→server composition reach cuts with them. Then the fat app splits
+into the four thin shells and the repo reclaims the bpmux name.
