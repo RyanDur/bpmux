@@ -11,7 +11,7 @@ help:
 	@echo "make audit        # cargo audit --deny warnings"
 	@echo "make npm-unit     # applications/electron unit tests"
 	@echo "make npm-e2e      # applications/electron Playwright e2e"
-	@echo "make pre-push     # full hook: cargo-test + audit + npm-unit + npm-e2e + file-size"
+	@echo "make pre-push     # full hook: fmt + clippy + nextest + electron build/typecheck + npm-unit + lint + npm-e2e + file-size"
 
 cargo-test:
 	cargo nextest run --no-fail-fast --retries 1

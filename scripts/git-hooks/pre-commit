@@ -5,8 +5,8 @@
 # make it executable.
 #
 # Restructure 2026-05-01: cargo nextest + npm test:unit + cargo
-# audit moved here from pre-push. Pre-push now runs ONLY npm
-# test:e2e (the 12-min surface). Catches unit-class regressions at
+# audit moved here from pre-push. Pre-push re-runs the full set
+# PLUS the e2e (it is the only gate when CI runners are down). Catches unit-class regressions at
 # commit-time instead of push-time, saving a 12-min round trip when
 # a unit test breaks.
 #
