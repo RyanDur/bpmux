@@ -23,7 +23,7 @@ pub mod location;
 mod location_migration_tests;
 #[cfg(test)]
 mod location_tests;
-pub mod mcp;
+pub use ::mcp_tools as mcp;
 #[cfg(test)]
 mod order_state_pin_tests;
 #[cfg(test)]

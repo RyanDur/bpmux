@@ -305,6 +305,7 @@ dependencies = [
  "integrations",
  "kernel",
  "local_url",
+ "mcp_tools",
  "memory",
  "message",
  "message_log",
@@ -1589,6 +1590,14 @@ name = "matchit"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
+
+[[package]]
+name = "mcp_tools"
+version = "0.1.0"
+dependencies = [
+ "rmcp",
+ "serde_json",
+]
 
 [[package]]
 name = "memchr"
