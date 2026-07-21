@@ -6,7 +6,9 @@ use crate::room::spawn::spawn_pty_retained;
 #[test]
 fn spawned_shell_emits_osc7_carrying_the_new_cwd_after_cd() {
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
-    let integration = osc7_shell_integration(&shell).unwrap();
+    let dotless_home = tempfile::tempdir().unwrap();
+    let integration =
+        osc7_shell_integration(&shell, &dotless_home.path().to_string_lossy()).unwrap();
     let target =
         std::env::temp_dir().join(format!("bpmux-osc7-{}-{}", std::process::id(), "livecwd"));
     std::fs::create_dir_all(&target).unwrap();
@@ -55,7 +57,7 @@ fn bash_osc7_appends_to_a_user_prompt_command_without_clobbering_it() {
         "PROMPT_COMMAND='echo BPMUX_USER_PC_MARKER'\n",
     )
     .unwrap();
-    let integration = osc7_shell_integration(bash).unwrap();
+    let integration = osc7_shell_integration(bash, &home.path().to_string_lossy()).unwrap();
     let target = home.path().join("livecwd-target");
     std::fs::create_dir_all(&target).unwrap();
     let marker = target.file_name().unwrap().to_string_lossy().to_string();

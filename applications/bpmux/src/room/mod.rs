@@ -24,9 +24,9 @@ pub use agnostic_delivery::{deliver_to_terminals, drain_missed, spawn_terminal_d
 pub use file_storage::FileRoomStorage;
 pub use live_registry::LivePtyRegistry;
 pub use spawn::{
-    BridgeWiring, LivePty, Osc7Integration, osc7_shell_integration, resolve_terminal_spawn,
-    spawn_agent_run_detector, spawn_captured, spawn_pty, spawn_pty_retained, terminal_provisioning,
-    terminate,
+    BridgeWiring, LivePty, Osc7Integration, osc7_shell_integration, owner_zdotdir,
+    resolve_terminal_spawn, spawn_agent_run_detector, spawn_captured, spawn_pty,
+    spawn_pty_retained, terminal_provisioning, terminate,
 };
 pub use wake_delivery::wake_committed_terminals;
 

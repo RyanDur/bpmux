@@ -172,7 +172,9 @@ async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless()
         .to_string();
 
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
-    let integration = osc7_shell_integration(&shell).unwrap();
+    let dotless_home = tempfile::tempdir().unwrap();
+    let integration =
+        osc7_shell_integration(&shell, &dotless_home.path().to_string_lossy()).unwrap();
     let mut env: Vec<(&str, &str)> = vec![("TERM", "xterm-256color")];
     for (key, value) in &integration.env {
         env.push((key.as_str(), value.as_str()));
@@ -236,7 +238,9 @@ async fn a_cd_through_a_dir_without_running_an_agent_mints_no_id() {
         .to_string();
 
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
-    let integration = osc7_shell_integration(&shell).unwrap();
+    let dotless_home = tempfile::tempdir().unwrap();
+    let integration =
+        osc7_shell_integration(&shell, &dotless_home.path().to_string_lossy()).unwrap();
     let mut env: Vec<(&str, &str)> = vec![("TERM", "xterm-256color")];
     for (key, value) in &integration.env {
         env.push((key.as_str(), value.as_str()));
@@ -288,7 +292,9 @@ async fn an_agent_started_in_place_with_no_cd_registers_via_the_startup_emit() {
         .to_string();
 
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
-    let integration = osc7_shell_integration(&shell).unwrap();
+    let dotless_home = tempfile::tempdir().unwrap();
+    let integration =
+        osc7_shell_integration(&shell, &dotless_home.path().to_string_lossy()).unwrap();
     let mut env: Vec<(&str, &str)> = vec![("TERM", "xterm-256color")];
     for (key, value) in &integration.env {
         env.push((key.as_str(), value.as_str()));

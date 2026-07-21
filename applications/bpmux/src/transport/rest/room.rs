@@ -37,7 +37,8 @@ pub async fn post_terminal_spawn(
         agent_name: user_routing::bridge_agent_name(&terminal_id),
     };
     let integration =
-        crate::room::terminal_provisioning(&command, Some(&bridge)).unwrap_or_default();
+        crate::room::terminal_provisioning(&command, Some(&bridge), &crate::room::owner_zdotdir())
+            .unwrap_or_default();
     let port_str = port.to_string();
     let mut env: Vec<(&str, &str)> = vec![
         ("TERM", "xterm-256color"),

@@ -17,7 +17,12 @@ fn provisioned_bridge_config_is_session_pointed_and_the_spawned_config_connects_
         port: bpmux.port(),
         agent_name: "agent-seamtest".to_string(),
     };
-    let integration = terminal_provisioning("/bin/bash", Some(&wiring)).expect("provisioning");
+    let integration = terminal_provisioning(
+        "/bin/bash",
+        Some(&wiring),
+        &std::env::temp_dir().to_string_lossy(),
+    )
+    .expect("provisioning");
     let tempdir = integration
         .zdotdir
         .expect("bash provisioning yields a retained tempdir");

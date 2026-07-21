@@ -32,7 +32,12 @@ fn provisioned_agent_receives_live_state_delta_push_not_just_rpc_tools() {
         port: bpmux.port(),
         agent_name: "agent-provtest".to_string(),
     };
-    let integration = terminal_provisioning("/bin/bash", Some(&wiring)).expect("provisioning");
+    let integration = terminal_provisioning(
+        "/bin/bash",
+        Some(&wiring),
+        &std::env::temp_dir().to_string_lossy(),
+    )
+    .expect("provisioning");
     let tempdir = integration
         .zdotdir
         .expect("bash provisioning yields a retained tempdir");

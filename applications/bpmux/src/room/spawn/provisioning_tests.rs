@@ -22,9 +22,9 @@ fn provisioned_bash_wraps_claude_with_mcp_config_and_preserves_user_args() {
         port: 4117,
         agent_name: "agent-term1".to_string(),
     };
-    let integration = terminal_provisioning(bash, Some(&bridge)).unwrap();
-
     let home_str = home.path().to_string_lossy().to_string();
+    let integration = terminal_provisioning(bash, Some(&bridge), &home_str).unwrap();
+
     let bindir_str = bindir.to_string_lossy().to_string();
     let base_path = std::env::var("PATH").unwrap_or_default();
     let path_str = format!("{bindir_str}:{base_path}");
@@ -88,8 +88,8 @@ fn spawn_provisioned_shell_with_stub(
     let stub = bindir.join("claude");
     std::fs::write(&stub, "#!/bin/sh\nprintf 'STUBCLAUDE[%s]\\n' \"$*\"\n").unwrap();
     std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o755)).unwrap();
-    let integration = terminal_provisioning(shell, bridge).unwrap();
     let home_str = home.path().to_string_lossy().to_string();
+    let integration = terminal_provisioning(shell, bridge, &home_str).unwrap();
     let base_path = std::env::var("PATH").unwrap_or_default();
     let path_str = format!("{}:{base_path}", bindir.to_string_lossy());
     let mut env: Vec<(&str, &str)> = vec![
@@ -220,7 +220,7 @@ fn provisioned_zsh_wraps_claude_with_mcp_config_and_preserves_user_args() {
     });
     assert!(
         collected.contains("--mcp-config="),
-        "the provisioned ZSH (the owner's actual shell, sourced via ZDOTDIR/.zshrc — a DIFFERENT path than bash's --rcfile) must fire the claude wrapper with --mcp-config=; measured not reasoned because the owner walks zsh; got {collected:?}"
+        "the provisioned ZSH (sourced via ZDOTDIR/.zshrc — a DIFFERENT path than bash's --rcfile) must fire the claude wrapper with --mcp-config=; hermetic: the shell sources only the provisioned ZDOTDIR, never this machine's dotfiles; got {collected:?}"
     );
     assert!(
         collected.contains("hello world"),

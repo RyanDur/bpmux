@@ -9,8 +9,9 @@ pub struct BridgeWiring {
 pub fn terminal_provisioning(
     command: &str,
     bridge: Option<&BridgeWiring>,
+    owner_zdotdir: &str,
 ) -> std::io::Result<Osc7Integration> {
-    let integration = osc7_shell_integration(command)?;
+    let integration = osc7_shell_integration(command, owner_zdotdir)?;
     if let (Some(bridge), Some(dir)) = (bridge, integration.zdotdir.as_ref())
         && let Some(rcfile) = provisioned_rcfile(command, dir.path())
     {

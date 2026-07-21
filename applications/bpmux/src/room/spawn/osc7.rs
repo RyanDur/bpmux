@@ -5,16 +5,27 @@ pub struct Osc7Integration {
     pub zdotdir: Option<tempfile::TempDir>,
 }
 
-pub fn osc7_shell_integration(command: &str) -> std::io::Result<Osc7Integration> {
+pub fn osc7_shell_integration(
+    command: &str,
+    owner_zdotdir: &str,
+) -> std::io::Result<Osc7Integration> {
     let family = std::path::Path::new(command)
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or_default();
     match family {
-        "zsh" => zsh_osc7_integration(),
+        "zsh" => zsh_osc7_integration(owner_zdotdir),
         "bash" => bash_osc7_integration(),
         _ => Ok(Osc7Integration::default()),
     }
+}
+
+pub fn owner_zdotdir() -> String {
+    std::env::var("ZDOTDIR")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .or_else(|| std::env::var("HOME").ok())
+        .unwrap_or_else(|| "/".to_string())
 }
 
 fn bash_osc7_integration() -> std::io::Result<Osc7Integration> {
@@ -39,18 +50,13 @@ fn bash_rc() -> String {
     rc
 }
 
-fn zsh_osc7_integration() -> std::io::Result<Osc7Integration> {
-    let real = std::env::var("ZDOTDIR")
-        .ok()
-        .filter(|s| !s.is_empty())
-        .or_else(|| std::env::var("HOME").ok())
-        .unwrap_or_else(|| "/".to_string());
+fn zsh_osc7_integration(real: &str) -> std::io::Result<Osc7Integration> {
     let dir = tempfile::tempdir()?;
     let path = dir.path();
-    std::fs::write(path.join(".zshenv"), zsh_source_line(&real, ".zshenv"))?;
-    std::fs::write(path.join(".zprofile"), zsh_source_line(&real, ".zprofile"))?;
-    std::fs::write(path.join(".zlogin"), zsh_source_line(&real, ".zlogin"))?;
-    std::fs::write(path.join(".zshrc"), zsh_rc(&real))?;
+    std::fs::write(path.join(".zshenv"), zsh_source_line(real, ".zshenv"))?;
+    std::fs::write(path.join(".zprofile"), zsh_source_line(real, ".zprofile"))?;
+    std::fs::write(path.join(".zlogin"), zsh_source_line(real, ".zlogin"))?;
+    std::fs::write(path.join(".zshrc"), zsh_rc(real))?;
     Ok(Osc7Integration {
         env: vec![("ZDOTDIR".to_string(), path.to_string_lossy().to_string())],
         args: Vec::new(),
