@@ -167,7 +167,7 @@ pub fn drain_missed(
 }
 
 fn framed_line(msg: &Message) -> String {
-    let scope = scope_label(msg.to.as_deref());
+    let scope = scope_label(msg.to.as_deref(), msg.to_ids.as_deref());
     frame_team_message(short_name(&msg.from), &scope, &msg.text)
 }
 
@@ -182,7 +182,10 @@ fn after_cursor(select: &Select, user_id: &str, ts: chrono::DateTime<chrono::Utc
     }
 }
 
-fn scope_label(to: Option<&[String]>) -> String {
+fn scope_label(to: Option<&[String]>, to_ids: Option<&[String]>) -> String {
+    if to.is_none() && to_ids.is_some() {
+        return "direct".to_string();
+    }
     match to {
         None => "broadcast".to_string(),
         Some(names) if names.iter().any(|name| name == BROADCAST_ALL) => "broadcast".to_string(),

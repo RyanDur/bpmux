@@ -16,12 +16,14 @@ pub fn build_delivery_signals(id: u64, title: &str) -> Vec<ClientMessage> {
             to: Some(vec![designer.clone()]),
             addressee: Some(designer),
             message_type: None,
+            to_ids: None,
         },
         ClientMessage::Send {
             text: format!("#{id} ({title}) delivered."),
             to: Some(vec![pm.clone()]),
             addressee: Some(pm),
             message_type: None,
+            to_ids: None,
         },
     ]
 }
@@ -33,6 +35,7 @@ pub fn build_start_signal(id: u64) -> ClientMessage {
         to: Some(vec![pm.clone()]),
         addressee: Some(pm),
         message_type: None,
+        to_ids: None,
     }
 }
 
@@ -42,6 +45,7 @@ pub fn build_accept_signal(id: u64, accepted_by: &str) -> ClientMessage {
         to: None,
         addressee: Some(role_name_for_purpose("dev")),
         message_type: None,
+        to_ids: None,
     }
 }
 
@@ -54,6 +58,7 @@ pub fn build_verdict_reprompt_signal(id: u64, role: &str) -> ClientMessage {
         to: Some(vec![target.clone()]),
         addressee: Some(target),
         message_type: Some("system".to_string()),
+        to_ids: None,
     }
 }
 
@@ -64,6 +69,7 @@ pub fn build_reject_signal(id: u64, reason: &str) -> ClientMessage {
         to: Some(vec![dev.clone()]),
         addressee: Some(dev),
         message_type: None,
+        to_ids: None,
     }
 }
 
@@ -107,6 +113,7 @@ pub fn build_pass_desk_check_signal(id: u64, addressee: &str) -> ClientMessage {
         to: Some(vec![addressee.to_string()]),
         addressee: Some(addressee.to_string()),
         message_type: None,
+        to_ids: None,
     }
 }
 
@@ -117,6 +124,7 @@ pub fn build_pass_desk_check_pm_present_signal(id: u64) -> ClientMessage {
         to: Some(vec![pm.clone()]),
         addressee: Some(pm),
         message_type: None,
+        to_ids: None,
     }
 }
 
@@ -143,5 +151,6 @@ pub fn build_fail_desk_check_signal(id: u64, reason: &str) -> ClientMessage {
         to: Some(vec![dev.clone()]),
         addressee: Some(dev),
         message_type: None,
+        to_ids: None,
     }
 }

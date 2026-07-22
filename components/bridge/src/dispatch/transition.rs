@@ -69,6 +69,7 @@ pub async fn dispatch_pass_stage(
             text: result.clone(),
             to: None,
             addressee: None,
+            to_ids: None,
             message_type: Some("system".into()),
         },
     );
@@ -94,6 +95,7 @@ pub async fn dispatch_fail_stage(
             text: result.clone(),
             to: None,
             addressee: None,
+            to_ids: None,
             message_type: Some("system".into()),
         },
     );

@@ -57,6 +57,7 @@ test-support = ["dep:httpmock", "dep:tower", "dep:tempfile", "dep:store_test_sup
 
 [dev-dependencies]
 store_test_support = { path = "../store_test_support" }
+store = { path = "../store", features = ["test-support"] }
 tempfile = { workspace = true }
 httpmock = "0.8"
 tower = { version = "0.5", features = ["util"] }

@@ -60,9 +60,15 @@ pub async fn handle_send(
         .get("message_type")
         .and_then(|v| v.as_str())
         .map(String::from);
-    let recipient_desc = match &to {
-        Some(list) => format!("{list:?}"),
-        None => "broadcast".to_string(),
+    let to_ids = args.get("to_ids").and_then(|v| v.as_array()).map(|arr| {
+        arr.iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect::<Vec<String>>()
+    });
+    let recipient_desc = match (&to_ids, &to) {
+        (Some(ids), _) => format!("id:{ids:?}"),
+        (None, Some(list)) => format!("{list:?}"),
+        (None, None) => "broadcast".to_string(),
     };
     let addressee_desc = addressee.as_deref().unwrap_or("-");
     log_diag(&format!(
@@ -74,6 +80,7 @@ pub async fn handle_send(
         text: text.to_string(),
         to: to.clone(),
         addressee,
+        to_ids,
         message_type,
     })
     .map_err(|e| format!("failed to serialize: {e}"))?;

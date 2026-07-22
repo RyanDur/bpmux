@@ -6,10 +6,12 @@ use user_routing::short_name;
 pub fn stamp_delivery_ids(select: &Select, msg: &mut Message) {
     select.select(|state| {
         let routing = &state.routing;
-        msg.to_ids = msg
-            .to
-            .as_deref()
-            .and_then(|names| complete_resolution(routing, names));
+        if msg.to_ids.is_none() {
+            msg.to_ids = msg
+                .to
+                .as_deref()
+                .and_then(|names| complete_resolution(routing, names));
+        }
         msg.addressee_ids = match msg.addressee.as_deref() {
             None | Some(BROADCAST_ALL) => None,
             Some(target) => non_empty(store::routing::resolve(routing, short_name(target))),

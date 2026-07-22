@@ -57,9 +57,10 @@ pub async fn handle_client_message(
             text: msg_text,
             to,
             addressee,
+            to_ids,
             message_type,
         }) => {
-            handle_send(ctx, identity, msg_text, to, addressee, message_type)?;
+            handle_send(ctx, identity, msg_text, to, addressee, to_ids, message_type)?;
         }
         Ok(ClientMessage::Ping) => {
             send_json(tx, &ServerMessage::Pong).await?;

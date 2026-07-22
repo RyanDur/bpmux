@@ -78,6 +78,7 @@ fn verdict_reprompt_signal_addresses_expired_role_as_system() {
     if let ClientMessage::Send {
         to,
         addressee,
+        to_ids: None,
         message_type,
         text,
     } = build_verdict_reprompt_signal(1599, "designer")

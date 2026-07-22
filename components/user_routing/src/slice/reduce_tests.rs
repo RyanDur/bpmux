@@ -374,3 +374,28 @@ fn delivery_never_targets_the_senders_terminal_whatever_id_stamped_the_send() {
         "a broadcast stamped with a STALE sender id still never reaches the sender's own pane — exclusion is by the sending TERMINAL, not by matching the stamped id against recipients"
     );
 }
+
+#[test]
+fn explicit_to_ids_route_to_exactly_those_ids_regardless_of_role_sharing() {
+    let state = RoutingState::default();
+    let state = registered(&state, "pm-a", "pm");
+    let state = linked(&state, "pm-a", "term-pm-a");
+    let state = registered(&state, "pm-b", "pm");
+    let state = linked(&state, "pm-b", "term-pm-b");
+    let state = registered(&state, "dev-id", "dev");
+    let state = linked(&state, "dev-id", "term-dev");
+
+    let targets = delivery_targets(
+        &state,
+        None,
+        Some(&["pm-a".to_string()]),
+        "dev",
+        Some("dev-id"),
+        Some("term-dev"),
+    );
+    assert_eq!(
+        targets,
+        vec![("pm-a".to_string(), "term-pm-a".to_string())],
+        "an explicit to_ids send reaches EXACTLY the targeted individual — the same-role sibling pm-b and the sender get nothing; id is the identity, role is the hat"
+    );
+}

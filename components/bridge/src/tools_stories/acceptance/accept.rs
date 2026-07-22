@@ -64,6 +64,7 @@ pub async fn handle_accept_story(
                     text,
                     to,
                     addressee,
+                    to_ids: None,
                     message_type,
                 } = build_verdict_reprompt_signal(id, &role)
                 {

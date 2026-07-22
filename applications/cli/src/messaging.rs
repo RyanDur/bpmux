@@ -33,6 +33,7 @@ pub fn send_payload(
     text: &str,
     to: &[String],
     addressee: &Option<String>,
+    to_ids: &[String],
     sender_id: Option<String>,
 ) -> serde_json::Value {
     let mut payload = serde_json::Map::new();
@@ -50,15 +51,23 @@ pub fn send_payload(
     if let Some(target) = addressee {
         payload.insert("addressee".to_string(), serde_json::json!(target));
     }
+    if !to_ids.is_empty() {
+        payload.insert("to_ids".to_string(), serde_json::json!(to_ids));
+    }
     serde_json::Value::Object(payload)
 }
 
-pub fn run_send(text: &str, to: &[String], addressee: &Option<String>) -> anyhow::Result<()> {
+pub fn run_send(
+    text: &str,
+    to: &[String],
+    addressee: &Option<String>,
+    to_ids: &[String],
+) -> anyhow::Result<()> {
     let role = crate::bootstrap::resolve_role(&None);
     let sender_id = std::env::current_dir()
         .ok()
         .and_then(|cwd| crate::bootstrap::resolve_registered_user_id(&cwd));
-    let body = send_payload(&role, text, to, addressee, sender_id);
+    let body = send_payload(&role, text, to, addressee, to_ids, sender_id);
     let port = crate::bootstrap::resolve_bpmux_port();
     let url = local_url::api_url(port, "/api/messages");
     let rt = tokio::runtime::Builder::new_current_thread()
@@ -76,7 +85,9 @@ pub fn run_send(text: &str, to: &[String], addressee: &Option<String>) -> anyhow
     if !status.is_success() {
         anyhow::bail!("send rejected ({status}): {reason}");
     }
-    let destination = if to.is_empty() {
+    let destination = if !to_ids.is_empty() {
+        format!("id:[{}]", to_ids.join(", "))
+    } else if to.is_empty() {
         "broadcast".to_string()
     } else {
         format!("[{}]", to.join(", "))

@@ -9,6 +9,7 @@ pub async fn handle_view_tokens(ws_tx: &Mutex<Option<WsSink>>) -> Result<String,
         text: VIEW_TOKENS_MARKER.to_string(),
         to: None,
         addressee: None,
+        to_ids: None,
         message_type: Some("system".to_string()),
     };
     let json = serde_json::to_string(&msg).map_err(|e| format!("signal: {e}"))?;

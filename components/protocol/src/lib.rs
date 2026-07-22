@@ -28,6 +28,8 @@ pub enum ClientMessage {
         addressee: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         message_type: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        to_ids: Option<Vec<String>>,
     },
     #[serde(rename = "ping")]
     Ping,

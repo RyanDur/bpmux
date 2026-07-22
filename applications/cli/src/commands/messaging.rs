@@ -51,6 +51,13 @@ pub enum MessagingCommands {
         to: Vec<String>,
         #[arg(long, help = "Role this message is directed at (attention signal)")]
         addressee: Option<String>,
+        #[arg(
+            long = "to-id",
+            value_delimiter = ',',
+            conflicts_with = "to",
+            help = "Comma-separated recipient user ids (direct: exactly these individuals, whatever roles they share)"
+        )]
+        to_id: Vec<String>,
     },
     #[command(
         about = "Register this agent's routing identity at startup (channels-independence #1712). Derives a stable session-id from the current directory (reclaimed across restart-in-the-same-dir, else minted) and registers it with the server keyed to this agent's display-name (ambient role via BPMUX_ROLE). Agnostic: a direct server call, no Claude-specific glue."
@@ -87,7 +94,8 @@ pub fn dispatch_messaging(command: &MessagingCommands) -> anyhow::Result<()> {
             text,
             to,
             addressee,
-        } => run_send(text, to, addressee),
+            to_id,
+        } => run_send(text, to, addressee, to_id),
         MessagingCommands::Register => run_register(),
         MessagingCommands::Read { limit, full } => run_read(*limit, *full),
         MessagingCommands::Help { json } => run_help(*json),

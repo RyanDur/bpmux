@@ -13,12 +13,14 @@ pub fn handle_send(
     msg_text: String,
     to: Option<Vec<String>>,
     addressee: Option<String>,
+    to_ids: Option<Vec<String>>,
     message_type: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let explicit_privacy = to.is_some();
     let mut msg = message::Message {
         from: identity.to_string(),
         sender_id: ctx.routing_user_id.clone(),
+        to_ids,
         text: msg_text,
         ts: chrono::Utc::now(),
         message_type: MessageType::from(message_type.as_deref()),

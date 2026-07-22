@@ -71,6 +71,7 @@ pub fn build_reshare_message(
         text: marker,
         to: target_to,
         addressee: None,
+        to_ids: None,
         message_type: None,
     })
 }
@@ -100,6 +101,7 @@ pub async fn handle_share_message(
             text: marker,
             to: target_to.clone(),
             addressee: None,
+            to_ids: None,
             message_type: None,
         })
         .map_err(|e| format!("failed to serialize: {e}"))?;

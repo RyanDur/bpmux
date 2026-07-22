@@ -981,3 +981,119 @@ async fn re_registration_backfill_never_replays_the_terminals_own_messages() {
         std::fs::read_to_string(farm.capture_path("dev")).unwrap_or_default()
     );
 }
+
+async fn terminal_send_to_ids(
+    bpmux: &TestBpmux,
+    dir: &std::path::Path,
+    pin: Option<&str>,
+    to_ids: &str,
+    text: &str,
+) {
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+    let mut cmd = tokio::process::Command::new(bin);
+    cmd.args(["send", "--to-id", to_ids, text])
+        .env("BPMUX_PORT", bpmux.port().to_string())
+        .env("BPMUX_ROLE", "dev")
+        .env("BPMUX_DATA_BASE", bpmux.sessions_base_path())
+        .current_dir(dir);
+    match pin {
+        Some(pin) => {
+            cmd.env("BPMUX_USER_ID", pin);
+        }
+        None => {
+            cmd.env_remove("BPMUX_USER_ID");
+        }
+    }
+    let out = cmd.output().await.expect("run bpmux send --to-id");
+    assert!(
+        out.status.success(),
+        "bpmux send --to-id failed: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_id_targeted_send_reaches_exactly_one_individual_among_role_sharing_agents() {
+    let farm = FakeAgentFarm::new();
+    let agent = farm.write_agent_script();
+    let bpmux = TestBpmux::start_with_envs(
+        "owner",
+        &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
+    );
+
+    let dev_terminal = spawn_terminal(&bpmux).await;
+    assert!(
+        probe_until_live(&bpmux, &farm, "dev").await,
+        "dev must register"
+    );
+    let pm_terminal = spawn_terminal(&bpmux).await;
+    assert!(
+        probe_until_live(&bpmux, &farm, "pm").await,
+        "pm must register"
+    );
+    let designer_terminal = spawn_terminal(&bpmux).await;
+    assert!(
+        probe_until_live(&bpmux, &farm, "designer").await,
+        "designer must register"
+    );
+
+    register_in_terminal(
+        &bpmux,
+        &farm.work_path("dev"),
+        &dev_terminal,
+        Some("dev-sender"),
+    )
+    .await;
+    register_in_terminal(
+        &bpmux,
+        &farm.work_path("pm"),
+        &pm_terminal,
+        Some("pm-alpha"),
+    )
+    .await;
+    register_in_terminal(
+        &bpmux,
+        &farm.work_path("designer"),
+        &designer_terminal,
+        Some("pm-beta"),
+    )
+    .await;
+
+    terminal_send_to_ids(
+        &bpmux,
+        &farm.work_path("dev"),
+        Some("dev-sender"),
+        "pm-alpha",
+        "ONLY-FOR-ALPHA",
+    )
+    .await;
+    post_message(
+        &bpmux,
+        json!({ "from": "owner", "text": "BARRIER-ID-SEND" }),
+    )
+    .await;
+    assert!(
+        wait_capture(&farm, "dev", "BARRIER-ID-SEND").await
+            && wait_capture(&farm, "pm", "BARRIER-ID-SEND").await
+            && wait_capture(&farm, "designer", "BARRIER-ID-SEND").await,
+        "the owner barrier must land everywhere, proving the delivery cycle advanced past the id-targeted send"
+    );
+
+    assert_eq!(
+        farm.capture_count("pm", "ONLY-FOR-ALPHA"),
+        1,
+        "the targeted individual (pm-alpha's terminal) receives the direct send exactly once; capture(pm)={:?}",
+        std::fs::read_to_string(farm.capture_path("pm")).unwrap_or_default()
+    );
+    assert_eq!(
+        farm.capture_count("designer", "ONLY-FOR-ALPHA"),
+        0,
+        "the SAME-ROLE sibling (pm-beta, also role pm) receives NOTHING — id targeting is surgical, the role hat is irrelevant; capture(designer)={:?}",
+        std::fs::read_to_string(farm.capture_path("designer")).unwrap_or_default()
+    );
+    assert_eq!(
+        farm.capture_count("dev", "ONLY-FOR-ALPHA"),
+        0,
+        "the sender receives nothing back, as always"
+    );
+}

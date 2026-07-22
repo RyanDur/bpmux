@@ -570,3 +570,25 @@ fn ci_state_changed_subscription_event_pins_conclusion_and_emits_the_caller_supp
         "the subscription event's payload url is the caller-supplied ci_url — never the persisted snapshot.url, so live and replayed deltas emit whatever url the caller resolves"
     );
 }
+
+#[test]
+fn reaches_user_an_explicit_id_send_is_direct_even_with_no_role_list() {
+    let msg = Message {
+        from: "dev".to_string(),
+        to: None,
+        to_ids: Some(vec!["pm-a-id".to_string()]),
+        ..Message::default()
+    };
+    assert!(
+        msg.reaches_user(Some("pm-a-id"), "pm"),
+        "the targeted id is reached"
+    );
+    assert!(
+        !msg.reaches_user(Some("pm-b-id"), "pm"),
+        "a SAME-ROLE sibling is NOT reached — explicit ids are surgical, the role hat is irrelevant"
+    );
+    assert!(
+        !msg.reaches_user(Some("dev-id"), "dev"),
+        "explicit ids with no role list is a DIRECT send, not a broadcast — nobody outside the id list sees it"
+    );
+}

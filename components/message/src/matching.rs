@@ -11,14 +11,15 @@ pub fn to_reaches(
     display: &str,
 ) -> bool {
     let display = short_name(display);
-    match to {
-        None => return true,
-        Some(recipients) if recipients.iter().any(|r| r == BROADCAST_ALL) => return true,
-        _ => {}
+    if to.is_some_and(|recipients| recipients.iter().any(|r| r == BROADCAST_ALL)) {
+        return true;
     }
-    match to_ids {
-        Some(ids) => user_id.is_some_and(|id| ids.iter().any(|i| i == id)),
-        None => to.is_some_and(|names| names.iter().any(|r| short_name(r) == display)),
+    if let Some(ids) = to_ids {
+        return user_id.is_some_and(|id| ids.iter().any(|i| i == id));
+    }
+    match to {
+        None => true,
+        Some(names) => names.iter().any(|r| short_name(r) == display),
     }
 }
 

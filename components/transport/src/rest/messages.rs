@@ -23,6 +23,8 @@ pub struct PostMessage {
     pub to: Option<Vec<String>>,
     #[serde(default)]
     pub sender_id: Option<String>,
+    #[serde(default)]
+    pub to_ids: Option<Vec<String>>,
 }
 
 #[derive(Deserialize)]
@@ -147,7 +149,7 @@ pub async fn post_message(
         ts: chrono::Utc::now(),
         message_type: message::MessageType::from(payload.message_type.as_deref()),
         to: payload.to,
-        to_ids: None,
+        to_ids: payload.to_ids,
         addressee: payload.addressee,
         addressee_ids: None,
         explicit_privacy,

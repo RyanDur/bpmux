@@ -9,6 +9,7 @@ pub(super) fn broadcast_client_msg_via_hub(
         text,
         to,
         addressee,
+        to_ids: None,
         message_type,
     } = msg
     {
