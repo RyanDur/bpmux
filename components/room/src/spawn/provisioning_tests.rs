@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::provisioning::*;
-use crate::room::spawn::{LivePty, spawn_pty_retained};
+use crate::spawn::{LivePty, spawn_pty_retained};
 
 #[test]
 fn provisioned_bash_wraps_claude_with_mcp_config_and_preserves_user_args() {

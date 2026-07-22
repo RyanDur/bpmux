@@ -45,6 +45,7 @@ location = { path = "../../components/location" }
 auth = { path = "../../components/auth" }
 bookmark = { path = "../../components/bookmark" }
 briefing = { path = "../../components/briefing" }
+room = { path = "../../components/room" }
 chrono = { workspace = true, features = ["serde"] }
 dirs = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
@@ -65,11 +66,10 @@ regex = "1"
 url = { workspace = true }
 http = { workspace = true }
 toml = { workspace = true }
-portable-pty = "0.9"
-strip-ansi-escapes = "0.2"
 tempfile = { workspace = true }
 
 [dev-dependencies]
+portable-pty = "0.9"
 store = { path = "../../components/store", features = ["test-support"] }
 reqwest = { workspace = true, features = ["json"] }
 tokio = { workspace = true, features = ["full", "test-util"] }

@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::live_registry::*;
-use crate::room::spawn::spawn_pty_retained;
+use crate::spawn::spawn_pty_retained;
 use tokio::sync::broadcast;
 
 fn extract_pid(stream: &str) -> String {

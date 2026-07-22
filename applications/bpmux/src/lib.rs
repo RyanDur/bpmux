@@ -18,7 +18,7 @@ pub use ::mcp_tools as mcp;
 mod order_state_pin_tests;
 #[cfg(test)]
 mod pm_integration_tests;
-pub mod room;
+pub use ::room;
 pub mod server;
 #[cfg(test)]
 mod storage_tests;

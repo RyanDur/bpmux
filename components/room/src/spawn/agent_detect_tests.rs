@@ -1,15 +1,15 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::agent_detect::{AgentRunDetector, spawn_agent_run_detector};
-use crate::location::test_support::DataBaseGuard;
-use crate::store::SeededStore;
+use crate::test_store::SeededStore;
+use location::test_support::DataBaseGuard;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-fn empty_message_hub() -> Arc<crate::hub::Hub> {
+fn empty_message_hub() -> Arc<hub::Hub> {
     let dir = std::env::temp_dir().join(format!("bpmux-detect-{}", uuid::Uuid::new_v4()));
     let (tx, _rx) = tokio::sync::broadcast::channel(16);
-    Arc::new(crate::hub::Hub::new(dir, "owner".to_string(), tx))
+    Arc::new(hub::Hub::new(dir, "owner".to_string(), tx))
 }
 
 fn osc7(path: &str) -> Vec<u8> {
@@ -19,7 +19,7 @@ fn osc7(path: &str) -> Vec<u8> {
 fn resolve(store: &SeededStore, display: &str) -> Vec<String> {
     store
         .select()
-        .select(|state| crate::store::routing::resolve(&state.routing, display))
+        .select(|state| store::routing::resolve(&state.routing, display))
 }
 
 const GATE: Duration = Duration::from_millis(1000);
@@ -154,7 +154,7 @@ fn after_the_agent_leaves_a_fresh_foreground_job_re_mints() {
 
 #[tokio::test]
 async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless() {
-    use crate::room::{LivePtyRegistry, osc7_shell_integration, spawn_pty_retained};
+    use crate::{LivePtyRegistry, osc7_shell_integration, spawn_pty_retained};
 
     let data_base = tempfile::TempDir::new().unwrap();
     let _base_guard = DataBaseGuard::set(data_base.path());
@@ -211,7 +211,7 @@ async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless()
         !work.path().join(".bpmux-user-id").exists(),
         "auto-registration writes the identity into the data-home registry, NOT a marker in the detected cwd — the agent's workspace stays clean"
     );
-    let user = crate::location::register_dir_user(work.path()).unwrap();
+    let user = location::register_dir_user(work.path()).unwrap();
     assert_eq!(
         resolve(&store, &work_name),
         vec![user.id],
@@ -221,7 +221,7 @@ async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless()
 
 #[tokio::test]
 async fn a_cd_through_a_dir_without_running_an_agent_mints_no_id() {
-    use crate::room::{LivePtyRegistry, osc7_shell_integration, spawn_pty_retained};
+    use crate::{LivePtyRegistry, osc7_shell_integration, spawn_pty_retained};
 
     let data_base = tempfile::TempDir::new().unwrap();
     let _base_guard = DataBaseGuard::set(data_base.path());
@@ -276,7 +276,7 @@ async fn a_cd_through_a_dir_without_running_an_agent_mints_no_id() {
 
 #[tokio::test]
 async fn an_agent_started_in_place_with_no_cd_registers_via_the_startup_emit() {
-    use crate::room::{LivePtyRegistry, osc7_shell_integration, spawn_pty_retained};
+    use crate::{LivePtyRegistry, osc7_shell_integration, spawn_pty_retained};
 
     let data_base = tempfile::TempDir::new().unwrap();
     let _base_guard = DataBaseGuard::set(data_base.path());
@@ -328,7 +328,7 @@ async fn an_agent_started_in_place_with_no_cd_registers_via_the_startup_emit() {
         !work.path().join(".bpmux-user-id").exists(),
         "start-in-place registration also leaves the workspace clean — identity lives in the data-home registry, not a cwd marker"
     );
-    let user = crate::location::register_dir_user(work.path()).unwrap();
+    let user = location::register_dir_user(work.path()).unwrap();
     assert_eq!(
         resolve(&store, &work_name),
         vec![user.id],

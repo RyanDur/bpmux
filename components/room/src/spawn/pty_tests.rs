@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::pty::{resolve_terminal_spawn, spawn_pty, spawn_pty_retained};
-use crate::room::spawn::process_alive;
+use crate::spawn::process_alive;
 use tokio::sync::broadcast;
 
 #[test]

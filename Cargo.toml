@@ -26,6 +26,7 @@ members = [
     "components/protocol",
     "components/rate_limit",
     "components/reactions",
+    "components/room",
     "components/roster",
     "components/self_update",
     "components/source_codec",

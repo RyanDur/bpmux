@@ -1,4 +1,6 @@
 mod agent_detect;
+#[cfg(test)]
+mod agent_detect_tests;
 mod input_activity;
 mod osc7;
 mod osc7_parse;
@@ -16,8 +18,6 @@ pub use process::*;
 pub use provisioning::*;
 pub use pty::*;
 
-#[cfg(test)]
-mod agent_detect_tests;
 #[cfg(test)]
 mod osc7_emission;
 #[cfg(test)]

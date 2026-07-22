@@ -1,0 +1,29 @@
+[package]
+name = "room"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Agent terminals: PTY spawn/provisioning with OSC-7 cwd tracking, live registry, room persistence, wake + agnostic delivery"
+
+[dependencies]
+hub = { path = "../hub" }
+store = { path = "../store" }
+ci = { path = "../ci" }
+location = { path = "../location" }
+message = { path = "../message" }
+user_routing = { path = "../user_routing" }
+chrono = { workspace = true, features = ["serde"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+tokio = { workspace = true, features = ["sync", "rt", "time", "macros"] }
+tempfile = { workspace = true }
+portable-pty = "0.9"
+strip-ansi-escapes = "0.2"
+
+[dev-dependencies]
+kernel = { path = "../kernel" }
+product_management = { path = "../product_management" }
+
+[lints]
+workspace = true

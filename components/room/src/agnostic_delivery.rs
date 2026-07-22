@@ -3,11 +3,11 @@ use std::time::Duration;
 
 use tokio::sync::broadcast;
 
-use crate::hub::Hub;
-use crate::room::LivePtyRegistry;
-use crate::store::routing::RoutingAction;
-use crate::store::{Dispatch, Select};
+use crate::LivePtyRegistry;
+use hub::Hub;
 use message::{BROADCAST_ALL, Message};
+use store::routing::RoutingAction;
+use store::{Dispatch, Select};
 use user_routing::short_name;
 
 use super::terminal_inject::frame_team_message;
@@ -100,7 +100,7 @@ pub fn deliver_to_terminals(
     let line = framed_line(msg);
     let ts = msg.ts.to_rfc3339();
     for (user_id, terminal_id) in select.select(|state| {
-        crate::store::routing::delivery_targets(
+        store::routing::delivery_targets(
             &state.routing,
             msg.to.as_deref(),
             msg.to_ids.as_deref(),
@@ -171,7 +171,7 @@ fn framed_line(msg: &Message) -> String {
 
 fn after_cursor(select: &Select, user_id: &str, ts: chrono::DateTime<chrono::Utc>) -> bool {
     match select
-        .select(|state| crate::store::routing::cursor(&state.routing, user_id))
+        .select(|state| store::routing::cursor(&state.routing, user_id))
         .as_deref()
         .and_then(|cursor| chrono::DateTime::parse_from_rfc3339(cursor).ok())
     {

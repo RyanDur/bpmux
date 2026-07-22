@@ -1,8 +1,8 @@
 use super::terminal_inject::frame_team_message;
-use crate::room::LivePtyRegistry;
-use crate::store::commitments::matching_users;
-use crate::store::{CommitmentsAction, Dispatch, Select};
+use crate::LivePtyRegistry;
 use message::Message;
+use store::commitments::matching_users;
+use store::{CommitmentsAction, Dispatch, Select};
 
 use super::agnostic_delivery::{HeldInject, owner_mid_typing};
 
@@ -20,7 +20,7 @@ pub fn wake_committed_terminals(
     let Some((event_class, payload)) = msg
         .state_delta
         .as_ref()
-        .and_then(|delta| delta.to_subscription_event(&ts, &crate::ci::github_actions_url()))
+        .and_then(|delta| delta.to_subscription_event(&ts, &ci::github_actions_url()))
     else {
         return held;
     };
@@ -36,7 +36,7 @@ pub fn wake_committed_terminals(
     );
     for user_id in woken {
         let Some(terminal_id) =
-            select.select(|state| crate::store::routing::terminal_for(&state.routing, &user_id))
+            select.select(|state| store::routing::terminal_for(&state.routing, &user_id))
         else {
             continue;
         };

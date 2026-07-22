@@ -343,6 +343,7 @@ dependencies = [
  "reqwest",
  "ring",
  "rmcp",
+ "room",
  "roster",
  "rustls",
  "self_update",
@@ -352,7 +353,6 @@ dependencies = [
  "source_sync",
  "storage",
  "store",
- "strip-ansi-escapes",
  "telemetry",
  "tempfile",
  "thiserror 2.0.18",
@@ -2386,6 +2386,28 @@ dependencies = [
  "quote",
  "serde_json",
  "syn",
+]
+
+[[package]]
+name = "room"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "ci",
+ "hub",
+ "kernel",
+ "location",
+ "message",
+ "portable-pty",
+ "product_management",
+ "serde",
+ "serde_json",
+ "store",
+ "strip-ansi-escapes",
+ "tempfile",
+ "tokio",
+ "user_routing",
+ "uuid",
 ]
 
 [[package]]

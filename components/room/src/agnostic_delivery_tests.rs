@@ -1,13 +1,14 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::agnostic_delivery::*;
-use super::wake_delivery::wake_committed_terminals;
-use crate::room::{LivePtyRegistry, spawn_pty_retained};
-use crate::store::routing::{RoutingAction, drain_floor, register_agent_actions};
-use crate::store::{AppAction, CommitmentsAction, SeededStore};
+use crate::agnostic_delivery::*;
+use crate::test_store::SeededStore;
+use crate::wake_delivery::wake_committed_terminals;
+use crate::{LivePtyRegistry, spawn_pty_retained};
 use message::MessageType;
 use message::{CiSnapshotWire, Message, StateDeltaPayload};
 use std::sync::Arc;
+use store::routing::{RoutingAction, drain_floor, register_agent_actions};
+use store::{AppAction, CommitmentsAction};
 use tokio::sync::broadcast;
 
 fn wired_store() -> SeededStore {
@@ -60,7 +61,7 @@ fn commit(
     .into()
 }
 
-fn ci_event(state: crate::ci::CiState, ts: &str) -> Message {
+fn ci_event(state: ci::CiState, ts: &str) -> Message {
     Message {
         from: "bpmux".to_string(),
         ts: chrono::DateTime::parse_from_rfc3339(ts)
@@ -360,7 +361,7 @@ async fn a_register_in_a_dir_with_populated_history_starts_clean_no_backlog_dump
     let registry = LivePtyRegistry::new();
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
-    let hub = crate::hub::Hub::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
+    let hub = hub::Hub::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
 
     hub.broadcast(&chat_at(
         "pm",
@@ -407,7 +408,7 @@ async fn a_message_in_the_join_gate_window_is_drained_addressed_or_the_welcome_b
     let registry = LivePtyRegistry::new();
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
-    let hub = crate::hub::Hub::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
+    let hub = hub::Hub::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
 
     hub.broadcast(&chat_at(
         "pm",
@@ -458,7 +459,7 @@ async fn offline_broadcasts_are_not_re_drained_on_reconnect_broadcasts_are_live_
     let registry = LivePtyRegistry::new();
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
-    let hub = crate::hub::Hub::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
+    let hub = hub::Hub::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
 
     let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
     let mut rx1 = live.subscribe();
@@ -563,7 +564,7 @@ async fn a_committed_dormant_agent_is_woken_when_its_gate_event_fires() {
     store.dispatch(commit("sess-dev", "ci_state_changed", None));
 
     wake_committed_terminals(
-        &ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"),
+        &ci_event(ci::CiState::Green, "2026-06-21T10:00:00Z"),
         &registry,
         &store.select(),
         &store.dispatcher(),
@@ -582,7 +583,7 @@ async fn the_live_delivery_loop_wakes_a_committed_dormant_agent_on_a_broadcast_c
     let registry = Arc::new(LivePtyRegistry::new());
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
-    let hub = Arc::new(crate::hub::Hub::new(
+    let hub = Arc::new(hub::Hub::new(
         sess_dir.path().to_path_buf(),
         "owner".to_string(),
         tx,
@@ -616,7 +617,7 @@ async fn the_live_delivery_loop_wakes_a_committed_dormant_agent_on_a_broadcast_c
         store.dispatcher(),
     );
 
-    hub.broadcast(&ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"))
+    hub.broadcast(&ci_event(ci::CiState::Green, "2026-06-21T10:00:00Z"))
         .unwrap();
 
     let seen = drain_for(&mut rx, "PROCESSED[").await;
@@ -653,7 +654,7 @@ async fn a_committed_wake_is_held_while_the_owner_types_then_delivers_on_pause()
 
     registry.note_human_keystroke("term-dev");
     let held = wake_committed_terminals(
-        &ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"),
+        &ci_event(ci::CiState::Green, "2026-06-21T10:00:00Z"),
         &registry,
         &store.select(),
         &store.dispatcher(),
@@ -681,7 +682,7 @@ async fn an_uncommitted_agent_is_not_woken_by_an_ambient_gate_event() {
     let mut rx = register_live_cat(&registry, &store, "sess-dev", "dev", "term-dev");
 
     wake_committed_terminals(
-        &ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"),
+        &ci_event(ci::CiState::Green, "2026-06-21T10:00:00Z"),
         &registry,
         &store.select(),
         &store.dispatcher(),
@@ -706,7 +707,7 @@ async fn a_filtered_commitment_is_not_woken_by_a_non_matching_event_at_the_deliv
     store.dispatch(commit("sess-dev", "ci_state_changed", Some(filter)));
 
     wake_committed_terminals(
-        &ci_event(crate::ci::CiState::Green, "2026-06-21T10:00:00Z"),
+        &ci_event(ci::CiState::Green, "2026-06-21T10:00:00Z"),
         &registry,
         &store.select(),
         &store.dispatcher(),
@@ -782,7 +783,7 @@ async fn drain_missed_self_suppresses_by_sender_id_not_by_shared_display() {
     let registry = LivePtyRegistry::new();
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
-    let hub = crate::hub::Hub::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
+    let hub = hub::Hub::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
 
     let mut sibling_msg = chat_at(
         "dev",
@@ -823,7 +824,7 @@ async fn drain_missed_still_self_suppresses_the_true_sender_by_id() {
     let registry = LivePtyRegistry::new();
     let sess_dir = tempfile::TempDir::new().unwrap();
     let (tx, _rx) = broadcast::channel(16);
-    let hub = crate::hub::Hub::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
+    let hub = hub::Hub::new(sess_dir.path().to_path_buf(), "owner".to_string(), tx);
 
     let mut own_msg = chat_at(
         "dev",
@@ -923,7 +924,7 @@ async fn an_id_keyed_commitment_wakes_only_the_committer_not_every_session_shari
     store.dispatch(commit("id-dev-1", "ci_state_changed", None));
 
     wake_committed_terminals(
-        &ci_event(crate::ci::CiState::Green, "2026-07-09T10:00:00Z"),
+        &ci_event(ci::CiState::Green, "2026-07-09T10:00:00Z"),
         &registry,
         &store.select(),
         &store.dispatcher(),

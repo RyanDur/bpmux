@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use super::osc7::*;
-use crate::room::spawn::spawn_pty_retained;
+use crate::spawn::spawn_pty_retained;
 
 #[test]
 fn spawned_shell_emits_osc7_carrying_the_new_cwd_after_cd() {
