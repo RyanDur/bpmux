@@ -12,126 +12,89 @@ until evidence accrues, progressing stage-by-stage as friction demands.
   map, not a replacement for the source. Each agent forming their own
   read is the intent — divergence between reads is signal, not friction.
 
-## Current stage (verified 2026-07-09)
+## Current stage (verified 2026-07-22)
 
-**bpmux is at v3 (feature-grouped / bounded-contexts) single-crate.**
+**bpmux is at v5 (multiple applications over packaged components).**
 
 Evidence:
 
-- Single-crate workspace — `applications/bpmux/Cargo.toml` declares
-  one `bpmux` package; no sub-crates. The UI is a separate TypeScript
-  app (`applications/electron/`) that talks to bpmux only over the
-  WS/REST surfaces `transport` exposes — no in-process coupling.
-- ~27 feature-grouped modules aligned to business capabilities, not
-  horizontal layers. The load-bearing groups: `product_management`
-  (stories/epics/iterations/outcomes — the domain), `board`,
-  `workflow`, `store` (the one redux-shaped store), `kernel`
-  (dispatch + listener delivery modes), `sync` (ingest/drain/outbox
-  write-behind), `integrations` (GitHub gateway + mapper), `rate_limit`
-  (shared rate-limit/backoff/TLS leaf), `bridge` (MCP tools; raw GH
-  client lives at `bridge/tracker/octocrab`), `mcp`, `transport`
-  (WS/REST/WebRTC), `message`, `storage` (data store engines behind
-  per-feature ports), `routing` (user identity), `roster`, `memory`,
-  `view`, `ci`, `cli`, `server`, plus leaf capabilities (`hub`,
-  `location`, `auth`, `awareness`, `reactions`, `room`, `telemetry`,
-  `log`, `comprehension`, `diag`, `persist`, `ci_link`). The
-  2026-04-18 reading's `session` and `orchestrator` modules are
-  DISSOLVED — bpmux has no sessions (that concept became `hub` +
-  `storage/` + user identity in `routing`), and the orchestrator
-  became the store/kernel/sync triad.
-- **One redux-shaped store.** Every state change flows
-  `dispatch(action) → pure reducers → listeners`; there is ONE
+- **A 46-crate cargo workspace**: 41 component crates under
+  `components/`, four Rust application shells under `applications/`
+  (`server`, `cli`, `mcp`, `bpmux`) plus the TypeScript `electron`
+  app. Every crate builds and tests independently with explicit
+  declared dependencies; the crate graph makes dependency cycles a
+  compile error.
+- **Applications are thin, named by delivery surface** (who consumes
+  bpmux, through what door):
+  - `applications/server` — the daemon and the ONLY shell that
+    composes the domain: store wiring, REST/WS route assembly,
+    startup tasks, sync drivers. Owns the composition tests and the
+    wired-store fixture.
+  - `applications/cli` — the terminal door: the bpmux verbs as
+    REST/WS clients, arg/env resolution, room spawn ops, and the
+    mcp/cli 1:1 parity audit.
+  - `applications/mcp` — the agents' door: eleven lines (resolve
+    ambient identity, run the bridge).
+  - `applications/bpmux` — the packaging bin: main + a 40-line
+    dispatcher over the three doors. Exists because the runtime
+    contract anchors to ONE binary (agent MCP configs self-anchor to
+    the running executable, electron spawns it, self_update watches
+    it). The product name names no substance — only packaging.
+  - `applications/electron` — the owner's door, a WS client.
+- **One redux-shaped store** — unchanged doctrine: every state change
+  flows `dispatch(action) → pure reducers → listeners`; ONE
   kernel-direct dispatcher (`store::Dispatch`); listeners declare a
-  delivery mode (latest-state coalescing / ordered-FIFO /
-  fire-and-forget); selectors are the only read path; persistence and
+  delivery mode; selectors are the only read path; persistence and
   GitHub are eventually-consistent write-behind projections off the
-  store, never synchronous writes in the action path.
-- Ten seam-lock families (`boundary_tests.rs` in message, workflow,
-  board, product_management, view, sync, storage, integrations,
-  bridge, transport) substrate-enforce the boundaries; each is
-  proven-to-falsify and green on main.
+  store. The store crate is the composition of every domain slice —
+  slices register INTO it (middleware, reducers, listeners, actions);
+  dependencies flow one direction only.
+- **Boundary locks either retired into the crate graph or re-homed.**
+  Locks the graph now enforces (edge-names-no-composition-root
+  classes) are deleted; discipline locks the graph cannot express
+  (raw-slice-state reads, store-binding seams, no-vendor-SDK naming)
+  travel inside their crates. Test-support is first-class:
+  `store_test_support` (the seeded-store fixture), transport's
+  feature-gated `test_support`, cargo `test-support` features where
+  cross-crate tests need in-crate helpers.
 
-**Approaching v4 (components-within-app) but not there.** v4 requires
-independently-built-and-tested components with explicit declared
-dependencies. bpmux modules are logically separate but test-wise
-coupled (integration tests span features, spin up the full runtime).
+The full lift derivation and station log live in
+`docs/design/app-continuum-lift-derivation.md` (kernel first,
+domains before their edges, the write-path tail last, shells last of
+all — 2026-07-10 through 2026-07-22).
 
 ## Current frictions
 
-Measured 2026-07-09 — the friction datum for the next stage re-eval:
-warm incremental `cargo check` after touching the most-shared leaf
-(`message`) = 2.0s lib / 5.1s `--all-targets`, far under the ~30s
-feedback bar. No friction currently presses toward stage progression:
+1. **Renderer ↔ bpmux TypeScript type duplication** — the open
+   coordination cost: the WS typed-frame contract is hand-mirrored in
+   `applications/electron/src/renderer/`. Codegen from the Rust
+   view/wire types, or boundary contract tests, remain the fix for
+   when the drift class actually bites.
+2. **cli → transport const reach** — `DEFAULT_WAIT_TIMEOUT_MS` pulls
+   the whole transport edge into the cli build for one default; same
+   shape as the DEFAULT_MESSAGE_LIMIT cut (which homed in
+   message_log). Cheap to cut when next touched.
+3. **Terminal delivery idempotency after binary respawns** — observed
+   2026-07-22 during the lift: repeated self_update respawns appeared
+   to stack delivery loops (one stored message echoed to a terminal
+   multiple times; the log held exactly one copy). Needs a
+   reproduction under a normal single-start before it earns a story.
 
-1. ~~`bridge/` duplicated storage-access logic~~ — RESOLVED by
-   dissolution: the view-model seam (#1363) plus the store re-homes
-   (everything reads selectors off the one store) retired the class.
-2. **Integration tests require full runtime** — unchanged in shape
-   (`tests/integration_main_modules/` spins up the wired server; the
-   e2e tier launches real Electron + a spawned bpmux), but carries no
-   live pressure: the kernel/store split gives pure unit seams
-   (reducers, selectors, delivery-mode listeners) below the
-   integration tier, and the suites are green and fast.
-3. **Renderer ↔ bpmux TypeScript type duplication** — still the open
-   v4-class coordination cost: the WS typed-frame contract is
-   hand-mirrored in `applications/electron/src/renderer/`. Codegen
-   from the Rust view/wire types, or boundary contract tests, remain
-   the fix for when the drift class actually bites.
-4. ~~Unresolved twin: `src/github/` (raw client) vs
-   `src/integrations/github/` (gateway + mapper)~~ — RESOLVED
-   (2026-07-09): the survey showed `src/github/` was never the raw
-   client — it held exactly two octocrab-typed items beside a
-   provider-agnostic rate-limit/backoff/TLS leaf. Split + rename: the
-   vendor items (`classify_error`, `BoardFetchError`) moved to
-   `bridge/tracker/octocrab/errors.rs` (their sole consumer, avoiding
-   a `bridge::tracker` ↔ `integrations::github` import cycle); the
-   agnostic leaf renamed `src/github/` → `src/rate_limit/` to state
-   its job. Raw client = `bridge/tracker/octocrab`; vendor error
-   classification lives with it; `integrations/github` remains the
-   gateway + mapper. The pre-lift blocker is cleared.
+## Deferred by owner decision
 
-## Where v3 is working
-
-The Continuum argues staying at a stage is often correct.
-
-- **Feature-grouping maps to team mental model** — "I'm working on
-  awareness" translates directly to `src/awareness/`. No search
-  overhead. Code structure matches domain language (DDD bounded
-  contexts).
-- **Transport decoupled from business logic** — WebRTC support added
-  with zero changes to bridge or session. Transport is resilient to
-  layer additions because boundaries were explicit.
-- **Test harness mirrors module structure** — `tests/harness/`
-  contains `bridge.rs`, `mock_gh.rs`, `peer.rs`, `port.rs`, `pty.rs`,
-  `story_helpers.rs`; each sister-fixture maps to a code-side
-  feature group it supports. Test intent matches code intent.
+- `databases/` top-level — Ryan pairs on it post-lift.
+- The shared verb-contract component (mcp and cli affordances are 1:1
+  by audit today; by construction when both doors derive from one
+  contract).
+- Three-binary packaging — re-evaluate when the system can live-smoke
+  a binary rename; until then the single-bpmux contract stands.
 
 ## Stage-progression recommendation
 
-**HOLD at v3.** The full derivation, seam map, and station order live
-in `docs/design/app-continuum-lift-derivation.md` (seam order:
-message → workflow → kernel → storage → view → integrations,
-write-path modules last; post-K-arc the kernel is a pure leaf and a
-co-first station candidate). Re-evaluated 2026-07-09 after the
-store/kernel/WR/SR/session-dissolution arcs all landed CI-green:
-three of the four HOLD-preconditions flipped mechanically; the fourth
-— a live, named friction the seam locks cannot hold — has no
-evidence. The Continuum's bar is lift-on-friction, never on
-completion-momentum or aesthetics.
-
-Mechanical flip-triggers (any ONE re-opens the v4 question — first
-step is a single station, extract `message` or `kernel` alone, not a
-whole-crate split):
-
-1. Warm `cargo check --all-targets` after a leaf touch exceeds ~30s.
-2. A seam violation lands on main that a text-scan lock missed
-   (compiler enforcement then earns its cost).
-3. A second wire consumer needs `message` types without the crate.
-4. A deployable needs an independent build/release cadence.
-
-bpmux likely doesn't need v6+ (microservices) at any foreseeable point
-— it's a single coordination substrate, not a service mesh. The
-Continuum's v3-v5 range is the load-bearing window for this product.
+**HOLD at v5.** bpmux likely doesn't need v6+ (microservices) at any
+foreseeable point — it's a single coordination substrate, not a
+service mesh. The Continuum's bar is progress-on-friction; no
+friction presses past v5.
 
 ## Storage layer: per-feature ports over swappable engines
 
