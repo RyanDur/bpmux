@@ -55,8 +55,8 @@ board (69), chat (21), ci, metrics, roles, sidebar, sync — so station
 | 2 | Dissolve lib/ into real owners: redux → state/, terminal utils → their feature, storage hooks → their features; the monads keep one small curated home | dissolve (4) | done |
 | 3 | Dissolve hooks/ into the features that own them | dissolve (4) | done |
 | 4 | Orphan specs go home; fixtures and lint gates into test-support | specs home (7) | done |
-| 5 | One door layer: api/ and transport/ reconcile | layers (1) | |
-| 6 | Curated barrels where import noise demands | barrels (7) | |
+| 5 | One door layer: api/ and transport/ reconcile | layers (1) | done |
+| 6 | Curated barrels where import noise demands | barrels (7) | assessed: none demanded |
 
 Playbook per station, inherited from the backend lift: byte-identical
 moves (git mv), full-text import census before and after, the suite is
@@ -113,3 +113,27 @@ __tests__/ to test-support/ so the gate fixture keeps its rules.
 Shared app-level fixtures were already a test-support layer at
 applications/electron/test/ and stay put. Suite: typecheck clean,
 782 vitest green, eslint clean.
+
+**Station 5 (2026-07-23).** api/ folded into transport/ — both
+references agree the door is one layer (the backend's
+components/transport holds rest/ and ws/; ChosenPicachu has a single
+transport/). http, storiesClient, labelsClient, validate now live
+beside the ws codecs. Remaining "api/" strings in specs are URL
+paths, correctly untouched. Suite: typecheck clean, 782 vitest green,
+eslint clean.
+
+**Station 6 (2026-07-23), assessed — no barrels added.** The
+cross-feature import fan concentrates on single modules
+(transport/types 39×, state/store 20×, state/actions 18×): explicit
+one-module imports a barrel would only indirect, not compress. The
+reference's station was CURATED barrels where noise demands; none
+demands. state/index.ts, the one barrel that existed, stays.
+
+## Lift verdict
+
+Six stations, five moves and one assessed no-op, all through the full
+gate. The renderer now mirrors the app's own model: state/ is the
+engine at the center; transport/ is the one door; chat, board,
+terminal, roles, sidebar, metrics, ci, sync are bounded contexts
+owning their hooks and specs; test-support/ holds the gates; lib/
+holds only the functional primitives pending the sand conversation.

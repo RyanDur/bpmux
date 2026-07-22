@@ -1,4 +1,4 @@
-import { type ApiContext, type HttpError, http } from '../api/http'
+import { type ApiContext, type HttpError, http } from '../transport/http'
 import { type AsyncResult } from '../lib/asyncResult'
 
 export interface SpawnResponse {

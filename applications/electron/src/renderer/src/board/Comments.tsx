@@ -1,8 +1,8 @@
 import { format } from 'date-fns'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import MessageBody from '../chat/MessageBody'
-import { describeHttpError } from '../api/http'
-import { postStoryComment } from '../api/storiesClient'
+import { describeHttpError } from '../transport/http'
+import { postStoryComment } from '../transport/storiesClient'
 import {
   useBoardInvalidateTick,
   useComments,

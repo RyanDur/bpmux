@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { type ApiContext, describeHttpError } from '../api/http'
+import { type ApiContext, describeHttpError } from '../transport/http'
 import type { ConnectionStatus } from '../transport/types'
 import { RENDERER_IDENTITY, subscribePtyExit } from '../state'
 import {

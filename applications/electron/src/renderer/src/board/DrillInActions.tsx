@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { describeHttpError } from '../api/http'
-import { postStoryAccept, postStoryReject } from '../api/storiesClient'
+import { describeHttpError } from '../transport/http'
+import { postStoryAccept, postStoryReject } from '../transport/storiesClient'
 import BugQuestionDialog from './BugQuestionDialog'
 import type { Story } from './types'
 

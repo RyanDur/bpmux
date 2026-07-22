@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { http } from '../api/http'
+import { http } from '../transport/http'
 
 const URL_RE = /https?:\/\/[^\s<>"')(]+/g
 const TRAILING_PUNCT_RE = /[.,!?;:)\]'"*]+$/

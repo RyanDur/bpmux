@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { describeHttpError, http } from '../api/http'
+import { describeHttpError, http } from '../transport/http'
 import Sparkline, { type WipPoint } from './Sparkline'
 import './Metrics.css'
 
