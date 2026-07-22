@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { tryCatch } from '../lib/tryCatch'
+import { tryCatch } from '@ryandur/sand'
 import { MESSAGE_TYPE } from '../transport/messageType'
 import type { ChatMessage } from '../transport/types'
 import { RENDERER_IDENTITY, subscribeLiveMessages } from '../state'

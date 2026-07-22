@@ -135,8 +135,7 @@ Six stations, five moves and one assessed no-op, all through the full
 gate. The renderer now mirrors the app's own model: state/ is the
 engine at the center; transport/ is the one door; chat, board,
 terminal, roles, sidebar, metrics, ci, sync are bounded contexts
-owning their hooks and specs; test-support/ holds the gates; lib/
-holds only tryCatch, a sand candidate.
+owning their hooks and specs; test-support/ holds the gates; lib/ is gone.
 
 **Sand adoption (2026-07-23, Ryan's call).** The hand-rolled monads
 are gone: @ryandur/sand 5.1.0 (GitHub Packages, scope mapped in
@@ -149,3 +148,12 @@ its internal Result into sand's asyncResult at one boundary fn. The
 behavior in its own repo. lib/ retains one file: tryCatch + toError +
 asyncTryCatch, composed on sand primitives — flagged WITH Ryan as a
 sand candidate; it deletes from here when sand grows it.
+
+**Sand 5.2.0 (2026-07-23).** tryCatch graduated into sand proper
+(sand 6ffba12, test-driven there; asyncTryCatch generalized to take
+onError for both the sync throw and the rejection; toError joined
+util). Sand's release workflow now publishes to the GitHub npm
+registry — its first green release. bpmux bumped to ^5.2.0 and
+deleted lib/tryCatch.ts: the renderer's lib/ directory no longer
+exists. bpmux CI authenticates to the registry via setup-node
+registry-url + the job's GITHUB_TOKEN with packages:read.

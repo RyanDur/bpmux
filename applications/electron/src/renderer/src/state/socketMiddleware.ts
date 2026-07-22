@@ -1,4 +1,4 @@
-import { tryCatch } from '../lib/tryCatch'
+import { tryCatch } from '@ryandur/sand'
 import type { Middleware } from './redux'
 import type { StateSnapshot } from './reducer'
 import {

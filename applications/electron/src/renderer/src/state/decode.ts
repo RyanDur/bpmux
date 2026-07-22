@@ -1,5 +1,5 @@
 import { maybe } from '@ryandur/sand'
-import { tryCatch } from '../lib/tryCatch'
+import { tryCatch } from '@ryandur/sand'
 import type { Dispatch } from './redux'
 import { MESSAGE_TYPE, asMessageType } from '../transport/messageType'
 import {
