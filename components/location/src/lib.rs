@@ -3,11 +3,15 @@ use std::path::{Path, PathBuf};
 use message_log::LogError;
 
 mod identity;
+pub mod test_support;
+
 #[cfg(test)]
-pub(crate) mod test_support;
+mod location_migration_tests;
+#[cfg(test)]
+mod location_tests;
 
 pub use identity::{DIR_USER_ID_MARKER, DirUser, register_dir_user, registered_dir_user};
-pub(crate) use identity::{register_dir_user_in_base, registered_dir_user_in_base};
+pub use identity::{register_dir_user_in_base, registered_dir_user_in_base};
 
 fn data_base_override() -> Option<PathBuf> {
     let override_path = std::env::var("BPMUX_DATA_BASE").ok()?;

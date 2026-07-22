@@ -1,0 +1,23 @@
+[package]
+name = "location"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Workspace-directory identity: canonical-path keyed dir users over the data base dir, with a test guard for the override env"
+
+[dependencies]
+message_log = { path = "../message_log" }
+diag = { path = "../diag" }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+dirs = { workspace = true }
+ring = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+chrono = { workspace = true }
+message = { path = "../message" }
+
+[lints]
+workspace = true

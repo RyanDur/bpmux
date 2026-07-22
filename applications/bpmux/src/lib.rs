@@ -18,11 +18,7 @@ pub use ::hub;
 pub use ::integrations;
 #[cfg(test)]
 mod local_url_lock_tests;
-pub mod location;
-#[cfg(test)]
-mod location_migration_tests;
-#[cfg(test)]
-mod location_tests;
+pub use ::location;
 pub use ::mcp_tools as mcp;
 #[cfg(test)]
 mod order_state_pin_tests;

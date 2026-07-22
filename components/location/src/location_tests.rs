@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use crate::location::*;
+use crate::*;
 use chrono::Utc;
 use message::Message;
 use message_log::{append_message, read_messages};

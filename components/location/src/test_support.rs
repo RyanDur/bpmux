@@ -3,13 +3,13 @@ use std::sync::{Mutex, MutexGuard};
 
 static DATA_BASE_LOCK: Mutex<()> = Mutex::new(());
 
-pub(crate) struct DataBaseGuard {
+pub struct DataBaseGuard {
     prev: Option<String>,
     _lock: MutexGuard<'static, ()>,
 }
 
 impl DataBaseGuard {
-    pub(crate) fn set(path: &Path) -> Self {
+    pub fn set(path: &Path) -> Self {
         let lock = DATA_BASE_LOCK
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());

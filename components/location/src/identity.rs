@@ -30,14 +30,14 @@ pub fn register_dir_user(dir: &Path) -> Result<DirUser, LogError> {
     register_dir_user_in_base(&base, dir)
 }
 
-pub(crate) fn registered_dir_user_in_base(base: &Path, dir: &Path) -> Option<DirUser> {
+pub fn registered_dir_user_in_base(base: &Path, dir: &Path) -> Option<DirUser> {
     if let Some(user) = read_entry(base, dir) {
         return Some(user);
     }
     import_marker(base, dir)
 }
 
-pub(crate) fn register_dir_user_in_base(base: &Path, dir: &Path) -> Result<DirUser, LogError> {
+pub fn register_dir_user_in_base(base: &Path, dir: &Path) -> Result<DirUser, LogError> {
     if let Some(user) = registered_dir_user_in_base(base, dir) {
         return Ok(user);
     }

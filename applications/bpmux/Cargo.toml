@@ -41,6 +41,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 mcp_tools = { path = "../../components/mcp_tools" }
 telemetry = { path = "../../components/telemetry" }
+location = { path = "../../components/location" }
 chrono = { workspace = true, features = ["serde"] }
 dirs = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
@@ -52,7 +53,7 @@ axum = { version = "0.8", features = ["ws"] }
 tokio-tungstenite = "0.26"
 tokio-util = { workspace = true, features = ["rt"] }
 reqwest = { workspace = true }
-ring = "0.17.14"
+ring = { workspace = true }
 base64 = "0.22.1"
 aho-corasick = { workspace = true }
 rustls = { version = "0.23", features = ["ring"] }

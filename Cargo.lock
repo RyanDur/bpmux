@@ -305,6 +305,7 @@ dependencies = [
  "integrations",
  "kernel",
  "local_url",
+ "location",
  "mcp_tools",
  "memory",
  "message",
@@ -1564,6 +1565,22 @@ checksum = "92daf443525c4cce67b150400bc2316076100ce0b3686209eb8cf3c31612e6f0"
 [[package]]
 name = "local_url"
 version = "0.1.0"
+
+[[package]]
+name = "location"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "diag",
+ "dirs",
+ "message",
+ "message_log",
+ "ring",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "uuid",
+]
 
 [[package]]
 name = "lock_api"
