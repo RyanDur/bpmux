@@ -1,0 +1,57 @@
+[package]
+name = "server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The daemon: composition root — store wiring, REST/WS routes, startup tasks, sync drivers"
+
+[dependencies]
+transport = { path = "../../components/transport" }
+bridge = { path = "../../components/bridge" }
+store = { path = "../../components/store" }
+sync = { path = "../../components/sync" }
+hub = { path = "../../components/hub" }
+ci = { path = "../../components/ci" }
+room = { path = "../../components/room" }
+workflow = { path = "../../components/workflow" }
+location = { path = "../../components/location" }
+awareness = { path = "../../components/awareness" }
+self_update = { path = "../../components/self_update" }
+integrations = { path = "../../components/integrations" }
+message = { path = "../../components/message" }
+message_log = { path = "../../components/message_log" }
+product_management = { path = "../../components/product_management" }
+storage = { path = "../../components/storage" }
+source_sync = { path = "../../components/source_sync" }
+source_codec = { path = "../../components/source_codec" }
+kernel = { path = "../../components/kernel" }
+rate_limit = { path = "../../components/rate_limit" }
+diag = { path = "../../components/diag" }
+user_routing = { path = "../../components/user_routing" }
+local_url = { path = "../../components/local_url" }
+roster = { path = "../../components/roster" }
+view = { path = "../../components/view" }
+board = { path = "../../components/board" }
+telemetry = { path = "../../components/telemetry" }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+tokio = { workspace = true, features = ["full"] }
+tokio-util = { workspace = true }
+anyhow = "1"
+memory = { path = "../../components/memory" }
+auth = { path = "../../components/auth" }
+reactions = { path = "../../components/reactions" }
+axum = { version = "0.8", features = ["ws"] }
+tower-http = { version = "0.6", features = ["cors"] }
+uuid = { workspace = true, features = ["v4"] }
+
+[dev-dependencies]
+store_test_support = { path = "../../components/store_test_support" }
+transport = { path = "../../components/transport", features = ["test-support"] }
+tempfile = { workspace = true }
+httpmock = "0.8"
+tower = { version = "0.5", features = ["util"] }
+
+[lints]
+workspace = true

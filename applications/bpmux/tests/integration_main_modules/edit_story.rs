@@ -61,7 +61,7 @@ async fn edit_story_replaces_body_at_canonical_store() {
         "test".to_string(),
         wake_tx,
     ));
-    let app_store = Arc::new(bpmux::server::store_wiring::build_store(
+    let app_store = Arc::new(server::store_wiring::build_store(
         hub.clone(),
         None,
         CancellationToken::new(),

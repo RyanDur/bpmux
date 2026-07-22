@@ -1,0 +1,121 @@
+use std::sync::Arc;
+
+use ci::CiLogStore;
+use room::LivePtyRegistry;
+use store::Store;
+use transport::auth::AuthState;
+
+use sync::OrchestratorHandle;
+
+pub(super) struct RouterDeps {
+    pub auth_state: AuthState,
+    pub unfurl_cache: transport::unfurl::UnfurlCacheHandle,
+    pub hub: Arc<hub::Hub>,
+    pub tracker: transport::rest::TrackerHandle,
+    pub ci_log_store: CiLogStore,
+    pub electron_capture_lock: Arc<tokio::sync::Mutex<()>>,
+    pub orchestrator: OrchestratorHandle,
+    pub race_window: sync::RaceWindowHandle,
+    pub store: Arc<Store>,
+    pub dispatch: store::Dispatch,
+    pub pty_registry: Arc<LivePtyRegistry>,
+    pub port: u16,
+}
+
+pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
+    let RouterDeps {
+        auth_state,
+        unfurl_cache,
+        hub,
+        tracker,
+        ci_log_store,
+        electron_capture_lock,
+        orchestrator,
+        race_window,
+        store,
+        dispatch,
+        pty_registry,
+        port,
+    } = deps;
+    let has_refresh = orchestrator.is_some();
+    let gated_routes = super::gated_routes(auth_state, unfurl_cache);
+    let test_seed_routes = super::test_seed_routes();
+    let test_routes = super::test_routes(has_refresh);
+
+    axum::Router::new()
+        .route("/healthz", axum::routing::get(|| async { "ok" }))
+        .route("/ws", axum::routing::any(transport::ws::ws_handler))
+        .route(
+            "/api/messages",
+            axum::routing::get(transport::rest::get_messages).post(transport::rest::post_message),
+        )
+        .route("/api/board", axum::routing::get(transport::rest::get_board))
+        .route(
+            "/api/iterations",
+            axum::routing::get(transport::rest::get_iterations),
+        )
+        .route(
+            "/api/roadmap",
+            axum::routing::get(transport::rest::get_roadmap),
+        )
+        .route(
+            "/api/wait-for-event",
+            axum::routing::get(transport::rest::wait_for_event),
+        )
+        .route(
+            "/api/wake-on-event",
+            axum::routing::post(transport::rest::wake_on_event),
+        )
+        .route(
+            "/api/search",
+            axum::routing::get(transport::rest::search_messages),
+        )
+        .route(
+            "/api/lessons",
+            axum::routing::get(transport::rest::get_lessons).post(transport::rest::post_lesson),
+        )
+        .route(
+            "/api/peer-lessons",
+            axum::routing::get(transport::rest::get_peer_lessons),
+        )
+        .route(
+            "/api/classifier-misfire",
+            axum::routing::post(transport::rest::post_classifier_misfire),
+        )
+        .route(
+            "/api/register",
+            axum::routing::post(transport::rest::post_register),
+        )
+        .merge(gated_routes)
+        .merge(test_routes)
+        .merge(test_seed_routes)
+        .with_state(hub)
+        .layer(axum::Extension(tracker))
+        .layer(axum::Extension(ci_log_store))
+        .layer(axum::Extension(electron_capture_lock))
+        .layer(axum::Extension(orchestrator))
+        .layer(axum::Extension(race_window))
+        .layer(axum::Extension(store.selector()))
+        .layer(axum::Extension(store))
+        .layer(axum::Extension(dispatch))
+        .layer(axum::Extension(pty_registry))
+        .layer(axum::Extension(port))
+        .layer(
+            tower_http::cors::CorsLayer::new()
+                .allow_origin(tower_http::cors::Any)
+                .allow_methods(tower_http::cors::Any)
+                .allow_headers(tower_http::cors::Any),
+        )
+}
+
+pub(super) fn build_auth_state() -> anyhow::Result<AuthState> {
+    let token_path = auth::default_auth_token_path()
+        .ok_or_else(|| anyhow::anyhow!("cannot locate ~/.bpmux auth token path"))?;
+    let token = auth::ensure(&token_path).map_err(|e| {
+        anyhow::anyhow!(
+            "Unable to write auth token to {}: {e}",
+            token_path.display()
+        )
+    })?;
+    Ok(AuthState::new(token))
+}

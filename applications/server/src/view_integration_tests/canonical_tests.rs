@@ -1,0 +1,101 @@
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
+
+use chrono::{TimeZone, Utc};
+use integrations::in_memory::InMemorySourceAdapter;
+use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
+use product_management::story::slice::StoryAction;
+use product_management::story::{Story, StoryId, StoryKind, Work};
+use serde_json::json;
+use source_codec::gh_label_codec::GhLabelCodec;
+use source_codec::mapper::decode_story_metadata;
+use std::sync::Arc;
+use store::AppAction;
+use store_test_support::SeededStore;
+use sync::SyncOrchestrator;
+
+fn meta() -> EventMeta {
+    EventMeta {
+        actor: "test".to_string(),
+        actor_id: None,
+        ts: Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
+    }
+}
+
+#[test]
+fn story_struct_has_no_iteration_id_field_in_board_json_projection() {
+    let story = Story::new_minimal(
+        StoryId::new(100),
+        "carrier-test".to_string(),
+        Work::NotStarted,
+        Utc.with_ymd_and_hms(2026, 5, 15, 0, 0, 0).unwrap(),
+        "pm".to_string(),
+    );
+    let json = view::board::story_to_board_json(&GhLabelCodec, &story, story.state.as_str());
+    let obj = json.as_object().expect("object");
+    assert!(
+        !obj.contains_key("iteration_id"),
+        "iteration_id surface retired (#1299 Slice E); board-JSON must not advertise it: keys={:?}",
+        obj.keys().collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn iteration_label_decoder_does_not_populate_a_story_field() {
+    let v = json!({
+        "number": 100,
+        "title": "decoder-test",
+        "state": "open",
+        "created_at": "2026-05-15T00:00:00Z",
+        "user": { "login": "pm" },
+        "body": "fixture",
+        "labels": [{"name": "ready"}, {"name": "iteration-#1338"}],
+    });
+    let story = decode_story_metadata(&v).expect("decode");
+    let json = view::board::story_to_board_json(&GhLabelCodec, &story, story.state.as_str());
+    let obj = json.as_object().expect("object");
+    assert!(
+        !obj.contains_key("iteration_id"),
+        "iteration-#NNNN label must not surface as iteration_id field"
+    );
+    let labels = obj
+        .get("labels")
+        .and_then(|v| v.as_array())
+        .expect("labels array");
+    let label_strs: Vec<&str> = labels.iter().filter_map(|v| v.as_str()).collect();
+    assert!(
+        !label_strs.iter().any(|l| l.starts_with("iteration-#")),
+        "story-to-board emit no longer derives iteration-#NNNN from a field; \
+         legacy GH labels are not re-emitted into wire-format-labels: {:?}",
+        label_strs
+    );
+}
+
+#[test]
+fn create_story_event_does_not_seed_iteration_membership() {
+    let handle = SeededStore::new(vec![], vec![], vec![]);
+    let _orch: Arc<SyncOrchestrator> = handle.build_orch(
+        Arc::new(InMemorySourceAdapter::new()),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+    );
+    let select = handle.select();
+    handle.dispatch(AppAction::Story(StoryAction::Event(StoryEvent::new(
+        meta(),
+        StoryId::new(200),
+        StoryEventKind::StoryCreated {
+            title: "freshly-created".to_string(),
+            body: "no membership at filing-time".to_string(),
+            initial_state: Work::NotStarted,
+            story_type: StoryKind::Feature,
+        },
+    ))));
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(200)))
+        .expect("story present");
+    let json = view::board::story_to_board_json(&GhLabelCodec, &story, story.state.as_str());
+    let obj = json.as_object().expect("object");
+    assert!(
+        !obj.contains_key("iteration_id"),
+        "newly-created stories surface no iteration_id"
+    );
+}

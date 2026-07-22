@@ -49,6 +49,7 @@ room = { path = "../../components/room" }
 sync = { path = "../../components/sync" }
 bridge = { path = "../../components/bridge" }
 transport = { path = "../../components/transport" }
+server = { path = "../server" }
 chrono = { workspace = true, features = ["serde"] }
 dirs = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
@@ -72,6 +73,7 @@ toml = { workspace = true }
 tempfile = { workspace = true }
 
 [dev-dependencies]
+server = { path = "../server" }
 store_test_support = { path = "../../components/store_test_support" }
 transport = { path = "../../components/transport", features = ["test-support"] }
 portable-pty = "0.9"
