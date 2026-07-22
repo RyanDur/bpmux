@@ -330,6 +330,7 @@ dependencies = [
  "storage",
  "store",
  "strip-ansi-escapes",
+ "telemetry",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
@@ -2971,6 +2972,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fce91f2f0ec87dff7e6bcbbeb267439aa1188703003c6055193c821487400432"
 dependencies = [
  "unicode-width",
+]
+
+[[package]]
+name = "telemetry"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "diag",
+ "dirs",
+ "message_log",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

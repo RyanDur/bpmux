@@ -36,7 +36,7 @@ pub mod store;
 pub mod sync;
 #[cfg(test)]
 mod team_roster_tests;
-pub mod telemetry;
+pub use ::telemetry;
 #[cfg(test)]
 mod tracker_contract_tests;
 pub mod transport;

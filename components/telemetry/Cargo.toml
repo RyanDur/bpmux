@@ -1,0 +1,20 @@
+[package]
+name = "telemetry"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Token + usage accounting: spend reports over the message log, usage counters persisted per-home"
+
+[dependencies]
+message_log = { path = "../message_log" }
+diag = { path = "../diag" }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+dirs = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

@@ -28,6 +28,7 @@ members = [
     "components/source_sync",
     "components/storage",
     "components/store",
+    "components/telemetry",
     "components/unfurl",
     "components/user_routing",
     "components/view",
