@@ -1,7 +1,8 @@
 use clap::Subcommand;
 
 use crate::help::run_help;
-use crate::messaging::{run_read, run_register, run_send, run_wait_for_event};
+use crate::messaging::{run_register, run_send, run_wait_for_event};
+use crate::read_verb::run_read;
 use crate::wake::run_wake_on_event;
 
 #[derive(Subcommand)]

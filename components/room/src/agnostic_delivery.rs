@@ -5,12 +5,9 @@ use tokio::sync::broadcast;
 
 use crate::LivePtyRegistry;
 use hub::Hub;
-use message::{BROADCAST_ALL, Message};
+use message::Message;
 use store::routing::RoutingAction;
 use store::{Dispatch, Select};
-use user_routing::short_name;
-
-use super::terminal_inject::frame_team_message;
 
 const HOLD_DEBOUNCE: Duration = Duration::from_millis(600);
 const HOLD_MAX: Duration = Duration::from_secs(10);
@@ -97,7 +94,7 @@ pub fn deliver_to_terminals(
     if !msg.is_chat() {
         return held;
     }
-    let line = framed_line(msg);
+    let line = super::terminal_inject::framed_line(msg);
     let ts = msg.ts.to_rfc3339();
     for (user_id, terminal_id) in select.select(|state| {
         store::routing::delivery_targets(
@@ -160,15 +157,13 @@ pub fn drain_missed(
         if !after_cursor(select, user_id, msg.ts) {
             continue;
         }
-        if registry.submit_to(terminal_id, framed_line(&msg).as_bytes()) {
+        if registry.submit_to(
+            terminal_id,
+            super::terminal_inject::framed_line(&msg).as_bytes(),
+        ) {
             mark_delivered(dispatch, user_id, &msg.ts.to_rfc3339());
         }
     }
-}
-
-fn framed_line(msg: &Message) -> String {
-    let scope = scope_label(msg.to.as_deref(), msg.to_ids.as_deref());
-    frame_team_message(short_name(&msg.from), &scope, &msg.text)
 }
 
 fn after_cursor(select: &Select, user_id: &str, ts: chrono::DateTime<chrono::Utc>) -> bool {
@@ -179,24 +174,5 @@ fn after_cursor(select: &Select, user_id: &str, ts: chrono::DateTime<chrono::Utc
     {
         Some(cursor) => ts > cursor.with_timezone(&chrono::Utc),
         None => true,
-    }
-}
-
-fn scope_label(to: Option<&[String]>, to_ids: Option<&[String]>) -> String {
-    if to.is_none() && to_ids.is_some() {
-        return "direct".to_string();
-    }
-    match to {
-        None => "broadcast".to_string(),
-        Some(names) if names.iter().any(|name| name == BROADCAST_ALL) => "broadcast".to_string(),
-        Some(names) if names.len() == 1 => "→you".to_string(),
-        Some(names) => format!(
-            "to:{}",
-            names
-                .iter()
-                .map(|name| short_name(name))
-                .collect::<Vec<_>>()
-                .join(",")
-        ),
     }
 }

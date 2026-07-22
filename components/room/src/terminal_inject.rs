@@ -37,3 +37,30 @@ fn sanitize_field(field: &str) -> String {
     }
     stripped
 }
+
+use message::{BROADCAST_ALL, Message};
+use user_routing::short_name;
+
+pub(crate) fn framed_line(msg: &Message) -> String {
+    let scope = scope_label(msg.to.as_deref(), msg.to_ids.as_deref());
+    frame_team_message(short_name(&msg.from), &scope, &msg.text)
+}
+
+fn scope_label(to: Option<&[String]>, to_ids: Option<&[String]>) -> String {
+    if to.is_none() && to_ids.is_some() {
+        return "direct".to_string();
+    }
+    match to {
+        None => "broadcast".to_string(),
+        Some(names) if names.iter().any(|name| name == BROADCAST_ALL) => "broadcast".to_string(),
+        Some(names) if names.len() == 1 => "→you".to_string(),
+        Some(names) => format!(
+            "to:{}",
+            names
+                .iter()
+                .map(|name| short_name(name))
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
+    }
+}
