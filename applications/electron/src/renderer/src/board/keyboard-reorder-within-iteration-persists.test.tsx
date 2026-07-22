@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { pressReorderShortcut } from '../../../../test/fixtures/pressReorderShortcut'
-import { keyboardReorder } from '../board/keyboardReorder.page'
+import { keyboardReorder } from './keyboardReorder.page'
 
 describe('#1339 step 2h-1 — keyboard-reorder within iteration container persists via label mutation', () => {
   let rendered: RenderAppResult | null = null

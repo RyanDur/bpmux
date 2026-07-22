@@ -2,7 +2,7 @@ import { afterEach, describe, expect, inject, it } from 'vitest'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
-import { iterationBoard } from '../board/iterationBoard.page'
+import { iterationBoard } from './iterationBoard.page'
 
 describe('#1339 — iteration members render in the parent iteration stories order', () => {
   let rendered: RenderAppResult | null = null

@@ -3,9 +3,9 @@ import { waitFor } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
-import { iterationBoard, newDragGesture } from '../board/iterationBoard.page'
+import { iterationBoard, newDragGesture } from './iterationBoard.page'
 
-describe('#1339 — drag-across-iteration retags member with new iteration prefix', () => {
+describe('#1339 — drag-within-iteration persists via label mutation', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {
@@ -13,35 +13,34 @@ describe('#1339 — drag-across-iteration retags member with new iteration prefi
     rendered = null
   })
 
-  it('dropping a Vela member onto a Cygnus member retags it to iteration-Cygnus + removes iteration-Vela', async () => {
+  it('dropping member 3 onto member 1 retags member 3 to a position before 100 + state-delta refetch reflects new order', async () => {
     const port = inject('bpmuxBackendPort')
     const authToken = inject('bpmuxAuthToken')
     const apiBase = `http://127.0.0.1:${port}`
 
     await seedStories(apiBase, authToken, [
       {
-        id: 7701,
-        title: 'Iteration Vela',
+        id: 7601,
+        title: 'Iteration Pegasus',
         story_type: 'iteration',
         initial_state: 'icebox',
-        body: '<!-- bpmux-relationships: {"stories":[7711]} -->'
+        body: '<!-- bpmux-relationships: {"stories":[7611,7612,7613]} -->'
       },
       {
-        id: 7702,
-        title: 'Iteration Cygnus',
-        story_type: 'iteration',
-        initial_state: 'icebox',
-        body: '<!-- bpmux-relationships: {"stories":[7721]} -->'
-      },
-      {
-        id: 7711,
-        title: 'vela-member-one',
+        id: 7611,
+        title: 'alpha',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        id: 7721,
-        title: 'cygnus-member-one',
+        id: 7612,
+        title: 'bravo',
+        story_type: 'feature',
+        initial_state: 'icebox'
+      },
+      {
+        id: 7613,
+        title: 'charlie',
         story_type: 'feature',
         initial_state: 'icebox'
       }
@@ -49,13 +48,13 @@ describe('#1339 — drag-across-iteration retags member with new iteration prefi
 
     rendered = renderApp()
 
-    const velaContainer = await iterationBoard.container(7701, undefined, { timeout: 15_000 })
-    const cygnusContainer = await iterationBoard.container(7702, undefined, { timeout: 15_000 })
-    const source = iterationBoard.memberRow(velaContainer, 7711)
+    const container = await iterationBoard.container(7601, undefined, { timeout: 15_000 })
+    expect(iterationBoard.memberOrder(container)).toEqual([7611, 7612, 7613])
+
+    const source = iterationBoard.storyRow(container, 7613)
     const sourceGrip = iterationBoard.grip(source)
-    const target = iterationBoard.memberRow(cygnusContainer, 7721)
+    const target = iterationBoard.storyRow(container, 7611)
     expect(source).toBeTruthy()
-    expect(sourceGrip).toBeTruthy()
     expect(target).toBeTruthy()
 
     const drag = newDragGesture()
@@ -71,10 +70,8 @@ describe('#1339 — drag-across-iteration retags member with new iteration prefi
         const iterBody = (await iterRes.json()) as {
           iterations: { id: number; stories: number[] }[]
         }
-        const cygnus = iterBody.iterations.find((i) => i.id === 7702)
-        const vela = iterBody.iterations.find((i) => i.id === 7701)
-        expect(cygnus?.stories).toEqual([7711, 7721])
-        expect(vela?.stories).toEqual([])
+        const pegasus = iterBody.iterations.find((i) => i.id === 7601)
+        expect(pegasus?.stories).toEqual([7613, 7611, 7612])
       },
       { timeout: 10_000, interval: 200 }
     )

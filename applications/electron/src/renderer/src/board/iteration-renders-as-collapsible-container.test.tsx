@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
-import { iterationBoard } from '../board/iterationBoard.page'
+import { iterationBoard } from './iterationBoard.page'
 
 describe('#1297 — iteration renders as a collapsible container in the icebox', () => {
   let rendered: RenderAppResult | null = null

@@ -3,7 +3,7 @@ import { waitFor } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { resetMessages } from '../../../../test/fixtures/seedMessages'
-import { humanMessage } from '../chat/humanMessage.page'
+import { humanMessage } from './humanMessage.page'
 
 describe('human-side E2E #476 — persistence-class — message filter (#1456 3-class mute-toggle)', () => {
   let rendered: RenderAppResult | null = null

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
-import { keyboardReorder } from '../board/keyboardReorder.page'
+import { keyboardReorder } from './keyboardReorder.page'
 
 describe('#1339 Scenario 4 — grip-handle is the sole drag-initiator', () => {
   let rendered: RenderAppResult | null = null

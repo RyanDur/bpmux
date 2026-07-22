@@ -2,7 +2,7 @@ import { afterEach, describe, expect, inject, it } from 'vitest'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
-import { iterationBoard } from '../board/iterationBoard.page'
+import { iterationBoard } from './iterationBoard.page'
 
 describe('#1300 — closed iteration renders "(closed)" badge as JSX sibling (no strikethrough inheritance)', () => {
   let rendered: RenderAppResult | null = null

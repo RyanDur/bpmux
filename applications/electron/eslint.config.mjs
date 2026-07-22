@@ -43,7 +43,7 @@ export default defineConfig(
       '**/playwright-report/**',
       '**/coverage/**',
       '**/*.tsbuildinfo',
-      '**/__tests__/**/fixtures/**'
+      '**/test-support/fixtures/**'
     ]
   },
   tseslint.configs.recommended,
@@ -128,7 +128,7 @@ export default defineConfig(
     rules: { 'jsx-a11y/no-autofocus': 'off' }
   },
   {
-    files: ['**/*.test.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}'],
+    files: ['**/*.test.{ts,tsx}', '**/test-support/**/*.{ts,tsx}'],
     plugins: {
       'testing-library': eslintPluginTestingLibrary,
       'jest-dom': eslintPluginJestDom

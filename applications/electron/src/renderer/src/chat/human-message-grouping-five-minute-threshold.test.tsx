@@ -6,7 +6,7 @@ import {
   seedMessages,
   type SeedMessage
 } from '../../../../test/fixtures/seedMessages'
-import { humanMessage } from '../chat/humanMessage.page'
+import { humanMessage } from './humanMessage.page'
 
 const GROUPED_SEED: SeedMessage[] = [
   {

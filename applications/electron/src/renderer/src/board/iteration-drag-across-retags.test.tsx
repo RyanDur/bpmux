@@ -3,9 +3,9 @@ import { waitFor } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
-import { iterationBoard, newDragGesture } from '../board/iterationBoard.page'
+import { iterationBoard, newDragGesture } from './iterationBoard.page'
 
-describe('#1339 Sc1 user-axis — drop on displaced source row still posts label mutation', () => {
+describe('#1339 — drag-across-iteration retags member with new iteration prefix', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {
@@ -13,34 +13,35 @@ describe('#1339 Sc1 user-axis — drop on displaced source row still posts label
     rendered = null
   })
 
-  it('drop fires on the source <li> (eagerReorder-displaced slot); mutation still uses hoveredId as target', async () => {
+  it('dropping a Vela member onto a Cygnus member retags it to iteration-Cygnus + removes iteration-Vela', async () => {
     const port = inject('bpmuxBackendPort')
     const authToken = inject('bpmuxAuthToken')
     const apiBase = `http://127.0.0.1:${port}`
 
     await seedStories(apiBase, authToken, [
       {
-        id: 9501,
-        title: 'Iteration DisplacedDrop',
+        id: 7701,
+        title: 'Iteration Vela',
         story_type: 'iteration',
         initial_state: 'icebox',
-        body: '<!-- bpmux-relationships: {"stories":[9511,9512,9513]} -->'
+        body: '<!-- bpmux-relationships: {"stories":[7711]} -->'
       },
       {
-        id: 9511,
-        title: 'displaced-alpha',
+        id: 7702,
+        title: 'Iteration Cygnus',
+        story_type: 'iteration',
+        initial_state: 'icebox',
+        body: '<!-- bpmux-relationships: {"stories":[7721]} -->'
+      },
+      {
+        id: 7711,
+        title: 'vela-member-one',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        id: 9512,
-        title: 'displaced-bravo',
-        story_type: 'feature',
-        initial_state: 'icebox'
-      },
-      {
-        id: 9513,
-        title: 'displaced-charlie',
+        id: 7721,
+        title: 'cygnus-member-one',
         story_type: 'feature',
         initial_state: 'icebox'
       }
@@ -48,10 +49,11 @@ describe('#1339 Sc1 user-axis — drop on displaced source row still posts label
 
     rendered = renderApp()
 
-    const container = await iterationBoard.container(9501, undefined, { timeout: 15_000 })
-    const source = iterationBoard.storyRow(container, 9513)
+    const velaContainer = await iterationBoard.container(7701, undefined, { timeout: 15_000 })
+    const cygnusContainer = await iterationBoard.container(7702, undefined, { timeout: 15_000 })
+    const source = iterationBoard.memberRow(velaContainer, 7711)
     const sourceGrip = iterationBoard.grip(source)
-    const target = iterationBoard.storyRow(container, 9511)
+    const target = iterationBoard.memberRow(cygnusContainer, 7721)
     expect(source).toBeTruthy()
     expect(sourceGrip).toBeTruthy()
     expect(target).toBeTruthy()
@@ -59,9 +61,7 @@ describe('#1339 Sc1 user-axis — drop on displaced source row still posts label
     const drag = newDragGesture()
     drag.start(sourceGrip)
     drag.over(target)
-    drag.drop(source)
-
-    expect(source.getAttribute('data-dragging')).not.toBe('true')
+    drag.drop(target)
 
     await waitFor(
       async () => {
@@ -71,8 +71,10 @@ describe('#1339 Sc1 user-axis — drop on displaced source row still posts label
         const iterBody = (await iterRes.json()) as {
           iterations: { id: number; stories: number[] }[]
         }
-        const displacedDrop = iterBody.iterations.find((i) => i.id === 9501)
-        expect(displacedDrop?.stories).toEqual([9513, 9511, 9512])
+        const cygnus = iterBody.iterations.find((i) => i.id === 7702)
+        const vela = iterBody.iterations.find((i) => i.id === 7701)
+        expect(cygnus?.stories).toEqual([7711, 7721])
+        expect(vela?.stories).toEqual([])
       },
       { timeout: 10_000, interval: 200 }
     )

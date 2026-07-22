@@ -8,7 +8,7 @@ import {
   seedRoster,
   type SeedMessage
 } from '../../../../test/fixtures/seedMessages'
-import { humanMessage } from '../chat/humanMessage.page'
+import { humanMessage } from './humanMessage.page'
 
 const SEED: SeedMessage[] = [
   {

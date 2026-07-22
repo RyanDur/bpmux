@@ -6,7 +6,7 @@ import {
   seedMessages,
   type SeedMessage
 } from '../../../../test/fixtures/seedMessages'
-import { keyboardReorder } from '../board/keyboardReorder.page'
+import { keyboardReorder } from './keyboardReorder.page'
 
 const SEED_MESSAGES: SeedMessage[] = [
   {

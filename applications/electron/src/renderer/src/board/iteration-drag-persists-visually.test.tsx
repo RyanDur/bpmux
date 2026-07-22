@@ -3,7 +3,7 @@ import { waitFor } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
-import { iterationBoard, newDragGesture } from '../board/iterationBoard.page'
+import { iterationBoard, newDragGesture } from './iterationBoard.page'
 
 describe('#1339 — drag-within-iteration visual no snap-back (optimistic UI)', () => {
   let rendered: RenderAppResult | null = null

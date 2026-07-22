@@ -3,9 +3,9 @@ import { waitFor } from '@testing-library/react'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
-import { iterationBoard, newDragGesture } from '../board/iterationBoard.page'
+import { iterationBoard, newDragGesture } from './iterationBoard.page'
 
-describe('#1339 — drag-within-iteration persists via label mutation', () => {
+describe('#1339 Sc1 user-axis — drop on displaced source row still posts label mutation', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {
@@ -13,34 +13,34 @@ describe('#1339 — drag-within-iteration persists via label mutation', () => {
     rendered = null
   })
 
-  it('dropping member 3 onto member 1 retags member 3 to a position before 100 + state-delta refetch reflects new order', async () => {
+  it('drop fires on the source <li> (eagerReorder-displaced slot); mutation still uses hoveredId as target', async () => {
     const port = inject('bpmuxBackendPort')
     const authToken = inject('bpmuxAuthToken')
     const apiBase = `http://127.0.0.1:${port}`
 
     await seedStories(apiBase, authToken, [
       {
-        id: 7601,
-        title: 'Iteration Pegasus',
+        id: 9501,
+        title: 'Iteration DisplacedDrop',
         story_type: 'iteration',
         initial_state: 'icebox',
-        body: '<!-- bpmux-relationships: {"stories":[7611,7612,7613]} -->'
+        body: '<!-- bpmux-relationships: {"stories":[9511,9512,9513]} -->'
       },
       {
-        id: 7611,
-        title: 'alpha',
+        id: 9511,
+        title: 'displaced-alpha',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        id: 7612,
-        title: 'bravo',
+        id: 9512,
+        title: 'displaced-bravo',
         story_type: 'feature',
         initial_state: 'icebox'
       },
       {
-        id: 7613,
-        title: 'charlie',
+        id: 9513,
+        title: 'displaced-charlie',
         story_type: 'feature',
         initial_state: 'icebox'
       }
@@ -48,19 +48,20 @@ describe('#1339 — drag-within-iteration persists via label mutation', () => {
 
     rendered = renderApp()
 
-    const container = await iterationBoard.container(7601, undefined, { timeout: 15_000 })
-    expect(iterationBoard.memberOrder(container)).toEqual([7611, 7612, 7613])
-
-    const source = iterationBoard.storyRow(container, 7613)
+    const container = await iterationBoard.container(9501, undefined, { timeout: 15_000 })
+    const source = iterationBoard.storyRow(container, 9513)
     const sourceGrip = iterationBoard.grip(source)
-    const target = iterationBoard.storyRow(container, 7611)
+    const target = iterationBoard.storyRow(container, 9511)
     expect(source).toBeTruthy()
+    expect(sourceGrip).toBeTruthy()
     expect(target).toBeTruthy()
 
     const drag = newDragGesture()
     drag.start(sourceGrip)
     drag.over(target)
-    drag.drop(target)
+    drag.drop(source)
+
+    expect(source.getAttribute('data-dragging')).not.toBe('true')
 
     await waitFor(
       async () => {
@@ -70,8 +71,8 @@ describe('#1339 — drag-within-iteration persists via label mutation', () => {
         const iterBody = (await iterRes.json()) as {
           iterations: { id: number; stories: number[] }[]
         }
-        const pegasus = iterBody.iterations.find((i) => i.id === 7601)
-        expect(pegasus?.stories).toEqual([7613, 7611, 7612])
+        const displacedDrop = iterBody.iterations.find((i) => i.id === 9501)
+        expect(displacedDrop?.stories).toEqual([9513, 9511, 9512])
       },
       { timeout: 10_000, interval: 200 }
     )

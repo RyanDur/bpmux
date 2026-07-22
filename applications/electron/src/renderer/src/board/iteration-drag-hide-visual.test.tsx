@@ -2,7 +2,7 @@ import { afterEach, describe, expect, inject, it } from 'vitest'
 
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { seedStories } from '../../../../test/fixtures/seedMessages'
-import { iterationBoard, newDragGesture } from '../board/iterationBoard.page'
+import { iterationBoard, newDragGesture } from './iterationBoard.page'
 
 describe('#1339 step 2d — dragged member carries data-dragging during drag gesture', () => {
   let rendered: RenderAppResult | null = null

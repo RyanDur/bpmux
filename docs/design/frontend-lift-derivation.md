@@ -54,7 +54,7 @@ board (69), chat (21), ci, metrics, roles, sidebar, sync — so station
 | 1 | The store comes home: transport/state → state/ — the engine at the center, doors register in | layers (1) | done |
 | 2 | Dissolve lib/ into real owners: redux → state/, terminal utils → their feature, storage hooks → their features; the monads keep one small curated home | dissolve (4) | done |
 | 3 | Dissolve hooks/ into the features that own them | dissolve (4) | done |
-| 4 | Orphan specs go home; fixtures and lint gates into test-support | specs home (7) | |
+| 4 | Orphan specs go home; fixtures and lint gates into test-support | specs home (7) | done |
 | 5 | One door layer: api/ and transport/ reconcile | layers (1) | |
 | 6 | Curated barrels where import noise demands | barrels (7) | |
 
@@ -102,3 +102,14 @@ roster domain deriveRoles already anchors); useScope + useTheme +
 scopeStorage → the shell's own level beside AppShell. hooks/ is gone.
 The per-file useRef lint waiver re-homed with useScrollGutter. Suite:
 typecheck clean, 782 vitest green, eslint clean.
+
+**Station 4 (2026-07-23).** The central __tests__/ dissolved: five
+human-message specs → chat/, nineteen board specs (iterations, drag,
+keyboard reorder, desk-check, labels) → board/, two room-terminal
+specs → terminal/, and the lint-gate specs (eslint/stylelint
+substrates, infrastructure) + the dodds fixture → test-support/ per
+the reference chain. eslint config patterns re-aimed from
+__tests__/ to test-support/ so the gate fixture keeps its rules.
+Shared app-level fixtures were already a test-support layer at
+applications/electron/test/ and stay put. Suite: typecheck clean,
+782 vitest green, eslint clean.
