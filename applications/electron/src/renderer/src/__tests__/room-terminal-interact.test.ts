@@ -7,7 +7,7 @@ import {
   sendChat,
   encodeKeystroke,
   decodePtyData
-} from '../transport/state'
+} from '../state'
 
 describe('#1592 SLICE-2 interact — raw keystrokes reach the PTY stdin plane', () => {
   beforeEach(() => resetStateForTest())

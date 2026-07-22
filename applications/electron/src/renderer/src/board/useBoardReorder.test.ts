@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useBoardReorder } from './useBoardReorder'
-import { StateActionType } from '../transport/state/actions'
+import { StateActionType } from '../state/actions'
 import { type Story } from './types'
 
 const ITER = 9000

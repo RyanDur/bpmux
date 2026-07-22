@@ -1,7 +1,7 @@
-import { maybe } from '../../lib/maybe'
-import { tryCatch } from '../../lib/result'
-import type { Dispatch } from '../../lib/redux'
-import { MESSAGE_TYPE, asMessageType } from '../messageType'
+import { maybe } from '../lib/maybe'
+import { tryCatch } from '../lib/result'
+import type { Dispatch } from '../lib/redux'
+import { MESSAGE_TYPE, asMessageType } from '../transport/messageType'
 import {
   commentsHydratedDecoder,
   errorDecoder,
@@ -14,7 +14,7 @@ import {
   ptyOutputDecoder,
   timelineHydratedDecoder,
   welcomeDecoder
-} from '../wsDecoders'
+} from '../transport/wsDecoders'
 import { resolveOlderHistory } from './olderHistory'
 import {
   commentsHydrated,
@@ -29,7 +29,7 @@ import {
   welcomed,
   type StateAction
 } from './actions'
-import { type ChatMessage, type ServerChatMessage } from '../types'
+import { type ChatMessage, type ServerChatMessage } from '../transport/types'
 
 const chatFrameToAction = (
   message: ServerChatMessage,

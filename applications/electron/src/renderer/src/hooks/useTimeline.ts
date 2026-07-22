@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react'
-import {
-  requestTimelineHydrate,
-  useBoardInvalidateTick,
-  useTimelineEvents
-} from '../transport/state'
+import { requestTimelineHydrate, useBoardInvalidateTick, useTimelineEvents } from '../state'
 import type { TimelineEventWire } from '../transport/types'
 export type TimelineEvent = TimelineEventWire
 

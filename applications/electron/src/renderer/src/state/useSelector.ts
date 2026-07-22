@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
-import { getStateSnapshot, subscribeState } from './state/store'
-import type { StateSnapshot } from './state/reducer'
+import { getStateSnapshot, subscribeState } from './store'
+import type { StateSnapshot } from './reducer'
 
 const selectionCache = new WeakMap<StateSnapshot, Map<(state: StateSnapshot) => unknown, unknown>>()
 

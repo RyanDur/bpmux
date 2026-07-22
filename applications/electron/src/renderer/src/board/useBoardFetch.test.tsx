@@ -3,8 +3,8 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 
 import { useBoardFetch } from './useBoardFetch'
 import { type Story } from './types'
-import { dispatchState, resetStateForTest } from '../transport/state/store'
-import { mirrorDeltaReceived } from '../transport/state/actions'
+import { dispatchState, resetStateForTest } from '../state/store'
+import { mirrorDeltaReceived } from '../state/actions'
 
 const pushStories = (stories: Story[]): void =>
   dispatchState(mirrorDeltaReceived({ domain: 'stories', stories }, '2026-06-13T00:00:00Z'))

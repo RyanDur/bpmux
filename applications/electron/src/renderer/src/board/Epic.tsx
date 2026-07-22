@@ -2,7 +2,7 @@ import { useState } from 'react'
 import MiniBoard from './MiniBoard'
 import StoryTypeGlyph from './StoryTypeGlyph'
 import { useEpicCollapse } from './useEpicCollapse'
-import { RENDERER_IDENTITY } from '../transport/state'
+import { RENDERER_IDENTITY } from '../state'
 import { deriveEpicState, type Epic as EpicData, type Story } from './types'
 import {
   breakdownAriaLabel,

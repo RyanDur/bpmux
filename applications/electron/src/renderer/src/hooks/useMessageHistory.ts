@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { requestOlderHistory } from '../transport/state'
+import { requestOlderHistory } from '../state'
 import { asMessageType } from '../transport/messageType'
 import type { ChatMessage, HistoryMessageWire } from '../transport/types'
 

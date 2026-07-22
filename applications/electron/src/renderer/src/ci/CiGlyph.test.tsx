@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import CiGlyph from './CiGlyph'
-import { dispatchState, resetStateForTest } from '../transport/state/store'
-import { mirrorDeltaReceived } from '../transport/state/actions'
+import { dispatchState, resetStateForTest } from '../state/store'
+import { mirrorDeltaReceived } from '../state/actions'
 import type { CiSnapshotWire } from '../transport/types'
 
 const snap = (over: Partial<CiSnapshotWire> & Pick<CiSnapshotWire, 'state'>): CiSnapshotWire => ({

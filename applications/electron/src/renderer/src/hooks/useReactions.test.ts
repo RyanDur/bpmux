@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { cleanup, renderHook } from '@testing-library/react'
 import { useReactions } from './useReactions'
-import { dispatchState, resetStateForTest } from '../transport/state/store'
-import { mirrorDeltaReceived } from '../transport/state/actions'
-import { captureSentFramesForTest } from '../transport/state'
+import { dispatchState, resetStateForTest } from '../state/store'
+import { mirrorDeltaReceived } from '../state/actions'
+import { captureSentFramesForTest } from '../state'
 import type { ReactionAggregateWire } from '../transport/types'
 
 const pushReactions = (channel: string, aggregated: ReactionAggregateWire[]): void =>

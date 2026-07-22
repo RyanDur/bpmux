@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import Roadmap from './Roadmap'
 import { roadmap } from './Roadmap.page'
 import { buildingIteration, card, checks, outcome, seedRoadmap } from './Roadmap.fixtures'
-import { resetStateForTest } from '../transport/state/store'
+import { resetStateForTest } from '../state/store'
 
 afterEach(() => {
   cleanup()

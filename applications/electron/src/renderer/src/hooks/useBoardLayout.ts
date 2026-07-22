@@ -5,7 +5,7 @@ import {
   computeCollapseToggle
 } from '../board/BoardResizeHandle.utils'
 import { useBoardWidthStorage } from '../lib/useBoardWidthStorage'
-import { RENDERER_IDENTITY } from '../transport/state'
+import { RENDERER_IDENTITY } from '../state'
 
 export interface UseBoardLayoutResult {
   boardOpen: boolean

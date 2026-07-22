@@ -1,11 +1,16 @@
-import { applyStateDelta, applyStateSnapshot, emptyMirrorState } from '../state-delta'
-import { asMessageType } from '../messageType'
+import { applyStateDelta, applyStateSnapshot, emptyMirrorState } from '../transport/state-delta'
+import { asMessageType } from '../transport/messageType'
 import { StateActionType, type StateAction, type HistoryMessage } from './actions'
-import type { ChatMessage, CommentWire, ConnectionStatus, TimelineEventWire } from '../types'
-import type { BoardColumn, Epic, Story } from '../../board/types'
-import type { RoadmapCard, RoadmapOutcomeData } from '../../board/selectRoadmap'
-import type { BoardIterationData } from '../../board/selectIterations'
-import type { MirrorState } from '../state-delta'
+import type {
+  ChatMessage,
+  CommentWire,
+  ConnectionStatus,
+  TimelineEventWire
+} from '../transport/types'
+import type { BoardColumn, Epic, Story } from '../board/types'
+import type { RoadmapCard, RoadmapOutcomeData } from '../board/selectRoadmap'
+import type { BoardIterationData } from '../board/selectIterations'
+import type { MirrorState } from '../transport/state-delta'
 
 export interface StateSnapshot {
   status: ConnectionStatus

@@ -1,5 +1,5 @@
-import { useDispatch } from '../transport/useDispatch'
-import { iterationReorderRequested } from '../transport/state/actions'
+import { useDispatch } from '../state/useDispatch'
+import { iterationReorderRequested } from '../state/actions'
 import { eagerReorder, type IterationDragPayload } from './iterationMembers'
 import type { BoardIterationData } from './selectIterations'
 

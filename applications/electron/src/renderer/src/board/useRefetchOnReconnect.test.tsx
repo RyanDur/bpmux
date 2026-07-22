@@ -4,7 +4,7 @@ import { act, cleanup, renderHook } from '@testing-library/react'
 let reconnectTick = 0
 const listeners = new Set<() => void>()
 
-vi.mock('../transport/state', () => ({
+vi.mock('../state', () => ({
   subscribeState: (l: () => void) => {
     listeners.add(l)
     return () => listeners.delete(l)

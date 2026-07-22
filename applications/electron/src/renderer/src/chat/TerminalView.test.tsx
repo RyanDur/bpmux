@@ -3,7 +3,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import type { Terminal } from '@xterm/xterm'
 import { TerminalView } from './TerminalView'
 import { copyOnCmdC } from './terminalCopy'
-import { deliverServerFrameForTest, resetStateForTest, encodeKeystroke } from '../transport/state'
+import { deliverServerFrameForTest, resetStateForTest, encodeKeystroke } from '../state'
 
 const osc7Sequence = (path: string): string =>
   `${String.fromCharCode(27)}]7;file://${path}${String.fromCharCode(7)}`

@@ -1,4 +1,4 @@
-import type { ChatMessage } from '../types'
+import type { ChatMessage } from '../transport/types'
 
 const liveMessageListeners = new Set<(m: ChatMessage) => void>()
 const ptyOutputListeners = new Map<string, Set<(data: string) => void>>()

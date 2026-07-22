@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { useSelector } from './useSelector'
-import { dispatchState, resetStateForTest } from './state/store'
-import { mirrorDeltaReceived } from './state/actions'
+import { dispatchState, resetStateForTest } from './store'
+import { mirrorDeltaReceived } from './actions'
 import { selectRoadmap, type RoadmapCard } from '../board/selectRoadmap'
 const ts = '2026-06-27T00:00:00Z'
 const nowCard: RoadmapCard = {

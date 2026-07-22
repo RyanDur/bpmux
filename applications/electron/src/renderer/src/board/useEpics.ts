@@ -1,4 +1,4 @@
-import { useSelector } from '../transport/useSelector'
+import { useSelector } from '../state/useSelector'
 import { selectEpics } from './selectEpics'
 import type { Epic } from './types'
 

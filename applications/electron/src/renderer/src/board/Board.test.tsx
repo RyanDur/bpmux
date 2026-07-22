@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import Board from './Board'
 import { type Story } from './types'
 import { boardIteration, seedIterations } from './Iteration.fixtures'
-import { dispatchState, resetStateForTest } from '../transport/state/store'
-import { mirrorDeltaReceived } from '../transport/state/actions'
+import { dispatchState, resetStateForTest } from '../state/store'
+import { mirrorDeltaReceived } from '../state/actions'
 
 const pushStories = (stories: Story[]): void =>
   dispatchState(mirrorDeltaReceived({ domain: 'stories', stories }, '2026-06-16T00:00:00Z'))

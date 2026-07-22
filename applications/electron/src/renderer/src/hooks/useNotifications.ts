@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { tryCatch } from '../lib/result'
 import { MESSAGE_TYPE } from '../transport/messageType'
 import type { ChatMessage } from '../transport/types'
-import { RENDERER_IDENTITY, subscribeLiveMessages } from '../transport/state'
+import { RENDERER_IDENTITY, subscribeLiveMessages } from '../state'
 
 const shortName = (identity: string): string => {
   const idx = identity.indexOf(':')

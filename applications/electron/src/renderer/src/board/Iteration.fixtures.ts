@@ -1,6 +1,6 @@
 import type { BoardIterationData } from './selectIterations'
-import { dispatchState } from '../transport/state/store'
-import { mirrorDeltaReceived } from '../transport/state/actions'
+import { dispatchState } from '../state/store'
+import { mirrorDeltaReceived } from '../state/actions'
 
 export const boardIteration = (overrides: Partial<BoardIterationData>): BoardIterationData => ({
   id: 9000,

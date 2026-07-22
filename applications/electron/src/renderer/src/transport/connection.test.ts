@@ -12,7 +12,7 @@ import {
   subscribeState,
   subscribeLiveMessages,
   resetStateForTest
-} from './state'
+} from '../state'
 
 const serverMessage = (over: Record<string, unknown> = {}): string =>
   JSON.stringify({

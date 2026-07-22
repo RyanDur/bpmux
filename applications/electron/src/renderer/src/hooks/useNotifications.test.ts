@@ -6,7 +6,7 @@ const { liveHandlers } = vi.hoisted(() => ({
   liveHandlers: [] as ((m: ChatMessage) => void)[]
 }))
 
-vi.mock('../transport/state', () => ({
+vi.mock('../state', () => ({
   RENDERER_IDENTITY: 'owner',
   subscribeLiveMessages: (h: (m: ChatMessage) => void) => {
     liveHandlers.push(h)
@@ -18,7 +18,7 @@ vi.mock('../transport/state', () => ({
 }))
 
 import { isRelevant, useNotifications } from './useNotifications'
-import { RENDERER_IDENTITY } from '../transport/state'
+import { RENDERER_IDENTITY } from '../state'
 
 const SELF = 'dev'
 

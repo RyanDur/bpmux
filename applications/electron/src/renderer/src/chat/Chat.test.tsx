@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import Chat from './Chat'
 import type { MessageFilter } from '../hooks/useMessageFilter'
-import { dispatchState, resetStateForTest } from '../transport/state/store'
-import { connected, connecting } from '../transport/state/actions'
+import { dispatchState, resetStateForTest } from '../state/store'
+import { connected, connecting } from '../state/actions'
 
 const filter: MessageFilter = {
   visible: new Set(['chat']),

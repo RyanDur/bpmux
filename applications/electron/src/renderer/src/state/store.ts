@@ -1,4 +1,4 @@
-import { applyMiddleware, createStore, type Store } from '../../lib/redux'
+import { applyMiddleware, createStore, type Store } from '../lib/redux'
 import { emptySnapshot, stateReducer, type StateSnapshot } from './reducer'
 import { reset, type StateAction } from './actions'
 import { socketMiddleware } from './socketMiddleware'

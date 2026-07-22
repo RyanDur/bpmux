@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import SyncStatusGlyph from './SyncStatusGlyph'
 import { deriveState } from './syncState'
-import { dispatchState, resetStateForTest } from '../transport/state/store'
-import { mirrorDeltaReceived } from '../transport/state/actions'
+import { dispatchState, resetStateForTest } from '../state/store'
+import { mirrorDeltaReceived } from '../state/actions'
 import type { SyncStatusWire } from '../transport/types'
 const report: SyncStatusWire = {
   last_ingest_at: null,

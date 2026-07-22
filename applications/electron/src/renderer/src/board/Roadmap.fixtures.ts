@@ -1,7 +1,7 @@
 import type { RoadmapCard, RoadmapIteration, RoadmapOutcomeData } from './selectRoadmap'
 import type { IterationReadiness } from './types'
-import { dispatchState } from '../transport/state/store'
-import { mirrorDeltaReceived } from '../transport/state/actions'
+import { dispatchState } from '../state/store'
+import { mirrorDeltaReceived } from '../state/actions'
 
 const ts = '2026-06-27T00:00:00Z'
 

@@ -8,7 +8,7 @@ import {
   deriveCombinatorialGroups,
   deriveDirectRolesFromRoster
 } from '../roles/deriveRoles'
-import { RENDERER_IDENTITY } from '../transport/state'
+import { RENDERER_IDENTITY } from '../state'
 import type { TerminalEntry } from '../hooks/useTerminals'
 import TerminalList from './TerminalList'
 import './Sidebar.css'

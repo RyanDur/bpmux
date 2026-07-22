@@ -4,8 +4,8 @@ import MessageList from './MessageList'
 import { classOf, type MessageClass } from '../hooks/useMessageFilter'
 import { MESSAGE_TYPE } from '../transport/messageType'
 import type { ChatMessage, RosterMemberWire } from '../transport/types'
-import { dispatchState, resetStateForTest } from '../transport/state/store'
-import { mirrorDeltaReceived } from '../transport/state/actions'
+import { dispatchState, resetStateForTest } from '../state/store'
+import { mirrorDeltaReceived } from '../state/actions'
 
 const VISIBLE: ReadonlySet<MessageClass> = new Set([classOf(undefined)])
 

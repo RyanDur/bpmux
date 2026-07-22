@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react'
-import { getStateSnapshot, subscribeState } from '../transport/state'
+import { getStateSnapshot, subscribeState } from '../state'
 
 export const useRefetchOnReconnect = (refetch: () => void): void => {
   const readReconnectTick = (): number => getStateSnapshot().reconnectTick

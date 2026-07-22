@@ -5,7 +5,7 @@ import {
   deliverServerFrameForTest,
   subscribePtyOutput,
   getStateSnapshot
-} from '../transport/state'
+} from '../state'
 
 describe('#1466 SLICE-1 watch — PTY output is a non-persisted plane (falsifier e)', () => {
   beforeEach(() => resetStateForTest())

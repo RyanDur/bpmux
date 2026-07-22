@@ -2,8 +2,8 @@ import type { DrillIteration, OutcomeDrillIn, ConveneCheckState } from './derive
 import { SortableList } from './SortableList'
 import { DragGrip } from './DragGrip'
 import { OUTCOME_ITERATION_DRAG } from './sortableDragConfigs'
-import { useDispatch } from '../transport/useDispatch'
-import { outcomeIterationReorderRequested } from '../transport/state/actions'
+import { useDispatch } from '../state/useDispatch'
+import { outcomeIterationReorderRequested } from '../state/actions'
 
 const CHECK_STATE_WORD: Record<ConveneCheckState, string> = {
   met: 'met',

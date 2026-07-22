@@ -7,9 +7,9 @@ import {
   type TestWsConnection,
   type TestWsServer
 } from '../../../../test/wsTestServer'
-import { startConnection, getStateSnapshot, resetStateForTest } from '../transport/state'
-import { dispatchState } from '../transport/state/store'
-import { mirrorDeltaReceived } from '../transport/state/actions'
+import { startConnection, getStateSnapshot, resetStateForTest } from '../state'
+import { dispatchState } from '../state/store'
+import { mirrorDeltaReceived } from '../state/actions'
 const props = {
   apiBase: 'http://backend.invalid',
   storyId: 700

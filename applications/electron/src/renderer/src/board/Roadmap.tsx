@@ -8,11 +8,8 @@ import type { GripDragProps } from './useDragReorder'
 import { OUTCOME_REPRIORITIZE_DRAG } from './sortableDragConfigs'
 import type { OutcomeWhy, RoadmapOutcome } from './selectRoadmap'
 import type { Horizon } from './types'
-import { useDispatch } from '../transport/useDispatch'
-import {
-  outcomeHorizonChangeRequested,
-  outcomeReprioritizeRequested
-} from '../transport/state/actions'
+import { useDispatch } from '../state/useDispatch'
+import { outcomeHorizonChangeRequested, outcomeReprioritizeRequested } from '../state/actions'
 import './Roadmap.css'
 
 const META_FIELDS: ReadonlyArray<{ key: keyof OutcomeWhy; label: string }> = [

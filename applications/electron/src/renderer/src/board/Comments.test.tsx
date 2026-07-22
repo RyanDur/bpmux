@@ -8,9 +8,9 @@ import {
   type TestWsConnection,
   type TestWsServer
 } from '../../../../test/wsTestServer'
-import { startConnection, getStateSnapshot, resetStateForTest } from '../transport/state'
-import { dispatchState } from '../transport/state/store'
-import { mirrorDeltaReceived } from '../transport/state/actions'
+import { startConnection, getStateSnapshot, resetStateForTest } from '../state'
+import { dispatchState } from '../state/store'
+import { mirrorDeltaReceived } from '../state/actions'
 const baseProps = {
   storyId: 999,
   apiBase: undefined,

@@ -2,7 +2,7 @@ import { render, type RenderResult } from '@testing-library/react'
 import { inject } from 'vitest'
 
 import App from '@renderer/App'
-import { resetStateForTest } from '@renderer/transport/state'
+import { resetStateForTest } from '@renderer/state'
 
 import { installBpmuxShim, uninstallBpmuxShim } from './bpmuxShim'
 

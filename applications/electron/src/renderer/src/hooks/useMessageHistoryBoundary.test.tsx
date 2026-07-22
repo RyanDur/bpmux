@@ -7,7 +7,7 @@ import {
   type TestWsConnection,
   type TestWsServer
 } from '../../../../test/wsTestServer'
-import { startConnection, getStateSnapshot, resetStateForTest } from '../transport/state'
+import { startConnection, getStateSnapshot, resetStateForTest } from '../state'
 import type { ChatMessage } from '../transport/types'
 
 const live = (i: number): ChatMessage => ({

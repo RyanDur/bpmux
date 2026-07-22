@@ -3,7 +3,7 @@ import AppShell from './AppShell'
 import { useMessageHistory } from './hooks/useMessageHistory'
 import { useNotifications } from './hooks/useNotifications'
 import { capPerPush } from './transport/messageCap'
-import { sendChat, startConnection, useConnectionStatus, useLiveMessages } from './transport/state'
+import { sendChat, startConnection, useConnectionStatus, useLiveMessages } from './state'
 
 const App = (): React.JSX.Element => {
   const bridge = window.bpmux

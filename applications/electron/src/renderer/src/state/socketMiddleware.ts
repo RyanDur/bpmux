@@ -1,5 +1,5 @@
-import { tryCatch } from '../../lib/result'
-import type { Middleware } from '../../lib/redux'
+import { tryCatch } from '../lib/result'
+import type { Middleware } from '../lib/redux'
 import type { StateSnapshot } from './reducer'
 import {
   StateActionType,
@@ -15,7 +15,7 @@ import { rejectPendingOlderHistory } from './olderHistory'
 import { encodeKeystroke } from './ptyCodec'
 import { INITIAL_BACKOFF_MS, MAX_BACKOFF_MS, RENDERER_IDENTITY, RENDERER_TOOL } from './constants'
 import { captureSentFrame } from './testCapture'
-import type { ClientMessage } from '../types'
+import type { ClientMessage } from '../transport/types'
 
 const sameConfig = (a: ConnectionConfig | null, b: ConnectionConfig): boolean =>
   a !== null &&

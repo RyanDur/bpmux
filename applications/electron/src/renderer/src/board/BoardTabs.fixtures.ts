@@ -10,7 +10,7 @@ import {
   type ColumnState
 } from './types'
 import { selectIterations } from './selectIterations'
-import { getStateSnapshot } from '../transport/state/store'
+import { getStateSnapshot } from '../state/store'
 
 export const iterationStory = (overrides: Partial<Story>): Story => ({
   id: 9000,

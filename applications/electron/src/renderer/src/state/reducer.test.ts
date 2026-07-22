@@ -9,7 +9,7 @@ import {
   messageReceived,
   reconnected
 } from './actions'
-import type { ChatMessage } from '../types'
+import type { ChatMessage } from '../transport/types'
 
 const chat = (
   over: Partial<ChatMessage> & { ts: string; from: string; text: string }

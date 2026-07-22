@@ -9,8 +9,8 @@ import type {
   RosterMemberWire,
   SyncStatusWire,
   TimelineEventWire
-} from '../types'
-import type { BoardColumn, Story } from '../../board/types'
+} from '../transport/types'
+import type { BoardColumn, Story } from '../board/types'
 const useSelector = <T>(selector: (snapshot: ReturnType<typeof getStateSnapshot>) => T): T => {
   const snapshot = (): T => selector(getStateSnapshot())
   return useSyncExternalStore(subscribeState, snapshot, snapshot)

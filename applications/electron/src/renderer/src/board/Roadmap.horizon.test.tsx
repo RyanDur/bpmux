@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import Roadmap from './Roadmap'
 import { roadmap } from './Roadmap.page'
 import { card, seedRoadmap } from './Roadmap.fixtures'
-import { resetStateForTest } from '../transport/state/store'
-import { startSentFrameCapture, stopSentFrameCapture } from '../transport/state/testCapture'
+import { resetStateForTest } from '../state/store'
+import { startSentFrameCapture, stopSentFrameCapture } from '../state/testCapture'
 
 afterEach(() => {
   cleanup()

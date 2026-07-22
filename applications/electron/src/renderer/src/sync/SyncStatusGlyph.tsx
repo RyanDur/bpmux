@@ -1,5 +1,5 @@
 import './SyncStatusGlyph.css'
-import { useSyncStatus } from '../transport/state'
+import { useSyncStatus } from '../state'
 import type { SyncStatusWire } from '../transport/types'
 import { type SyncState, deriveState, stateAriaLabel, stateGlyph } from './syncState'
 

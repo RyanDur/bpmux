@@ -4,7 +4,7 @@ import type {
   StateDeltaPayload,
   StateSnapshotPayload,
   TimelineEventWire
-} from '../types'
+} from '../transport/types'
 export interface SendOptions {
   addressee?: string | null
   to?: string[] | null

@@ -6,7 +6,7 @@ import { boardTabs } from './BoardTabs.page'
 import { buildProps, epicStory, featureStory } from './BoardTabs.fixtures'
 import { boardIteration, seedIterations } from './Iteration.fixtures'
 import { groupOrderFrom, type BoardColumn } from './types'
-import { resetStateForTest } from '../transport/state/store'
+import { resetStateForTest } from '../state/store'
 
 const threeStageColumns: BoardColumn[] = [
   { id: 'icebox', label: 'Icebox' },

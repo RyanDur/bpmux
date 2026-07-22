@@ -14,9 +14,9 @@ import {
   type ConnectionConfig
 } from './actions'
 import { nextOlderHistoryRequest } from './olderHistory'
-import type { HistoryMessageWire } from '../types'
+import type { HistoryMessageWire } from '../transport/types'
 import { startSentFrameCapture } from './testCapture'
-import type { ClientMessage } from '../types'
+import type { ClientMessage } from '../transport/types'
 
 export { getStateSnapshot, subscribeState, resetStateForTest } from './store'
 export {
