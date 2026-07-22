@@ -6,7 +6,6 @@ license.workspace = true
 description = "The terminal door: bpmux verbs as REST/WS clients of the daemon, bootstrap arg resolution, room spawn ops"
 
 [dependencies]
-bridge = { path = "../../components/bridge" }
 room = { path = "../../components/room" }
 location = { path = "../../components/location" }
 local_url = { path = "../../components/local_url" }
@@ -24,7 +23,6 @@ hub = { path = "../../components/hub" }
 auth = { path = "../../components/auth" }
 diag = { path = "../../components/diag" }
 workflow = { path = "../../components/workflow" }
-mcp_tools = { path = "../../components/mcp_tools" }
 clap = { version = "4", features = ["derive"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -39,6 +37,7 @@ uuid = { workspace = true, features = ["v4"] }
 futures = "0.3"
 
 [dev-dependencies]
+bridge = { path = "../../components/bridge" }
 tempfile = { workspace = true }
 httpmock = "0.8"
 

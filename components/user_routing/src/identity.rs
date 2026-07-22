@@ -74,6 +74,8 @@ impl RoutingIdentity {
 
     pub fn link_terminal(&mut self, user_id: &str, terminal_id: &str) {
         self.terminal_by_id
+            .retain(|_, terminal| terminal != terminal_id);
+        self.terminal_by_id
             .insert(user_id.to_string(), terminal_id.to_string());
     }
 

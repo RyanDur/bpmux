@@ -276,7 +276,7 @@ fn delivery_targets_routes_by_id_excluding_the_sender_and_offline_ids() {
         t
     };
 
-    let broadcast = terminals(delivery_targets(&state, None, None, "owner", None));
+    let broadcast = terminals(delivery_targets(&state, None, None, "owner", None, None));
     assert_eq!(
         broadcast,
         vec!["term-dev".to_string(), "term-pm".to_string()],
@@ -289,6 +289,7 @@ fn delivery_targets_routes_by_id_excluding_the_sender_and_offline_ids() {
             Some(&["all".to_string()]),
             None,
             "owner",
+            None,
             None
         )),
         broadcast,
@@ -296,13 +297,13 @@ fn delivery_targets_routes_by_id_excluding_the_sender_and_offline_ids() {
     );
 
     assert_eq!(
-        delivery_targets(&state, Some(&["dev".to_string()]), None, "pm", None),
+        delivery_targets(&state, Some(&["dev".to_string()]), None, "pm", None, None),
         vec![("sess-dev".to_string(), "term-dev".to_string())],
         "a scoped to:[dev] resolves dev's DISPLAY to its id to its terminal and reaches ONLY it"
     );
 
     assert_eq!(
-        delivery_targets(&state, None, None, "dev:claude-code", None),
+        delivery_targets(&state, None, None, "dev:claude-code", None, None),
         vec![("sess-pm".to_string(), "term-pm".to_string())],
         "the SENDER's own terminal is excluded (no self-echo) and the sender is matched by short-name across a full identity"
     );
@@ -319,7 +320,7 @@ fn delivery_targets_excludes_the_senders_own_terminal_even_under_the_unresolved_
     let state = linked(&state, "sess-pm", "term-pm");
 
     let sender = bridge_agent_name(dev_terminal);
-    let targets = delivery_targets(&state, None, None, &sender, None);
+    let targets = delivery_targets(&state, None, None, &sender, None, None);
 
     assert!(
         targets.iter().any(|(_, t)| t == "term-pm"),
@@ -328,5 +329,48 @@ fn delivery_targets_excludes_the_senders_own_terminal_even_under_the_unresolved_
     assert!(
         targets.iter().all(|(_, t)| t != dev_terminal),
         "a broadcast sent under the bridge name agent-{{terminal[..8]}} must NOT route back into the sender's OWN terminal; got {targets:?}"
+    );
+}
+
+#[test]
+fn linking_a_terminal_evicts_every_other_id_bound_to_it() {
+    let state = RoutingState::default();
+    let state = registered(&state, "dev-era-one", "dev");
+    let state = linked(&state, "dev-era-one", "term-dev");
+    let state = registered(&state, "dev-era-two", "dev");
+    let state = linked(&state, "dev-era-two", "term-dev");
+
+    assert_eq!(
+        state.identity.terminal_for("dev-era-one"),
+        None,
+        "one terminal, one id: re-registering the pane under a new id UNBINDS the old one — links never accumulate, so delivery can never fan out twice to the same pane"
+    );
+    assert_eq!(
+        state.identity.terminal_for("dev-era-two"),
+        Some("term-dev".to_string()),
+        "the terminal answers only to its CURRENT identity"
+    );
+}
+
+#[test]
+fn delivery_never_targets_the_senders_terminal_whatever_id_stamped_the_send() {
+    let state = RoutingState::default();
+    let state = registered(&state, "dev-current", "dev");
+    let state = linked(&state, "dev-current", "term-dev");
+    let state = registered(&state, "pm-id", "pm");
+    let state = linked(&state, "pm-id", "term-pm");
+
+    let targets = delivery_targets(
+        &state,
+        None,
+        None,
+        "dev",
+        Some("dev-old-unlinked-id"),
+        Some("term-dev"),
+    );
+    assert_eq!(
+        targets,
+        vec![("pm-id".to_string(), "term-pm".to_string())],
+        "a broadcast stamped with a STALE sender id still never reaches the sender's own pane — exclusion is by the sending TERMINAL, not by matching the stamped id against recipients"
     );
 }

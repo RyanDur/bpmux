@@ -812,3 +812,172 @@ async fn a_cross_cwd_register_reaps_the_detection_default_so_any_cwd_is_one_row(
         "registering from a cwd whose session-id differs from the terminal's DETECTION session-id STILL collapses to one row — register forwards BPMUX_TERMINAL_ID, so it reaps the orphaned detection dir-default ('bpmux-dev') when it takes the terminal over. Identity is terminal-anchored, not cwd-coupled (owner's 'you don't need to cd'); got {roster:?}"
     );
 }
+
+async fn register_in_terminal(
+    bpmux: &TestBpmux,
+    dir: &std::path::Path,
+    terminal_id: &str,
+    pin: Option<&str>,
+) {
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+    let mut cmd = tokio::process::Command::new(bin);
+    cmd.arg("register")
+        .env("BPMUX_PORT", bpmux.port().to_string())
+        .env("BPMUX_ROLE", "dev")
+        .env("BPMUX_DATA_BASE", bpmux.sessions_base_path())
+        .env("BPMUX_TERMINAL_ID", terminal_id)
+        .current_dir(dir);
+    match pin {
+        Some(pin) => {
+            cmd.env("BPMUX_USER_ID", pin);
+        }
+        None => {
+            cmd.env_remove("BPMUX_USER_ID");
+        }
+    }
+    let out = cmd.output().await.expect("run bpmux register");
+    assert!(
+        out.status.success(),
+        "bpmux register failed: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+async fn terminal_send_as(bpmux: &TestBpmux, dir: &std::path::Path, pin: Option<&str>, text: &str) {
+    let bin = env!("CARGO_BIN_EXE_bpmux");
+    let mut cmd = tokio::process::Command::new(bin);
+    cmd.args(["send", text])
+        .env("BPMUX_PORT", bpmux.port().to_string())
+        .env("BPMUX_ROLE", "dev")
+        .env("BPMUX_DATA_BASE", bpmux.sessions_base_path())
+        .current_dir(dir);
+    match pin {
+        Some(pin) => {
+            cmd.env("BPMUX_USER_ID", pin);
+        }
+        None => {
+            cmd.env_remove("BPMUX_USER_ID");
+        }
+    }
+    let out = cmd.output().await.expect("run bpmux send");
+    assert!(
+        out.status.success(),
+        "bpmux send failed: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_terminal_with_accumulated_registrations_neither_echoes_nor_multiplies_delivery() {
+    let farm = FakeAgentFarm::new();
+    let agent = farm.write_agent_script();
+    let bpmux = TestBpmux::start_with_envs(
+        "owner",
+        &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
+    );
+
+    let dev_terminal = spawn_terminal(&bpmux).await;
+    assert!(
+        probe_until_live(&bpmux, &farm, "dev").await,
+        "dev must register via detection"
+    );
+    spawn_terminal(&bpmux).await;
+    assert!(
+        probe_until_live(&bpmux, &farm, "pm").await,
+        "pm must register"
+    );
+
+    let other_cwd = farm.work_path("dev").join("elsewhere");
+    std::fs::create_dir_all(&other_cwd).expect("mk other cwd");
+    register_in_terminal(&bpmux, &other_cwd, &dev_terminal, Some("dev-second-id")).await;
+    let third_cwd = farm.work_path("dev").join("elsewhere-again");
+    std::fs::create_dir_all(&third_cwd).expect("mk third cwd");
+    register_in_terminal(&bpmux, &third_cwd, &dev_terminal, Some("dev-third-id")).await;
+
+    terminal_send_as(
+        &bpmux,
+        &farm.work_path("dev"),
+        Some("dev-third-id"),
+        "ACCUMULATED-SEND",
+    )
+    .await;
+    post_message(
+        &bpmux,
+        json!({ "from": "owner", "text": "BARRIER-ACCUMULATED" }),
+    )
+    .await;
+    assert!(
+        wait_capture(&farm, "dev", "BARRIER-ACCUMULATED").await
+            && wait_capture(&farm, "pm", "BARRIER-ACCUMULATED").await,
+        "the barrier broadcast must land in both terminals, proving the delivery cycle advanced past the accumulated send"
+    );
+
+    assert_eq!(
+        farm.capture_count("dev", "ACCUMULATED-SEND"),
+        0,
+        "NO SELF-ECHO: a terminal that accumulated several registered ids (detection + two re-registers — the exact history of an agent re-registering across cwds) must NEVER receive its own broadcast back, no matter which of its ids stamped the send; capture(dev)={:?}",
+        std::fs::read_to_string(farm.capture_path("dev")).unwrap_or_default()
+    );
+    assert_eq!(
+        farm.capture_count("pm", "ACCUMULATED-SEND"),
+        1,
+        "NO MULTIPLICATION: the other terminal receives the broadcast EXACTLY once — delivery fans out per terminal, not per registered id; capture(pm)={:?}",
+        std::fs::read_to_string(farm.capture_path("pm")).unwrap_or_default()
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn re_registration_backfill_never_replays_the_terminals_own_messages() {
+    let farm = FakeAgentFarm::new();
+    let agent = farm.write_agent_script();
+    let bpmux = TestBpmux::start_with_envs(
+        "owner",
+        &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
+    );
+
+    let dev_terminal = spawn_terminal(&bpmux).await;
+    assert!(
+        probe_until_live(&bpmux, &farm, "dev").await,
+        "dev must register via detection"
+    );
+    spawn_terminal(&bpmux).await;
+    assert!(
+        probe_until_live(&bpmux, &farm, "pm").await,
+        "pm must register"
+    );
+
+    let first_cwd = farm.work_path("dev").join("first-identity");
+    std::fs::create_dir_all(&first_cwd).expect("mk first cwd");
+    register_in_terminal(&bpmux, &first_cwd, &dev_terminal, Some("dev-era-one")).await;
+    terminal_send_as(
+        &bpmux,
+        &farm.work_path("dev"),
+        Some("dev-era-one"),
+        "ERA-ONE-WORDS",
+    )
+    .await;
+    assert!(
+        wait_capture(&farm, "pm", "ERA-ONE-WORDS").await,
+        "the era-one send must reach pm before the re-registration"
+    );
+
+    let second_cwd = farm.work_path("dev").join("second-identity");
+    std::fs::create_dir_all(&second_cwd).expect("mk second cwd");
+    register_in_terminal(&bpmux, &second_cwd, &dev_terminal, Some("dev-era-two")).await;
+    post_message(
+        &bpmux,
+        json!({ "from": "owner", "text": "BARRIER-ERA-TWO" }),
+    )
+    .await;
+    assert!(
+        wait_capture(&farm, "dev", "BARRIER-ERA-TWO").await,
+        "the barrier must land in dev's terminal, proving delivery (and any backfill) ran after the re-registration"
+    );
+
+    assert_eq!(
+        farm.capture_count("dev", "ERA-ONE-WORDS"),
+        0,
+        "BACKFILL SELF-FILTER: re-registering a terminal under a fresh id must not replay the terminal's OWN earlier messages back into it — the words were sent from this pane, whatever id stamped them; capture(dev)={:?}",
+        std::fs::read_to_string(farm.capture_path("dev")).unwrap_or_default()
+    );
+}

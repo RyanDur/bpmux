@@ -541,7 +541,6 @@ dependencies = [
  "hub",
  "local_url",
  "location",
- "mcp_tools",
  "memory",
  "message",
  "message_log",

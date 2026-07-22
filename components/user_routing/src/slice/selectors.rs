@@ -77,6 +77,7 @@ pub fn delivery_targets(
     to_ids: Option<&[String]>,
     sender: &str,
     sender_id: Option<&str>,
+    sender_terminal: Option<&str>,
 ) -> Vec<(String, String)> {
     let identity = &state.identity;
     let sender_ids: Vec<String> = match sender_id {
@@ -94,10 +95,13 @@ pub fn delivery_targets(
                 .collect(),
         },
     };
+    let mut seen_terminals = std::collections::HashSet::new();
     recipient_ids
         .into_iter()
         .filter(|id| !sender_ids.contains(id))
         .filter_map(|id| identity.terminal_for(&id).map(|terminal| (id, terminal)))
+        .filter(|(_, terminal)| Some(terminal.as_str()) != sender_terminal)
         .filter(|(_, terminal)| bridge_agent_name(terminal) != short_name(sender))
+        .filter(|(_, terminal)| seen_terminals.insert(terminal.clone()))
         .collect()
 }

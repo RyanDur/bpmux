@@ -19,6 +19,10 @@ pub fn stamp_delivery_ids(select: &Select, msg: &mut Message) {
                 .into_iter()
                 .next();
         }
+        msg.sender_terminal = msg
+            .sender_id
+            .as_deref()
+            .and_then(|id| routing.identity.terminal_for(id));
     });
 }
 

@@ -142,6 +142,7 @@ pub async fn post_message(
         id: String::new(),
         from: payload.from,
         sender_id: payload.sender_id,
+        sender_terminal: None,
         text: payload.text,
         ts: chrono::Utc::now(),
         message_type: message::MessageType::from(payload.message_type.as_deref()),

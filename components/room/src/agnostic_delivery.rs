@@ -106,6 +106,7 @@ pub fn deliver_to_terminals(
             msg.to_ids.as_deref(),
             &msg.from,
             msg.sender_id.as_deref(),
+            msg.sender_terminal.as_deref(),
         )
     }) {
         if !after_cursor(select, &user_id, msg.ts) {
@@ -149,6 +150,7 @@ pub fn drain_missed(
         if !msg.is_chat()
             || msg.is_from_user(Some(user_id), display)
             || !msg.reaches_user(Some(user_id), display)
+            || msg.sender_terminal.as_deref() == Some(terminal_id)
         {
             continue;
         }
