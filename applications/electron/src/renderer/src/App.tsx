@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import AppShell from './AppShell'
-import { useMessageHistory } from './hooks/useMessageHistory'
-import { useNotifications } from './hooks/useNotifications'
+import { useMessageHistory } from './chat/useMessageHistory'
+import { useNotifications } from './chat/useNotifications'
 import { capPerPush } from './transport/messageCap'
 import { sendChat, startConnection, useConnectionStatus, useLiveMessages } from './state'
 

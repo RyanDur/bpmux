@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { classOf, useMessageFilter, type MessageClass } from '../hooks/useMessageFilter'
-import { useReactions } from '../hooks/useReactions'
+import { classOf, useMessageFilter, type MessageClass } from '../chat/useMessageFilter'
+import { useReactions } from '../chat/useReactions'
 import Metrics from '../metrics/Metrics'
 import { RENDERER_IDENTITY, useConnectionStatus, type SendOptions } from '../state'
 import type { ChatMessage } from '../transport/types'
@@ -8,7 +8,7 @@ import FilterPills from './FilterPills'
 import Input from './Input'
 import MessageList from './MessageList'
 import { TerminalView } from './TerminalView'
-import type { TerminalEntry } from '../hooks/useTerminals'
+import type { TerminalEntry } from '../terminal/useTerminals'
 import './Chat.css'
 
 interface Props {

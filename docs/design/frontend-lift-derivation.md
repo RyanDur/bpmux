@@ -53,7 +53,7 @@ board (69), chat (21), ci, metrics, roles, sidebar, sync — so station
 |---|---------|------------------|--------|
 | 1 | The store comes home: transport/state → state/ — the engine at the center, doors register in | layers (1) | done |
 | 2 | Dissolve lib/ into real owners: redux → state/, terminal utils → their feature, storage hooks → their features; the monads keep one small curated home | dissolve (4) | done |
-| 3 | Dissolve hooks/ into the features that own them | dissolve (4) | |
+| 3 | Dissolve hooks/ into the features that own them | dissolve (4) | done |
 | 4 | Orphan specs go home; fixtures and lint gates into test-support | specs home (7) | |
 | 5 | One door layer: api/ and transport/ reconcile | layers (1) | |
 | 6 | Curated barrels where import noise demands | barrels (7) | |
@@ -93,3 +93,12 @@ board/ (their only consumers). lib/ retains the functional primitives
 owner useScope at station 3. Parked with Ryan: the monads hand-roll
 what @ryandur/sand provides — adopting sand is a dependency decision,
 not a move. Suite: typecheck clean, 782 vitest green, eslint clean.
+
+**Station 3 (2026-07-23).** hooks/ dissolved: the seven message hooks
+(mention scoping, filter, history, notifications, reactions, scroll
+gutter, unfurl) → chat/; useBoardLayout + useTimeline → board/;
+useTerminals → terminal/; usePresence + useTeamRoster → roles/ (the
+roster domain deriveRoles already anchors); useScope + useTheme +
+scopeStorage → the shell's own level beside AppShell. hooks/ is gone.
+The per-file useRef lint waiver re-homed with useScrollGutter. Suite:
+typecheck clean, 782 vitest green, eslint clean.

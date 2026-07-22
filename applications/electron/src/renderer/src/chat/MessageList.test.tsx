@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
 import MessageList from './MessageList'
-import { classOf, type MessageClass } from '../hooks/useMessageFilter'
+import { classOf, type MessageClass } from '../chat/useMessageFilter'
 import { MESSAGE_TYPE } from '../transport/messageType'
 import type { ChatMessage, RosterMemberWire } from '../transport/types'
 import { dispatchState, resetStateForTest } from '../state/store'

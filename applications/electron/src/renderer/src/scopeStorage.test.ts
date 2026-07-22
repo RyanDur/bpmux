@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'vitest'
-import { RENDERER_IDENTITY } from '../state'
+import { RENDERER_IDENTITY } from './state'
 import { readScope, writeScope } from './scopeStorage'
 
 const STORAGE_KEY = `bpmux-scope:${RENDERER_IDENTITY}`

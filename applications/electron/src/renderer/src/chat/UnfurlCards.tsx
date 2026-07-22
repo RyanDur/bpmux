@@ -1,4 +1,4 @@
-import { extractUrls, useUnfurl, type UnfurlData } from '../hooks/useUnfurl'
+import { extractUrls, useUnfurl, type UnfurlData } from '../chat/useUnfurl'
 import './UnfurlCards.css'
 
 interface Props {

@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useMessageFilter, type MessageFilter } from './useMessageFilter'
-import { readScope, writeScope } from '../lib/scopeStorage'
+import { useMessageFilter, type MessageFilter } from './chat/useMessageFilter'
+import { readScope, writeScope } from './scopeStorage'
 
 export interface UseScopeResult {
   recipient: string[] | null

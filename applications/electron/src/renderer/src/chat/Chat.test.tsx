@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import Chat from './Chat'
-import type { MessageFilter } from '../hooks/useMessageFilter'
+import type { MessageFilter } from '../chat/useMessageFilter'
 import { dispatchState, resetStateForTest } from '../state/store'
 import { connected, connecting } from '../state/actions'
 

@@ -1,6 +1,6 @@
 import type { ChatMessage } from '../transport/types'
-import { PRESENCE } from '../hooks/usePresence'
-import type { AggregatedReaction } from '../hooks/useReactions'
+import { PRESENCE } from '../roles/usePresence'
+import type { AggregatedReaction } from '../chat/useReactions'
 import { roleColorFor } from '../roles/roleColor'
 import { RENDERER_IDENTITY } from '../state'
 import MessageBody from './MessageBody'

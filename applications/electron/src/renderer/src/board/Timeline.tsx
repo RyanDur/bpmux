@@ -5,7 +5,7 @@ import {
   useTimeline,
   type ClassifiedEvent,
   type TimelineGate
-} from '../hooks/useTimeline'
+} from '../board/useTimeline'
 import type { Story } from './types'
 
 const GATE_LABEL: Record<TimelineGate, string> = {

@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import type { ChatMessage } from '../transport/types'
-import { classOf, type MessageClass } from '../hooks/useMessageFilter'
+import { classOf, type MessageClass } from '../chat/useMessageFilter'
 import { MESSAGE_TYPE } from '../transport/messageType'
-import { useMentionScoping } from '../hooks/useMentionScoping'
-import { usePresence } from '../hooks/usePresence'
-import { useScrollGutter } from '../hooks/useScrollGutter'
+import { useMentionScoping } from '../chat/useMentionScoping'
+import { usePresence } from '../roles/usePresence'
+import { useScrollGutter } from '../chat/useScrollGutter'
 import { deriveTeamRoles } from '../roles/deriveRoles'
 import { RENDERER_IDENTITY } from '../state'
 import MessageItem from './MessageItem'
@@ -15,7 +15,7 @@ import './MessageList.css'
 interface Props {
   messages: ChatMessage[]
   visibleClasses: ReadonlySet<MessageClass>
-  reactionsByMessage?: Map<string, import('../hooks/useReactions').AggregatedReaction[]>
+  reactionsByMessage?: Map<string, import('../chat/useReactions').AggregatedReaction[]>
   onToggleReaction?: (messageKey: string, emoji: string) => void
   viewer?: string
   apiBase?: string

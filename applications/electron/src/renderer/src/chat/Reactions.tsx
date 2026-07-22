@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { AggregatedReaction } from '../hooks/useReactions'
+import type { AggregatedReaction } from '../chat/useReactions'
 import './Reactions.css'
 
 export const EMOJI_PALETTE = ['👍', '🎉', '❤️', '🚀', '👀', '❌'] as const

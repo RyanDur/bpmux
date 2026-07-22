@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ChatMessage } from '../transport/types'
-import { type MessageFilter } from '../hooks/useMessageFilter'
-import { PRESENCE, type Presence } from '../hooks/usePresence'
-import { useTeamRoster } from '../hooks/useTeamRoster'
+import { type MessageFilter } from '../chat/useMessageFilter'
+import { PRESENCE, type Presence } from '../roles/usePresence'
+import { useTeamRoster } from '../roles/useTeamRoster'
 import {
   deriveCombinableRolesFromRoster,
   deriveCombinatorialGroups,
   deriveDirectRolesFromRoster
 } from '../roles/deriveRoles'
 import { RENDERER_IDENTITY } from '../state'
-import type { TerminalEntry } from '../hooks/useTerminals'
+import type { TerminalEntry } from '../terminal/useTerminals'
 import TerminalList from './TerminalList'
 import './Sidebar.css'
 
