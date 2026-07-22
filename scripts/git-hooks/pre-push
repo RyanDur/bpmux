@@ -60,10 +60,12 @@ lint_pushed_electron_files() {
     local ts_files css_files ts_exit=0 css_exit=0
     ts_files=$(echo "$pushed_files" \
         | grep -E '^applications/electron/(src|tests)/.*\.(ts|tsx)$' \
-        | sed 's|^applications/electron/||' | sort -u || true)
+        | sed 's|^applications/electron/||' | sort -u \
+        | while IFS= read -r f; do [ -f "$REPO_ROOT/applications/electron/$f" ] && echo "$f"; done || true)
     css_files=$(echo "$pushed_files" \
         | grep -E '^applications/electron/src/.*\.css$' \
-        | sed 's|^applications/electron/||' | sort -u || true)
+        | sed 's|^applications/electron/||' | sort -u \
+        | while IFS= read -r f; do [ -f "$REPO_ROOT/applications/electron/$f" ] && echo "$f"; done || true)
     cd "$REPO_ROOT/applications/electron"
     if [ -n "$ts_files" ]; then
         echo "$ts_files" | xargs -r npx eslint --no-warn-ignored --max-warnings 0 || ts_exit=$?
