@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import { useTabStorage } from '../lib/useTabStorage'
+import { useTabStorage } from './useTabStorage'
 import { RENDERER_IDENTITY } from '../state'
 import CloseApproachNudge from './CloseApproachNudge'
 import type { CloseApproachNudge as CloseApproachNudgeData } from './deriveCloseApproachNudge'

@@ -4,7 +4,7 @@ import {
   clampBoardWidth,
   computeCollapseToggle
 } from '../board/BoardResizeHandle.utils'
-import { useBoardWidthStorage } from '../lib/useBoardWidthStorage'
+import { useBoardWidthStorage } from '../board/useBoardWidthStorage'
 import { RENDERER_IDENTITY } from '../state'
 
 export interface UseBoardLayoutResult {

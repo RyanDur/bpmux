@@ -1,5 +1,5 @@
 import { tryCatch } from '../lib/result'
-import type { Middleware } from '../lib/redux'
+import type { Middleware } from './redux'
 import type { StateSnapshot } from './reducer'
 import {
   StateActionType,

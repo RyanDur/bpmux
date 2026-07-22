@@ -1,5 +1,5 @@
 import { useIterationCollapse } from './useIterationCollapse'
-import { useCollapsibleSectionsStorage } from '../lib/useCollapsibleSectionsStorage'
+import { useCollapsibleSectionsStorage } from './useCollapsibleSectionsStorage'
 import { RENDERER_IDENTITY } from '../state'
 import { findCurrentIteration } from './currentIteration'
 import type { Story } from './types'

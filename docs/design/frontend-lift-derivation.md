@@ -52,7 +52,7 @@ board (69), chat (21), ci, metrics, roles, sidebar, sync — so station
 | # | Station | Reference analog | Status |
 |---|---------|------------------|--------|
 | 1 | The store comes home: transport/state → state/ — the engine at the center, doors register in | layers (1) | done |
-| 2 | Dissolve lib/ into real owners: redux → state/, terminal utils → their feature, storage hooks → their features; the monads keep one small curated home | dissolve (4) | |
+| 2 | Dissolve lib/ into real owners: redux → state/, terminal utils → their feature, storage hooks → their features; the monads keep one small curated home | dissolve (4) | done |
 | 3 | Dissolve hooks/ into the features that own them | dissolve (4) | |
 | 4 | Orphan specs go home; fixtures and lint gates into test-support | specs home (7) | |
 | 5 | One door layer: api/ and transport/ reconcile | layers (1) | |
@@ -83,3 +83,13 @@ decoders (the door supplies frames; the engine consumes them), never
 the reverse for store machinery. 60 importers rewired; byte-identical
 moves otherwise. Suite: typecheck clean, 782 vitest green, eslint
 clean.
+
+**Station 2 (2026-07-23).** lib/ dissolved: redux → state/ (the store
+kernel owns its own machinery); terminalApi/Font/Layout/Names →
+terminal/ — the terminal domain crossed chat, sidebar, and hooks with
+no home, so it got its bounded context; the three storage hooks →
+board/ (their only consumers). lib/ retains the functional primitives
+(result, maybe, asyncResult) plus scopeStorage, which follows its
+owner useScope at station 3. Parked with Ryan: the monads hand-roll
+what @ryandur/sand provides — adopting sand is a dependency decision,
+not a move. Suite: typecheck clean, 782 vitest green, eslint clean.

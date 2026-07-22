@@ -6,13 +6,13 @@ import {
   readTerminalLayout,
   restoreTerminalLayout,
   writeTerminalLayout
-} from '../lib/terminalLayout'
-import { readTerminalNames, writeTerminalNames } from '../lib/terminalNames'
+} from '../terminal/terminalLayout'
+import { readTerminalNames, writeTerminalNames } from '../terminal/terminalNames'
 import {
   closeTerminalRequest,
   listTerminalsRequest,
   spawnTerminalRequest
-} from '../lib/terminalApi'
+} from '../terminal/terminalApi'
 
 export type TerminalState = 'spawning' | 'ready' | 'spawn-failed' | 'exited'
 

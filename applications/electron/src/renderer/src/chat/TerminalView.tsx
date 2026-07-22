@@ -10,7 +10,7 @@ import {
   subscribePtyMode,
   subscribePtyOutput
 } from '../state'
-import { composeTerminalFontFamily } from '../lib/terminalFont'
+import { composeTerminalFontFamily } from '../terminal/terminalFont'
 import { TerminalCompose } from './TerminalCompose'
 import { copyOnCmdC } from './terminalCopy'
 import './TerminalView.css'

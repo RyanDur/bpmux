@@ -1,6 +1,6 @@
 import { maybe } from '../lib/maybe'
 import { tryCatch } from '../lib/result'
-import type { Dispatch } from '../lib/redux'
+import type { Dispatch } from './redux'
 import { MESSAGE_TYPE, asMessageType } from '../transport/messageType'
 import {
   commentsHydratedDecoder,

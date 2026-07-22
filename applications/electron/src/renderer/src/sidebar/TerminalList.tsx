@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { TerminalEntry } from '../hooks/useTerminals'
-import { resolveTerminalName } from '../lib/terminalNames'
+import { resolveTerminalName } from '../terminal/terminalNames'
 
 interface Props {
   terminals: TerminalEntry[]

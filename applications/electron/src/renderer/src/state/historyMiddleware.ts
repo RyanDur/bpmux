@@ -1,4 +1,4 @@
-import type { Middleware } from '../lib/redux'
+import type { Middleware } from './redux'
 import type { StateSnapshot } from './reducer'
 import { StateActionType, historyHydrateRequested, type StateAction } from './actions'
 import { HISTORY_ACTIVITY_LIMIT, HISTORY_CHAT_LIMIT } from './constants'

@@ -1,4 +1,4 @@
-import type { Middleware } from '../lib/redux'
+import type { Middleware } from './redux'
 import type { StateSnapshot } from './reducer'
 import { StateActionType, type StateAction } from './actions'
 import { emitLiveMessage, emitPtyExit, emitPtyMode, emitPtyOutput } from './emitter'
