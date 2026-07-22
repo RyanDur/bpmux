@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use bpmux::bookmark::{Bookmark, bookmark_path, load_bookmark, save_bookmark};
+use bookmark::{Bookmark, bookmark_path, load_bookmark, save_bookmark};
 
 const PORT_WITH_NO_LISTENER: &str = "1";
 

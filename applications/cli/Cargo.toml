@@ -1,0 +1,46 @@
+[package]
+name = "cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The terminal door: bpmux verbs as REST/WS clients of the daemon, bootstrap arg resolution, room spawn ops"
+
+[dependencies]
+bridge = { path = "../../components/bridge" }
+room = { path = "../../components/room" }
+location = { path = "../../components/location" }
+local_url = { path = "../../components/local_url" }
+memory = { path = "../../components/memory" }
+bookmark = { path = "../../components/bookmark" }
+briefing = { path = "../../components/briefing" }
+transport = { path = "../../components/transport" }
+storage = { path = "../../components/storage" }
+product_management = { path = "../../components/product_management" }
+view = { path = "../../components/view" }
+ci = { path = "../../components/ci" }
+message = { path = "../../components/message" }
+message_log = { path = "../../components/message_log" }
+hub = { path = "../../components/hub" }
+auth = { path = "../../components/auth" }
+diag = { path = "../../components/diag" }
+workflow = { path = "../../components/workflow" }
+mcp_tools = { path = "../../components/mcp_tools" }
+clap = { version = "4", features = ["derive"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+tokio = { workspace = true, features = ["full"] }
+tokio-util = { workspace = true }
+tokio-tungstenite = "0.26"
+reqwest = { workspace = true, features = ["json"] }
+anyhow = "1"
+base64 = "0.22"
+uuid = { workspace = true, features = ["v4"] }
+futures = "0.3"
+
+[dev-dependencies]
+tempfile = { workspace = true }
+httpmock = "0.8"
+
+[lints]
+workspace = true

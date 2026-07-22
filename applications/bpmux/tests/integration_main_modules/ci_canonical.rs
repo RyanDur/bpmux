@@ -21,9 +21,9 @@ use axum::Extension;
 use tokio::net::TcpListener;
 use tokio_util::sync::CancellationToken;
 
-use bpmux::auth as auth_token;
-use bpmux::transport::auth::{AuthState, gate};
-use bpmux::transport::rest::{TrackerHandle, get_ci};
+use auth as auth_token;
+use transport::auth::{AuthState, gate};
+use transport::rest::{TrackerHandle, get_ci};
 
 async fn fire_get_ci(port: u16, token: &str) -> reqwest::Response {
     reqwest::Client::new()

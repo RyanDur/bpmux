@@ -1,0 +1,14 @@
+[package]
+name = "mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The agents' door: the MCP bridge entry — resolve identity, run the bridge"
+
+[dependencies]
+bridge = { path = "../../components/bridge" }
+location = { path = "../../components/location" }
+anyhow = "1"
+
+[lints]
+workspace = true

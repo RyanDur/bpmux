@@ -2,9 +2,9 @@
 
 use crate::harness;
 
-use bpmux::room::{BridgeWiring, terminal_provisioning};
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
+use room::{BridgeWiring, terminal_provisioning};
 use serde_json::Value;
 use std::time::Duration;
 

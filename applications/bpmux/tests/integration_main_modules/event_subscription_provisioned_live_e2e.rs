@@ -2,10 +2,10 @@
 
 use crate::harness;
 
-use bpmux::room::{BridgeWiring, terminal_provisioning};
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
 use harness::story_helpers::{create_target_story, ensure_current_iteration};
+use room::{BridgeWiring, terminal_provisioning};
 use serde_json::Value;
 
 async fn drain_pending_events(agent: &TestBridge, subscription_id: &str) {

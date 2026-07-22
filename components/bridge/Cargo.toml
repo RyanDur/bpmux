@@ -41,7 +41,7 @@ chrono = { workspace = true, features = ["serde"] }
 tokio = { workspace = true, features = ["sync", "rt", "rt-multi-thread", "time", "macros", "io-util"] }
 tokio-util = { workspace = true }
 tokio-tungstenite = "0.26"
-reqwest = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
 anyhow = "1"
 futures = "0.3"
 uuid = { workspace = true, features = ["v4"] }
@@ -49,6 +49,8 @@ dirs = { workspace = true }
 
 [dev-dependencies]
 store_test_support = { path = "../store_test_support" }
+store = { path = "../store", features = ["test-support"] }
+tokio = { workspace = true, features = ["full", "test-util"] }
 tempfile = { workspace = true }
 httpmock = "0.8"
 

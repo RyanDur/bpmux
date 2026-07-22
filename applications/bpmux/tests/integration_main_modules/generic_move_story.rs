@@ -18,13 +18,13 @@
 
 use std::sync::Arc;
 
-use bpmux::hub::Hub;
-use bpmux::integrations::in_memory::InMemorySourceAdapter;
-use bpmux::sync::SyncOrchestrator;
 use chrono::{TimeZone, Utc};
+use hub::Hub;
+use integrations::in_memory::InMemorySourceAdapter;
 use product_management::story::events::EventMeta;
 use product_management::story::events::{StoryEvent, StoryEventKind};
 use product_management::story::{Story, StoryId, Work};
+use sync::SyncOrchestrator;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
 

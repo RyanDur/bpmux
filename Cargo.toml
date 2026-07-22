@@ -2,6 +2,8 @@
 resolver = "2"
 members = [
     "applications/bpmux",
+    "applications/cli",
+    "applications/mcp",
     "applications/server",
     "components/auth",
     "components/awareness",

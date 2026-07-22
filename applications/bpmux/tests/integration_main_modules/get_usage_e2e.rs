@@ -2,10 +2,10 @@
 
 use crate::harness;
 
-use bpmux::telemetry::usage::{Record, save_to};
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
 use std::collections::HashMap;
+use telemetry::usage::{Record, save_to};
 
 #[test]
 fn get_usage_returns_the_bridges_isolated_usage_file() {

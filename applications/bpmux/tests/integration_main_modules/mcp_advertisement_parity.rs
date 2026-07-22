@@ -12,7 +12,7 @@
 
 use std::collections::HashSet;
 
-use bpmux::bridge::{DISPATCHED_TOOL_NAMES, build_advertised_tools};
+use bridge::{DISPATCHED_TOOL_NAMES, build_advertised_tools};
 
 #[test]
 fn every_dispatched_tool_is_advertised_in_list_tools() {

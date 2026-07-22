@@ -2,89 +2,57 @@
 name = "bpmux"
 version.workspace = true
 edition.workspace = true
-description = "P2P group chat for AI pair programming sessions"
 license.workspace = true
+description = "The bpmux binary: packaging over the server, cli, and mcp application shells"
 
 [dependencies]
-awareness = { path = "../../components/awareness" }
-board = { path = "../../components/board" }
-ci = { path = "../../components/ci" }
-comprehension = { path = "../../components/comprehension" }
-diag = { path = "../../components/diag" }
-electron_capture = { path = "../../components/electron_capture" }
-hub = { path = "../../components/hub" }
-integrations = { path = "../../components/integrations" }
-kernel = { path = "../../components/kernel" }
-local_url = { path = "../../components/local_url" }
-memory = { path = "../../components/memory" }
-message = { path = "../../components/message" }
-message_log = { path = "../../components/message_log" }
-owner_session = { path = "../../components/owner_session" }
-persist = { path = "../../components/persist" }
-product_management = { path = "../../components/product_management" }
-protocol = { path = "../../components/protocol" }
-rate_limit = { path = "../../components/rate_limit" }
-reactions = { path = "../../components/reactions" }
-roster = { path = "../../components/roster" }
-self_update = { path = "../../components/self_update" }
-source_codec = { path = "../../components/source_codec" }
-source_sync = { path = "../../components/source_sync" }
-storage = { path = "../../components/storage" }
-store = { path = "../../components/store" }
-unfurl = { path = "../../components/unfurl" }
-user_routing = { path = "../../components/user_routing" }
-view = { path = "../../components/view" }
-workflow = { path = "../../components/workflow" }
-tokio = { workspace = true, features = ["full"] }
-clap = { version = "4", features = ["derive"] }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-mcp_tools = { path = "../../components/mcp_tools" }
-telemetry = { path = "../../components/telemetry" }
-location = { path = "../../components/location" }
-auth = { path = "../../components/auth" }
-bookmark = { path = "../../components/bookmark" }
-briefing = { path = "../../components/briefing" }
-room = { path = "../../components/room" }
-sync = { path = "../../components/sync" }
-bridge = { path = "../../components/bridge" }
-transport = { path = "../../components/transport" }
+cli = { path = "../cli" }
 server = { path = "../server" }
-chrono = { workspace = true, features = ["serde"] }
-dirs = { workspace = true }
-uuid = { workspace = true, features = ["v4"] }
-thiserror = { workspace = true }
+mcp = { path = "../mcp" }
+clap = { version = "4", features = ["derive"] }
 anyhow = "1"
-futures = "0.3"
-rmcp = { workspace = true, features = ["server", "client", "transport-async-rw", "transport-io", "transport-child-process", "transport-streamable-http-server", "transport-streamable-http-client-reqwest"] }
-axum = { version = "0.8", features = ["ws"] }
-tokio-tungstenite = "0.26"
-tokio-util = { workspace = true, features = ["rt"] }
-reqwest = { workspace = true }
-ring = { workspace = true }
-base64 = "0.22.1"
-aho-corasick = { workspace = true }
-rustls = { version = "0.23", features = ["ring"] }
-tower-http = { version = "0.6", features = ["cors"] }
-regex = "1"
-url = { workspace = true }
-http = { workspace = true }
-toml = { workspace = true }
-tempfile = { workspace = true }
 
 [dev-dependencies]
 server = { path = "../server" }
-store_test_support = { path = "../../components/store_test_support" }
-transport = { path = "../../components/transport", features = ["test-support"] }
-portable-pty = "0.9"
-store = { path = "../../components/store", features = ["test-support"] }
-reqwest = { workspace = true, features = ["json"] }
-tokio = { workspace = true, features = ["full", "test-util"] }
+store = { path = "../../components/store" }
+kernel = { path = "../../components/kernel" }
+hub = { path = "../../components/hub" }
+bridge = { path = "../../components/bridge" }
+transport = { path = "../../components/transport" }
+room = { path = "../../components/room" }
+message = { path = "../../components/message" }
+message_log = { path = "../../components/message_log" }
+product_management = { path = "../../components/product_management" }
+integrations = { path = "../../components/integrations" }
+workflow = { path = "../../components/workflow" }
+sync = { path = "../../components/sync" }
+ci = { path = "../../components/ci" }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tokio-util = { workspace = true }
 tokio-tungstenite = "0.26"
-futures-util = "0.3"
-tower = { version = "0.5", features = ["util"] }
-http-body-util = "0.1"
+reqwest = { workspace = true }
+portable-pty = "0.9"
+tempfile = { workspace = true }
 httpmock = "0.8"
+uuid = { workspace = true, features = ["v4"] }
+futures = "0.3"
+rmcp = { workspace = true, features = ["client", "transport-child-process"] }
+axum = { version = "0.8", features = ["ws"] }
+board = { path = "../../components/board" }
+auth = { path = "../../components/auth" }
+bookmark = { path = "../../components/bookmark" }
+location = { path = "../../components/location" }
+telemetry = { path = "../../components/telemetry" }
+diag = { path = "../../components/diag" }
+electron_capture = { path = "../../components/electron_capture" }
+protocol = { path = "../../components/protocol" }
+storage = { path = "../../components/storage" }
+futures-util = "0.3"
+user_routing = { path = "../../components/user_routing" }
+source_codec = { path = "../../components/source_codec" }
+regex = "1"
 
 [lints]
 workspace = true
