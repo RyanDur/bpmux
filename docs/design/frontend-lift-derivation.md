@@ -136,4 +136,16 @@ gate. The renderer now mirrors the app's own model: state/ is the
 engine at the center; transport/ is the one door; chat, board,
 terminal, roles, sidebar, metrics, ci, sync are bounded contexts
 owning their hooks and specs; test-support/ holds the gates; lib/
-holds only the functional primitives pending the sand conversation.
+holds only tryCatch, a sand candidate.
+
+**Sand adoption (2026-07-23, Ryan's call).** The hand-rolled monads
+are gone: @ryandur/sand 5.1.0 (GitHub Packages, scope mapped in
+applications/electron/.npmrc) provides Result, Maybe, and
+Result.Async. Renames at the call sites: andThen→mBind (none
+survived), mapEither→either (value-fold), kind discriminant→isSuccess
+(five sites; domain `kind` fields untouched). transport/http settles
+its internal Result into sand's asyncResult at one boundary fn. The
+54 monad specs deleted with their subjects — sand pins its own
+behavior in its own repo. lib/ retains one file: tryCatch + toError +
+asyncTryCatch, composed on sand primitives — flagged WITH Ryan as a
+sand candidate; it deletes from here when sand grows it.

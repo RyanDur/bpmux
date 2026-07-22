@@ -1,5 +1,5 @@
 import { type ApiContext, type HttpError, http } from '../transport/http'
-import { type AsyncResult } from '../lib/asyncResult'
+import { type Result } from '@ryandur/sand'
 
 export interface SpawnResponse {
   terminal_id?: string
@@ -10,17 +10,17 @@ export interface TerminalsListResponse {
   terminals?: { terminal_id: string; cwd?: string }[]
 }
 
-export const spawnTerminalRequest = (ctx: ApiContext): AsyncResult<SpawnResponse, HttpError> =>
+export const spawnTerminalRequest = (ctx: ApiContext): Result.Async<SpawnResponse, HttpError> =>
   http.post<SpawnResponse>(ctx, '/api/terminals/spawn')
 
 export const closeTerminalRequest = (
   ctx: ApiContext,
   id: string,
   force: boolean
-): AsyncResult<void, HttpError> =>
+): Result.Async<void, HttpError> =>
   http.post(ctx, '/api/terminals/close', { terminal_id: id, force })
 
 export const listTerminalsRequest = (
   ctx: ApiContext
-): AsyncResult<TerminalsListResponse, HttpError> =>
+): Result.Async<TerminalsListResponse, HttpError> =>
   http.get<TerminalsListResponse>(ctx, '/api/terminals')

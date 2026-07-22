@@ -175,7 +175,7 @@ export const useTerminals = (
         try {
           const result = await listTerminalsRequest(ctx).value
           if (cancelled) return
-          if (result.kind === 'failure') throw new Error(describeHttpError(result.reason))
+          if (!result.isSuccess) throw new Error(describeHttpError(result.reason))
           const body = result.value
           const live = body.terminals ?? []
           const cwdById = new Map(live.map((t) => [t.terminal_id, t.cwd ?? '']))

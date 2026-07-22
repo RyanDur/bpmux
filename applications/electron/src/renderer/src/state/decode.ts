@@ -1,5 +1,5 @@
-import { maybe } from '../lib/maybe'
-import { tryCatch } from '../lib/result'
+import { maybe } from '@ryandur/sand'
+import { tryCatch } from '../lib/tryCatch'
 import type { Dispatch } from './redux'
 import { MESSAGE_TYPE, asMessageType } from '../transport/messageType'
 import {
@@ -62,7 +62,7 @@ export const dispatchServerFrame = (
     () => JSON.parse(raw) as unknown,
     (err) => err
   )
-  if (parseResult.kind === 'failure') {
+  if (!parseResult.isSuccess) {
     console.error('bpmux ws: non-JSON frame', parseResult.reason, raw)
     return
   }
@@ -75,7 +75,7 @@ export const dispatchServerFrame = (
         console.error('bpmux ws: server error', error.reason)
       })
     )
-    .or(() => maybe(pongDecoder.decode(frame)).map(() => undefined))
+    .or(() => maybe(pongDecoder.decode(frame)).map<void>(() => undefined))
     .or(() =>
       maybe(ptyOutputDecoder.decode(frame)).map((out) =>
         dispatch(ptyOutputReceived(out.terminal_id, out.data))

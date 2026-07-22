@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { tryCatch } from './lib/result'
+import { tryCatch } from './lib/tryCatch'
 
 export type Theme = 'dark' | 'light'
 

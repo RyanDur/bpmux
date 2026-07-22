@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { ErrorBoundary as LibErrorBoundary, type FallbackProps } from 'react-error-boundary'
-import { asyncTryCatch } from './lib/asyncResult'
+import { asyncTryCatch } from './lib/tryCatch'
 import './ErrorBoundary.css'
 
 interface Props {

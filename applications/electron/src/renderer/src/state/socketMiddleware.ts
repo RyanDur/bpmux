@@ -1,4 +1,4 @@
-import { tryCatch } from '../lib/result'
+import { tryCatch } from '../lib/tryCatch'
 import type { Middleware } from './redux'
 import type { StateSnapshot } from './reducer'
 import {
@@ -53,7 +53,7 @@ export const socketMiddleware: Middleware<StateSnapshot, StateAction> = (api) =>
       () => new WebSocket(url),
       (err) => err
     )
-    if (constructResult.kind === 'failure') {
+    if (!constructResult.isSuccess) {
       console.warn('bpmux ws: construct failed, retrying', constructResult.reason)
       scheduleReconnect(url)
       return

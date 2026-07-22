@@ -1,5 +1,4 @@
-import { type AsyncResult, asyncFailure, ofPromise } from '../lib/asyncResult'
-import { failure, success, type Result } from '../lib/result'
+import { Result, asyncFailure, asyncResult, failure, success } from '@ryandur/sand'
 
 export interface ApiContext {
   apiBase: string
@@ -79,22 +78,32 @@ const request = async <T>(
   }
 }
 
+const settled = <T>(pending: Promise<Result<T, HttpError>>): Result.Async<T, HttpError> =>
+  asyncResult<T, HttpError>(
+    pending.then((result) =>
+      result.either(
+        (value) => value,
+        (reason) => Promise.reject(reason)
+      )
+    )
+  )
+
 export const http = {
-  get: <T>(ctx: ApiContext, endpoint: string, signal?: AbortSignal): AsyncResult<T, HttpError> =>
-    ofPromise(request<T>(ctx, endpoint, 'GET', undefined, STATUS_OK, signal)),
+  get: <T>(ctx: ApiContext, endpoint: string, signal?: AbortSignal): Result.Async<T, HttpError> =>
+    settled(request<T>(ctx, endpoint, 'GET', undefined, STATUS_OK, signal)),
 
-  post: <T = void>(ctx: ApiContext, endpoint: string, body?: unknown): AsyncResult<T, HttpError> =>
-    ofPromise(request<T>(ctx, endpoint, 'POST', body, STATUS_OK_NO_CONTENT)),
+  post: <T = void>(ctx: ApiContext, endpoint: string, body?: unknown): Result.Async<T, HttpError> =>
+    settled(request<T>(ctx, endpoint, 'POST', body, STATUS_OK_NO_CONTENT)),
 
-  put: <T = void>(ctx: ApiContext, endpoint: string, body?: unknown): AsyncResult<T, HttpError> =>
-    ofPromise(request<T>(ctx, endpoint, 'PUT', body, STATUS_OK_NO_CONTENT)),
+  put: <T = void>(ctx: ApiContext, endpoint: string, body?: unknown): Result.Async<T, HttpError> =>
+    settled(request<T>(ctx, endpoint, 'PUT', body, STATUS_OK_NO_CONTENT)),
 
   delete: <T = void>(
     ctx: ApiContext,
     endpoint: string,
     body?: unknown
-  ): AsyncResult<T, HttpError> =>
-    ofPromise(request<T>(ctx, endpoint, 'DELETE', body, STATUS_OK_NO_CONTENT))
+  ): Result.Async<T, HttpError> =>
+    settled(request<T>(ctx, endpoint, 'DELETE', body, STATUS_OK_NO_CONTENT))
 }
 
 export const describeHttpError = (error: HttpError): string => {

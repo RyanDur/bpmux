@@ -1,5 +1,5 @@
 import { type Decoder, type DecoderError } from 'schemawax'
-import { asyncFailure, asyncSuccess, type AsyncResult } from '../lib/asyncResult'
+import { Result, asyncFailure, asyncSuccess } from '@ryandur/sand'
 import { type HttpError } from './http'
 
 const describeDecoderError = (error: DecoderError): string =>
@@ -7,7 +7,7 @@ const describeDecoderError = (error: DecoderError): string =>
 
 export const validate =
   <T>(decoder: Decoder<T>) =>
-  (raw: unknown): AsyncResult<T, HttpError> => {
+  (raw: unknown): Result.Async<T, HttpError> => {
     const result = decoder.validate(raw)
     return result.type === 'ok'
       ? asyncSuccess<T, HttpError>(result.data)
