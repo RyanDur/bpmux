@@ -2,10 +2,10 @@ use std::sync::{Arc, Mutex};
 
 use tokio_util::sync::CancellationToken;
 
-use crate::hub::Hub;
+use crate::{AppAction, AppState};
+use hub::Hub;
 use kernel::{DeliveryMode, Dispatch, Listener, ListenerFuture, Reaction};
 use rate_limit::RateLimitObserver;
-use store::{AppAction, AppState};
 
 use super::{CiAction, CiPollFetch, CiWatchDriver};
 

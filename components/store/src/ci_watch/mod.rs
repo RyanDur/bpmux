@@ -2,16 +2,12 @@ use std::sync::Arc;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::hub::Hub;
+use crate::AppAction;
+use hub::Hub;
 use kernel::Dispatch;
 use rate_limit::RateLimitObserver;
-use store::AppAction;
 
-pub use ::ci::slice::{
-    BoxedFuture, CiAction, CiBroadcastListener, CiPollFetch, CiSnapshot, CiState, hydrated,
-    last_successful_poll_at, last_updated_at, polling, reduce, report_from_state, snapshot,
-    snapshot_key,
-};
+use ci::slice::{CiAction, CiPollFetch};
 
 pub trait CiWatchDriver: Send + Sync {
     fn spawn_watch(

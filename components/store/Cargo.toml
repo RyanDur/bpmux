@@ -20,6 +20,7 @@ product_management = { path = "../product_management" }
 owner_session = { path = "../owner_session" }
 diag = { path = "../diag" }
 serde_json = { workspace = true }
+tokio-util = { workspace = true }
 tokio = { workspace = true, optional = true }
 
 [dev-dependencies]

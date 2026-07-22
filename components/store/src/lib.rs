@@ -7,6 +7,7 @@ pub use roster;
 pub use source_sync::health as sync_health;
 pub use source_sync::queue as sync;
 pub use user_routing::slice as routing;
+pub mod ci_watch;
 pub mod commitments;
 
 mod action;
