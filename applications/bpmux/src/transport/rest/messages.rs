@@ -11,8 +11,6 @@ use user_routing::short_name;
 
 use super::shared::OWNER_NONCE_HEADER;
 
-pub const DEFAULT_MESSAGE_LIMIT: usize = 20;
-
 #[derive(Deserialize)]
 pub struct PostMessage {
     pub from: String,
@@ -47,7 +45,7 @@ pub async fn get_messages(
 ) -> impl IntoResponse {
     let chat_only = params.chat_only.unwrap_or(true);
     let offset = params.offset.unwrap_or(0);
-    let limit = params.limit.unwrap_or(DEFAULT_MESSAGE_LIMIT);
+    let limit = params.limit.unwrap_or(message_log::DEFAULT_MESSAGE_LIMIT);
     let wanted_type = params
         .message_type
         .as_deref()

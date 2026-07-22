@@ -17,7 +17,7 @@ pub(in crate::bridge) async fn handle_read_messages(
     port: u16,
     agent_name: &str,
 ) -> Result<String, String> {
-    let default_limit = crate::transport::rest::DEFAULT_MESSAGE_LIMIT as u64;
+    let default_limit = message_log::DEFAULT_MESSAGE_LIMIT as u64;
     let limit = args
         .get("limit")
         .and_then(|v| v.as_u64())

@@ -54,9 +54,8 @@ pub use labels::{LabelMutationPayload, post_story_labels};
 pub use lessons::{
     LessonsQuery, PeerLessonsQuery, SaveLessonPayload, get_lessons, get_peer_lessons, post_lesson,
 };
-pub use messages::{
-    DEFAULT_MESSAGE_LIMIT, GetMessagesParams, PostMessage, get_messages, post_message,
-};
+pub use message_log::DEFAULT_MESSAGE_LIMIT;
+pub use messages::{GetMessagesParams, PostMessage, get_messages, post_message};
 pub use metrics::get_metrics;
 pub use owner_session::{ClaimOwnerSessionRequest, post_owner_session};
 pub use presence::{PresenceRequest, post_presence};
