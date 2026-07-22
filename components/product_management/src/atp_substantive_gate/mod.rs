@@ -6,7 +6,7 @@ use classify::{ASSERTION_MARKERS, AtpVerdict, classify_atp_path, default_candida
 
 const SOURCE_EXTENSIONS: &[&str] = &["rs", "tsx", "ts", "js", "jsx"];
 
-pub(super) fn extract_atp_paths(body: &str) -> Vec<String> {
+pub fn extract_atp_paths(body: &str) -> Vec<String> {
     let Some(section) = extract_atp_section(body) else {
         return Vec::new();
     };
@@ -44,14 +44,11 @@ fn has_source_extension(path: &str) -> bool {
         .any(|ext| path.ends_with(&format!(".{ext}")) || path.ends_with(&format!(".test.{ext}")))
 }
 
-pub(super) fn verify_atp_substantive(body: &str) -> Result<(), String> {
+pub fn verify_atp_substantive(body: &str) -> Result<(), String> {
     verify_atp_substantive_with_roots(body, &default_candidate_roots())
 }
 
-pub(super) fn verify_atp_substantive_with_roots(
-    body: &str,
-    roots: &[PathBuf],
-) -> Result<(), String> {
+pub fn verify_atp_substantive_with_roots(body: &str, roots: &[PathBuf]) -> Result<(), String> {
     let paths = extract_atp_paths(body);
     if paths.is_empty() {
         return Ok(());
@@ -72,14 +69,14 @@ pub(super) fn verify_atp_substantive_with_roots(
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub(super) struct AtpPreFilingError {
+pub struct AtpPreFilingError {
     pub kind: &'static str,
     pub path: String,
     pub message: String,
 }
 
 impl AtpPreFilingError {
-    pub(super) fn as_json_string(&self) -> String {
+    pub fn as_json_string(&self) -> String {
         serde_json::json!({
             "kind": self.kind,
             "path": self.path,
@@ -89,14 +86,11 @@ impl AtpPreFilingError {
     }
 }
 
-pub(super) fn verify_atp_pre_filing(
-    body: &str,
-    atp_arg: Option<&str>,
-) -> Result<(), AtpPreFilingError> {
+pub fn verify_atp_pre_filing(body: &str, atp_arg: Option<&str>) -> Result<(), AtpPreFilingError> {
     verify_atp_pre_filing_with_roots(body, atp_arg, &default_candidate_roots())
 }
 
-pub(super) fn verify_atp_pre_filing_with_roots(
+pub fn verify_atp_pre_filing_with_roots(
     body: &str,
     atp_arg: Option<&str>,
     roots: &[PathBuf],

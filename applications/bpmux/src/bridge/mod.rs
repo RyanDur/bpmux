@@ -4,10 +4,10 @@ use rmcp::{ErrorData, ServiceExt};
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite;
 
-pub(crate) mod atp_substantive_gate;
+pub(crate) use product_management::atp_substantive_gate;
 pub(crate) mod chat_relevance;
 pub(crate) mod connection;
-pub(crate) mod deliver_story_body_diff_gate;
+pub(crate) use product_management::deliver_story_body_diff_gate;
 pub(crate) mod dispatch;
 pub(crate) mod event_subscription;
 mod mcp_dispatch;
@@ -148,8 +148,6 @@ pub fn run_bridge(
     service_result
 }
 
-#[cfg(test)]
-mod body_diff_gate;
 #[cfg(test)]
 mod boundary_tests;
 #[cfg(test)]

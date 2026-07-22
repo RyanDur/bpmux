@@ -39,7 +39,11 @@ macro_rules! entity_id {
     };
 }
 
+pub mod atp_substantive_gate;
 pub mod backlog;
+#[cfg(test)]
+mod body_diff_gate;
+pub mod deliver_story_body_diff_gate;
 pub mod epic;
 pub mod evidence;
 pub mod history;

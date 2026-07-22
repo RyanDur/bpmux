@@ -6,6 +6,7 @@ license.workspace = true
 description = "The product domain: stories, epics, iterations, outcomes, evidence, roadmap, scheduling, metrics"
 
 [dependencies]
+diag = { path = "../diag" }
 workflow = { path = "../workflow" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
