@@ -45,9 +45,9 @@ if [ ! -d "$DATA_BASE" ]; then
   DATA_BASE="$HOME/.bpmux/sessions"
 fi
 DATA_BASE="${BPMUX_DATA_BASE:-$DATA_BASE}"
-DATA_DIR="$DATA_BASE/current"
-if [ -L "$DATA_DIR" ] || [ -d "$DATA_DIR" ]; then
-  DATA_DIR=$(cd "$DATA_DIR" 2>/dev/null && pwd -P || echo "$DATA_DIR")
+DATA_DIR="$DATA_BASE"
+if [ -L "$DATA_BASE/current" ] || [ -d "$DATA_BASE/current" ]; then
+  DATA_DIR=$(cd "$DATA_BASE/current" 2>/dev/null && pwd -P || echo "$DATA_BASE")
 fi
 SAFE_ROLE=$(printf '%s' "$BPMUX_ROLE" | sed 's/[^A-Za-z0-9_-]//g')
 if [ -z "$SAFE_ROLE" ]; then

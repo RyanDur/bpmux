@@ -208,8 +208,8 @@ async fn a_sustained_foreground_job_in_a_cwd_auto_registers_the_agent_headless()
     }
 
     assert!(
-        !work.path().join(".bpmux-user-id").exists(),
-        "auto-registration writes the identity into the data-home registry, NOT a marker in the detected cwd — the agent's workspace stays clean"
+        work.path().join(".bpmux-user-id").exists(),
+        "auto-registration mints the identity into the detected cwd's own marker — the dir IS the agent"
     );
     let user = location::register_dir_user(work.path()).unwrap();
     assert_eq!(
@@ -325,8 +325,8 @@ async fn an_agent_started_in_place_with_no_cd_registers_via_the_startup_emit() {
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
     assert!(
-        !work.path().join(".bpmux-user-id").exists(),
-        "start-in-place registration also leaves the workspace clean — identity lives in the data-home registry, not a cwd marker"
+        work.path().join(".bpmux-user-id").exists(),
+        "start-in-place registration also mints the marker into the cwd — identity lives with the directory"
     );
     let user = location::register_dir_user(work.path()).unwrap();
     assert_eq!(

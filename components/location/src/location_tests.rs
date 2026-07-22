@@ -67,7 +67,7 @@ fn work_dir(parent: &TempDir, name: &str) -> std::path::PathBuf {
 }
 
 #[test]
-fn a_dir_registered_once_reclaims_the_same_id_and_leaves_no_marker_in_the_workspace() {
+fn a_dir_registered_once_holds_its_id_in_its_own_marker_and_reclaims_it_forever() {
     let base = TempDir::new().expect("registry base");
     let parent = TempDir::new().expect("workspace parent");
     let dir = work_dir(&parent, "my-project");
@@ -82,16 +82,16 @@ fn a_dir_registered_once_reclaims_the_same_id_and_leaves_no_marker_in_the_worksp
     let second = register_dir_user_in_base(base.path(), &dir).expect("reclaim");
     assert_eq!(
         first, second,
-        "the {{id, name}} is HELD in the data-home registry keyed by the dir — a second registration in the same dir reclaims the same identity, never mints a new one"
+        "the {{id, name}} lives IN the agent's own directory — a second registration reclaims the same identity, never mints a new one"
     );
 
     assert!(
-        !dir.join(DIR_USER_ID_MARKER).exists(),
-        "registering an agent NEVER writes a marker into its workspace — the identity lives in the data home, not scattered across the dir"
+        dir.join(DIR_USER_ID_MARKER).exists(),
+        "the uuid lives in the directory the agent starts in — the dir IS the agent, so many agents on one machine each carry their own identity with no central registry to negotiate over"
     );
     assert!(
-        !dir.join(".bpmux-session-id").exists(),
-        "no legacy marker is written into the workspace either"
+        !base.path().join("users").join("by-dir").exists(),
+        "the data-home registry gains NO entry — a home-scoped registry would make the machine the one agent"
     );
 }
 
@@ -125,7 +125,7 @@ fn a_symlinked_path_to_the_same_dir_resolves_the_same_id_via_canonicalization() 
         .expect("a symlinked variant of the same dir resolves the already-registered id");
     assert_eq!(
         via_link.id, minted.id,
-        "the registry key is the CANONICAL path — a symlinked/aliased spelling of the same dir is the same identity, never a second entry"
+        "a symlinked/aliased spelling of the same dir reads the same marker — one dir, one identity"
     );
 }
 
@@ -181,10 +181,10 @@ fn a_read_of_an_unregistered_clean_dir_mints_nothing_and_leaves_no_residue() {
 }
 
 #[test]
-fn a_new_format_marker_is_imported_into_the_registry_then_deleted() {
+fn a_marker_in_the_dir_is_the_identity_and_stays_exactly_where_it_is() {
     let base = TempDir::new().expect("registry base");
     let parent = TempDir::new().expect("workspace parent");
-    let dir = work_dir(&parent, "legacy-marked");
+    let dir = work_dir(&parent, "marked");
     let marker = dir.join(DIR_USER_ID_MARKER);
     std::fs::write(
         &marker,
@@ -194,22 +194,70 @@ fn a_new_format_marker_is_imported_into_the_registry_then_deleted() {
         })
         .unwrap(),
     )
-    .expect("seed new-format marker");
+    .expect("seed marker");
 
-    let imported = registered_dir_user_in_base(base.path(), &dir)
-        .expect("a dir holding a marker imports its existing id — importing is not minting");
+    let resolved = registered_dir_user_in_base(base.path(), &dir)
+        .expect("the dir's own marker resolves its identity");
     assert_eq!(
-        imported.id, "kept-uuid-1234",
-        "the durable id is preserved verbatim across the move into the registry — identity never changes"
+        resolved.id, "kept-uuid-1234",
+        "the marker IS the identity — resolved verbatim, never re-minted"
     );
-    assert_eq!(imported.name, "kept-name", "the stored name carries over");
+    assert_eq!(resolved.name, "kept-name", "the stored name carries over");
     assert!(
-        !marker.exists(),
-        "cleanup canon: the marker file is DELETED once the registry entry is written — the migration finishes, leaving nothing behind"
+        marker.exists(),
+        "the marker stays in the dir — it is the durable home of the identity, not a legacy artifact to absorb"
     );
-    let reread = registered_dir_user_in_base(base.path(), &dir)
-        .expect("after import the id resolves from the registry, no marker needed");
-    assert_eq!(reread.id, "kept-uuid-1234");
+    assert!(
+        !base.path().join("users").join("by-dir").exists(),
+        "no central registry entry is created from a marker read"
+    );
+}
+
+#[test]
+fn a_legacy_central_registry_entry_migrates_into_the_dir_marker_then_disappears() {
+    let base = TempDir::new().expect("registry base");
+    let parent = TempDir::new().expect("workspace parent");
+    let dir = work_dir(&parent, "centrally-registered");
+    std::fs::create_dir_all(base.path().join("users").join("by-dir")).expect("registry dir");
+    let canonical = std::fs::canonicalize(&dir).expect("canonical");
+    let key: String = ring::digest::digest(
+        &ring::digest::SHA256,
+        canonical.to_string_lossy().as_bytes(),
+    )
+    .as_ref()
+    .iter()
+    .map(|byte| format!("{byte:02x}"))
+    .collect();
+    let entry_path = base
+        .path()
+        .join("users")
+        .join("by-dir")
+        .join(format!("{key}.json"));
+    std::fs::write(
+        &entry_path,
+        format!(
+            "{{\"path\":\"{}\",\"id\":\"central-uuid-9\",\"name\":\"held-name\"}}",
+            canonical.to_string_lossy()
+        ),
+    )
+    .expect("seed central entry");
+
+    let resolved = registered_dir_user_in_base(base.path(), &dir)
+        .expect("a legacy central entry still resolves the dir's id");
+    assert_eq!(
+        resolved.id, "central-uuid-9",
+        "the id minted under the central-registry era is preserved verbatim — identity never changes across the migration"
+    );
+    assert!(
+        dir.join(DIR_USER_ID_MARKER).exists(),
+        "the identity moves home: the central entry is rewritten as the dir's own marker"
+    );
+    assert!(
+        !entry_path.exists(),
+        "the central entry is deleted once the marker is written — the migration finishes, leaving nothing behind"
+    );
+    let reread = registered_dir_user_in_base(base.path(), &dir).expect("marker resolves");
+    assert_eq!(reread.id, "central-uuid-9");
 }
 
 #[test]
@@ -231,8 +279,12 @@ fn a_legacy_session_id_marker_with_a_raw_uuid_is_imported_then_deleted() {
         "a bare-uuid marker derives its name from the folder basename"
     );
     assert!(
+        dir.join(DIR_USER_ID_MARKER).exists(),
+        "the old filename is renamed into the current marker — the identity stays home in the dir"
+    );
+    assert!(
         !old_marker.exists(),
-        "the legacy marker is deleted after import — finish the rename, leave no residue"
+        "the legacy filename is deleted after the rename — no residue"
     );
 }
 
@@ -258,8 +310,12 @@ fn both_markers_present_and_divergent_prefers_the_new_and_deletes_the_old() {
         "when both markers exist and disagree, the new-format .bpmux-user-id is authoritative"
     );
     assert!(
-        !dir.join(DIR_USER_ID_MARKER).exists() && !dir.join(".bpmux-session-id").exists(),
-        "both markers are removed after import — the divergent old one is discarded, not left as residue"
+        dir.join(DIR_USER_ID_MARKER).exists(),
+        "the authoritative marker stays — it is the identity's home"
+    );
+    assert!(
+        !dir.join(".bpmux-session-id").exists(),
+        "the divergent old filename is discarded, not left as residue"
     );
 }
 
@@ -281,10 +337,10 @@ fn register_imports_an_existing_marker_rather_than_minting_a_fresh_id() {
     let registered = register_dir_user_in_base(base.path(), &dir).expect("register");
     assert_eq!(
         registered.id, "preexisting-id",
-        "the register (mint) variant also imports first — an id that already exists in a marker is reclaimed, never overwritten with a fresh mint"
+        "the register (mint) variant reclaims a marker id verbatim — never overwritten with a fresh mint"
     );
     assert!(
-        !dir.join(DIR_USER_ID_MARKER).exists(),
-        "register imports-then-deletes the marker exactly like a read does"
+        dir.join(DIR_USER_ID_MARKER).exists(),
+        "the marker stays in place — register reads it, never absorbs it"
     );
 }

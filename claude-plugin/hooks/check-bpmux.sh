@@ -8,7 +8,10 @@ if [ ! -d "$DATA_BASE" ]; then
   DATA_BASE="$HOME/.bpmux/sessions"
 fi
 DATA_BASE="${BPMUX_DATA_BASE:-$DATA_BASE}"
-MESSAGES_FILE="$DATA_BASE/current/messages-current.jsonl"
+MESSAGES_FILE="$DATA_BASE/messages-current.jsonl"
+if [ ! -f "$MESSAGES_FILE" ]; then
+  MESSAGES_FILE="$DATA_BASE/current/messages-current.jsonl"
+fi
 
 if [ ! -f "$MESSAGES_FILE" ]; then
   exit 0

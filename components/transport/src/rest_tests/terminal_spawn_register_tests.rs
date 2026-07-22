@@ -80,8 +80,8 @@ async fn the_plus_spawn_flow_auto_registers_an_agent_running_in_its_working_dir_
     }
 
     assert!(
-        !work.path().join(".bpmux-user-id").exists(),
-        "the ＋-spawned terminal's detector registered the agent into the data-home registry on a sustained foreground-job — NO marker is written into the work dir; the handler wires detection for a bare shell, no BPMUX_ROOM_AGENT gate"
+        work.path().join(".bpmux-user-id").exists(),
+        "the ＋-spawned terminal's detector minted the agent's identity into the work dir's own marker on a sustained foreground-job — the dir IS the agent; the handler wires detection for a bare shell, no BPMUX_ROOM_AGENT gate"
     );
     let user = location::register_dir_user(work.path()).expect("reclaim from registry");
     assert_eq!(

@@ -31,17 +31,17 @@ pub fn register_dir_user(dir: &Path) -> Result<DirUser, LogError> {
 }
 
 pub fn registered_dir_user_in_base(base: &Path, dir: &Path) -> Option<DirUser> {
-    if let Some(user) = read_entry(base, dir) {
+    if let Some(user) = resolve_marker(dir) {
         return Some(user);
     }
-    import_marker(base, dir)
+    import_central_entry(base, dir)
 }
 
 pub fn register_dir_user_in_base(base: &Path, dir: &Path) -> Result<DirUser, LogError> {
     if let Some(user) = registered_dir_user_in_base(base, dir) {
         return Ok(user);
     }
-    mint_entry(base, dir)
+    mint_marker(dir)
 }
 
 fn entry_path(base: &Path, dir: &Path) -> (PathBuf, String) {
@@ -65,33 +65,33 @@ fn read_entry(base: &Path, dir: &Path) -> Option<DirUser> {
     })
 }
 
-fn mint_entry(base: &Path, dir: &Path) -> Result<DirUser, LogError> {
-    let (path, canonical) = entry_path(base, dir);
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
+fn mint_marker(dir: &Path) -> Result<DirUser, LogError> {
     let user = DirUser {
         id: uuid::Uuid::new_v4().to_string(),
         name: dir_basename(dir),
     };
-    let entry = RegistryEntry {
-        path: canonical,
-        id: user.id.clone(),
-        name: user.name.clone(),
-    };
-    let staged = staged_sibling(&path);
-    std::fs::write(&staged, serde_json::to_string(&entry)?)?;
-    let published = std::fs::hard_link(&staged, &path);
+    match publish_marker(dir, &user)? {
+        Some(winner) => Ok(winner),
+        None => Ok(user),
+    }
+}
+
+fn publish_marker(dir: &Path, user: &DirUser) -> Result<Option<DirUser>, LogError> {
+    let marker = dir.join(DIR_USER_ID_MARKER);
+    let staged = staged_sibling(&marker);
+    std::fs::write(&staged, serde_json::to_string(user)?)?;
+    let published = std::fs::hard_link(&staged, &marker);
     let _ = std::fs::remove_file(&staged);
     match published {
-        Ok(()) => Ok(user),
-        Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => read_entry(base, dir)
-            .ok_or_else(|| {
+        Ok(()) => Ok(None),
+        Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => {
+            read_marker(&marker, dir).map(Some).ok_or_else(|| {
                 LogError::Io(std::io::Error::new(
                     std::io::ErrorKind::NotFound,
-                    "registry entry vanished after a mint race",
+                    "identity marker vanished after a mint race",
                 ))
-            }),
+            })
+        }
         Err(err) => Err(LogError::Io(err)),
     }
 }
@@ -102,42 +102,35 @@ fn staged_sibling(path: &Path) -> PathBuf {
     PathBuf::from(staged)
 }
 
-fn import_marker(base: &Path, dir: &Path) -> Option<DirUser> {
+fn resolve_marker(dir: &Path) -> Option<DirUser> {
     let new_marker = dir.join(DIR_USER_ID_MARKER);
     let old_marker = dir.join(OLD_DIR_USER_ID_MARKER);
     let from_new = read_marker(&new_marker, dir);
     let from_old = read_marker(&old_marker, dir);
-    let user = match (from_new, from_old) {
+    match (from_new, from_old) {
         (Some(new_user), Some(old_user)) => {
             if new_user.id != old_user.id {
                 log_marker_divergence(dir);
             }
-            new_user
+            let _ = std::fs::remove_file(&old_marker);
+            Some(new_user)
         }
-        (Some(new_user), None) => new_user,
-        (None, Some(old_user)) => old_user,
-        (None, None) => return None,
-    };
-    write_entry(base, dir, &user).ok()?;
-    let _ = std::fs::remove_file(&new_marker);
-    let _ = std::fs::remove_file(&old_marker);
-    Some(user)
+        (Some(new_user), None) => Some(new_user),
+        (None, Some(old_user)) => {
+            let settled = publish_marker(dir, &old_user).ok()?.unwrap_or(old_user);
+            let _ = std::fs::remove_file(&old_marker);
+            Some(settled)
+        }
+        (None, None) => None,
+    }
 }
 
-fn write_entry(base: &Path, dir: &Path, user: &DirUser) -> Result<(), LogError> {
-    let (path, canonical) = entry_path(base, dir);
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    let entry = RegistryEntry {
-        path: canonical,
-        id: user.id.clone(),
-        name: user.name.clone(),
-    };
-    let staged = staged_sibling(&path);
-    std::fs::write(&staged, serde_json::to_string(&entry)?)?;
-    std::fs::rename(&staged, &path)?;
-    Ok(())
+fn import_central_entry(base: &Path, dir: &Path) -> Option<DirUser> {
+    let (entry_path, _) = entry_path(base, dir);
+    let user = read_entry(base, dir)?;
+    let settled = publish_marker(dir, &user).ok()?.unwrap_or(user);
+    let _ = std::fs::remove_file(&entry_path);
+    Some(settled)
 }
 
 fn read_marker(marker: &Path, dir: &Path) -> Option<DirUser> {

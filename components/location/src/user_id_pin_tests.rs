@@ -47,7 +47,7 @@ fn a_pinned_read_also_wins_verbatim_without_registering() {
 }
 
 #[test]
-fn a_blank_pin_falls_back_to_the_dir_registry() {
+fn a_blank_pin_falls_back_to_the_dir_held_identity() {
     let base = tempfile::TempDir::new().unwrap();
     let dir = tempfile::TempDir::new().unwrap();
     let derived =
@@ -57,11 +57,15 @@ fn a_blank_pin_falls_back_to_the_dir_registry() {
         .expect("none falls back to reclaim");
     assert_eq!(
         derived, again,
-        "a blank pin is treated as unset → both resolve to the SAME stable per-dir registry id"
+        "a blank pin is treated as unset → both resolve to the SAME stable dir-held id"
     );
     assert!(
-        base.path().join("users").join("by-dir").exists(),
-        "the unpinned register path writes the dir-user entry into the registry"
+        dir.path().join(".bpmux-user-id").exists(),
+        "the unpinned register path mints the id into the dir's own marker — the dir is the agent"
+    );
+    assert!(
+        !base.path().join("users").join("by-dir").exists(),
+        "no central registry entry is created"
     );
 }
 

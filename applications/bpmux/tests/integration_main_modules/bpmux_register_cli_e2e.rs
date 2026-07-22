@@ -40,8 +40,8 @@ fn registered_id(stdout: &str) -> String {
 }
 
 #[tokio::test]
-async fn register_cli_holds_a_stable_id_in_the_data_home_registry_and_makes_it_resolvable_server_side()
- {
+async fn register_cli_holds_a_stable_id_in_the_dirs_own_marker_and_makes_it_resolvable_server_side()
+{
     let bpmux = TestBpmux::start();
     let port = bpmux.port();
     let data_base = bpmux.data_base_path();
@@ -61,9 +61,12 @@ async fn register_cli_holds_a_stable_id_in_the_data_home_registry_and_makes_it_r
     assert!(!user_id.is_empty(), "register mints a user-id for the dir");
 
     assert!(
-        !workspace.path().join(".bpmux-user-id").exists()
-            && !workspace.path().join(".bpmux-session-id").exists(),
-        "register writes NO marker file into the workspace — the identity lives in the data-home registry (the dir is the key, the data home is the store)"
+        workspace.path().join(".bpmux-user-id").exists(),
+        "register mints the uuid into the start-dir's own marker — the dir IS the agent, so identity travels with the directory instead of a machine-wide registry"
+    );
+    assert!(
+        !data_base.join("users").join("by-dir").exists(),
+        "no central registry entry is created"
     );
 
     let (ok_again, stdout_again) =

@@ -76,18 +76,13 @@ async fn bpmux_send_identity_io_stays_inside_the_injected_data_base_never_the_de
         !fake_home.path().join(".bpmux").exists(),
         "the anti-pollution invariant: a test-spawned send must NEVER fall through to the DEFAULT data home (~/.bpmux) — every identity read/import lands in the injected BPMUX_DATA_BASE (this is the leak class that wrote a real ~/.bpmux/data/users/by-dir entry during a test run)"
     );
-    let sandbox_registry = bpmux.data_base_path().join("users").join("by-dir");
-    let entries: Vec<_> = std::fs::read_dir(&sandbox_registry)
-        .expect("the marker import landed in the INJECTED base's registry")
-        .collect();
-    assert_eq!(
-        entries.len(),
-        1,
-        "exactly the one imported entry lives in the sandboxed registry"
+    assert!(
+        !bpmux.data_base_path().join("users").join("by-dir").exists(),
+        "no central registry entry is created — the marker in the dir IS the identity"
     );
     assert!(
-        !workspace.path().join(".bpmux-user-id").exists(),
-        "the marker was imported-then-deleted (cleanup canon) — into the sandbox, not the real home"
+        workspace.path().join(".bpmux-user-id").exists(),
+        "the marker stays in the agent's dir — identity travels with the directory, so many agents on one machine never negotiate over a shared registry"
     );
 }
 

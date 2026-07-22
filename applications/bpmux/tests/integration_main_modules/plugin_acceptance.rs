@@ -8,7 +8,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::fs;
-use std::os::unix::fs as unix_fs;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -40,13 +39,8 @@ fn session_start_script() -> PathBuf {
 
 fn create_data_home(tmp: &tempfile::TempDir) -> PathBuf {
     let data_base = tmp.path().join(".bpmux/data");
-    let data_dir = data_base.join("test-data-dir");
-    fs::create_dir_all(&data_dir).unwrap();
-
-    let current_link = data_base.join("current");
-    unix_fs::symlink(&data_dir, &current_link).unwrap();
-
-    data_dir
+    fs::create_dir_all(&data_base).unwrap();
+    data_base
 }
 
 #[test]
@@ -125,7 +119,7 @@ fn session_start_outputs_context() {
 }
 
 #[test]
-fn session_start_register_keeps_identity_io_inside_the_injected_data_base() {
+fn session_start_register_mints_the_identity_into_the_workspace_marker() {
     let home = tempfile::tempdir().unwrap();
     let data_base = tempfile::tempdir().unwrap();
     let workspace = tempfile::tempdir().unwrap();
@@ -148,17 +142,13 @@ fn session_start_register_keeps_identity_io_inside_the_injected_data_base() {
         !home.path().join(".bpmux").exists(),
         "the hook's register must NEVER fall through to the DEFAULT data home when a test runs it — identity I/O lands in the injected BPMUX_DATA_BASE (this is the leak class that minted a real ~/.bpmux/data/users/by-dir entry during a test run; the sibling network leak registered temp-minted strangers against the LIVE daemon through the ambient BPMUX_PORT and linked them over the owner's real terminal via the ambient BPMUX_TERMINAL_ID)"
     );
-    let entries: Vec<_> = fs::read_dir(data_base.path().join("users").join("by-dir"))
-        .expect("register minted the workspace identity into the INJECTED base's registry")
-        .collect();
-    assert_eq!(
-        entries.len(),
-        1,
-        "exactly the one minted entry lives in the sandboxed registry"
+    assert!(
+        workspace.path().join(".bpmux-user-id").exists(),
+        "the hook's register mints the uuid into the workspace's own marker — the dir IS the agent"
     );
     assert!(
-        !workspace.path().join(".bpmux-user-id").exists(),
-        "no marker file is written into the workspace either"
+        !data_base.path().join("users").join("by-dir").exists(),
+        "no central registry entry is created anywhere"
     );
 }
 
