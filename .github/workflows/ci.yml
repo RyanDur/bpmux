@@ -52,6 +52,7 @@ jobs:
     runs-on: [self-hosted, macos, arm64]
     permissions:
       contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
       - name: Isolate CARGO_HOME + RUSTUP_HOME (#1285)
@@ -72,8 +73,11 @@ jobs:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: applications/electron/package-lock.json
+          registry-url: "https://npm.pkg.github.com"
       - name: Install Electron deps
         working-directory: applications/electron
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm ci
       - name: ESLint (staged files; baseline tolerated until Epic #1477 sub-slices retire)
         working-directory: ${{ github.workspace }}
