@@ -28,10 +28,18 @@ pub use ::sync;
 mod sync_drain_listener_tests;
 #[cfg(test)]
 mod team_roster_tests;
+#[cfg(test)]
+mod transport_excerpt_enrichment_tests;
+#[cfg(test)]
+mod transport_presence_endpoint_tests;
+#[cfg(test)]
+mod transport_ws_client_handlers_tests;
+#[cfg(test)]
+mod transport_ws_roster_projection_tests;
 pub use ::telemetry;
 #[cfg(test)]
 mod tracker_contract_tests;
-pub mod transport;
+pub use ::transport;
 #[cfg(test)]
 mod user_id_pin_tests;
 #[cfg(test)]

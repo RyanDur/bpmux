@@ -1,0 +1,66 @@
+[package]
+name = "transport"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The HTTP/WS door: REST routes, WS handlers, RPC tool dispatch, state-delta broadcast, CI watcher"
+
+[dependencies]
+bridge = { path = "../bridge" }
+store = { path = "../store" }
+sync = { path = "../sync" }
+hub = { path = "../hub" }
+ci = { path = "../ci" }
+room = { path = "../room" }
+integrations = { path = "../integrations" }
+location = { path = "../location" }
+auth = { path = "../auth" }
+message = { path = "../message" }
+message_log = { path = "../message_log" }
+product_management = { path = "../product_management" }
+protocol = { path = "../protocol" }
+roster = { path = "../roster" }
+kernel = { path = "../kernel" }
+view = { path = "../view" }
+board = { path = "../board" }
+workflow = { path = "../workflow" }
+telemetry = { path = "../telemetry" }
+rate_limit = { path = "../rate_limit" }
+user_routing = { path = "../user_routing" }
+diag = { path = "../diag" }
+electron_capture = { path = "../electron_capture" }
+owner_session = { path = "../owner_session" }
+unfurl = { path = "../unfurl" }
+comprehension = { path = "../comprehension" }
+memory = { path = "../memory" }
+storage = { path = "../storage" }
+base64 = "0.22"
+reactions = { path = "../reactions" }
+source_codec = { path = "../source_codec" }
+source_sync = { path = "../source_sync" }
+url = { workspace = true }
+axum = { version = "0.8", features = ["ws"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+tokio = { workspace = true, features = ["sync", "rt", "time", "macros", "io-util"] }
+tokio-util = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+futures = "0.3"
+httpmock = { version = "0.8", optional = true }
+store_test_support = { path = "../store_test_support", optional = true }
+tower = { version = "0.5", features = ["util"], optional = true }
+tempfile = { workspace = true, optional = true }
+
+[features]
+test-support = ["dep:httpmock", "dep:tower", "dep:tempfile", "dep:store_test_support"]
+
+[dev-dependencies]
+store_test_support = { path = "../store_test_support" }
+tempfile = { workspace = true }
+httpmock = "0.8"
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+
+[lints]
+workspace = true

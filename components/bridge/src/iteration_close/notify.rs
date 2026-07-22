@@ -1,5 +1,3 @@
-use hub;
-
 const ITERATION_CLOSE_FLUSH_PROMPT: &str = "[iteration-close] iteration closing — flush unsaved \
      findings now via Write / save_lesson / add_principle / doc edit. pre-close context is still \
      available.";

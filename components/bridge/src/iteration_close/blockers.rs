@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use hub;
-
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct IterationCloseBlocker {
     pub id: u64,

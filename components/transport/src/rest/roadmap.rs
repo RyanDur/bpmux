@@ -1,0 +1,92 @@
+use axum::extract::Query;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use serde::Deserialize;
+
+use super::shared::{err_body, json_headers};
+
+#[derive(Deserialize)]
+pub struct RoadmapQuery {
+    pub outcome: Option<u64>,
+    pub state: Option<String>,
+    pub order: Option<String>,
+    pub limit: Option<usize>,
+}
+
+pub async fn get_roadmap(
+    axum::Extension(orchestrator): axum::Extension<sync::OrchestratorHandle>,
+    axum::Extension(select): axum::Extension<store::Select>,
+    Query(query): Query<RoadmapQuery>,
+) -> impl IntoResponse {
+    let Some(refresh) = orchestrator.as_ref() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            json_headers(),
+            err_body("roadmap view requires the canonical store"),
+        );
+    };
+    if select.select(|state| product_management::story::slice::is_empty(&state.stories)) {
+        let _ = refresh.refresh_all().await;
+    }
+    let body = match query.outcome {
+        Some(number) => {
+            let all_iterations =
+                select.select(|state| product_management::iteration::all(&state.iterations));
+            let outcome = select
+                .select(|state| product_management::outcome::all(&state.outcomes))
+                .into_iter()
+                .find(|outcome| outcome.id.value() == number);
+            let drill = outcome
+                .as_ref()
+                .map(|outcome| {
+                    product_management::roadmap::drill::derive_outcome_drill_in(
+                        outcome,
+                        &all_iterations,
+                        workflow::current_workflow(),
+                    )
+                })
+                .unwrap_or(product_management::roadmap::drill::OutcomeDrillIn {
+                    iterations: Vec::new(),
+                    convene: None,
+                });
+            let outcome_name = outcome.map(|outcome| outcome.title.clone());
+            serde_json::json!({
+                "drill": drill,
+                "outcome_id": number,
+                "outcome_name": outcome_name,
+                "fetched_at": chrono::Utc::now().to_rfc3339(),
+            })
+        }
+        None => {
+            let state = query
+                .state
+                .as_deref()
+                .and_then(product_management::roadmap::selectors::OutcomeState::from_cli);
+            let order = query
+                .order
+                .as_deref()
+                .and_then(product_management::roadmap::filter::RoadmapOrder::from_cli)
+                .unwrap_or(product_management::roadmap::filter::RoadmapOrder::Priority);
+            let outcomes = select.select(|state| product_management::outcome::all(&state.outcomes));
+            let iterations =
+                select.select(|state| product_management::iteration::all(&state.iterations));
+            let filtered = product_management::roadmap::filter::filter_roadmap(
+                product_management::roadmap::selectors::roadmap_cards(
+                    &outcomes,
+                    &iterations,
+                    workflow::current_workflow(),
+                ),
+                state,
+                order,
+                query.limit,
+            );
+            serde_json::json!({
+                "outcomes": filtered.outcomes,
+                "total": filtered.total,
+                "shown": filtered.shown,
+                "fetched_at": chrono::Utc::now().to_rfc3339(),
+            })
+        }
+    };
+    (StatusCode::OK, json_headers(), body.to_string())
+}

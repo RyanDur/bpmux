@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use super::blockers::{IterationCloseBlocker, collect_ready_queue_blockers};
 use super::notify::broadcast_iteration_closed;
-use hub;
 
 #[derive(Debug)]
 pub enum CloseIterationError {

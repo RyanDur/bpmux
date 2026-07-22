@@ -365,6 +365,7 @@ dependencies = [
  "toml",
  "tower",
  "tower-http",
+ "transport",
  "unfurl",
  "url",
  "user_routing",
@@ -3461,6 +3462,58 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
 dependencies = [
  "once_cell",
+]
+
+[[package]]
+name = "transport"
+version = "0.1.0"
+dependencies = [
+ "auth",
+ "axum",
+ "base64",
+ "board",
+ "bridge",
+ "chrono",
+ "ci",
+ "comprehension",
+ "diag",
+ "electron_capture",
+ "futures",
+ "http-body-util",
+ "httpmock",
+ "hub",
+ "integrations",
+ "kernel",
+ "location",
+ "memory",
+ "message",
+ "message_log",
+ "owner_session",
+ "product_management",
+ "protocol",
+ "rate_limit",
+ "reactions",
+ "room",
+ "roster",
+ "serde",
+ "serde_json",
+ "source_codec",
+ "source_sync",
+ "storage",
+ "store",
+ "store_test_support",
+ "sync",
+ "telemetry",
+ "tempfile",
+ "tokio",
+ "tokio-util",
+ "tower",
+ "unfurl",
+ "url",
+ "user_routing",
+ "uuid",
+ "view",
+ "workflow",
 ]
 
 [[package]]

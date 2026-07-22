@@ -37,6 +37,7 @@ members = [
     "components/store_test_support",
     "components/sync",
     "components/telemetry",
+    "components/transport",
     "components/unfurl",
     "components/user_routing",
     "components/view",
