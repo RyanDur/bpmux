@@ -53,3 +53,6 @@ pub fn save_briefing_in(
     let path = briefing_path_in(root, role);
     std::fs::write(&path, content)
 }
+
+#[cfg(test)]
+mod briefing_tests;

@@ -1,15 +1,9 @@
 #![deny(unsafe_code)]
 
-pub mod auth;
-#[cfg(test)]
-mod auth_tests;
-pub mod bookmark;
-#[cfg(test)]
-mod bookmark_tests;
+pub use ::auth;
+pub use ::bookmark;
 pub mod bridge;
-pub mod briefing;
-#[cfg(test)]
-mod briefing_tests;
+pub use ::briefing;
 pub mod ci;
 #[cfg(test)]
 mod ci_tests;

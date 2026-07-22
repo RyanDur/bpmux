@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::auth::{constant_time_eq, default_auth_token_path, ensure, generate_and_write, read};
+use super::{constant_time_eq, default_auth_token_path, ensure, generate_and_write, read};
 use tempfile::TempDir;
 
 fn tmp() -> (TempDir, std::path::PathBuf) {

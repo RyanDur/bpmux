@@ -1,0 +1,15 @@
+[package]
+name = "briefing"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Per-role briefing persistence under the .bpmux home"
+
+[dependencies]
+memory = { path = "../memory" }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

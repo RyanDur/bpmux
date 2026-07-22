@@ -46,3 +46,6 @@ pub fn save_bookmark(
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     std::fs::write(&path, json)
 }
+
+#[cfg(test)]
+mod bookmark_tests;

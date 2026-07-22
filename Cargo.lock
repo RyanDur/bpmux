@@ -146,6 +146,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
+name = "auth"
+version = "0.1.0"
+dependencies = [
+ "dirs",
+ "ring",
+ "tempfile",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -280,15 +289,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "bookmark"
+version = "0.1.0"
+dependencies = [
+ "memory",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "bpmux"
 version = "0.1.0"
 dependencies = [
  "aho-corasick",
  "anyhow",
+ "auth",
  "awareness",
  "axum",
  "base64",
  "board",
+ "bookmark",
+ "briefing",
  "chrono",
  "ci",
  "clap",
@@ -346,6 +368,14 @@ dependencies = [
  "uuid",
  "view",
  "workflow",
+]
+
+[[package]]
+name = "briefing"
+version = "0.1.0"
+dependencies = [
+ "memory",
+ "tempfile",
 ]
 
 [[package]]

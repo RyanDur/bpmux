@@ -1,0 +1,16 @@
+[package]
+name = "auth"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Bridge auth token: generation, constant-time comparison, per-home persistence with env override"
+
+[dependencies]
+ring = { workspace = true }
+dirs = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

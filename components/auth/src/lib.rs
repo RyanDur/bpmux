@@ -75,3 +75,6 @@ fn write_0600(path: &Path, contents: &str) -> io::Result<()> {
 fn write_0600(path: &Path, contents: &str) -> io::Result<()> {
     std::fs::write(path, contents)
 }
+
+#[cfg(test)]
+mod auth_tests;

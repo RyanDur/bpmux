@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-use super::briefing::*;
+use super::*;
 use tempfile::tempdir;
 
 #[test]

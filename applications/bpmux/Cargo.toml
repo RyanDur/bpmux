@@ -42,6 +42,9 @@ serde_json = { workspace = true }
 mcp_tools = { path = "../../components/mcp_tools" }
 telemetry = { path = "../../components/telemetry" }
 location = { path = "../../components/location" }
+auth = { path = "../../components/auth" }
+bookmark = { path = "../../components/bookmark" }
+briefing = { path = "../../components/briefing" }
 chrono = { workspace = true, features = ["serde"] }
 dirs = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
