@@ -1,4 +1,11 @@
-import { Result, asyncFailure, asyncResult, failure, success } from '@ryandur/sand'
+import {
+  Result,
+  asyncFailure,
+  asyncResult,
+  asyncSuccess,
+  asyncTryCatch,
+  requesting
+} from '@ryandur/sand'
 
 export interface ApiContext {
   apiBase: string
@@ -14,13 +21,10 @@ export type HttpError =
 const STATUS_OK = [200]
 const STATUS_OK_NO_CONTENT = [200, 201, 204]
 
-const buildHeaders = (ctx: ApiContext, includeContentType: boolean): Record<string, string> => {
+const buildHeaders = (ctx: ApiContext): Record<string, string> => {
   const headers: Record<string, string> = {
     Accept: 'application/json',
     Authorization: `Bearer ${ctx.authToken ?? ''}`
-  }
-  if (includeContentType) {
-    headers['Content-Type'] = 'application/json'
   }
   if (ctx.ownerNonce) {
     headers['X-BPMUX-Owner-Nonce'] = ctx.ownerNonce
@@ -28,82 +32,58 @@ const buildHeaders = (ctx: ApiContext, includeContentType: boolean): Record<stri
   return headers
 }
 
-const request = async <T>(
+const networkError = (thrown: unknown): HttpError => ({
+  kind: 'network',
+  message: thrown instanceof Error ? thrown.message : String(thrown)
+})
+
+const settle = <T>(response: Response, successStatuses: number[]): Result.Async<T, HttpError> => {
+  if (!successStatuses.includes(response.status)) {
+    return asyncResult<string, HttpError>(response.text().catch(() => '')).mBind((body) =>
+      asyncFailure<HttpError, T>({ kind: 'http', status: response.status, body })
+    )
+  }
+  if (response.status === 204) {
+    return asyncSuccess<T, HttpError>(undefined as unknown as T)
+  }
+  return asyncTryCatch(
+    (): Promise<T> => response.json(),
+    (thrown): HttpError => ({
+      kind: 'decode',
+      message: thrown instanceof Error ? thrown.message : String(thrown)
+    })
+  )
+}
+
+const request = <T>(
   ctx: ApiContext,
   endpoint: string,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   body: unknown,
   successStatuses: number[],
   signal?: AbortSignal
-): Promise<Result<T, HttpError>> => {
-  const url = `${ctx.apiBase}${endpoint}`
-  const init: RequestInit = {
-    method,
-    headers: buildHeaders(ctx, body !== undefined)
-  }
-  if (body !== undefined) {
-    init.body = JSON.stringify(body)
-  }
-  if (signal) {
-    init.signal = signal
-  }
-  let res: Response
-  try {
-    res = await fetch(url, init)
-  } catch (err) {
-    return failure<HttpError, T>({
-      kind: 'network',
-      message: err instanceof Error ? err.message : String(err)
-    })
-  }
-  if (!successStatuses.includes(res.status)) {
-    const bodyText = await res.text().catch(() => '')
-    return failure<HttpError, T>({
-      kind: 'http',
-      status: res.status,
-      body: bodyText
-    })
-  }
-  if (res.status === 204) {
-    return success<T, HttpError>(undefined as unknown as T)
-  }
-  try {
-    const json = (await res.json()) as T
-    return success<T, HttpError>(json)
-  } catch (err) {
-    return failure<HttpError, T>({
-      kind: 'decode',
-      message: err instanceof Error ? err.message : String(err)
-    })
-  }
-}
-
-const settled = <T>(pending: Promise<Result<T, HttpError>>): Result.Async<T, HttpError> =>
-  asyncResult<T, HttpError>(
-    pending.then((result) =>
-      result.either(
-        (value) => value,
-        (reason) => Promise.reject(reason)
-      )
-    )
-  )
+): Result.Async<T, HttpError> =>
+  requesting(
+    `${ctx.apiBase}${endpoint}`,
+    { method, headers: buildHeaders(ctx), body, ...(signal ? { signal } : {}) },
+    networkError
+  ).mBind((response) => settle<T>(response, successStatuses))
 
 export const http = {
   get: <T>(ctx: ApiContext, endpoint: string, signal?: AbortSignal): Result.Async<T, HttpError> =>
-    settled(request<T>(ctx, endpoint, 'GET', undefined, STATUS_OK, signal)),
+    request<T>(ctx, endpoint, 'GET', undefined, STATUS_OK, signal),
 
   post: <T = void>(ctx: ApiContext, endpoint: string, body?: unknown): Result.Async<T, HttpError> =>
-    settled(request<T>(ctx, endpoint, 'POST', body, STATUS_OK_NO_CONTENT)),
+    request<T>(ctx, endpoint, 'POST', body, STATUS_OK_NO_CONTENT),
 
   put: <T = void>(ctx: ApiContext, endpoint: string, body?: unknown): Result.Async<T, HttpError> =>
-    settled(request<T>(ctx, endpoint, 'PUT', body, STATUS_OK_NO_CONTENT)),
+    request<T>(ctx, endpoint, 'PUT', body, STATUS_OK_NO_CONTENT),
 
   delete: <T = void>(
     ctx: ApiContext,
     endpoint: string,
     body?: unknown
-  ): Result.Async<T, HttpError> =>
-    settled(request<T>(ctx, endpoint, 'DELETE', body, STATUS_OK_NO_CONTENT))
+  ): Result.Async<T, HttpError> => request<T>(ctx, endpoint, 'DELETE', body, STATUS_OK_NO_CONTENT)
 }
 
 export const describeHttpError = (error: HttpError): string => {
