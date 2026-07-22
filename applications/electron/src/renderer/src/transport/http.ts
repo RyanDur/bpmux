@@ -18,8 +18,8 @@ export type HttpError =
   | { kind: 'network'; message: string }
   | { kind: 'decode'; message: string }
 
-const STATUS_OK = [200]
-const STATUS_OK_NO_CONTENT = [200, 201, 204]
+const READ_SUCCESS = [200]
+const WRITE_SUCCESS = [200, 201, 204]
 
 const buildHeaders = (ctx: ApiContext): Record<string, string> => {
   const headers: Record<string, string> = {
@@ -71,19 +71,19 @@ const request = <T>(
 
 export const http = {
   get: <T>(ctx: ApiContext, endpoint: string, signal?: AbortSignal): Result.Async<T, HttpError> =>
-    request<T>(ctx, endpoint, 'GET', undefined, STATUS_OK, signal),
+    request<T>(ctx, endpoint, 'GET', undefined, READ_SUCCESS, signal),
 
   post: <T = void>(ctx: ApiContext, endpoint: string, body?: unknown): Result.Async<T, HttpError> =>
-    request<T>(ctx, endpoint, 'POST', body, STATUS_OK_NO_CONTENT),
+    request<T>(ctx, endpoint, 'POST', body, WRITE_SUCCESS),
 
   put: <T = void>(ctx: ApiContext, endpoint: string, body?: unknown): Result.Async<T, HttpError> =>
-    request<T>(ctx, endpoint, 'PUT', body, STATUS_OK_NO_CONTENT),
+    request<T>(ctx, endpoint, 'PUT', body, WRITE_SUCCESS),
 
   delete: <T = void>(
     ctx: ApiContext,
     endpoint: string,
     body?: unknown
-  ): Result.Async<T, HttpError> => request<T>(ctx, endpoint, 'DELETE', body, STATUS_OK_NO_CONTENT)
+  ): Result.Async<T, HttpError> => request<T>(ctx, endpoint, 'DELETE', body, WRITE_SUCCESS)
 }
 
 export const describeHttpError = (error: HttpError): string => {
@@ -96,5 +96,3 @@ export const describeHttpError = (error: HttpError): string => {
       return `decode: ${error.message}`
   }
 }
-
-export { asyncFailure }
