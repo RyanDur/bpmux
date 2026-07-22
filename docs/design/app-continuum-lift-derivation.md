@@ -186,3 +186,41 @@ auth/bookmark/briefing. The write-path tail (bridge, transport, sync)
 still waits on the store↔sync and store↔transport cycle cuts; the
 sync→server composition reach cuts with them. Then the fat app splits
 into the four thin shells and the repo reclaims the bpmux name.
+
+## The write-path tail re-derivation (2026-07-21)
+
+Stations landed since the catch-up: telemetry `efb58970` (the diag
+consolidation question closed NO — different identities) → location
+`630026a0` → auth+bookmark+briefing `49b528f4` → room `49146197` →
+the CI watch binding re-homed to store::ci_watch `b7d31bce` → sync +
+store_test_support `a3efa5a2`. Thirty-eight component crates.
+
+Two firsthand surveys of the tail (bridge; transport/sync/store/room)
+revised the doc's blocker model:
+
+- **The store<->sync and store<->transport cycles are dead.** The
+  store station left `pub use ::store::*` in the app, so every
+  production "cycle edge" already resolves to the extracted crate.
+  What remained were test-seam reaches into server::store_wiring —
+  cut by moving the drain listener test beside the wiring and
+  graduating SeededStore into components/store_test_support.
+- **The unnamed real blocker is transport->bridge** (tool_dispatch,
+  board_acceptance, roadmap_write_handlers name bridge handlers), so
+  bridge extracts before transport, not after.
+- **bridge's own blocker was crate::sync::SyncOrchestrator** — gone
+  now that sync is a crate. bridge decomposes as: pure domain gates
+  (atp_substantive_gate, deliver_story_body_diff_gate,
+  chat_relevance) -> product_management; a clean MCP-edge cluster
+  (tool_registry with DISPATCHED_TOOL_NAMES, rpc_client,
+  event_subscription, connection, view_model, mcp_handler); then
+  tools_stories/move_story/dispatch/tools/polling. One edge->edge
+  inversion to cut on the way: bridge/dispatch naming
+  transport::rest::iteration_close.
+
+Remaining order: bridge (gates -> edge cluster -> handler tail) →
+transport → the four thin shells. Owner rulings recorded 2026-07-21:
+mcp and cli affordances stay 1:1 (the parity audit in cli is the
+lock; it re-homes where both catalogs are visible at the shell
+split, and the verb inventory becomes a real cross-door contract
+component when both doors derive from it); databases/ is deferred —
+Ryan pairs on it after the lift.
