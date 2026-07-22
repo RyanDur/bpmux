@@ -6,7 +6,7 @@ pub mod broadcast_listeners;
 mod capture;
 mod ci;
 mod classifier;
-pub(crate) mod iteration_close;
+mod iteration_close;
 mod labels;
 mod lessons;
 mod messages;
@@ -48,8 +48,6 @@ pub use capture::{ElectronCaptureQuery, get_electron_capture};
 pub use ci::{get_ci, get_ci_jobs, get_ci_log, post_ci_rerun};
 pub use classifier::{ClassifierMisfire, post_classifier_misfire};
 pub use iteration_close::{CloseIterationRequest, post_close_iteration};
-#[cfg(test)]
-pub(crate) use iteration_close::{close_iteration_canonical, collect_ready_queue_blockers};
 pub use labels::{LabelMutationPayload, post_story_labels};
 pub use lessons::{
     LessonsQuery, PeerLessonsQuery, SaveLessonPayload, get_lessons, get_peer_lessons, post_lesson,

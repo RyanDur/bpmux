@@ -4,6 +4,7 @@ use rmcp::{ErrorData, ServiceExt};
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite;
 
+pub(crate) mod iteration_close;
 pub(crate) use product_management::atp_substantive_gate;
 pub(crate) mod chat_relevance;
 pub(crate) mod connection;

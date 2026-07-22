@@ -32,7 +32,7 @@ pub(crate) fn collect_ready_queue_blockers(
         .collect()
 }
 
-pub(super) fn build_close_iteration_ready_queue_blocked_body(
+pub(crate) fn build_close_iteration_ready_queue_blocked_body(
     blockers: &[IterationCloseBlocker],
 ) -> String {
     serde_json::json!({
@@ -42,7 +42,7 @@ pub(super) fn build_close_iteration_ready_queue_blocked_body(
     .to_string()
 }
 
-pub(super) fn broadcast_iteration_close_blocked(
+pub(crate) fn broadcast_iteration_close_blocked(
     hub: &Arc<hub::Hub>,
     blockers: &[IterationCloseBlocker],
 ) {

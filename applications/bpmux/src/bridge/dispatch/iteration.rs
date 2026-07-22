@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::super::tools_stories;
-use crate::transport::rest::iteration_close::CloseIterationError;
+use crate::bridge::iteration_close::CloseIterationError;
 
 pub(crate) async fn dispatch_create_iteration(
     args: serde_json::Map<String, serde_json::Value>,
@@ -32,7 +32,7 @@ pub(crate) async fn dispatch_close_iteration(
         .get("iteration_id")
         .and_then(|v| v.as_u64())
         .ok_or("close_iteration requires iteration_id (canonical Iteration issue#).")?;
-    crate::transport::rest::iteration_close::close_iteration(
+    crate::bridge::iteration_close::close_iteration(
         hub,
         driver,
         dispatch,
