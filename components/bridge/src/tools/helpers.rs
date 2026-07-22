@@ -35,12 +35,6 @@ pub(super) fn identity_error(e: &memory::identity::IdentityError) -> String {
 }
 
 pub(super) async fn get_data_dir() -> Result<std::path::PathBuf, String> {
-    use location::resolve_default_base;
-    let base = resolve_default_base().map_err(|e| format!("data base: {e}"))?;
-    let current = base.join("current");
-    if current.is_symlink() {
-        std::fs::read_link(&current).map_err(|e| format!("read current: {e}"))
-    } else {
-        Err("no current session".to_string())
-    }
+    let base = location::resolve_default_base().map_err(|e| format!("data base: {e}"))?;
+    location::durable_data_dir(&base).map_err(|e| format!("data dir: {e}"))
 }

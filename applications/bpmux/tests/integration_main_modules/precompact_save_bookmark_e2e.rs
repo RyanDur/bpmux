@@ -35,8 +35,8 @@ fn fire_hook(role: &str, sessions_base: &Path) -> std::process::Output {
 fn hook_creates_default_bookmark_when_none_exists() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let sessions_base = tmp.path();
-    let session_dir = sessions_base.join("session-001");
-    std::fs::create_dir_all(&session_dir).expect("mkdir session");
+    let data_base_dir = sessions_base.join("session-001");
+    std::fs::create_dir_all(&data_base_dir).expect("mkdir session");
     // Symlink-or-dir: write 'current' as a real directory so the
     // hook resolves to it without symlink platform variance in tests.
     let current = sessions_base.join("current");

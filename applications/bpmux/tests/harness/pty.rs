@@ -17,7 +17,7 @@ use std::sync::Mutex as StdMutex;
 pub struct TestBpmux {
     child: Box<dyn portable_pty::Child + Send + Sync>,
     _drainer: Option<std::thread::JoinHandle<()>>,
-    session_dir: Option<tempfile::TempDir>,
+    data_base_dir: Option<tempfile::TempDir>,
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
     port: u16,
     _default_mock_gh: Option<MockServer>,
@@ -47,25 +47,25 @@ impl TestBpmux {
     }
 
     pub fn start_named(name: &str) -> Self {
-        let session_dir = tempfile::TempDir::new().expect("temp dir");
-        Self::start_with_session(name, session_dir)
+        let data_base_dir = tempfile::TempDir::new().expect("temp dir");
+        Self::start_with_session(name, data_base_dir)
     }
 
     pub fn start_with_env(name: &str, key: &str, value: &str) -> Self {
-        let session_dir = tempfile::TempDir::new().expect("temp dir");
-        Self::start_with_session_and_env(name, session_dir, &[(key, value)])
+        let data_base_dir = tempfile::TempDir::new().expect("temp dir");
+        Self::start_with_session_and_env(name, data_base_dir, &[(key, value)])
     }
 
     pub fn start_with_envs(name: &str, extra_env: &[(&str, &str)]) -> Self {
-        let session_dir = tempfile::TempDir::new().expect("temp dir");
-        Self::start_with_session_and_env(name, session_dir, extra_env)
+        let data_base_dir = tempfile::TempDir::new().expect("temp dir");
+        Self::start_with_session_and_env(name, data_base_dir, extra_env)
     }
 
     pub fn start_with_mock_gh(mock_gh_base_url: &str) -> Self {
-        let session_dir = tempfile::TempDir::new().expect("temp dir");
+        let data_base_dir = tempfile::TempDir::new().expect("temp dir");
         Self::start_with_session_and_env(
             "human",
-            session_dir,
+            data_base_dir,
             &[
                 ("BPMUX_GH_BASE_URL", mock_gh_base_url),
                 ("BPMUX_REPO", "acme/bpmux"),
@@ -74,34 +74,34 @@ impl TestBpmux {
         )
     }
 
-    pub fn start_with_session(name: &str, session_dir: tempfile::TempDir) -> Self {
-        Self::start_with_session_and_env(name, session_dir, &[])
+    pub fn start_with_session(name: &str, data_base_dir: tempfile::TempDir) -> Self {
+        Self::start_with_session_and_env(name, data_base_dir, &[])
     }
 
     pub fn start_with_session_and_port(
         name: &str,
-        session_dir: tempfile::TempDir,
+        data_base_dir: tempfile::TempDir,
         port: u16,
     ) -> Self {
-        Self::start_with_session_and_env_and_port(name, session_dir, &[], Some(port))
+        Self::start_with_session_and_env_and_port(name, data_base_dir, &[], Some(port))
     }
 
     fn start_with_session_and_env(
         name: &str,
-        session_dir: tempfile::TempDir,
+        data_base_dir: tempfile::TempDir,
         extra_env: &[(&str, &str)],
     ) -> Self {
-        Self::start_with_session_and_env_and_port(name, session_dir, extra_env, None)
+        Self::start_with_session_and_env_and_port(name, data_base_dir, extra_env, None)
     }
 
     fn start_with_session_and_env_and_port(
         name: &str,
-        session_dir: tempfile::TempDir,
+        data_base_dir: tempfile::TempDir,
         extra_env: &[(&str, &str)],
         port_override: Option<u16>,
     ) -> Self {
         let bin = env!("CARGO_BIN_EXE_bpmux");
-        let data_base = session_dir
+        let data_base = data_base_dir
             .path()
             .to_str()
             .expect("temp path is utf-8")
@@ -136,26 +136,29 @@ impl TestBpmux {
             .to_path_buf();
         cmd.env("BPMUX_ROOT", &workspace_root);
         cmd.env("BPMUX_PROJECT_ROOT", &workspace_root);
-        cmd.env("BPMUX_USAGE_PATH", session_dir.path().join("usage.json"));
+        cmd.env("BPMUX_USAGE_PATH", data_base_dir.path().join("usage.json"));
         cmd.env(
             "BPMUX_AUTH_TOKEN_PATH",
-            session_dir.path().join("auth_token"),
+            data_base_dir.path().join("auth_token"),
         );
         cmd.env(
             "BPMUX_BOARD_STORE_PATH",
-            session_dir.path().join("board-store.json"),
+            data_base_dir.path().join("board-store.json"),
         );
         cmd.env(
             "BPMUX_BOARD_OUTBOX_PATH",
-            session_dir.path().join("board-outbox.json"),
+            data_base_dir.path().join("board-outbox.json"),
         );
         cmd.env(
             "BPMUX_PRIORITY_PATH",
-            session_dir.path().join("priority.json"),
+            data_base_dir.path().join("priority.json"),
         );
-        cmd.env("BPMUX_DATA_BASE", session_dir.path());
-        cmd.env("BPMUX_BRIEFINGS_DIR", session_dir.path().join("briefings"));
-        cmd.env("BPMUX_IDENTITY_DIR", session_dir.path().join("identity"));
+        cmd.env("BPMUX_DATA_BASE", data_base_dir.path());
+        cmd.env(
+            "BPMUX_BRIEFINGS_DIR",
+            data_base_dir.path().join("briefings"),
+        );
+        cmd.env("BPMUX_IDENTITY_DIR", data_base_dir.path().join("identity"));
         cmd.env(
             "BPMUX_LOG",
             std::env::temp_dir().join("bpmux-test-diag.log"),
@@ -211,7 +214,7 @@ impl TestBpmux {
         let bpmux = Self {
             child,
             _drainer: Some(drainer),
-            session_dir: Some(session_dir),
+            data_base_dir: Some(data_base_dir),
             writer: Arc::new(Mutex::new(writer)),
             port,
             _default_mock_gh: default_mock,
@@ -239,47 +242,47 @@ impl TestBpmux {
     }
 
     pub fn auth_token_path(&self) -> std::path::PathBuf {
-        self.session_dir
+        self.data_base_dir
             .as_ref()
-            .expect("session dir taken before reading auth_token_path")
+            .expect("data base taken before reading auth_token_path")
             .path()
             .join("auth_token")
     }
 
     pub fn usage_path(&self) -> std::path::PathBuf {
-        self.session_dir
+        self.data_base_dir
             .as_ref()
-            .expect("session dir taken before reading usage_path")
+            .expect("data base taken before reading usage_path")
             .path()
             .join("usage.json")
     }
 
-    pub fn sessions_base_path(&self) -> std::path::PathBuf {
-        self.session_dir
+    pub fn data_base_path(&self) -> std::path::PathBuf {
+        self.data_base_dir
             .as_ref()
-            .expect("session dir taken before reading sessions_base_path")
+            .expect("data base taken before reading data_base_path")
             .path()
             .to_path_buf()
     }
 
     pub fn bridge_cwd(&self, name: &str) -> std::path::PathBuf {
-        let dir = self.sessions_base_path().join("bridge-cwd").join(name);
+        let dir = self.data_base_path().join("bridge-cwd").join(name);
         std::fs::create_dir_all(&dir).expect("create isolated bridge cwd");
         dir
     }
 
     pub fn briefings_dir_path(&self) -> std::path::PathBuf {
-        self.session_dir
+        self.data_base_dir
             .as_ref()
-            .expect("session dir taken before reading briefings_dir_path")
+            .expect("data base taken before reading briefings_dir_path")
             .path()
             .join("briefings")
     }
 
     pub fn identity_dir_path(&self) -> std::path::PathBuf {
-        self.session_dir
+        self.data_base_dir
             .as_ref()
-            .expect("session dir taken before reading identity_dir_path")
+            .expect("data base taken before reading identity_dir_path")
             .path()
             .join("identity")
     }
@@ -317,9 +320,9 @@ impl TestBpmux {
 
     pub fn simulate_secret(&self) -> String {
         let dir = self
-            .session_dir
+            .data_base_dir
             .as_ref()
-            .expect("session dir taken before reading secret");
+            .expect("data base taken before reading secret");
         let path = dir.path().join("auth_token");
         let deadline = Instant::now() + Duration::from_secs(2);
         loop {
@@ -336,8 +339,10 @@ impl TestBpmux {
         }
     }
 
-    pub fn take_session_dir(&mut self) -> tempfile::TempDir {
-        self.session_dir.take().expect("session dir already taken")
+    pub fn take_data_base_dir(&mut self) -> tempfile::TempDir {
+        self.data_base_dir
+            .take()
+            .expect("session dir already taken")
     }
 
     pub fn wait_until<F>(&self, what: &str, timeout: Duration, mut cond: F) -> Result<(), String>

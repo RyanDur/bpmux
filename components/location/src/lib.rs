@@ -95,26 +95,37 @@ fn repoint_current_symlink(data: &Path, old_base: &Path) -> Result<(), LogError>
     Ok(())
 }
 
-pub fn resume_or_create_data_dir(base: &Path) -> Result<PathBuf, LogError> {
-    let current = base.join("current");
-    if current.is_symlink() {
-        let target = std::fs::read_link(&current)?;
-        if target.is_dir() {
-            return Ok(target);
-        }
-    }
-    create_data_dir(base)
+pub fn durable_data_dir(base: &Path) -> Result<PathBuf, LogError> {
+    std::fs::create_dir_all(base)?;
+    migrate_legacy_session_dir(base)?;
+    Ok(base.to_path_buf())
 }
 
-pub fn create_data_dir(base: &Path) -> Result<PathBuf, LogError> {
-    let session_id = uuid::Uuid::new_v4().to_string();
-    let data_dir = base.join(&session_id);
-    std::fs::create_dir_all(&data_dir)?;
+fn migrate_legacy_session_dir(base: &Path) -> Result<(), LogError> {
     let current = base.join("current");
-    if current.exists() || current.is_symlink() {
-        std::fs::remove_file(&current)?;
+    if !current.is_symlink() {
+        return Ok(());
     }
-    #[cfg(unix)]
-    std::os::unix::fs::symlink(&data_dir, &current)?;
-    Ok(data_dir)
+    let legacy = std::fs::read_link(&current)?;
+    std::fs::remove_file(&current)?;
+    if !legacy.is_dir() {
+        return Ok(());
+    }
+    for entry in std::fs::read_dir(&legacy)? {
+        let entry = entry?;
+        let destination = base.join(entry.file_name());
+        if destination.exists() {
+            diag::log_diag(&format!(
+                "legacy session file {} collides with {} — left in place, never merged or deleted",
+                entry.path().display(),
+                destination.display()
+            ));
+            continue;
+        }
+        std::fs::rename(entry.path(), &destination)?;
+    }
+    if std::fs::read_dir(&legacy)?.next().is_none() {
+        std::fs::remove_dir(&legacy)?;
+    }
+    Ok(())
 }

@@ -15,7 +15,7 @@ async fn bpmux_send_reaches_the_channel_and_is_read_back_via_bpmux_read() {
         .current_dir(workspace.path())
         .env("BPMUX_PORT", port.to_string())
         .env("BPMUX_ROLE", "dev")
-        .env("BPMUX_DATA_BASE", bpmux.sessions_base_path())
+        .env("BPMUX_DATA_BASE", bpmux.data_base_path())
         .env_remove("BPMUX_USER_ID")
         .output()
         .await
@@ -31,7 +31,7 @@ async fn bpmux_send_reaches_the_channel_and_is_read_back_via_bpmux_read() {
         .current_dir(workspace.path())
         .env("BPMUX_PORT", port.to_string())
         .env("BPMUX_ROLE", "pm")
-        .env("BPMUX_DATA_BASE", bpmux.sessions_base_path())
+        .env("BPMUX_DATA_BASE", bpmux.data_base_path())
         .output()
         .await
         .expect("run bpmux read");
@@ -60,7 +60,7 @@ async fn bpmux_send_identity_io_stays_inside_the_injected_data_base_never_the_de
         .current_dir(workspace.path())
         .env("BPMUX_PORT", port.to_string())
         .env("BPMUX_ROLE", "dev")
-        .env("BPMUX_DATA_BASE", bpmux.sessions_base_path())
+        .env("BPMUX_DATA_BASE", bpmux.data_base_path())
         .env("HOME", fake_home.path())
         .env_remove("BPMUX_USER_ID")
         .output()
@@ -76,7 +76,7 @@ async fn bpmux_send_identity_io_stays_inside_the_injected_data_base_never_the_de
         !fake_home.path().join(".bpmux").exists(),
         "the anti-pollution invariant: a test-spawned send must NEVER fall through to the DEFAULT data home (~/.bpmux) — every identity read/import lands in the injected BPMUX_DATA_BASE (this is the leak class that wrote a real ~/.bpmux/data/users/by-dir entry during a test run)"
     );
-    let sandbox_registry = bpmux.sessions_base_path().join("users").join("by-dir");
+    let sandbox_registry = bpmux.data_base_path().join("users").join("by-dir");
     let entries: Vec<_> = std::fs::read_dir(&sandbox_registry)
         .expect("the marker import landed in the INJECTED base's registry")
         .collect();

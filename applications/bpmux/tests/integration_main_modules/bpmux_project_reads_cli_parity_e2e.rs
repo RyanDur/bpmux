@@ -16,7 +16,7 @@ async fn run_verb(
     let mut cmd = tokio::process::Command::new(bin);
     cmd.args(args);
     cmd.current_dir(workspace);
-    cmd.env("BPMUX_DATA_BASE", bpmux.sessions_base_path());
+    cmd.env("BPMUX_DATA_BASE", bpmux.data_base_path());
     for (key, value) in env {
         cmd.env(key, value);
     }

@@ -7,32 +7,57 @@ use message_log::{append_message, read_messages};
 use tempfile::TempDir;
 
 #[test]
-fn creates_session_directory() {
+fn the_data_dir_is_the_base_itself_there_is_no_session_no_uuid_child_no_current_symlink() {
     let base = TempDir::new().expect("temp base");
-    let dir = create_data_dir(base.path()).expect("create data dir");
-    assert!(dir.exists());
-    assert!(dir.is_dir());
-    let current = base.path().join("current");
-    assert!(current.is_symlink());
-}
-
-#[test]
-fn resumes_existing_session() {
-    let base = TempDir::new().expect("temp base");
-    let dir1 = create_data_dir(base.path()).expect("create data dir");
-    assert!(dir1.exists());
+    let dir = durable_data_dir(base.path()).expect("data dir");
+    assert_eq!(
+        dir,
+        base.path(),
+        "the app is not a web app — data lives flat in the base, not behind a minted session"
+    );
+    assert!(!base.path().join("current").exists());
     let msg = Message {
         from: "owner:human".to_string(),
         text: "persisted message".to_string(),
         ts: Utc::now(),
         ..Message::default()
     };
-    append_message(&dir1, &msg).expect("append");
-    let dir2 = resume_or_create_data_dir(base.path()).expect("resume");
-    assert_eq!(dir1, dir2);
-    let messages = read_messages(&dir2).expect("read");
+    append_message(&dir, &msg).expect("append");
+    let again = durable_data_dir(base.path()).expect("data dir again");
+    assert_eq!(dir, again);
+    let messages = read_messages(&again).expect("read");
     assert_eq!(messages.len(), 1);
     assert_eq!(messages[0].text, "persisted message");
+}
+
+#[test]
+fn a_legacy_session_dir_behind_the_current_symlink_migrates_its_files_up_then_disappears() {
+    let base = TempDir::new().expect("temp base");
+    let legacy = base.path().join("0d5e11aa-legacy-session");
+    std::fs::create_dir_all(&legacy).expect("legacy session dir");
+    let msg = Message {
+        from: "owner:human".to_string(),
+        text: "message from the session era".to_string(),
+        ts: Utc::now(),
+        ..Message::default()
+    };
+    append_message(&legacy, &msg).expect("append into legacy");
+    std::os::unix::fs::symlink(&legacy, base.path().join("current")).expect("current symlink");
+
+    let dir = durable_data_dir(base.path()).expect("data dir");
+
+    assert_eq!(dir, base.path());
+    let messages = read_messages(&dir).expect("read migrated");
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0].text, "message from the session era");
+    assert!(
+        !base.path().join("current").exists(),
+        "the current symlink is a session artifact — gone after migration"
+    );
+    assert!(
+        !legacy.exists(),
+        "the emptied legacy session dir does not linger"
+    );
 }
 
 fn work_dir(parent: &TempDir, name: &str) -> std::path::PathBuf {

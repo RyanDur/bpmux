@@ -51,7 +51,7 @@ fn identity_mutation_stays_inside_the_sandboxed_identity_dir_never_the_default_h
             "identity mutations from a test bridge must NEVER fall through to the DEFAULT ~/.bpmux/identity — this is the leak class that accumulated megabytes of test-role litter in the real data home"
         );
         let sandboxed = bpmux
-            .sessions_base_path()
+            .data_base_path()
             .join("identity")
             .join(format!("{role}.json"));
         assert!(

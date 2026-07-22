@@ -289,7 +289,7 @@ async fn terminal_send(
         .args(&args)
         .env("BPMUX_PORT", bpmux.port().to_string())
         .env("BPMUX_ROLE", role)
-        .env("BPMUX_DATA_BASE", bpmux.sessions_base_path())
+        .env("BPMUX_DATA_BASE", bpmux.data_base_path())
         .current_dir(farm.work_path(role))
         .output()
         .await
@@ -564,8 +564,8 @@ async fn message_routing_runs_end_to_end_on_the_sqlite_backend_the_cutover_user_
 
     use storage::SqliteStorage;
     use user_routing::UserRepo;
-    let storage = SqliteStorage::new(bpmux.sessions_base_path().join("current"))
-        .expect("open the server's sqlite session store");
+    let storage = SqliteStorage::new(bpmux.data_base_path())
+        .expect("open the server's flat sqlite data store");
     let mut roles: Vec<String> = storage
         .load_users()
         .expect("load the users table")
@@ -824,7 +824,7 @@ async fn register_in_terminal(
     cmd.arg("register")
         .env("BPMUX_PORT", bpmux.port().to_string())
         .env("BPMUX_ROLE", "dev")
-        .env("BPMUX_DATA_BASE", bpmux.sessions_base_path())
+        .env("BPMUX_DATA_BASE", bpmux.data_base_path())
         .env("BPMUX_TERMINAL_ID", terminal_id)
         .current_dir(dir);
     match pin {
@@ -849,7 +849,7 @@ async fn terminal_send_as(bpmux: &TestBpmux, dir: &std::path::Path, pin: Option<
     cmd.args(["send", text])
         .env("BPMUX_PORT", bpmux.port().to_string())
         .env("BPMUX_ROLE", "dev")
-        .env("BPMUX_DATA_BASE", bpmux.sessions_base_path())
+        .env("BPMUX_DATA_BASE", bpmux.data_base_path())
         .current_dir(dir);
     match pin {
         Some(pin) => {
@@ -994,7 +994,7 @@ async fn terminal_send_to_ids(
     cmd.args(["send", "--to-id", to_ids, text])
         .env("BPMUX_PORT", bpmux.port().to_string())
         .env("BPMUX_ROLE", "dev")
-        .env("BPMUX_DATA_BASE", bpmux.sessions_base_path())
+        .env("BPMUX_DATA_BASE", bpmux.data_base_path())
         .current_dir(dir);
     match pin {
         Some(pin) => {

@@ -2,7 +2,7 @@ use bookmark::{Bookmark, load_bookmark, save_bookmark};
 
 fn current_data_dir() -> anyhow::Result<std::path::PathBuf> {
     let base = location::resolve_default_base()?;
-    Ok(location::resume_or_create_data_dir(&base)?)
+    Ok(location::durable_data_dir(&base)?)
 }
 
 pub fn run_bookmark_save(

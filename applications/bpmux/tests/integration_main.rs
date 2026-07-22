@@ -211,6 +211,8 @@ mod rename_route_delivery_e2e;
 mod reorder_story_e2e;
 #[path = "integration_main_modules/reorder_story_retire_e2e.rs"]
 mod reorder_story_retire_e2e;
+#[path = "integration_main_modules/restart_persistence.rs"]
+mod restart_persistence;
 #[path = "integration_main_modules/room_spawn_e2e.rs"]
 mod room_spawn_e2e;
 #[path = "integration_main_modules/roster_rename_reap_e2e.rs"]
@@ -229,8 +231,6 @@ mod self_update_e2e;
 mod send_claude_response_hook;
 #[path = "integration_main_modules/send_message_e2e.rs"]
 mod send_message_e2e;
-#[path = "integration_main_modules/session_persistence.rs"]
-mod session_persistence;
 #[path = "integration_main_modules/set_name_e2e.rs"]
 mod set_name_e2e;
 #[path = "integration_main_modules/set_parent_epic_e2e.rs"]

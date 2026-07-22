@@ -44,7 +44,7 @@ async fn register_cli_holds_a_stable_id_in_the_data_home_registry_and_makes_it_r
  {
     let bpmux = TestBpmux::start();
     let port = bpmux.port();
-    let data_base = bpmux.sessions_base_path();
+    let data_base = bpmux.data_base_path();
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let workspace = TempDir::new().expect("temp workspace");
 
@@ -76,8 +76,7 @@ async fn register_cli_holds_a_stable_id_in_the_data_home_registry_and_makes_it_r
     );
 
     use storage::StorageBackend;
-    let session_dir = bpmux.sessions_base_path().join("current");
-    let storage = StorageBackend::resolve().build(&session_dir);
+    let storage = StorageBackend::resolve().build(&bpmux.data_base_path());
     let users = storage
         .load_users()
         .expect("the server persists the routing-identity store after register");
@@ -97,7 +96,7 @@ async fn register_cli_holds_a_stable_id_in_the_data_home_registry_and_makes_it_r
 async fn register_in_a_different_dir_mints_a_distinct_user_id() {
     let bpmux = TestBpmux::start();
     let port = bpmux.port();
-    let data_base = bpmux.sessions_base_path();
+    let data_base = bpmux.data_base_path();
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let workspace_a = TempDir::new().expect("temp workspace a");
     let workspace_b = TempDir::new().expect("temp workspace b");
@@ -118,7 +117,7 @@ async fn register_in_a_different_dir_mints_a_distinct_user_id() {
 async fn register_rejects_the_reserved_owner_identity() {
     let bpmux = TestBpmux::start();
     let port = bpmux.port();
-    let data_base = bpmux.sessions_base_path();
+    let data_base = bpmux.data_base_path();
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let workspace = TempDir::new().expect("temp workspace");
 

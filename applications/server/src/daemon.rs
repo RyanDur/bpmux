@@ -7,7 +7,7 @@ pub fn run(name: String, base: std::path::PathBuf, port: u16) -> anyhow::Result<
         .map_err(|e| anyhow::anyhow!("refusing to start on a broken workflow config: {e}"))?;
     workflow::install_workflow(workflow);
     std::fs::create_dir_all(&base)?;
-    let data_dir = location::resume_or_create_data_dir(&base)?;
+    let data_dir = location::durable_data_dir(&base)?;
     let (wake_tx, _wake_rx) =
         broadcast::channel::<message::Message>(hub::BROADCAST_CHANNEL_CAPACITY);
     let hub = Arc::new(hub::Hub::new(data_dir, name, wake_tx));

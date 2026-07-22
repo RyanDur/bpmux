@@ -45,7 +45,7 @@ pub fn run_recall(cli: &Cli, role_arg: &Option<String>) -> anyhow::Result<()> {
         return Ok(());
     }
     let base = resolve_data_base(&cli.data_base)?;
-    let data_dir = match location::resume_or_create_data_dir(&base) {
+    let data_dir = match location::durable_data_dir(&base) {
         Ok(dir) => dir,
         Err(_) => return Ok(()),
     };

@@ -201,7 +201,7 @@ fn save_briefing_writes_into_session_briefings_dir_not_home() {
         let written = briefings_dir.join("dev.md");
         let body = std::fs::read_to_string(&written).unwrap_or_else(|e| {
             panic!(
-                "save_briefing must land in session_dir/briefings/dev.md ({}); read error: {e}",
+                "save_briefing must land in data_base_dir/briefings/dev.md ({}); read error: {e}",
                 written.display()
             )
         });

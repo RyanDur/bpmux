@@ -28,7 +28,7 @@ async fn register(bin: &str, port: u16, data_base: &std::path::Path, cwd: &std::
 async fn wake_on_event_cli_commits_a_filtered_gate_against_the_running_server() {
     let bpmux = TestBpmux::start();
     let port = bpmux.port();
-    let data_base = bpmux.sessions_base_path();
+    let data_base = bpmux.data_base_path();
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let workspace = TempDir::new().expect("temp workspace");
 
@@ -69,7 +69,7 @@ async fn wake_on_event_cli_commits_a_filtered_gate_against_the_running_server() 
 async fn wake_on_event_cli_rejects_a_non_object_filter_without_touching_the_server() {
     let bpmux = TestBpmux::start();
     let port = bpmux.port();
-    let data_base = bpmux.sessions_base_path();
+    let data_base = bpmux.data_base_path();
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let workspace = TempDir::new().expect("temp workspace");
 
@@ -108,7 +108,7 @@ async fn wake_on_event_cli_errors_with_a_register_first_message_when_the_dir_has
 {
     let bpmux = TestBpmux::start();
     let port = bpmux.port();
-    let data_base = bpmux.sessions_base_path();
+    let data_base = bpmux.data_base_path();
     let bin = env!("CARGO_BIN_EXE_bpmux");
     let workspace = TempDir::new().expect("temp workspace");
 
