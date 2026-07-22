@@ -3,7 +3,14 @@ use std::path::{Path, PathBuf};
 use message_log::LogError;
 
 mod identity;
+mod identity_resolution;
+pub use identity_resolution::{
+    or_register_user_id_from_pin_or_dir, registered_user_id_from_pin_or_dir,
+    resolve_or_register_user_id, resolve_registered_user_id,
+};
 pub mod test_support;
+#[cfg(test)]
+mod user_id_pin_tests;
 
 #[cfg(test)]
 mod location_migration_tests;

@@ -9,8 +9,6 @@ use crate::{bridge, cli, hub, location, server};
 mod resolve;
 mod room;
 
-#[cfg(test)]
-pub(crate) use resolve::{or_register_user_id_from_pin_or_dir, registered_user_id_from_pin_or_dir};
 pub(crate) use resolve::{
     resolve_bpmux_port, resolve_or_register_user_id, resolve_registered_user_id, resolve_role,
 };

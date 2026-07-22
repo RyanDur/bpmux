@@ -41,15 +41,9 @@ pub use ::telemetry;
 mod tracker_contract_tests;
 pub use ::transport;
 #[cfg(test)]
-mod user_id_pin_tests;
-#[cfg(test)]
 mod view_integration_tests;
 
 pub use cli::bootstrap::run;
 pub(crate) use cli::bootstrap::{
     Cli, resolve_bpmux_port, resolve_or_register_user_id, resolve_registered_user_id, resolve_role,
-};
-#[cfg(test)]
-pub(crate) use cli::bootstrap::{
-    or_register_user_id_from_pin_or_dir, registered_user_id_from_pin_or_dir,
 };

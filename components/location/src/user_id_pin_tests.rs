@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::{or_register_user_id_from_pin_or_dir, registered_user_id_from_pin_or_dir};
+use crate::{or_register_user_id_from_pin_or_dir, registered_user_id_from_pin_or_dir};
 
 #[test]
 fn a_pinned_id_is_used_verbatim_and_never_touches_the_registry() {
