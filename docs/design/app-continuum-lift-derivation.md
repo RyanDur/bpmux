@@ -224,3 +224,35 @@ lock; it re-homes where both catalogs are visible at the shell
 split, and the verb inventory becomes a real cross-door contract
 component when both doors derive from it); databases/ is deferred —
 Ryan pairs on it after the lift.
+
+## The tail lands (2026-07-21, continued)
+
+Stations: story-policy gates -> product_management `a5a76131` (atp
+substantive gate + deliver body-diff gate; chat_relevance stayed with
+the edge — its consumers and identity are message-stream, not story)
+→ DEFAULT_MESSAGE_LIMIT -> message_log (edge->edge reach one of two)
+→ iteration_close -> bridge `001b7231` (the canonical op beside its
+siblings; transport keeps only the axum wrapper — last cross-edge
+arrow gone) → bridge whole `41637a15` → transport whole `9811c764`.
+Forty-one component crates.
+
+Ryan's simplification ruling (2026-07-21) shaped the tail: the store
+IS the engine — stories move by dispatched actions; the handler code
+is just bridge doing its job, so bridge lifts whole, no new concepts,
+no new component names. Finer carving happens inside the crate when a
+concrete reason arrives.
+
+First boundary lock formally subsumed by the crate graph:
+transport_edge_names_no_composition_root retired with the transport
+extraction (a crate cannot depend on the app). The raw-slice-state
+discipline locks re-homed into their crates (graph can't express
+them). Test-seam pattern settled across stations: composition tests
+(real server wiring) live at the app root beside the wiring;
+component-local tests travel with their crates; shared harnesses
+graduate to test-support (store_test_support crate; transport's
+feature-gated test_support module).
+
+Remaining: the shell split — applications/{server,cli,mcp} — gated on
+the owner's binary-packaging call (single bpmux binary is a live
+runtime contract: agent MCP configs self-anchor to it, electron
+spawns it, self_update watches it).
