@@ -256,3 +256,26 @@ Remaining: the shell split — applications/{server,cli,mcp} — gated on
 the owner's binary-packaging call (single bpmux binary is a live
 runtime contract: agent MCP configs self-anchor to it, electron
 spawns it, self_update watches it).
+
+## The lift completes (2026-07-22)
+
+The shell split landed as three stations: identity resolution -> location
+`27475dec` (both client doors need pin-or-dir; shared substance leaves the
+door) → the server shell `89f617e2` (composition root + store fixtures +
+every composition test — the wired_store fixture finally lives beside the
+wiring it builds) → the cli + mcp shells and the packaging bin `d25315bd`.
+
+Final shape: four applications (server — the only domain-composing shell;
+cli — the terminal door with the parity audit; mcp — eleven lines; bpmux —
+the packaging bin the runtime contract demands) + electron, over 41
+component crates. The owner's packaging call held: one binary, agent MCP
+configs / electron spawn / self_update untouched; the rebuilt binary was
+smoked against the LIVE session mid-refactor and the contract survived.
+
+The restructure doc's Phase-2 sentence is now literal: Cargo enforces what
+Phase 0 established. Violation 1 (feature smuggled in an edge) resolved by
+the owner's simplification — bridge lifts whole, the store IS the engine.
+Remaining debt, deliberately deferred: architecture.md reground (next),
+databases/ (owner pairs post-lift), the shared verb-contract component
+(when both doors derive from it), cli->transport const reach
+(DEFAULT_WAIT_TIMEOUT_MS — same shape as the message-limit cut).
