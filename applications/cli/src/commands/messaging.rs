@@ -65,6 +65,10 @@ pub enum MessagingCommands {
     )]
     Register,
     #[command(
+        about = "List currently-linked agents — id, role, name, presence — one per line. The id column is what send --to-id targets; an unlinked agent cannot receive and so is not shown."
+    )]
+    Who,
+    #[command(
         about = "Read recent team messages as a compact index (sender + one-line), off Claude's MCP. Use --full for the raw payload."
     )]
     Read {
@@ -98,6 +102,7 @@ pub fn dispatch_messaging(command: &MessagingCommands) -> anyhow::Result<()> {
             to_id,
         } => run_send(text, to, addressee, to_id),
         MessagingCommands::Register => run_register(),
+        MessagingCommands::Who => crate::who::run_who(),
         MessagingCommands::Read { limit, full } => run_read(*limit, *full),
         MessagingCommands::Help { json } => run_help(*json),
     }

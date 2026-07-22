@@ -66,6 +66,7 @@ pub use roadmap::get_roadmap;
 pub use room::{get_terminals, post_terminal_close, post_terminal_spawn};
 pub use roster::{
     RosterEntry, get_roster, get_sync_status, post_acknowledge_dropped, post_force_sync,
+    roster_entries,
 };
 pub use search::{SearchParams, search_messages};
 pub use shared::epics_message;

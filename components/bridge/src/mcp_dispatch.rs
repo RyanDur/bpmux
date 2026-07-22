@@ -36,6 +36,7 @@ pub(super) async fn dispatch_tool_call(
             let current_name = name.lock().await;
             tools::handle_read_messages(&args, port, &current_name).await
         }
+        "who" => tools::handle_who(port).await,
         "search_log" => tools::handle_search_log(&args, port).await,
         "list_lessons" => tools::handle_list_lessons(&args, port).await,
         "list_peer_lessons" => tools::handle_list_peer_lessons(&args, port).await,

@@ -37,6 +37,7 @@ pub const DISPATCHED_TOOL_NAMES: &[&str] = &[
     "set_name",
     "set_status",
     "read_messages",
+    "who",
     "search_log",
     "list_lessons",
     "list_peer_lessons",

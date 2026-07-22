@@ -8,21 +8,26 @@ use super::shared::{err_body, json_headers};
 
 #[derive(serde::Serialize)]
 pub struct RosterEntry {
+    pub id: String,
     pub identity: String,
     pub role: String,
     pub presence: store::Presence,
 }
 
-pub async fn get_roster(Extension(store): Extension<Arc<store::Store>>) -> impl IntoResponse {
-    let roster: Vec<RosterEntry> = store
-        .roster_members()
+pub fn roster_entries(members: Vec<store::RosterMember>) -> Vec<RosterEntry> {
+    members
         .into_iter()
         .map(|member| RosterEntry {
+            id: member.routing_id,
             role: roster::display_name(&member.identity).to_string(),
             identity: member.identity,
             presence: member.presence,
         })
-        .collect();
+        .collect()
+}
+
+pub async fn get_roster(Extension(store): Extension<Arc<store::Store>>) -> impl IntoResponse {
+    let roster = roster_entries(store.roster_members());
     let body = serde_json::json!({
         "roster": roster,
         "fetched_at": chrono::Utc::now().to_rfc3339(),

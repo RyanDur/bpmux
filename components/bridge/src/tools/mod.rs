@@ -110,6 +110,7 @@ mod view_velocity;
 mod view_verdicts;
 #[cfg(test)]
 mod view_verdicts_render;
+mod who;
 
 pub use add_principle::handle_add_principle;
 pub use add_value::handle_add_value;
@@ -154,6 +155,7 @@ pub use view_story_timeline::handle_view_story_timeline;
 pub use view_tokens::handle_view_tokens;
 pub use view_velocity::build_velocity_view;
 pub use view_verdicts::handle_view_verdicts;
+pub use who::handle_who;
 
 pub use view_backlog::VIEW_BACKLOG_MARKER;
 

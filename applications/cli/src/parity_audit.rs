@@ -4,6 +4,7 @@ use std::collections::BTreeSet;
 const IN_SCOPE: &[(&str, &[&str])] = &[
     ("send_message", &["send"]),
     ("read_messages", &["read"]),
+    ("who", &["who"]),
     ("wait_for_event", &["wait-for-event"]),
     ("search_log", &["search"]),
     ("list_lessons", &["lesson", "list"]),
