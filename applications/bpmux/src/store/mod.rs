@@ -1,9 +1,7 @@
 pub use ::store::*;
 
 #[cfg(test)]
-mod seed;
-#[cfg(test)]
-pub(crate) use seed::{SeededStore, build_seeded_orch};
+pub(crate) use store_test_support::{SeededStore, build_seeded_orch};
 #[cfg(test)]
 mod ci_tests;
 #[cfg(test)]

@@ -23,7 +23,9 @@ pub mod server;
 #[cfg(test)]
 mod storage_tests;
 pub mod store;
-pub mod sync;
+pub use ::sync;
+#[cfg(test)]
+mod sync_drain_listener_tests;
 #[cfg(test)]
 mod team_roster_tests;
 pub use ::telemetry;

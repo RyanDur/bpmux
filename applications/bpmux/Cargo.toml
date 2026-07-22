@@ -46,6 +46,7 @@ auth = { path = "../../components/auth" }
 bookmark = { path = "../../components/bookmark" }
 briefing = { path = "../../components/briefing" }
 room = { path = "../../components/room" }
+sync = { path = "../../components/sync" }
 chrono = { workspace = true, features = ["serde"] }
 dirs = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
@@ -69,6 +70,7 @@ toml = { workspace = true }
 tempfile = { workspace = true }
 
 [dev-dependencies]
+store_test_support = { path = "../../components/store_test_support" }
 portable-pty = "0.9"
 store = { path = "../../components/store", features = ["test-support"] }
 reqwest = { workspace = true, features = ["json"] }

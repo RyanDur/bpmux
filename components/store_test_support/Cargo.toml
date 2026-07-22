@@ -1,0 +1,17 @@
+[package]
+name = "store_test_support"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Seeded app-store fixture for component tests: SeededStore + wired-outbox/orchestrator builders"
+
+[dependencies]
+kernel = { path = "../kernel" }
+store = { path = "../store" }
+product_management = { path = "../product_management" }
+source_sync = { path = "../source_sync" }
+sync = { path = "../sync" }
+tokio = { workspace = true, features = ["time"] }
+
+[lints]
+workspace = true

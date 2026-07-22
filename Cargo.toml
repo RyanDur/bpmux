@@ -33,6 +33,8 @@ members = [
     "components/source_sync",
     "components/storage",
     "components/store",
+    "components/store_test_support",
+    "components/sync",
     "components/telemetry",
     "components/unfurl",
     "components/user_routing",

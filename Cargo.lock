@@ -353,6 +353,8 @@ dependencies = [
  "source_sync",
  "storage",
  "store",
+ "store_test_support",
+ "sync",
  "telemetry",
  "tempfile",
  "thiserror 2.0.18",
@@ -2957,6 +2959,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "store_test_support"
+version = "0.1.0"
+dependencies = [
+ "kernel",
+ "product_management",
+ "source_sync",
+ "store",
+ "sync",
+ "tokio",
+]
+
+[[package]]
 name = "stringmetrics"
 version = "2.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2992,6 +3006,30 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "sync"
+version = "0.1.0"
+dependencies = [
+ "board",
+ "chrono",
+ "diag",
+ "hub",
+ "integrations",
+ "kernel",
+ "message",
+ "product_management",
+ "serde_json",
+ "source_codec",
+ "source_sync",
+ "storage",
+ "store",
+ "store_test_support",
+ "tempfile",
+ "tokio",
+ "tokio-util",
+ "workflow",
 ]
 
 [[package]]

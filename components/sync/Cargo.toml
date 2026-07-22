@@ -1,0 +1,31 @@
+[package]
+name = "sync"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Eventually-consistent sync engine between the store and the story source: ingest, outbox drain, backfill, write-through, race-window handling"
+
+[dependencies]
+kernel = { path = "../kernel" }
+store = { path = "../store" }
+message = { path = "../message" }
+product_management = { path = "../product_management" }
+source_codec = { path = "../source_codec" }
+source_sync = { path = "../source_sync" }
+storage = { path = "../storage" }
+board = { path = "../board" }
+diag = { path = "../diag" }
+workflow = { path = "../workflow" }
+chrono = { workspace = true }
+tokio = { workspace = true, features = ["sync", "rt", "time", "macros"] }
+tokio-util = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+integrations = { path = "../integrations" }
+store_test_support = { path = "../store_test_support" }
+hub = { path = "../hub" }
+tempfile = { workspace = true }
+
+[lints]
+workspace = true
