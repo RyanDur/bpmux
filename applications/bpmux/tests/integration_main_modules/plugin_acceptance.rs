@@ -137,14 +137,16 @@ fn session_start_register_keeps_identity_io_inside_the_injected_data_base() {
         .env("BPMUX_ROLE", "dev")
         .env("BPMUX_DATA_BASE", data_base.path())
         .env("BPMUX_BIN_OVERRIDE", env!("CARGO_BIN_EXE_bpmux"))
+        .env("BPMUX_PORT", "19999")
         .env_remove("BPMUX_USER_ID")
+        .env_remove("BPMUX_TERMINAL_ID")
         .output()
         .unwrap();
 
     assert!(output.status.success(), "script exited non-zero");
     assert!(
         !home.path().join(".bpmux").exists(),
-        "the hook's register must NEVER fall through to the DEFAULT data home when a test runs it — identity I/O lands in the injected BPMUX_DATA_BASE (this is the leak class that minted a real ~/.bpmux/data/users/by-dir entry during a test run)"
+        "the hook's register must NEVER fall through to the DEFAULT data home when a test runs it — identity I/O lands in the injected BPMUX_DATA_BASE (this is the leak class that minted a real ~/.bpmux/data/users/by-dir entry during a test run; the sibling network leak registered temp-minted strangers against the LIVE daemon through the ambient BPMUX_PORT and linked them over the owner's real terminal via the ambient BPMUX_TERMINAL_ID)"
     );
     let entries: Vec<_> = fs::read_dir(data_base.path().join("users").join("by-dir"))
         .expect("register minted the workspace identity into the INJECTED base's registry")
