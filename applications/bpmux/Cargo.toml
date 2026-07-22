@@ -47,6 +47,7 @@ bookmark = { path = "../../components/bookmark" }
 briefing = { path = "../../components/briefing" }
 room = { path = "../../components/room" }
 sync = { path = "../../components/sync" }
+bridge = { path = "../../components/bridge" }
 chrono = { workspace = true, features = ["serde"] }
 dirs = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }

@@ -2,7 +2,7 @@
 
 pub use ::auth;
 pub use ::bookmark;
-pub mod bridge;
+pub use ::bridge;
 pub use ::briefing;
 pub mod ci;
 #[cfg(test)]
@@ -36,8 +36,6 @@ pub mod transport;
 mod user_id_pin_tests;
 #[cfg(test)]
 mod view_integration_tests;
-#[cfg(test)]
-mod workflow_test_support;
 
 pub use cli::bootstrap::run;
 pub(crate) use cli::bootstrap::{

@@ -136,7 +136,10 @@ pub fn run() -> anyhow::Result<()> {
         board_fixture,
     }) = cli.command
     {
-        return bridge::run_bridge(port, &name, fake_tracker, board_fixture);
+        let user_id = std::env::current_dir()
+            .ok()
+            .and_then(|cwd| resolve_registered_user_id(&cwd));
+        return bridge::run_bridge(port, &name, user_id, fake_tracker, board_fixture);
     }
 
     if let Some(cli::Command::Recall { role }) = &cli.command {

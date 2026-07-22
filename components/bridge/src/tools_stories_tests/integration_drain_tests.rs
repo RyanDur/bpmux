@@ -1,0 +1,583 @@
+#![allow(unused_imports)]
+
+use super::super::tools_stories::*;
+use product_management::story::StoryId;
+use protocol::ClientMessage;
+
+#[tokio::test]
+async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
+    use chrono::{TimeZone, Utc};
+    use integrations::in_memory::InMemorySourceAdapter;
+    use product_management::story::{Story, Work};
+    use std::sync::Arc;
+    use sync::SyncOrchestrator;
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        StoryId::new(882),
+        "[Feature] missing-test-file".into(),
+        Work::NotStarted,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(882, vec!["feature".to_string()]);
+    let store = store_test_support::SeededStore::new(vec![], vec![], vec![]);
+    let orch: Arc<SyncOrchestrator> = store.build_orch(
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+    );
+    orch.refresh_all().await.unwrap();
+    let select = store.select();
+
+    let mut args = serde_json::Map::new();
+    args.insert("id".into(), serde_json::json!(882));
+    args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
+    args.insert("falsifier_reframing".into(), serde_json::json!("f"));
+    args.insert(
+        "acceptance_test_path".into(),
+        serde_json::json!("does/not/exist.spec.ts"),
+    );
+    let result =
+        handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
+    assert!(result.is_err(), "missing path must block: {result:?}");
+    assert!(result.unwrap_err().contains("does not exist"));
+}
+
+#[tokio::test]
+async fn start_story_passes_chore_without_acceptance_test_path() {
+    use chrono::{TimeZone, Utc};
+    use integrations::in_memory::InMemorySourceAdapter;
+    use product_management::story::{Story, Work};
+    use std::sync::Arc;
+    use sync::SyncOrchestrator;
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        StoryId::new(883),
+        "[Chore] no test required".into(),
+        Work::NotStarted,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(883, vec!["chore".to_string()]);
+    let store = store_test_support::SeededStore::new(vec![], vec![], vec![]);
+    let orch: Arc<SyncOrchestrator> = store.build_orch(
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+    );
+    orch.refresh_all().await.unwrap();
+    let select = store.select();
+
+    let mut args = serde_json::Map::new();
+    args.insert("id".into(), serde_json::json!(883));
+    args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
+    args.insert("falsifier_reframing".into(), serde_json::json!("f"));
+    let result =
+        handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
+    assert!(result.is_ok(), "Chore exempt: {result:?}");
+}
+
+#[tokio::test]
+async fn start_story_keeps_the_stores_optimistic_reject_when_the_adapter_verdicts_lag_the_drain() {
+    use chrono::{TimeZone, Utc};
+    use integrations::in_memory::InMemorySourceAdapter;
+    use product_management::story::{CastVerdict, Story, Verdict, Work};
+    use std::sync::Arc;
+    use sync::SyncOrchestrator;
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let mut seeded = Story::new_minimal(
+        StoryId::new(884),
+        "[Chore] rework-lead survives undrained mirror".into(),
+        Work::NotStarted,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    seeded.verdicts = Some(vec![
+        CastVerdict {
+            verdict: Verdict::Succeed {
+                step: "in-progress".into(),
+            },
+            ts: Utc.with_ymd_and_hms(2026, 4, 1, 1, 0, 0).unwrap(),
+            actor: "dev".into(),
+            payload: Some("delivered the slice".into()),
+        },
+        CastVerdict {
+            verdict: Verdict::Fail {
+                step: "acceptance".into(),
+            },
+            ts: Utc.with_ymd_and_hms(2026, 4, 1, 2, 0, 0).unwrap(),
+            actor: "owner".into(),
+            payload: Some("the walk never covered the narrow viewport".into()),
+        },
+    ]);
+    adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(884, vec!["chore".to_string()]);
+    let store = store_test_support::SeededStore::new(vec![], vec![], vec![]);
+    let orch: Arc<SyncOrchestrator> = store.build_orch(
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+    );
+    orch.refresh_all().await.unwrap();
+    let select = store.select();
+
+    let mut args = serde_json::Map::new();
+    args.insert("id".into(), serde_json::json!(884));
+    args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
+    args.insert("falsifier_reframing".into(), serde_json::json!("f"));
+    let msg = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select)
+        .await
+        .expect("pickup succeeds");
+    assert!(
+        msg.contains("REWORK") && msg.contains("the walk never covered the narrow viewport"),
+        "the store's optimistic reject is the freshest truth — a stale adapter fetch racing the comment drain must never clobber it out of the pickup banner; got {msg}"
+    );
+}
+
+#[tokio::test]
+async fn start_story_fetches_the_rework_lead_when_the_store_has_no_cached_verdicts() {
+    use chrono::{TimeZone, Utc};
+    use integrations::in_memory::InMemorySourceAdapter;
+    use product_management::story::{CastVerdict, Story, Verdict, Work};
+    use std::sync::Arc;
+    use sync::SyncOrchestrator;
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        StoryId::new(885),
+        "[Chore] rework-lead read-through survives".into(),
+        Work::NotStarted,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(885, vec!["chore".to_string()]);
+    adapter.seed_verdicts(
+        885,
+        vec![CastVerdict {
+            verdict: Verdict::Fail {
+                step: "acceptance".into(),
+            },
+            ts: Utc.with_ymd_and_hms(2026, 4, 1, 2, 0, 0).unwrap(),
+            actor: "owner".into(),
+            payload: Some("rejected while the cache was cold".into()),
+        }],
+    );
+    let store = store_test_support::SeededStore::new(vec![], vec![], vec![]);
+    let orch: Arc<SyncOrchestrator> = store.build_orch(
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+    );
+    orch.refresh_all().await.unwrap();
+    let select = store.select();
+
+    let mut args = serde_json::Map::new();
+    args.insert("id".into(), serde_json::json!(885));
+    args.insert("pickup_paraphrase".into(), serde_json::json!("p"));
+    args.insert("falsifier_reframing".into(), serde_json::json!("f"));
+    let msg = handle_start_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select)
+        .await
+        .expect("pickup succeeds");
+    assert!(
+        msg.contains("REWORK") && msg.contains("rejected while the cache was cold"),
+        "with no cached verdicts the read-through still fetches the reject from the adapter and surfaces the rework lead; got {msg}"
+    );
+}
+
+#[tokio::test]
+async fn reject_story_returns_optimistically_and_defers_gh_push_to_the_async_drain() {
+    use chrono::{TimeZone, Utc};
+    use integrations::in_memory::InMemorySourceAdapter;
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Work};
+    use std::sync::Arc;
+    use sync::SyncOrchestrator;
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        StoryId::new(4690),
+        "[Bug] cascade-drain-on-reject".into(),
+        Work::Accepted,
+        Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
+        "owner".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(4690, vec!["bug".to_string()]);
+    let store = store_test_support::SeededStore::new(vec![], current_iteration_of(&[4690]), vec![]);
+    let orch: Arc<SyncOrchestrator> = store.build_orch(
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+    );
+    orch.refresh_all().await.unwrap();
+    let select = store.select();
+
+    let mut args = serde_json::Map::new();
+    args.insert("id".into(), serde_json::json!(4690));
+    args.insert("reason".into(), serde_json::json!("cascade drain test"));
+    handle_reject_story(&args, "owner:human", "owner", None, Some(&orch), &select)
+        .await
+        .unwrap();
+
+    assert!(
+        adapter.pushed_events().is_empty(),
+        "reject_story returns optimistically — the GH push is deferred to the async drain, so nothing is pushed before the handler returns: {:?}",
+        adapter.pushed_events()
+    );
+
+    orch.drain_pass().await.unwrap();
+
+    let pushed = adapter.pushed_events();
+    assert!(
+        pushed.iter().any(
+            |e| matches!(&e.kind, StoryEventKind::StoryReopened if e.id == StoryId::new(4690))
+        ),
+        "the async drain propagates StoryReopened to the adapter (#469 cascade-fix): {pushed:?}"
+    );
+    let labels = adapter.labels_for(4690);
+    assert!(
+        !labels.iter().any(|l| l == "accepted"),
+        "the state-transition export strips the stale accepted label at the adapter on drain; got {labels:?}"
+    );
+    assert!(
+        labels.iter().any(|l| l == "ready"),
+        "the state-transition export applies the new state label at the adapter on drain; got {labels:?}"
+    );
+}
+
+#[tokio::test]
+async fn fail_desk_check_returns_optimistically_and_defers_gh_push_to_the_async_drain() {
+    use chrono::{TimeZone, Utc};
+    use integrations::in_memory::InMemorySourceAdapter;
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Stage, Story, Work};
+    use std::sync::Arc;
+    use sync::SyncOrchestrator;
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        StoryId::new(4691),
+        "[Bug] cascade-drain-on-fail-desk-check".into(),
+        Work::InProgress,
+        Utc.with_ymd_and_hms(2026, 4, 27, 0, 0, 0).unwrap(),
+        "owner".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(4691, vec!["bug".to_string(), "desk-check".to_string()]);
+    let store = store_test_support::SeededStore::new(vec![], vec![], vec![]);
+    let orch: Arc<SyncOrchestrator> = store.build_orch(
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+    );
+    orch.refresh_all().await.unwrap();
+    let select = store.select();
+
+    let mut args = serde_json::Map::new();
+    args.insert("id".into(), serde_json::json!(4691));
+    args.insert("reason".into(), serde_json::json!("cascade drain test"));
+    handle_fail_desk_check(
+        &args,
+        "designer:test",
+        "designer",
+        None,
+        Some(&orch),
+        &select,
+    )
+    .await
+    .unwrap();
+
+    assert!(
+        adapter.pushed_events().is_empty(),
+        "fail_desk_check returns optimistically — the GH push is deferred to the async drain: {:?}",
+        adapter.pushed_events()
+    );
+
+    orch.drain_pass().await.unwrap();
+
+    let pushed = adapter.pushed_events();
+    assert!(
+        pushed.iter().any(|e| matches!(
+            &e.kind,
+            StoryEventKind::StateTransitioned { new_state, .. } if e.id == StoryId::new(4691) && *new_state == Work::InProgress
+        )),
+        "the async drain propagates StateTransitioned(InProgress) to the adapter: {pushed:?}"
+    );
+}
+
+#[tokio::test]
+async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
+    use chrono::{TimeZone, Utc};
+    use integrations::in_memory::InMemorySourceAdapter;
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Work};
+    use std::sync::Arc;
+    use sync::SyncOrchestrator;
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        StoryId::new(469),
+        "[Bug] rework-after-accept".into(),
+        Work::Accepted,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "owner".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(469, vec!["bug".to_string()]);
+    let store = store_test_support::SeededStore::new(vec![], vec![], vec![]);
+    let orch: Arc<SyncOrchestrator> = store.build_orch(
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+    );
+    orch.refresh_all().await.unwrap();
+    let select = store.select();
+
+    let mut args = serde_json::Map::new();
+    args.insert("id".into(), serde_json::json!(469));
+    args.insert("reason".into(), serde_json::json!("rework needed"));
+    let result =
+        handle_reject_story(&args, "owner:human", "owner", None, Some(&orch), &select).await;
+    assert!(result.is_ok(), "reject should succeed: {result:?}");
+
+    orch.drain_pass().await.unwrap();
+    let pushed = adapter.pushed_events();
+
+    let labels = adapter.labels_for(469);
+    assert!(
+        !labels.iter().any(|l| l == "accepted"),
+        "reject_story on previously-Accepted must leave the adapter without the stale accepted label (the transition export strips it): {labels:?}"
+    );
+
+    let story_reopened = pushed
+        .iter()
+        .any(|e| matches!(&e.kind, StoryEventKind::StoryReopened if e.id == StoryId::new(469)));
+    assert!(
+        story_reopened,
+        "reject_story on previously-Accepted must emit StoryReopened: {pushed:?}"
+    );
+
+    let story = select
+        .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(469)))
+        .unwrap();
+    assert_eq!(story.state, Work::NotStarted);
+}
+
+#[tokio::test]
+async fn reject_on_non_accepted_skips_tag_remove_accepted_and_story_reopened() {
+    use chrono::{TimeZone, Utc};
+    use integrations::in_memory::InMemorySourceAdapter;
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Work};
+    use std::sync::Arc;
+    use sync::SyncOrchestrator;
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        StoryId::new(470),
+        "[Bug] reject-from-delivered".into(),
+        Work::Acceptance,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "owner".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(470, vec!["bug".to_string()]);
+    let store = store_test_support::SeededStore::new(vec![], vec![], vec![]);
+    let orch: Arc<SyncOrchestrator> = store.build_orch(
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+    );
+    orch.refresh_all().await.unwrap();
+    let select = store.select();
+
+    let mut args = serde_json::Map::new();
+    args.insert("id".into(), serde_json::json!(470));
+    args.insert("reason".into(), serde_json::json!("not done"));
+    handle_reject_story(&args, "owner:human", "owner", None, Some(&orch), &select)
+        .await
+        .unwrap();
+
+    orch.drain_pass().await.unwrap();
+    let pushed = adapter.pushed_events();
+    let any_reopen = pushed
+        .iter()
+        .any(|e| matches!(&e.kind, StoryEventKind::StoryReopened if e.id == StoryId::new(470)));
+    assert!(
+        !any_reopen,
+        "reject on non-Accepted must NOT emit StoryReopened: {pushed:?}"
+    );
+}
+
+fn current_iteration_of(members: &[u64]) -> Vec<product_management::iteration::Iteration> {
+    use chrono::{TimeZone, Utc};
+    use product_management::iteration::{Iteration, IterationId};
+    vec![Iteration {
+        id: IterationId::new(9000),
+        title: String::new(),
+        body: None,
+        filed_at: Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        filed_by: "pm".to_string(),
+        outcome: None,
+        iteration_order: None,
+        stories: members.iter().map(|n| StoryId::new(*n)).collect(),
+        review_closers: Vec::new(),
+        dev_ok_by: Vec::new(),
+        is_current: true,
+        complete: false,
+    }]
+}
+
+#[tokio::test]
+async fn a_transition_out_of_the_board_pushes_no_state_label_and_strips_the_stale_one() {
+    use chrono::{TimeZone, Utc};
+    use integrations::in_memory::InMemorySourceAdapter;
+    use product_management::label_codec::LabelCodec;
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Work};
+    use source_codec::gh_label_codec::GhLabelCodec;
+    use std::sync::Arc;
+    use sync::SyncOrchestrator;
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        StoryId::new(471),
+        "[Bug] unschedule-label-mirror".into(),
+        Work::NotStarted,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(471, vec!["bug".to_string(), "ready".to_string()]);
+    let (orch, _select) = store_test_support::build_seeded_orch(
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+        vec![],
+        current_iteration_of(&[]),
+        vec![],
+    );
+    orch.refresh_all().await.unwrap();
+
+    orch.mutate(StoryEvent::new(
+        sync::cache_fill_meta(),
+        StoryId::new(471),
+        StoryEventKind::StateTransitioned {
+            new_state: Work::NotStarted,
+            placement: None,
+        },
+    ))
+    .unwrap();
+    orch.drain_pass().await.unwrap();
+
+    let labels = adapter.labels_for(471);
+    assert!(
+        !labels.iter().any(|l| l == "ready"),
+        "the stale ready label is stripped when the story leaves the board; got {labels:?}"
+    );
+    assert!(
+        !labels
+            .iter()
+            .any(|l| GhLabelCodec.is_workflow_state_label(l)),
+        "icebox is label-absence — the mirror pushes NO state label for an off-board story; got {labels:?}"
+    );
+    assert!(
+        !labels.iter().any(|l| l.is_empty()),
+        "the label-less transition must never leak an empty-string label to the mirror; got {labels:?}"
+    );
+    assert!(
+        labels.iter().any(|l| l == "bug"),
+        "non-state labels survive the strip; got {labels:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_transition_to_ready_for_a_current_iteration_member_pushes_the_ready_label() {
+    use chrono::{TimeZone, Utc};
+    use integrations::in_memory::InMemorySourceAdapter;
+    use product_management::story::events::{StoryEvent, StoryEventKind};
+    use product_management::story::{Story, Work};
+    use std::sync::Arc;
+    use sync::SyncOrchestrator;
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        StoryId::new(472),
+        "[Feature] schedule-label-mirror".into(),
+        Work::NotStarted,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "pm".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(472, vec!["feature".to_string()]);
+    let (orch, _select) = store_test_support::build_seeded_orch(
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+        vec![],
+        current_iteration_of(&[472]),
+        vec![],
+    );
+    orch.refresh_all().await.unwrap();
+
+    orch.mutate(StoryEvent::new(
+        sync::cache_fill_meta(),
+        StoryId::new(472),
+        StoryEventKind::StateTransitioned {
+            new_state: Work::NotStarted,
+            placement: None,
+        },
+    ))
+    .unwrap();
+    orch.drain_pass().await.unwrap();
+
+    let labels = adapter.labels_for(472);
+    assert!(
+        labels.iter().any(|l| l == "ready"),
+        "a current-iteration member entering ready carries the human-readable ready mirror label; got {labels:?}"
+    );
+}
+
+#[tokio::test]
+async fn deliver_story_returns_optimistically_and_defers_push_failure_to_the_async_drain() {
+    use chrono::{TimeZone, Utc};
+    use integrations::in_memory::InMemorySourceAdapter;
+    use product_management::story::{Stage, Story, Work};
+    use std::sync::Arc;
+    use sync::SyncOrchestrator;
+
+    let adapter = Arc::new(InMemorySourceAdapter::new());
+    let seeded = Story::new_minimal(
+        StoryId::new(450),
+        "[Chore] label-leak repro".into(),
+        Work::InProgress,
+        Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
+        "dev".into(),
+    );
+    adapter.seed_stories(vec![seeded]);
+    adapter.seed_labels(450, vec!["chore".to_string()]);
+    let store = store_test_support::SeededStore::new(vec![], vec![], vec![]);
+    let orch: Arc<SyncOrchestrator> = store.build_orch(
+        Arc::clone(&adapter),
+        Arc::new(source_codec::gh_label_codec::GhLabelCodec),
+    );
+    orch.refresh_all().await.unwrap();
+    let select = store.select();
+
+    adapter.set_push_failures(true);
+
+    let mut args = serde_json::Map::new();
+    args.insert("id".into(), serde_json::json!(450));
+    args.insert(
+        "verified_observation".into(),
+        serde_json::json!("drove the label-leak failure-injection scenario"),
+    );
+    let result =
+        handle_deliver_story(&args, "dev:claude-code", "dev", None, Some(&orch), &select).await;
+    assert!(
+        result.is_ok(),
+        "deliver_story returns optimistically — the write succeeds locally even when the GH push will fail; the failure is reconciled on the async drain, not surfaced at return: {result:?}"
+    );
+
+    let drain = orch.drain_pass().await;
+    assert!(
+        drain.is_err(),
+        "the deferred push failure surfaces on the async drain, not at deliver-return: {drain:?}"
+    );
+}

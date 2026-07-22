@@ -1,0 +1,139 @@
+use super::event_meta::meta_for;
+use super::helpers::{ensure_story_in_canonical_store, require_purpose};
+use product_management::story::StoryId;
+
+pub fn is_retired_iteration_label_axis(label: &str) -> bool {
+    use product_management::label_codec::LabelCodec;
+    source_codec::gh_label_codec::GhLabelCodec
+        .decode_iteration(label)
+        .is_some()
+}
+
+pub fn retired_iteration_label_axis_error(label: &str) -> String {
+    serde_json::json!({
+        "kind": "tool-retired",
+        "retired_axis": "iteration-label",
+        "label": label,
+        "successor": "add_story_to_iteration",
+        "message": format!(
+            "label_story refuses iteration-axis labels (#1402 retire). \
+             Use add_story_to_iteration(iteration_id, story_id, position) \
+             — iteration-membership is canonical-relation substrate per #1399, \
+             not magic-string-parse labels. Label '{label}' parses as iteration-{{Name}}.{{position}}."
+        ),
+    })
+    .to_string()
+}
+
+pub async fn handle_label_story(
+    args: &serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    role: &str,
+    actor_id: Option<&str>,
+    refresh: Option<&std::sync::Arc<sync::SyncOrchestrator>>,
+    select: &store::Select,
+) -> Result<String, String> {
+    require_purpose(role, &["pm"], "label")?;
+    let id = args
+        .get("id")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'id' argument")?;
+    let label = args
+        .get("label")
+        .and_then(|v| v.as_str())
+        .ok_or("missing 'label' argument")?;
+    let operation = args
+        .get("operation")
+        .and_then(|v| v.as_str())
+        .unwrap_or("add");
+    if operation == "add" && is_retired_iteration_label_axis(label) {
+        return Err(retired_iteration_label_axis_error(label));
+    }
+    if let Some(r) = refresh {
+        ensure_story_in_canonical_store(r, select, id).await?;
+        let meta = meta_for(agent_name, actor_id);
+        let codec = source_codec::gh_label_codec::GhLabelCodec;
+        let tag = codec.decode_tag(label);
+        let (event, ok_msg) = match operation {
+            "add" => (
+                if let Some(tag) = tag {
+                    product_management::story::events::StoryEvent::new(
+                        meta,
+                        StoryId::new(id),
+                        product_management::story::events::StoryEventKind::TagSet { tag },
+                    )
+                } else {
+                    product_management::story::events::StoryEvent::new(
+                        meta,
+                        StoryId::new(id),
+                        product_management::story::events::StoryEventKind::TagAdded {
+                            label: label.to_string(),
+                        },
+                    )
+                },
+                format!("#{id} labeled '{label}'"),
+            ),
+            "remove" => (
+                if let Some(tag) = tag {
+                    product_management::story::events::StoryEvent::new(
+                        meta,
+                        StoryId::new(id),
+                        product_management::story::events::StoryEventKind::TagUnset { tag },
+                    )
+                } else {
+                    product_management::story::events::StoryEvent::new(
+                        meta,
+                        StoryId::new(id),
+                        product_management::story::events::StoryEventKind::TagRemoved {
+                            label: label.to_string(),
+                        },
+                    )
+                },
+                format!("#{id} unlabeled '{label}'"),
+            ),
+            other => {
+                return Err(format!(
+                    "invalid 'operation' argument '{other}': must be 'add' or 'remove'"
+                ));
+            }
+        };
+        r.mutate(event)
+            .map_err(|e| format!("#{id} enqueue failed: {e}"))?;
+        return Ok(ok_msg);
+    }
+    Err("label_story requires refresh — tracker fallback retired in slice 5n".into())
+}
+
+pub async fn handle_comment_on_story(
+    args: &serde_json::Map<String, serde_json::Value>,
+    agent_name: &str,
+    actor_id: Option<&str>,
+    refresh: Option<&std::sync::Arc<sync::SyncOrchestrator>>,
+    select: &store::Select,
+) -> Result<String, String> {
+    let id = args
+        .get("id")
+        .and_then(|v| v.as_u64())
+        .ok_or("missing 'id' argument")?;
+    let body = args
+        .get("body")
+        .and_then(|v| v.as_str())
+        .ok_or("missing 'body' argument")?;
+    if body.trim().is_empty() {
+        return Err("'body' must not be empty".to_string());
+    }
+    if let Some(r) = refresh {
+        ensure_story_in_canonical_store(r, select, id).await?;
+        let event = product_management::story::events::StoryEvent::new(
+            meta_for(agent_name, actor_id),
+            StoryId::new(id),
+            product_management::story::events::StoryEventKind::FreeCommentAppended {
+                body: body.to_string(),
+            },
+        );
+        r.mutate(event)
+            .map_err(|e| format!("#{id} enqueue failed: {e}"))?;
+        return Ok(format!("#{id} commented"));
+    }
+    Err("comment_on_story requires refresh — tracker fallback retired in slice 5n".into())
+}

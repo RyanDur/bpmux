@@ -1,0 +1,56 @@
+[package]
+name = "bridge"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The agents' door: MCP server over the tool catalog, dispatch into the store and sync engine, WS connection to the daemon"
+
+[dependencies]
+product_management = { path = "../product_management" }
+store = { path = "../store" }
+sync = { path = "../sync" }
+hub = { path = "../hub" }
+ci = { path = "../ci" }
+workflow = { path = "../workflow" }
+source_codec = { path = "../source_codec" }
+mcp_tools = { path = "../mcp_tools" }
+telemetry = { path = "../telemetry" }
+auth = { path = "../auth" }
+bookmark = { path = "../bookmark" }
+briefing = { path = "../briefing" }
+location = { path = "../location" }
+memory = { path = "../memory" }
+integrations = { path = "../integrations" }
+board = { path = "../board" }
+message = { path = "../message" }
+message_log = { path = "../message_log" }
+protocol = { path = "../protocol" }
+roster = { path = "../roster" }
+kernel = { path = "../kernel" }
+self_update = { path = "../self_update" }
+diag = { path = "../diag" }
+rate_limit = { path = "../rate_limit" }
+local_url = { path = "../local_url" }
+source_sync = { path = "../source_sync" }
+user_routing = { path = "../user_routing" }
+view = { path = "../view" }
+rmcp = { workspace = true, features = ["server", "transport-io"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+tokio = { workspace = true, features = ["sync", "rt", "rt-multi-thread", "time", "macros", "io-util"] }
+tokio-util = { workspace = true }
+tokio-tungstenite = "0.26"
+reqwest = { workspace = true }
+anyhow = "1"
+futures = "0.3"
+uuid = { workspace = true, features = ["v4"] }
+dirs = { workspace = true }
+
+[dev-dependencies]
+store_test_support = { path = "../store_test_support" }
+tempfile = { workspace = true }
+httpmock = "0.8"
+
+[lints]
+workspace = true

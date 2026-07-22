@@ -5,6 +5,7 @@ members = [
     "components/auth",
     "components/awareness",
     "components/board",
+    "components/bridge",
     "components/bookmark",
     "components/briefing",
     "components/ci",
