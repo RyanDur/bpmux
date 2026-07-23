@@ -1,15 +1,3 @@
-//! #1197 regression: workflow-state mutations via MCP gate-tools
-//! must reflect in canonical-store-via-MCP get_story immediately.
-//!
-//! Pre-#1197 substrate-bug: gate-tool returns success-message but
-//! reducer silently no-ops on missing-story; subsequent get_story
-//! shows old state. Per `feedback_falsifier_load_bearing_test_at_e2e_layer`
-//! the regression test must drive the FULL chain (TestBpmux subprocess
-//! → mutate via gate-tool → get_story → assert state field) not just
-//! unit-test the reducer or the named-error path.
-//!
-//! Sister to #1192 e2e (move_story → retired distinct state).
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use std::time::Duration;

@@ -26,7 +26,6 @@ fn wait_for_port_close(port: u16, deadline: Duration) -> bool {
 fn bridge_auto_reconnects_to_restarted_server_within_5s_on_same_port() {
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        // Phase 1: server A on a pinned free port + bridge connects.
         let port = free_port();
         let data_base_dir_a = tempfile::TempDir::new().expect("temp");
         let server_a = TestBpmux::start_with_session_and_port("dev", data_base_dir_a, port);
@@ -34,17 +33,11 @@ fn bridge_auto_reconnects_to_restarted_server_within_5s_on_same_port() {
         let bridge = TestBridge::connect(&server_a, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        // Sanity tool-call over the LIVE WS connection. set_name is
-        // role-agnostic + cheap; success confirms the bridge ↔ server-A
-        // handshake completed, identify-frame round-tripped, and the
-        // WS is healthy.
         bridge
             .call_tool("set_name", serde_json::json!({ "name": "dev" }))
             .await
             .expect("baseline set_name on server A must succeed");
 
-        // Phase 2: drop server A; wait for the port to release so the
-        // OS doesn't hold us in TIME_WAIT.
         drop(server_a);
         assert!(
             wait_for_port_close(port, Duration::from_secs(5)),
@@ -73,10 +66,6 @@ fn bridge_auto_reconnects_to_restarted_server_within_5s_on_same_port() {
         let _server_b = server_b
             .unwrap_or_else(|| panic!("server B never bound port {port} (last: {last_err:?})"));
 
-        // Phase 4: bridge's reconnect loop sleeps up to 3s between
-        // attempts, then re-handshakes. Within the 5s budget per
-        // falsifier-(b), the SAME bridge handle should be able to
-        // call another tool against the new server.
         let reconnect_start = Instant::now();
         let mut last_err: Option<String> = None;
         loop {

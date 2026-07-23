@@ -1,10 +1,3 @@
-//! Agent-side E2E test for `read_messages` MCP tool (#476 Phase 1
-//! backfill — read archetype, message-log variant). Uses the existing
-//! `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — read_messages applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

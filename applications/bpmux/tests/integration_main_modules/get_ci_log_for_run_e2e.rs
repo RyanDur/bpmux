@@ -1,12 +1,3 @@
-//! Agent-side E2E test for `get_ci_log_for_run(run_id)` MCP tool (#1174).
-//! Mocks GH Actions runs/jobs/logs endpoints and exercises the
-//! end-to-end bridge → REST → tracker → parser → CiLogStore chain.
-//! Assertion: the tool returns structured per-test failure records;
-//! cache hit on second invocation skips network.
-//!
-//! Per the 3-class framing — get_ci_log_for_run applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

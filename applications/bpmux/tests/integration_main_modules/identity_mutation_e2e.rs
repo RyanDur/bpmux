@@ -1,12 +1,3 @@
-//! Agent-side E2E tests for identity-mutation MCP tools (#476 Phase 1
-//! backfill — memory archetype, identity-graph variant).
-//! Uses the existing `tests/harness/bridge.rs` substrate.
-//!
-//! Covers: add_value / add_principle / update_principle / remove_principle.
-//!
-//! Per the 3-class framing — identity-mutation applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

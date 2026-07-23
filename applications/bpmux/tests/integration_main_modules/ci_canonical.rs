@@ -1,20 +1,3 @@
-//! Cross-bridge canonical CI state test for #526.
-//!
-//! Sister to rpc_canonical_store_test.rs (from #516 slice 5). Pins the
-//! cross-bridge parity invariant: every bridge consuming `/api/ci`
-//! observes the same canonical state because the state lives once on
-//! electron-server's `ci_watcher` and bridges read from there rather
-//! than each fetching GitHub independently.
-//!
-//! The test stands up a real `axum::serve` against the production
-//! `/api/ci` route, then drives two independent `reqwest::Client`
-//! calls (separate TCP, separate HTTP cycles) — each as if it were a
-//! distinct bridge process. Both must observe the same response from
-//! the same canonical source.
-//!
-//! No GitHub access; the tracker layer is mocked so the test exercises
-//! the bridge↔server contract without live-network side effects.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use axum::Extension;
@@ -42,13 +25,6 @@ async fn two_bridges_observe_identical_ci_state_via_canonical_endpoint() {
 
     let auth_state = AuthState::new(token.clone());
 
-    // Tracker is None for this test — `get_ci` returns 503 when no
-    // tracker is configured. That 503 is itself canonical: every
-    // bridge reading from this endpoint observes the SAME 503, not
-    // a divergent fetch outcome. Pre-#526, each bridge held its own
-    // GitHubApi and would return its own (potentially divergent)
-    // direct-GH result. Post-#526, they all see whatever the server
-    // says — including absence-of-tracker uniformly.
     let tracker: TrackerHandle = None;
 
     let gated = axum::Router::new()
@@ -125,7 +101,6 @@ async fn unauthenticated_request_to_ci_endpoint_is_rejected() {
         .expect("serve");
     });
 
-    // Bearer mismatched with the gate's expected token.
     let res = fire_get_ci(port, "wrong-token").await;
     assert_eq!(
         res.status(),

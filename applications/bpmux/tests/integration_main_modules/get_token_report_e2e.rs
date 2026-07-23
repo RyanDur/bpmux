@@ -1,10 +1,3 @@
-//! Agent-side E2E test for `get_token_report` MCP tool (#476 Phase 1
-//! backfill — read archetype, file-backed report-aggregation).
-//! Uses the existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — get_token_report applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

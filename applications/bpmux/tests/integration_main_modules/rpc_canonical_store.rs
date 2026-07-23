@@ -1,23 +1,3 @@
-//! Cross-process integration test for #516's canonical-store RPC layer.
-//!
-//! Falsifier F7 from the spec: "spawn 2 bridge processes + 1 electron-
-//! server; fire start_story from bridge A; assert bridge B + electron-
-//! server + renderer all observe state-transition." This test stands up
-//! a real `axum::serve` against a real `SyncOrchestrator` + a seeded
-//! `InMemorySourceAdapter`, then fires two independent
-//! `bridge::rpc_client::dispatch_via_rpc` calls — one as the mutating
-//! caller ("bridge A": start_story), one as the read-only observer
-//! ("bridge B": view_board) — over real HTTP. A passing assertion
-//! demonstrates the canonical store sees both callers' traffic and
-//! returns the same data to each.
-//!
-//! No GitHub access; no Electron renderer; no PTY. Within-process axum +
-//! within-process reqwest + a shared file for the auth token. The two
-//! `dispatch_via_rpc` calls are still genuinely cross-`Client`: each
-//! creates its own reqwest::Client, opens its own TCP connection, and
-//! gets its own response — the same shape a separately-spawned bridge
-//! process would experience.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use std::sync::Arc;
@@ -138,7 +118,6 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
         .expect("serve");
     });
 
-    // Caller A: a "dev" bridge fires start_story against the canonical store.
     let res_a = fire_rpc(
         port,
         "start_story",
@@ -167,9 +146,6 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
         "start_story response carries story number; got {res_a_body}"
     );
 
-    // Caller B: a different reqwest::Client (independent TCP) fires
-    // view_board, simulating a separate bridge process reading the same
-    // canonical store. The story it sees must reflect caller A's mutation.
     let res_b = fire_rpc(port, "view_board", "pm", &token, serde_json::json!({})).await;
     assert_eq!(res_b.status(), reqwest::StatusCode::OK, "view_board OK");
     let body_b: serde_json::Value = res_b.json().await.expect("json");
@@ -178,11 +154,6 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
         .and_then(|v| v.as_str())
         .unwrap_or_else(|| panic!("view_board returns message string; body: {body_b}"));
 
-    // view_board emits a text bucket-by-state listing. Caller B must
-    // see story #42 under IN PROGRESS — that's the same canonical
-    // state caller A's start_story produced. A failure here would
-    // mean the two callers see different boards (the divergence #516
-    // exists to eliminate).
     let in_progress_section = view
         .split("\n\n")
         .find(|section| section.starts_with("IN PROGRESS"))
@@ -193,7 +164,6 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
          IN PROGRESS section = {in_progress_section:?}"
     );
 
-    // Symmetric: a 4xx reaches caller B as a structured error too.
     let res_unknown = fire_rpc(port, "no_such_tool", "dev", &token, serde_json::json!({})).await;
     assert_eq!(res_unknown.status(), reqwest::StatusCode::BAD_REQUEST);
     let body_unknown: serde_json::Value = res_unknown.json().await.expect("json");

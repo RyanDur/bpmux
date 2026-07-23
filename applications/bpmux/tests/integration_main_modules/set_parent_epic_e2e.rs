@@ -1,19 +1,3 @@
-//! Agent-side E2E test for `set_parent_epic` MCP tool (#476 Phase 1
-//! backfill — mutation archetype, parent-epic-relationship variant).
-//! Uses the existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — set_parent_epic applicability =
-//! {agent: yes, human: yes (Electron Epic-grouping surface),
-//! external: yes (gh issue label parent-epic-#N)}. This test covers
-//! ONLY agent-side; human-side + external follow.
-//!
-//! **Happy-path falsifier deferred**: per #457 walk-time F1 cascade,
-//! `story_type_from_labels_or_title` doesn't detect Epic from
-//! `[Epic]` title or `epic` label. No standard agent-flow produces a
-//! StoryType::Epic story today, so the positive-case "set parent IS
-//! Epic, accept" is structurally untestable until F1 resolves.
-//! Negative-case "parent is NOT Epic, reject" tested here.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;
@@ -30,9 +14,6 @@ use std::time::Duration;
 fn set_parent_epic_rejects_non_epic_parent() {
     let server = MockServer::start();
     let base_url = format!("{}/", server.base_url());
-    // Two distinct seeded issues so child(20) and parent(10) don't
-    // collapse to the same canonical story under the harness's
-    // default-mock single-issue collapse.
     let parent = issue_json(10, "[Feature] not-an-epic-parent", &[], None);
     let child = issue_json(20, "[Feature] would-be-child", &[], None);
     server.mock(|when, then| {

@@ -1,13 +1,3 @@
-//! Agent-side E2E test for `view_commit_diff` MCP tool (#476 Phase 1
-//! backfill — read archetype, git-backed). Uses the existing
-//! `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — view_commit_diff applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-//!
-//! Runs `git show --format=fuller --patch <sha>` against the workspace
-//! root. Tests use HEAD as a stable, always-present ref.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

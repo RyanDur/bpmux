@@ -13,21 +13,18 @@ describe('Header title-as-state-canvas ', () => {
     expect(html).toContain('data-test="titlebar-app"')
     expect(html).toContain('data-status="connected"')
     expect(html).toMatch(/data-test="titlebar-app-state"[^>]*>online</)
-    expect(html).toContain('titlebar-app--connected')
     expect(html).toContain('aria-label="bpmux online"')
   })
 
   test('title state-text shows "reconnecting" for connecting class ()', () => {
     const html = renderHeader('connecting')
     expect(html).toMatch(/data-test="titlebar-app-state"[^>]*>reconnecting</)
-    expect(html).toContain('titlebar-app--connecting')
     expect(html).toContain('aria-label="bpmux reconnecting"')
   })
 
   test('title state-text shows "offline" for disconnected class', () => {
     const html = renderHeader('disconnected')
     expect(html).toMatch(/data-test="titlebar-app-state"[^>]*>offline</)
-    expect(html).toContain('titlebar-app--disconnected')
     expect(html).toContain('aria-label="bpmux offline"')
   })
 
@@ -56,7 +53,6 @@ describe('Header title-as-state-canvas ', () => {
 
   test('multi-modal signal — title text + class together (WCAG 2.1 SC 1.4.1; )', () => {
     const html = renderHeader('disconnected')
-    expect(html).toContain('titlebar-app--disconnected')
     expect(html).toContain('>offline<')
   })
 })

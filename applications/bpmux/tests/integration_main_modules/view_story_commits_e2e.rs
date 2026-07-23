@@ -1,15 +1,3 @@
-//! Agent-side E2E test for `view_story_commits` MCP tool (#476 Phase 1
-//! backfill — read archetype, git-backed). Uses the existing
-//! `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — view_story_commits applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-//!
-//! This handler runs `git log main --format=...` against the workspace
-//! root (set via `BPMUX_ROOT` env-var in `pty.rs:104`). Tests run
-//! against the bpmux dev workspace's actual git history, so number-
-//! specific assertions reflect real commit messages.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;
@@ -27,9 +15,6 @@ fn view_story_commits_returns_array_for_known_story() {
     let bpmux = TestBpmux::start_with_env("human", "BPMUX_GIT_STUB_DIR", &stub_dir_str);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        // handle_view_story_commits runs in the BRIDGE subprocess,
-        // not the TestBpmux subprocess — the env var must reach the
-        // bridge via connect_with_env.
         let dev = TestBridge::connect_with_env(
             &bpmux,
             "dev",

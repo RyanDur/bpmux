@@ -1,24 +1,3 @@
-//! E2E for #1192 move_story → retired distinct-state at canonical-store.
-//! Per `feedback_falsifier_load_bearing_test_at_e2e_layer`: the
-//! falsifier names the bug-class — "move_story → retired collapses
-//! to Accepted at canonical-store; no distinct terminal-closed-not-
-//! Accepted state". This test drives the cascade end-to-end:
-//!
-//! 1. pm creates a story (lands in icebox).
-//! 2. pm move_story → retired with rationale.
-//! 3. get_story returns state field that is NOT "accepted" (the bug
-//!    was: pre-fix, state collapsed to Accepted because state_from_
-//!    labels' closed-no-label fallback returned Accepted).
-//! 4. view_board surfaces the story in the RETIRED column, not the
-//!    ACCEPTED column — the renderer's column_for already supports
-//!    Retired (closed && state != Accepted) but only if the canonical
-//!    store preserves the distinction; this test pins both ends.
-//!
-//! Sister-class to #1188 falsifier-c (move_story recovery from
-//! Accepted-stuck) but on the inverse axis: the closed terminal
-//! state must be distinguishable from Accepted *going in*, not just
-//! *coming out*.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;
@@ -88,11 +67,6 @@ fn move_story_retired_produces_state_distinct_from_accepted_at_canonical_store()
 
 #[test]
 fn move_story_retired_then_view_board_buckets_in_retired_not_accepted_column() {
-    // Sister assertion to the canonical-store check above: the renderer
-    // path (view_board → column_for → ColumnBucket) must surface the
-    // story under RETIRED, not ACCEPTED. column_for itself is unit-
-    // tested elsewhere; this drives the full chain so a regression in
-    // either layer (canonical or renderer) flags here.
     let bpmux = TestBpmux::start_with_env("human", "BPMUX_TEST_MODE", "1");
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {

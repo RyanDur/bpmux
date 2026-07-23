@@ -1,13 +1,3 @@
-//! Agent-side E2E test for `close_iteration` MCP tool (#476 Phase 1
-//! backfill — signal-broadcast variant, pm-only). Uses the existing
-//! `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — close_iteration applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-//!
-//! Fires the iteration-close externalize-prompt broadcast (#282); a
-//! "reminder, not a barrier" — agents may flush unsaved findings.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

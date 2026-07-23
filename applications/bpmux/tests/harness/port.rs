@@ -1,5 +1,3 @@
-//! Test-time port allocation.
-
 use std::net::TcpListener;
 
 /// Binds to a free OS-assigned port, returns its number, and releases the

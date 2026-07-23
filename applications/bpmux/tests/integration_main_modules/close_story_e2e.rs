@@ -1,12 +1,3 @@
-//! Agent-side E2E test for `close_story` MCP tool (#476 Phase 1
-//! backfill — gate-fire archetype, terminal-only state). Uses the
-//! existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — close_story applicability =
-//! {agent: yes, human: yes (Electron close-affordance), external: yes
-//! (gh issue close)}. This test covers ONLY agent-side; human-side
-//! + external-mutation E2E follow per applicable-class backfill.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;
@@ -345,12 +336,6 @@ fn close_with_disposition_wontfix_lands_retired() {
 
 #[test]
 fn close_story_does_not_fire_post_mutation_get_issue_round_trip() {
-    // #1151: close_story handler used to follow its mutate_sync with
-    // r.refresh_story(N).await — a redundant GET round-trip to GH
-    // for state the close-mutation response already carried. The
-    // tracker-response capture cascade (StoryRefreshed reducer applies
-    // the post-close Issue) makes the follow-up refresh redundant;
-    // this test pins that the redundant GET is gone.
     use harness::mock_gh::{issue_json, mock_story_mutations};
     use httpmock::{Method, MockServer};
     use serde_json::Value;
@@ -366,12 +351,6 @@ fn close_story_does_not_fire_post_mutation_get_issue_round_trip() {
     });
     mock_story_mutations(&server, 900, &issue);
 
-    // Track GET /repos/acme/bpmux/issues/900 separately so we can
-    // count post-mutation hits — `mock_story_mutations` registered a
-    // GET at this path; we add an additional mock that captures hits
-    // and asserts a stable upper bound. httpmock matches the
-    // most-recently-registered mock first when paths overlap; we
-    // register this one AFTER the helper so it captures all hits.
     let issue_detail_get = server.mock(|when, then| {
         when.method(Method::GET)
             .path("/repos/acme/bpmux/issues/900");
@@ -386,8 +365,6 @@ fn close_story_does_not_fire_post_mutation_get_issue_round_trip() {
         let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
         tokio::time::sleep(Duration::from_millis(1500)).await;
 
-        // Capture pre-call hit count so we measure only the
-        // close_story-initiated GETs, not the prior bring-up traffic.
         let before = issue_detail_get.calls();
 
         pm.call_tool(
@@ -400,15 +377,6 @@ fn close_story_does_not_fire_post_mutation_get_issue_round_trip() {
         let after = issue_detail_get.calls();
         let close_story_gets = after - before;
 
-        // Pre-#1151 fix: handle_close_story fired r.refresh_story(N)
-        // post-mutation, generating exactly one GET /repos/.../issues/900
-        // round-trip. Post-fix: zero — the StoryRefreshed reducer
-        // applies the post-close Issue captured from the close-mutation
-        // response. Allow a small upper bound (≤1) to tolerate any
-        // refresh fired by adjacent handlers (label_story uses a
-        // similar pattern, but we don't trigger that here); strictly
-        // assert that we're below the pre-fix baseline of 2+ GETs
-        // (one pre-write read + one post-write refresh).
         assert!(
             close_story_gets <= 1,
             "close_story handler must not fire a redundant post-mutation \

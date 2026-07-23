@@ -1,14 +1,3 @@
-//! Agent-side E2E test for `pass_desk_check` MCP tool (#476 Phase 1
-//! backfill — gate-fire archetype, designer-only). Uses the existing
-//! `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — pass_desk_check applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-//!
-//! Mirrors `fail_desk_check_e2e_test.rs` but transitions Delivered →
-//! ReadyForAccept (vs. NeedsFixes) and requires no `reason` field on
-//! the success path.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

@@ -1,23 +1,3 @@
-//! Cross-bridge mutation-propagation E2E tests (#476 Phase 1 +
-//! #482 substrate). Two bridges spawned via the new
-//! `TestBridge::connect_with_mock_gh` harness share a single
-//! `httpmock::MockServer` as their GitHub source-of-truth; this
-//! exercises the F-coh-1..7 falsifier class — bridge A's view of
-//! the world should converge on bridge B's via the shared GH state.
-//!
-//! Per the 3-class framing — cross-bridge mutation-propagation
-//! applicability = mostly external-mutation-class-with-multi-bridge
-//! observers. Per-bridge background ingest poll (1s in test mode
-//! per `connect_with_mock_gh`) drives convergence.
-//!
-//! Two specs:
-//!   1. external state mutated mid-session → both bridges observe
-//!      via their next poll
-//!   2. bridge-A-mutation → bridge-B-observation roundtrip — bridge A
-//!      creates a story via MCP create_story; the test process keeps
-//!      MockServer's GET in sync; bridge B's poll observes the new
-//!      story without ever hitting bridge A directly
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

@@ -1,14 +1,3 @@
-//! Agent-side E2E test for `save_lesson` MCP tool (#476 Phase 1
-//! backfill — memory archetype). Uses the existing
-//! `tests/harness/bridge.rs` substrate: real `bpmux bridge` subprocess
-//! + real MCP-stdio + real bpmux server `/api/lessons` endpoint.
-//!
-//! Per the 3-class framing — save_lesson applicability =
-//! {agent: yes, human: no (no Electron surface today), external: no
-//! (memory writes are bpmux-internal, not GH-mirrored)}. Single-class
-//! agent-only coverage matches the memory-archetype default per
-//! designer's index.md.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

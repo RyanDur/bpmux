@@ -1,11 +1,3 @@
-//! Agent-side E2E test for `label_story` MCP tool (#476 Phase 1
-//! backfill — mutation archetype, add/remove variant). Uses the
-//! existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — label_story applicability =
-//! {agent: yes, human: yes (badge-toggle Electron surface),
-//! external: yes (gh issue label)}. This test covers ONLY agent-side.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

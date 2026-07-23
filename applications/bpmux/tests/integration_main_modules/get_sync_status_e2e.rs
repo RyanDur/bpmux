@@ -1,14 +1,3 @@
-//! Agent-side E2E test for `get_sync_status` MCP tool (#476 Phase 1
-//! backfill — read archetype, bridge-state-read variant). Uses the
-//! existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — get_sync_status applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-//!
-//! Returns the SyncOrchestrator's snapshot: last_ingest_at,
-//! last_push_at, pending_events, last_error. Initial-state expectation:
-//! pending_events == 0 with no last_error after a clean bridge boot.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

@@ -1,22 +1,3 @@
-//! E2E test for #538 hook-auto-fire skill-invocations. Spawns each
-//! hook shell script via Command + pipes mock JSON stdin + asserts
-//! stdout shape per designer's Tests A-E (2026-05-05 02:43).
-//!
-//! Per `feedback_falsifier_load_bearing_test_at_e2e_layer`: the
-//! falsifier names "skills auto-fire at high-throughput" and "hooks
-//! don't fire too broadly on slow events" — these tests drive THAT
-//! exact scenario, not a unit-level proxy.
-//!
-//! Test fidelity is shell/JSON-pipe per
-//! `feedback_test_fidelity_vocabulary_discipline` — hooks are
-//! stdin-JSON / stdout-JSON contract; not Rust-mock-able.
-//!
-//! Density-state-file isolation: cargo runs tests in parallel by
-//! default; the density-detection state file is shared by default,
-//! so each test passes a unique BPMUX_HOOK_*_DENSITY_STATE_FILE env
-//! override pointing at a per-test temp file. This makes the tests
-//! order-independent and parallel-safe.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use std::io::Write;

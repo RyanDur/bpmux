@@ -1,24 +1,9 @@
-//! Integration test for #185 fix on `send-claude-response.sh`.
-//!
-//! The hook reads a bpmux messages JSON array and emits a
-//! systemMessage JSON containing the FULL text of new messages
-//! (not just a count, which was the pre-fix behavior). This test
-//! exercises the real shell script by piping a fake messages JSON
-//! via the `BPMUX_MESSAGES_STDIN=1` test hook, then parses the
-//! output and asserts on the systemMessage body.
-//!
-//! Same pattern as `token_adapter_test.rs`: real script, real
-//! subprocess, real stdin/stdout — no mocks. Naming is behavior-
-//! framed because that's what the test actually verifies.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use std::io::Write;
 use std::process::{Command, Stdio};
 
 fn hook_path() -> std::path::PathBuf {
-    // Workspace root is two parents up from applications/bpmux, where
-    // this crate's Cargo.toml sits; claude-plugin lives at the root.
     let workspace_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .ancestors()
         .nth(2)
@@ -88,7 +73,6 @@ fn hook_injects_full_message_text_not_just_count() {
         sys_msg.contains("shipped #181 focus mode display filter"),
         "should include full text: {sys_msg}"
     );
-    // Pre-fix behavior: only count appeared. Now count AND content.
     assert!(
         sys_msg.contains("1 new bpmux message"),
         "should retain count header: {sys_msg}"
@@ -116,7 +100,6 @@ fn hook_injects_multiple_messages_in_log_order() {
     let dev_idx = sys_msg.find("third new message").expect("dev msg");
     assert!(pm_idx < designer_idx, "log order: pm before designer");
     assert!(designer_idx < dev_idx, "log order: designer before dev");
-    // Sender tags present for each.
     assert!(sys_msg.contains("[pm]"));
     assert!(sys_msg.contains("[designer]"));
     assert!(sys_msg.contains("[dev]"));
@@ -130,7 +113,6 @@ fn hook_is_silent_when_only_owner_messages_are_new() {
     ]"#;
     let (code, stdout) = run_hook(messages, Some("2026-04-11T22:30:00Z"));
     assert_eq!(code, 0);
-    // No output means no systemMessage injection — correct silent behavior.
     assert!(
         stdout.trim().is_empty(),
         "expected silent when only owner messages are new, got: {stdout}"

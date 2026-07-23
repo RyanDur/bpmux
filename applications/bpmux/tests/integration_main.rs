@@ -1,10 +1,3 @@
-//! #1136 — consolidated integration test binary. 101 prior `tests/*_test.rs`
-//! binaries each statically linked libbpmux + 100+ deps; CI link-time grew
-//! linearly with test count and a SIGBUS on `recall_observability_test`
-//! showed disk/memory pressure passing thresholds. Pattern: each
-//! `tests/integration_main_modules/<name>.rs` is a submodule referenced
-//! via `#[path]` here, so all test functions run from this single binary.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod harness;

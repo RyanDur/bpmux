@@ -1,10 +1,3 @@
-//! Agent-side E2E test for `classifier_misfire` MCP tool (#476 Phase 1
-//! backfill — feedback-capture variant). Uses the existing
-//! `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — classifier_misfire applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

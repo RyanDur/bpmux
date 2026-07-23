@@ -37,8 +37,6 @@ fn hook_creates_default_bookmark_when_none_exists() {
     let sessions_base = tmp.path();
     let data_base_dir = sessions_base.join("session-001");
     std::fs::create_dir_all(&data_base_dir).expect("mkdir session");
-    // Symlink-or-dir: write 'current' as a real directory so the
-    // hook resolves to it without symlink platform variance in tests.
     let current = sessions_base.join("current");
     std::fs::create_dir_all(&current).expect("mkdir current");
 
@@ -123,9 +121,6 @@ fn hook_preserves_existing_bookmark_content_only_touches_timestamp() {
 
 #[test]
 fn hook_round_trips_through_bookmark_module_load_path() {
-    // Belt-and-suspenders verification of falsifier-c: the file the
-    // hook writes is at the exact path bookmark_path() expects + is
-    // valid JSON the Bookmark serde deserializer accepts.
     let tmp = tempfile::tempdir().expect("tempdir");
     let sessions_base = tmp.path();
     let current = sessions_base.join("current");
@@ -149,8 +144,6 @@ fn hook_round_trips_through_bookmark_module_load_path() {
 
 #[test]
 fn hook_role_with_unsafe_chars_sanitizes_to_alphanumerics() {
-    // Falsifier-class: hook must mirror Rust-side sanitize_name
-    // discipline so a malicious role can't escape the session dir.
     let tmp = tempfile::tempdir().expect("tempdir");
     let sessions_base = tmp.path();
     let current = sessions_base.join("current");
@@ -160,9 +153,6 @@ fn hook_role_with_unsafe_chars_sanitizes_to_alphanumerics() {
     let out = fire_hook(dangerous, sessions_base);
     assert!(out.status.success());
 
-    // Only alphanumerics + dash + underscore allowed → the dots and
-    // slashes get stripped, leaving "etcpasswd". The escape-traversal
-    // path must NOT exist outside the session dir.
     let escape_target = sessions_base.join("etc").join("passwd");
     assert!(
         !escape_target.exists(),
@@ -172,9 +162,6 @@ fn hook_role_with_unsafe_chars_sanitizes_to_alphanumerics() {
 
 #[test]
 fn hook_idempotent_when_fired_twice_in_quick_succession() {
-    // Falsifier-(e) idempotency: hook firing twice doesn't lose data
-    // or produce inconsistent state. Each fire either preserves
-    // existing content + bumps timestamp OR writes default stub.
     let tmp = tempfile::tempdir().expect("tempdir");
     let sessions_base = tmp.path();
     let current = sessions_base.join("current");
@@ -185,8 +172,6 @@ fn hook_idempotent_when_fired_twice_in_quick_succession() {
     let bookmark1 = load_bookmark(&current, role);
     assert!(!bookmark1.last_updated.is_empty());
 
-    // Sleep beyond timestamp-second granularity so the second fire's
-    // last_updated genuinely differs.
     std::thread::sleep(std::time::Duration::from_millis(1100));
     let _ = fire_hook(role, sessions_base);
     let bookmark2 = load_bookmark(&current, role);

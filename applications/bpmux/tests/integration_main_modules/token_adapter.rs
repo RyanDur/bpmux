@@ -1,18 +1,3 @@
-//! End-to-end test for the Claude Code token adapter (#179).
-//!
-//! Shape: behavior test, not unit test. The adapter is a bash/jq
-//! script in `claude-plugin/hooks/token-adapter.sh`. This test
-//! exercises the REAL script (not a fake), feeding it a fake
-//! transcript file and a fake hook JSON payload, and asserts on what
-//! the script actually writes to the token log. Then it reads the
-//! log back via the `bpmux::session::tokens::read_token_rows` Rust
-//! function — so the round-trip proves the script writes in the
-//! schema the Rust reader accepts.
-//!
-//! This is the "adapter contract" test: if a second adapter (Cursor,
-//! Codex, ...) lands later, it should be able to produce the same
-//! kind of output this test asserts on.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use std::io::Write;
@@ -32,8 +17,6 @@ fn fake_transcript(uuid: &str, input: u64, cache_read: u64, output: u64) -> Stri
 }
 
 fn adapter_path() -> std::path::PathBuf {
-    // Workspace root is two parents up from applications/bpmux, where
-    // this crate's Cargo.toml sits; claude-plugin lives at the root.
     let workspace_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .ancestors()
         .nth(2)
@@ -103,7 +86,6 @@ fn adapter_dedupes_when_last_assistant_uuid_has_not_changed() {
 
     let tokens_dir = tmp.path().join("tokens");
     run_adapter(&transcript_path, &tokens_dir, "sess-002", "pm");
-    // Second call on unchanged transcript should be a no-op.
     run_adapter(&transcript_path, &tokens_dir, "sess-002", "pm");
 
     let rows = read_token_rows(&tokens_dir.join("log.jsonl")).unwrap();
@@ -124,7 +106,6 @@ fn adapter_emits_new_row_when_transcript_grows_with_new_assistant_entry() {
     let tokens_dir = tmp.path().join("tokens");
     run_adapter(&transcript_path, &tokens_dir, "sess-003", "designer");
 
-    // Append a second assistant entry — simulating the next turn.
     let mut appended = fake_transcript("uuid-c1", 10, 50, 20);
     appended.push_str(&fake_transcript("uuid-c2", 30, 200, 80));
     std::fs::write(&transcript_path, appended).unwrap();
@@ -144,8 +125,6 @@ fn adapter_emits_new_row_when_transcript_grows_with_new_assistant_entry() {
 
 #[test]
 fn adapter_exits_silently_when_transcript_path_missing() {
-    // If hook payload lacks transcript_path or the file doesn't exist,
-    // the adapter should exit 0 without creating any log.
     let tmp = tempfile::tempdir().unwrap();
     let tokens_dir = tmp.path().join("tokens");
     let hook_json = r#"{"session_id":"sess-004"}"#;
@@ -168,12 +147,10 @@ fn adapter_exits_silently_when_transcript_path_missing() {
     let status = child.wait().unwrap();
     assert!(status.success());
 
-    // No log file should have been created.
     let log_path = tokens_dir.join("log.jsonl");
     assert!(
         !log_path.exists(),
         "adapter should not create log for missing transcript"
     );
-    // Silence unused-import warning if TokenRow is unreferenced in this test.
     let _ = std::marker::PhantomData::<TokenRow>;
 }

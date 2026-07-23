@@ -1,12 +1,3 @@
-//! Agent-side E2E test for `unset_parent_epic` MCP tool (#476 Phase 1
-//! backfill — mutation archetype, parent-epic-relationship variant).
-//! Uses the existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — unset_parent_epic applicability =
-//! {agent: yes, human: yes (Electron remove-from-Epic surface),
-//! external: yes (gh issue label removal)}. This test covers ONLY
-//! agent-side; human-side + external follow.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

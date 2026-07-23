@@ -1,18 +1,3 @@
-//! Contract tests for the gh CLI subprocess boundary.
-//!
-//! Complements the octocrab httpmock contract suite. The octocrab
-//! path is covered by `src/bridge/tracker_contract_tests.rs`; this
-//! file locks down the SHAPE of gh's JSON output that bpmux parses:
-//! `gh issue list --json number,title,state,labels` and
-//! `gh run list --json status,conclusion,headSha,displayTitle,databaseId`.
-//!
-//! Fixtures live in `tests/fixtures/gh/` and are checked into the
-//! repo. When real gh changes a field name or drops a key, the
-//! feature-gated integration suite (#299) surfaces the drift and
-//! `scripts/rerecord-fixtures.sh` regenerates these files from the
-//! live provider. This suite then stays offline-reproducible for
-//! pre-push + CI.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use serde_json::Value;
@@ -29,9 +14,6 @@ fn fixture(name: &str) -> Value {
 
 #[test]
 fn issue_list_fixture_has_fields_board_view_depends_on() {
-    // Contract: `gh issue list --json number,title,state,labels` returns
-    // an array of objects with these exact top-level keys. Drift in any
-    // key would silently break the board view's story grouping.
     let fixture = fixture("issue_list_open.json");
     let arr = fixture.as_array().expect("list is an array");
     assert!(!arr.is_empty(), "fixture must carry at least one issue");
@@ -93,8 +75,5 @@ fn run_list_failure_fixture_parses_to_red_ci_state() {
 /// harness itself breaks, this single-line test surfaces it too.
 #[test]
 fn contract_tests_run_on_every_cargo_test_no_credentials_needed() {
-    // The octocrab httpmock suite + gh fixture suite are regular
-    // `#[test]`s — they run on every `cargo test` without any env
-    // vars or feature flags. Pre-push + CI auto-invoke them.
     assert!(env!("CARGO_MANIFEST_DIR").contains("bpmux"));
 }

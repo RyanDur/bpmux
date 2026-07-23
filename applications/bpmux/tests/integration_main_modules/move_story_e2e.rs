@@ -1,26 +1,3 @@
-//! Agent-side E2E test for `move_story` MCP tool (#1188). Drives the
-//! full bridge subprocess + canonical-store roundtrip — same harness
-//! pattern as label_story_e2e / reorder_story_e2e.
-//!
-//! Live-bridge integration test per #1188 falsifier-g (live-class
-//! requirement; mock-only is the substitution-class per
-//! `feedback_test_fidelity_vocabulary_discipline`). Covers:
-//!
-//! - Happy path: pm moves a story to ready with rationale; tool
-//!   returns a message naming the from→to transition (substrate
-//!   evidence the chain fired end-to-end through MCP-stdio).
-//! - Falsifier-b enforcement: blank rationale rejected.
-//! - Falsifier-d enforcement: non-1-based position rejected.
-//! - Permission boundary (falsifier-e + scope-question 1):
-//!   dev caller setting position in 'ready' is rejected per
-//!   PM-organizes-queue-order rule. dev moving COLUMN (no position)
-//!   succeeds — column moves are agent-class.
-//!
-//! What this test does NOT cover (intentional v1 boundary):
-//! - Cross-machine canonical-store reconciliation under conflict.
-//! - Story-timeline rendering (read-side; covered by view_comments
-//!   pickup of the FreeCommentAppended audit-trail).
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

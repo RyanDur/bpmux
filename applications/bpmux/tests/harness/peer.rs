@@ -1,6 +1,3 @@
-//! Direct WebSocket peer for tests that need to act as a raw bpmux client
-//! (no bridge, no MCP). Use `WsPeer::connect` to identify and stay alive;
-//! use `send`/`next_text` to exchange messages.
 #![allow(clippy::panic, clippy::expect_used, clippy::unwrap_used)]
 
 use std::time::Duration;
@@ -62,7 +59,6 @@ impl WsPeer {
         tx.send(WsMessage::Text(identify.to_string().into()))
             .await
             .expect("send identify");
-        // consume welcome
         let _ = rx.next().await.expect("receive welcome").expect("welcome");
         Self { tx, rx }
     }

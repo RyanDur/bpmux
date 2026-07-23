@@ -1,13 +1,3 @@
-//! Agent-side E2E test for `comment_on_story` MCP tool (#476 Phase 1
-//! backfill — mutation archetype, append-only variant). Uses the
-//! existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — comment_on_story applicability =
-//! {agent: yes, human: yes (chat surface in Electron), external: yes
-//! (gh issue comment)}. This test covers ONLY the agent-side class;
-//! human-side + external-mutation E2E follow per applicable-class
-//! backfill discipline.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

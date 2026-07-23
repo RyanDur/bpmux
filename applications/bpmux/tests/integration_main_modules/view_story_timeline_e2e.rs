@@ -1,11 +1,3 @@
-//! Agent-side E2E test for `view_story_timeline` MCP tool (#476 Phase 1
-//! backfill — read archetype, gate-comment-timeline variant). Uses the
-//! existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — view_story_timeline applicability =
-//! {agent: yes, human: yes (drill-in timeline surface), external: no}.
-//! This test covers ONLY agent-side; human-side follows.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

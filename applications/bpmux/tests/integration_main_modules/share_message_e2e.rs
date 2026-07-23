@@ -1,19 +1,3 @@
-//! Agent-side E2E test for `share_message` MCP tool (#476 Phase 1
-//! backfill — mutation archetype, message-propagation variant). Uses
-//! the existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — share_message applicability =
-//! {agent: yes, human: yes (TUI /share command), external: no}.
-//! This test covers ONLY agent-side; human-side TUI /share is a
-//! separate Playwright concern.
-//!
-//! Two forms covered: Form 2 fresh-text (explicit `text` arg) and the
-//! Form-1 no-recent-visible-chat error path. Form 1 propagation
-//! coverage (agent's recent chat re-shared to wider scope) is
-//! deferred — the bridge-side log-fetch via REST is timing-coupled
-//! to the bridge's session bootstrap and is better verified at the
-//! integration-test layer.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

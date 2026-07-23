@@ -1,14 +1,3 @@
-//! Agent-side E2E test for `create_story` MCP tool (#476 Phase 1
-//! backfill). Uses the existing `tests/harness/bridge.rs` substrate:
-//! spawns a real `bpmux bridge --fake-tracker` subprocess, connects
-//! via real MCP-stdio (rmcp `TokioChildProcess`), invokes the MCP
-//! tool through real protocol, asserts on parsed response.
-//!
-//! This is **agent-user E2E** per the 3-class framing — full path
-//! agent → MCP-stdio → bridge subprocess → real handle_create_story
-//! → SyncOrchestrator → InMemorySourceAdapter (via --fake-tracker)
-//! → BoardStore. No in-process axum router shortcut.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

@@ -1,6 +1,3 @@
-//! Tests for the wait-for-condition helpers added in #198. These
-//! exercise the harness primitives themselves — contract tests for the
-//! test infrastructure, not a feature under test.
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use crate::harness;

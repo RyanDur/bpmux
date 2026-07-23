@@ -14,12 +14,6 @@ fn recall_emits_activity_message_visible_via_rest() {
     let bpmux = TestBpmux::start();
     let port = bpmux.port();
 
-    // (TestBpmux::start now waits for the HTTP listener bind before
-    // returning — slice 14 — so we can launch `bpmux recall` directly.)
-
-    // Fresh session base for recall. Decoupled from the TUI's session
-    // dir — recall POSTs to the server via port, it doesn't need the
-    // same on-disk session.
     let recall_session = tempfile::TempDir::new().expect("temp dir");
 
     let bin = env!("CARGO_BIN_EXE_bpmux");
@@ -42,12 +36,7 @@ fn recall_emits_activity_message_visible_via_rest() {
         String::from_utf8_lossy(&output.stderr)
     );
 
-    // Poll for the activity message. The POST is best-effort and
-    // local, so it should land within a second; we give it more room
-    // for CI variance.
     let deadline = std::time::Instant::now() + Duration::from_secs(5);
-    // chat_only=false so activity-type messages are included in the
-    // response (default chat_only=true would hide the recall signal).
     let url = format!("http://127.0.0.1:{port}/api/messages?limit=100&chat_only=false");
     let rt = tokio::runtime::Runtime::new().expect("rt");
     let found = rt.block_on(async {

@@ -1,10 +1,3 @@
-//! Plugin Acceptance Test: Claude Code plugin hooks and manifest
-//!
-//! Proves: the UserPromptSubmit hook reads the JSONL log and formats
-//! messages for Claude, the hook exits cleanly when no session exists,
-//! the SessionStart hook outputs context, and the plugin manifest is
-//! valid JSON.
-
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::fs;
@@ -12,8 +5,6 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn project_dir() -> PathBuf {
-    // Workspace root: claude-plugin lives at the repo root, one level
-    // above applications/bpmux where this crate's Cargo.toml sits.
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .ancestors()
         .nth(2)
@@ -48,7 +39,6 @@ fn hook_reads_jsonl_and_outputs_formatted_messages() {
     let tmp = tempfile::tempdir().unwrap();
     let data_dir = create_data_home(&tmp);
 
-    // Write JSONL messages (using "from" field matching session::Message)
     let jsonl = r#"{"from":"alice","text":"hello world","ts":"2026-04-03T12:00:00Z"}
 {"from":"bob","text":"how are you","ts":"2026-04-03T12:01:00Z"}
 {"from":"alice","text":"doing great","ts":"2026-04-03T12:02:00Z"}
@@ -154,8 +144,6 @@ fn session_start_register_mints_the_identity_into_the_workspace_marker() {
 
 #[test]
 fn send_user_message_exits_cleanly_when_server_unavailable() {
-    // The script POSTs to bpmux REST endpoint — when bpmux isn't
-    // running, curl fails silently and the script still exits 0.
     let input = r#"{"prompt":"what does this function do?"}"#;
 
     let output = Command::new("bash")
@@ -197,9 +185,6 @@ fn send_user_message_silent_when_no_session() {
         .spawn()
         .and_then(|mut child| {
             use std::io::Write;
-            // Ignore BrokenPipe: the script `exit 0`s without reading stdin,
-            // so if the child has already exited by the time we write, the
-            // write fails — but that's not what this test asserts.
             let _ = child.stdin.take().unwrap().write_all(input.as_bytes());
             child.wait_with_output()
         })
@@ -210,8 +195,6 @@ fn send_user_message_silent_when_no_session() {
 
 #[test]
 fn send_claude_response_exits_cleanly_when_server_unavailable() {
-    // The Stop hook curls the bpmux REST API. When bpmux isn't running,
-    // curl fails silently. Use isolated port so running bpmux doesn't interfere.
     let output = Command::new("bash")
         .arg(send_claude_response_script())
         .env("BPMUX_PORT", "19999")
@@ -228,8 +211,6 @@ fn send_claude_response_exits_cleanly_when_server_unavailable() {
 
 #[test]
 fn send_claude_response_produces_no_stdout() {
-    // The Stop hook should not produce stdout when no bpmux is running.
-    // Use an isolated port so running bpmux on 4117 doesn't interfere.
     let tmp = tempfile::tempdir().unwrap();
     let output = Command::new("bash")
         .arg(send_claude_response_script())

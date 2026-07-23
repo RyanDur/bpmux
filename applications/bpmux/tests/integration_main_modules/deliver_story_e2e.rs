@@ -1,11 +1,3 @@
-//! Agent-side E2E test for `deliver_story` MCP tool (#476 Phase 1
-//! backfill — gate-fire archetype with verified_observation gate).
-//! Uses the existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — deliver_story applicability =
-//! {agent: yes, human: no (no human-side deliver affordance —
-//! agent-only), external: no}. Single-class agent-only.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

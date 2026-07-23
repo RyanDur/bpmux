@@ -1,10 +1,3 @@
-//! Agent-side E2E test for `send_message` MCP tool (#476 Phase 1
-//! backfill — broadcast variant). Uses the existing
-//! `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — send_message applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

@@ -1,18 +1,3 @@
-//! Agent-side E2E test for `start_story` MCP tool (#476 Phase 1
-//! backfill — state-transition archetype). Uses the existing
-//! `tests/harness/bridge.rs` substrate + `--board-fixture` seeding
-//! pattern (#481).
-//!
-//! Per the 3-class framing — start_story applicability =
-//! {agent: yes, human: no (no human-side start affordance — agent-only),
-//! external: no}. Single-class agent-only coverage.
-//!
-//! Roundtrip-via-view_board falsifier: closed via `--board-fixture`
-//! pre-seeded story (#481 substrate-pattern). The fixture seeds the
-//! adapter's InMemorySourceAdapter at bridge startup so dev's bridge
-//! has the story in its own adapter (no cross-bridge propagation
-//! needed; state IS pre-seeded identically per bridge).
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

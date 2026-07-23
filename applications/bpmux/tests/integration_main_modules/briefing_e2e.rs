@@ -1,10 +1,3 @@
-//! Agent-side E2E test for `save_briefing` + `get_briefing` MCP tool
-//! pair (#476 Phase 1 backfill — memory archetype, paired write/read).
-//! Uses the existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — briefing applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

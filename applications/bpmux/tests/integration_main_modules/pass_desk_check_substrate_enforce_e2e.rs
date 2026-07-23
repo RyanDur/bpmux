@@ -1,19 +1,3 @@
-//! E2E acceptance-test for #1386 — pass_desk_check substrate-
-//! enforce via workflow.toml + designer-broadcast evidence-check.
-//!
-//! Sister of #1385 (accept_story substrate-enforce). Reuses the
-//! same workflow-gate primitives: role-check + evidence-check.
-//!
-//! Four Gherkin scenarios from #1386's body:
-//!   1. Designer broadcasts substrate-grounding then fires
-//!      pass_desk_check → 200
-//!   2. Designer fires without prior substrate-broadcast → 409
-//!      workflow-gate-mismatch with missing_evidence
-//!   3. Non-reviewer-role fires pass_desk_check → 409
-//!      workflow-role-not-allowed
-//!   4. Evidence-broadcast verdict-shape regex (sister-substrate
-//!      story under #1384; permissive-baseline shape in this slice)
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

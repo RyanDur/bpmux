@@ -1,17 +1,3 @@
-//! E2E acceptance-test for #1412 — ATP pre-filing-audit substrate
-//! gate. Sister to #1362 (post-pickup desk-check ATP-substantive
-//! gate); this is the PREVENTIVE create_story-time + edit_story-time
-//! validator.
-//!
-//! Five Gherkin scenarios from #1412's body:
-//!   1. ATP-path exists + substantive → 200 (create_story succeeds)
-//!   2. ATP-path missing OR stub → 409 with kind="atp-not-substantive"
-//!   3. edit_story changing ATP-path re-validates (passes OR 409)
-//!   4. Chore-class stories exempt (no ATP-gate fires)
-//!   5. Substrate-tests cover positive + 3 negative + planted-violation
-//!      seeds (covered via the per-scenario tests below + unit-tests
-//!      in atp_substantive_gate::tests)
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

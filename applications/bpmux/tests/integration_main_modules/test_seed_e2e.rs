@@ -1,7 +1,3 @@
-//! E2E test for the #1290 Part A seed endpoints. Verifies:
-//! - Endpoints mount only when `BPMUX_TEST_SEED_API=1`.
-//! - Caller-supplied `ts` round-trips through the active Storage trait.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness::pty::TestBpmux;
@@ -59,11 +55,6 @@ fn seed_messages_preserves_caller_ts_through_sqlite_backend() {
             2,
             "both seeds observable; seed body: {body}; got: {messages:?}"
         );
-        // /api/messages returns newest-first; index 0 is ts_2.
-        // Parse ts back to DateTime<Utc> for semantic equality
-        // (different RFC3339 formatters use `Z` vs `+00:00` for the
-        // same instant; ts-precision means SAME INSTANT round-trips,
-        // not byte-identical string).
         let got_ts_0: DateTime<Utc> = messages[0]["ts"].as_str().unwrap().parse().unwrap();
         let got_ts_1: DateTime<Utc> = messages[1]["ts"].as_str().unwrap().parse().unwrap();
         assert_eq!(messages[0]["text"], "second");
@@ -75,7 +66,6 @@ fn seed_messages_preserves_caller_ts_through_sqlite_backend() {
 
 #[test]
 fn seed_messages_endpoint_absent_without_env_var() {
-    // BPMUX_TEST_SEED_API NOT set — route should 404.
     let bpmux = TestBpmux::start();
     let port = bpmux.port();
     let rt = tokio::runtime::Runtime::new().expect("rt");

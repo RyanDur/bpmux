@@ -1,23 +1,3 @@
-//! Agent-side E2E test for `view_comments` MCP tool (#476 Phase 1
-//! backfill — read archetype, comment-list variant). Uses the
-//! existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — view_comments applicability =
-//! {agent: yes, human: yes (drill-in surface in Electron),
-//! external: no}. This test covers ONLY agent-side; human-side
-//! follows per applicable-class backfill.
-//!
-//! Multi-comment chronological-ordering falsifier remains deferred:
-//! #485 closed the comment-persistence-asymmetry (adapter now stores
-//! comments + populates them in fetch_story_metadata). But there's a
-//! second substrate-race: `push_event` (which writes to adapter)
-//! fires async via `drain_pending` background task; rapid back-to-back
-//! comment_on_story calls may refresh from the adapter BEFORE drain
-//! has propagated the prior comment. Closing the multi-comment-
-//! ordering falsifier requires either synchronous-push-on-mutate OR
-//! mutate-before-refresh in handle_comment_on_story OR a test-only
-//! force-drain primitive. Tracked for follow-up substrate-Chore.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

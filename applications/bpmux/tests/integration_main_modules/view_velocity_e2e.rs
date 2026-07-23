@@ -1,12 +1,3 @@
-//! Agent-side E2E test for `view_velocity` MCP tool (#476 Phase 1
-//! backfill — read archetype, log-derived metrics variant). Uses the
-//! existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — view_velocity applicability =
-//! {agent: yes (returns metrics JSON), human: yes (TUI panel opens),
-//! external: no}. This test covers ONLY agent-side; the TUI marker
-//! is verified by capture_screen-based human-side tests.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;
@@ -29,8 +20,12 @@ fn view_velocity_returns_metrics_json_for_empty_session() {
             .expect("view_velocity should succeed");
 
         assert!(
-            result.is_object(),
-            "view_velocity returns a JSON object; got {result:?}"
+            result
+                .get("velocity_window_iterations")
+                .is_some_and(|v| v.is_number())
+                && result.get("iterations").is_some_and(|v| v.is_array())
+                && result.get("rework").is_some_and(|v| v.is_object()),
+            "view_velocity carries the window, per-iteration series, and rework rollup; got {result:?}"
         );
 
         pm.close().await;

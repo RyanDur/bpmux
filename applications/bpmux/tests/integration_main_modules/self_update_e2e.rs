@@ -1,27 +1,3 @@
-//! E2E for #118 bpmux self-update on binary change. Per
-//! `feedback_falsifier_load_bearing_test_at_e2e_layer`: falsifier-g
-//! names the exact scenario — "binary-swap-and-restart cascade
-//! end-to-end". This test drives that scenario:
-//!
-//! 1. Copy the bpmux binary to a temp path so we can mutate it
-//!    without disturbing the parallel test suite (each cargo test
-//!    binary's mtime would also be a fake-trigger if we touched the
-//!    canonical target/debug/bpmux).
-//! 2. Spawn the copy as a subprocess pointing at an isolated
-//!    sessions-base + a free port.
-//! 3. Wait for the server to start (probe /healthz).
-//! 4. Touch the copy to change its mtime.
-//! 5. Wait for the subprocess to exit. Assert the exit code is
-//!    `RESTART_EXIT_CODE` (200) — the watcher saw the mtime change,
-//!    fired the restart-signal, the server shut down gracefully,
-//!    and main() exited via the signal-fired branch.
-//!
-//! State preservation (falsifier-d) is verified indirectly: bpmux's
-//! session-dir + lessons + bookmarks + briefings + outbox are
-//! disk-persisted and not touched by this test. A new spawn would
-//! see the same on-disk state. Auto-reconnect (falsifier-c) is
-//! sister-class #130; out of scope for this test.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use std::path::PathBuf;
@@ -130,19 +106,8 @@ fn binary_change_triggers_graceful_restart_with_exit_code() {
     let marker_payload = b"falsifier-d: this content must survive the restart-cycle";
     std::fs::write(&marker, marker_payload).expect("write marker");
 
-    // Sleep beyond filesystem mtime granularity (1s on most posix
-    // FS; APFS sub-millisecond) so the touch produces a different
-    // mtime that the watcher will observe.
     std::thread::sleep(Duration::from_millis(1100));
 
-    // Linux blocks `write()` against a running executable with errno
-    // ETXTBSY (kind ExecutableFileBusy) — text-file-busy lock — but
-    // `rename()` over the same path is allowed because it swaps the
-    // inode while the running process keeps its old inode mapped.
-    // Write the new content to a sibling temp file + rename over the
-    // path. Cross-platform: macOS doesn't enforce the lock so direct
-    // write also works there, but rename is portable + matches the
-    // way real binary swaps work in production (cargo build → mv).
     let mut bytes = std::fs::read(&copy).expect("read binary");
     bytes.push(0);
     let temp_path = copy.with_extension("new");
@@ -155,9 +120,6 @@ fn binary_change_triggers_graceful_restart_with_exit_code() {
     std::fs::set_permissions(&temp_path, perms).expect("set exec bit on temp binary");
     std::fs::rename(&temp_path, &copy).expect("rename new binary over running path");
 
-    // Wait for the subprocess to exit. The watcher polls every 1s
-    // (BPMUX_BINARY_WATCH_INTERVAL_SECS=1); allow a generous window
-    // for the graceful-shutdown cascade.
     let deadline = Instant::now() + Duration::from_secs(15);
     let mut exit_status = None;
     while Instant::now() < deadline {

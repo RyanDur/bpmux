@@ -1,10 +1,3 @@
-//! Agent-side E2E test for `dev_in_flight` MCP tool (#476 Phase 1
-//! backfill — read archetype, boolean-aggregation variant). Uses the
-//! existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — dev_in_flight applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

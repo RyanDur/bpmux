@@ -1,8 +1,3 @@
-//! #472: when a WS peer auto-identifies as `agent-XXXX` then renames
-//! to a named role, the prior auto-identity must NOT remain in the
-//! team-roster. Reproducer for the orphan-agent-XXXX-after-rename
-//! sidebar Bug.
-
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use crate::harness;

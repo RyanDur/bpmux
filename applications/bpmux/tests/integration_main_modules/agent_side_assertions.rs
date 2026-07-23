@@ -1,11 +1,3 @@
-//! Agent-side assertion tests for story #199.
-//!
-//! These verify what an MCP agent RECEIVES through the bridge's tool
-//! responses — closing the two-audience testing gap. The existing
-//! harness supports human-side assertions (screen capture via
-//! `TestBpmux`); these tests prove the symmetric agent-side path
-//! works via `TestBridge::call_tool`.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;
@@ -131,12 +123,6 @@ fn deliver_story_signal_routes_desk_check_to_designer_not_dev() {
         let designer_sub = designer.subscribe("addressed_to_me").await;
         let dev_sub = dev.subscribe("addressed_to_me").await;
 
-        // deliver_story's API returns Err only on signal-send failure
-        // (load-bearing). gh label edits are reported in the Ok
-        // status string, so the test asserts that signals succeeded
-        // (Ok) without masking the gh outcome. This removes the
-        // earlier `let _ =` variance tolerance — the test now takes
-        // one execution path regardless of whether gh is available.
         let status = dev
             .call_tool(
                 "deliver_story",

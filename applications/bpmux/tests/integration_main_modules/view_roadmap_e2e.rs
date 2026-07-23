@@ -1,13 +1,3 @@
-//! Agent-side E2E test for `view_roadmap` MCP tool (#476 Phase 1
-//! backfill — read archetype, file-content variant). Uses the
-//! existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — view_roadmap applicability =
-//! {agent: yes (returns content), human: yes (TUI overlay opens via
-//! marker), external: no}. This test covers ONLY agent-side; the TUI
-//! marker fires as a side effect but the agent-readable content is
-//! the assertion target.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;
@@ -34,7 +24,7 @@ fn view_roadmap_returns_content_string() {
             .map(String::from)
             .unwrap_or_else(|| result.to_string());
         assert!(
-            !text.trim().is_empty(),
+            text.contains("NOW") || text.contains("NEXT") || text.contains("outcome"),
             "view_roadmap returns non-empty content (or honest-error string); got `{text}`"
         );
 

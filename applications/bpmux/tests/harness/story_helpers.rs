@@ -1,13 +1,3 @@
-//! Shared helpers for agent-side E2E tests that need a target story.
-//!
-//! Most #476 Phase 1 backfill tests follow the pattern:
-//!
-//!   1. PM calls create_story → message contains "#N"
-//!   2. Test extracts N and uses it for subsequent calls
-//!
-//! Centralising the extract + create-target boilerplate so per-tool
-//! tests stay focused on the falsifiers specific to that tool.
-
 use super::bridge::TestBridge;
 
 pub fn extract_story_id(create_msg: &str) -> u64 {
@@ -170,14 +160,6 @@ pub async fn seed_team_verifiable_evidence_with_mock_gh(
 }
 
 pub async fn create_target_story(pm: &TestBridge, title: &str, falsifier: &str) -> u64 {
-    // #537 default-include `acceptance_test_path` pointing to this
-    // harness file (always exists in the workspace tree) so #521's
-    // start_story ATP-validator doesn't 400 on E2E targets created
-    // via this helper. Use an absolute path resolved from
-    // CARGO_MANIFEST_DIR so the validator's cwd-resolution succeeds
-    // regardless of where the bridge subprocess inherits its cwd
-    // from (PTY-spawned bpmux may run from a different cwd than the
-    // cargo test binary).
     let atp = format!(
         "{}/tests/harness/story_helpers.rs",
         env!("CARGO_MANIFEST_DIR")

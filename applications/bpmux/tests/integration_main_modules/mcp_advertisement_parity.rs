@@ -1,13 +1,3 @@
-//! Parity test for #531: every tool dispatched by `BridgeServer::call_tool`
-//! must also be advertised by `list_tools`, and vice-versa.
-//!
-//! #530 shipped `edit_story`'s handler + dispatch arm + RPC route but
-//! never registered it in the MCP advertisement layer — claude-code's
-//! MCP client never saw the tool. PM/dev/designer all blocked despite
-//! a fully-functional handler. This test catches the gap structurally
-//! at unit-test time: future tool additions that miss either side of
-//! the registration cascade fail here before delivery.
-
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use std::collections::HashSet;

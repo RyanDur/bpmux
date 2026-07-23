@@ -1,13 +1,3 @@
-//! Agent-side E2E test for `list_ready` MCP tool (#476 Phase 1
-//! backfill — read archetype, state-filtered list variant). Uses
-//! the existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — list_ready applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-//!
-//! Returns array of stories in Ready state with priority ordering
-//! applied. Empty array for empty/no-Ready board.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

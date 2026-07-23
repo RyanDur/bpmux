@@ -1,13 +1,3 @@
-//! Agent-side E2E test for `set_name` MCP tool (#476 Phase 1
-//! backfill — bridge-state-mutation variant). Uses the existing
-//! `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — set_name applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-//!
-//! Mutates the bridge's local name + broadcasts a `rename`
-//! WebSocket frame so other peers see the new identity.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

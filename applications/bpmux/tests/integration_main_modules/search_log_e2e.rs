@@ -1,18 +1,3 @@
-//! Agent-side E2E test for `search_log` MCP tool (#476 Phase 1
-//! backfill — read archetype, search-results variant). Uses the
-//! existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — search_log applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-//!
-//! Coverage was previously deferred per #483 — the handler parsed
-//! the response shape as `Vec<Value>` but `/api/search` returns
-//! `{"messages": [...], "stories": [...], "comments": [...]}`. The
-//! mismatch made every non-empty search return an error to the
-//! caller (the body cloned into Err); empty boards papered over
-//! the bug because the parse-failure didn't fire. Fixed in the
-//! same commit that adds this test (debt-at-sight pairing).
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

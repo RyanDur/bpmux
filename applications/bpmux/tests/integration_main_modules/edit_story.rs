@@ -1,11 +1,3 @@
-//! MCP `edit_story` cascade test for #530.
-//!
-//! Stands up a real `axum::serve` against the production
-//! `/api/rpc/edit_story` route, then drives a body-edit through
-//! `reqwest` and asserts the canonical store + InMemoryAdapter both
-//! observe the new body. Closes the gh-bypass class today's session
-//! repeatedly hit on ATP-corrections.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use std::sync::Arc;

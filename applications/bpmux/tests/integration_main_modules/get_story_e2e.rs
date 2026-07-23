@@ -1,12 +1,3 @@
-//! Agent-side E2E test for `get_story` MCP tool (#476 Phase 1
-//! backfill — read archetype, single-story-detail variant). Uses
-//! the existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — get_story applicability =
-//! {agent: yes, human: yes (drill-in surface in Electron),
-//! external: no}. This test covers ONLY agent-side; human-side
-//! follows per applicable-class backfill.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

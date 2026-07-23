@@ -1,10 +1,3 @@
-//! Agent-side E2E test for `fail_desk_check` MCP tool (#476 Phase 1
-//! backfill — gate-fire archetype, designer-only). Uses the existing
-//! `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — fail_desk_check applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;
@@ -160,9 +153,6 @@ fn fail_desk_check_view_board_reflects_in_progress_via_fixture_seed() {
             .as_str()
             .map(String::from)
             .unwrap_or_else(|| story.to_string());
-        // #1146 slice 1: fail_desk_check transitions DeskCheck → InProgress
-        // (back-edge); rework-context lives in transition history (gate-
-        // comment log), not a "needs fixes" label.
         assert!(
             story_text.contains("in progress"),
             "get_story reflects in-progress label for seeded story #400 post-fail_desk_check; got:\n{story_text}"

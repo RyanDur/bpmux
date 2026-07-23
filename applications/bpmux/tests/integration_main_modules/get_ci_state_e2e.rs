@@ -1,15 +1,3 @@
-//! Agent-side E2E test for `get_ci_state` MCP tool (#476 Phase 1
-//! backfill — bridge-state-read archetype, optional-API variant).
-//! Uses the existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — get_ci_state applicability =
-//! {agent: yes, human: no, external: no}. Single-class agent-only.
-//!
-//! Bridge constructs GitHubApi only when GH env-vars are set; without
-//! them, the API is None and `get_ci_state` returns the empty
-//! report shape (no error). Tests run without GH env so this exercises
-//! the empty-state path.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;

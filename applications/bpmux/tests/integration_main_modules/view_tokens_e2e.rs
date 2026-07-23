@@ -1,13 +1,3 @@
-//! Agent-side E2E test for `view_tokens` MCP tool (#476 Phase 1
-//! backfill — read archetype, marker-only variant). Uses the
-//! existing `tests/harness/bridge.rs` substrate.
-//!
-//! Per the 3-class framing — view_tokens applicability =
-//! {agent: yes (returns confirmation string + fires marker), human:
-//! yes (TUI overlay opens), external: no}. This test covers ONLY
-//! agent-side; the TUI-side marker behavior is verified by other
-//! capture_screen-based human-side tests.
-
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use crate::harness;
