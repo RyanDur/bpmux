@@ -62,18 +62,10 @@ const Metrics = ({ apiBase, authToken, onClose, open }: Props): React.JSX.Elemen
 
   useEffect(() => {
     if (!open || !apiBase) return
-    const controller = new AbortController()
-    http
-      .get<VelocityPayload>({ apiBase, authToken }, '/api/metrics', controller.signal)
-      .onSuccess((json) => {
-        if (controller.signal.aborted) return
-        setData(json)
-      })
-      .onFailure((err) => {
-        if (controller.signal.aborted) return
-        setFetchError(describeHttpError(err))
-      })
-    return () => controller.abort()
+    return http
+      .get<VelocityPayload>({ apiBase, authToken }, '/api/metrics')
+      .onSuccess(setData)
+      .onFailure((err) => setFetchError(describeHttpError(err))).cancel
   }, [open, apiBase, authToken])
 
   return (
