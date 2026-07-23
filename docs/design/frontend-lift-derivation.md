@@ -157,3 +157,19 @@ registry — its first green release. bpmux bumped to ^5.2.0 and
 deleted lib/tryCatch.ts: the renderer's lib/ directory no longer
 exists. bpmux CI authenticates to the registry via setup-node
 registry-url + the job's GITHUB_TOKEN with packages:read.
+
+**Architecture signals (2026-07-23, Ryan's ask: "signals that help
+you do the right thing").** dependency-cruiser guards the lifted
+shape as executable rules: no-circular; transport-is-a-door (no
+feature/state reaches, with the stateSyncDecoders/types board-mirror
+debt named as the sole exception — its fix is codegen);
+renderer/main/preload stay in their processes; production never
+imports tests. Pinned by a substrate test in the eslint-fixture idiom
+(the cycle fixture proves no-circular fires; a second pin proves the
+live tree holds zero violations). Runs in pre-push wave 1 and CI.
+The Rust side needs no cycle rule — cargo forbids circular crate
+deps structurally. Candidate signals parked with Ryan: knip (dead
+exports — would have caught the orphan asyncFailure re-export),
+cargo-machete (unused crate deps), feature-isolation rules (today
+chat/board/sidebar legitimately cross-import; outlawing needs an
+allowed-edges ruling).

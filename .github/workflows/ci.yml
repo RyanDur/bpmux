@@ -79,6 +79,9 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm ci
+      - name: Dependency rules
+        working-directory: applications/electron
+        run: npm run depcruise
       - name: ESLint (staged files; baseline tolerated until Epic #1477 sub-slices retire)
         working-directory: ${{ github.workspace }}
         run: |
