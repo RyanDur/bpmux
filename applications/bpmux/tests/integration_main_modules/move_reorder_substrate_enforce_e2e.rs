@@ -8,7 +8,7 @@ use harness::story_helpers::{create_target_story, ensure_current_iteration};
 use std::time::Duration;
 
 #[test]
-fn dev_firing_reorder_returns_tool_retired_post_1403() {
+fn dev_firing_reorder_returns_tool_retired_post() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -58,7 +58,7 @@ fn dev_firing_reorder_returns_tool_retired_post_1403() {
 }
 
 #[test]
-fn designer_firing_reorder_returns_tool_retired_post_1403() {
+fn designer_firing_reorder_returns_tool_retired_post() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -100,7 +100,7 @@ fn designer_firing_reorder_returns_tool_retired_post_1403() {
 }
 
 #[test]
-fn dev_firing_move_with_position_returns_structured_409() {
+fn dev_firing_move_with_position_returns_structured() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {

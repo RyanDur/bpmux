@@ -8,7 +8,7 @@ use harness::story_helpers::create_target_story;
 use std::time::Duration;
 
 #[test]
-fn pm_firing_start_story_returns_structured_409_with_workflow_role_not_allowed_kind() {
+fn pm_firing_start_story_returns_structured_with_workflow_role_not_allowed_kind() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -56,7 +56,7 @@ fn pm_firing_start_story_returns_structured_409_with_workflow_role_not_allowed_k
 }
 
 #[test]
-fn designer_firing_start_story_returns_structured_409() {
+fn designer_firing_start_story_returns_structured() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {

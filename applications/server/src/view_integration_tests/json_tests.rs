@@ -63,7 +63,7 @@ fn story_to_board_json_emits_renderer_wire_format_field_list() {
 }
 
 #[test]
-fn story_to_board_json_acceptor_null_when_none_1551() {
+fn story_to_board_json_acceptor_null_when_none() {
     let s = sample_story(Work::Acceptance, StoryKind::Feature);
     let json = story_to_board_json(&GhLabelCodec, &s, s.state.as_str());
     assert!(
@@ -74,7 +74,7 @@ fn story_to_board_json_acceptor_null_when_none_1551() {
 }
 
 #[test]
-fn story_to_board_json_acceptor_emits_class_string_1551() {
+fn story_to_board_json_acceptor_emits_class_string() {
     let mut s = sample_story(Work::Acceptance, StoryKind::Feature);
     s.acceptor = Some(product_management::story::Acceptor::Dev);
     let json = story_to_board_json(&GhLabelCodec, &s, s.state.as_str());

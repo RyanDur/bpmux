@@ -66,7 +66,7 @@ fn dev_firing_pass_desk_check_returns_workflow_role_not_allowed() {
 }
 
 #[test]
-fn designer_firing_pass_desk_check_without_broadcast_returns_structured_409() {
+fn designer_firing_pass_desk_check_without_broadcast_returns_structured() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {

@@ -8,7 +8,7 @@ use harness::story_helpers::{create_target_story, seed_team_verifiable_evidence}
 use std::time::Duration;
 
 #[test]
-fn dev_firing_accept_returns_structured_409_with_workflow_role_not_allowed_kind() {
+fn dev_firing_accept_returns_structured_with_workflow_role_not_allowed_kind() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -160,7 +160,7 @@ fn dev_accept_story_succeeds_on_awaiting_dev_chore_with_designer_evidence() {
 }
 
 #[test]
-fn pm_fires_team_verifiable_without_designer_verdict_returns_structured_409() {
+fn pm_fires_team_verifiable_without_designer_verdict_returns_structured() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -224,7 +224,7 @@ fn pm_fires_team_verifiable_without_designer_verdict_returns_structured_409() {
 }
 
 #[test]
-fn pm_fires_team_verifiable_without_dev_verdict_returns_structured_409() {
+fn pm_fires_team_verifiable_without_dev_verdict_returns_structured() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {

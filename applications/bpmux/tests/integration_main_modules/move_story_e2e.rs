@@ -73,7 +73,7 @@ fn move_story_happy_path_returns_message_naming_target_state() {
 }
 
 #[test]
-fn move_story_rejects_blank_rationale_per_falsifier_b() {
+fn move_story_rejects_blank_rationale() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -110,7 +110,7 @@ fn move_story_rejects_blank_rationale_per_falsifier_b() {
 }
 
 #[test]
-fn move_story_rejects_zero_position_per_falsifier_d() {
+fn move_story_rejects_zero_position() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -234,7 +234,7 @@ fn move_story_dev_caller_with_position_in_ready_rejected_per_pm_lane() {
 /// successful tool return + non-error message is operational evidence
 /// the recovery cascade works.
 #[test]
-fn move_story_recovers_closed_story_back_to_ready_per_falsifier_c() {
+fn move_story_recovers_closed_story_back_to_ready() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -285,7 +285,7 @@ fn move_story_recovers_closed_story_back_to_ready_per_falsifier_c() {
 }
 
 #[test]
-fn move_story_dev_bare_column_move_is_pm_rejected_1548() {
+fn move_story_dev_bare_column_move_is_pm_rejected() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -330,7 +330,7 @@ fn move_story_dev_bare_column_move_is_pm_rejected_1548() {
 /// view_comments-readback cascade so the operator-visibility
 /// promise lands.
 #[test]
-fn move_story_audit_comment_surfaces_via_view_comments_per_falsifier_f() {
+fn move_story_audit_comment_surfaces_via_view_comments() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {

@@ -8,7 +8,7 @@ use harness::story_helpers::create_target_story;
 use std::time::Duration;
 
 #[test]
-fn dev_firing_fail_desk_check_returns_structured_409_with_workflow_role_not_allowed_kind() {
+fn dev_firing_fail_desk_check_returns_structured_with_workflow_role_not_allowed_kind() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -57,8 +57,7 @@ fn dev_firing_fail_desk_check_returns_structured_409_with_workflow_role_not_allo
 }
 
 #[test]
-fn designer_firing_fail_desk_check_with_empty_reason_returns_structured_409_falsifier_cite_missing()
-{
+fn designer_firing_fail_desk_check_with_empty_reason_returns_structured_falsifier_cite_missing() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -103,7 +102,7 @@ fn designer_firing_fail_desk_check_with_empty_reason_returns_structured_409_fals
 }
 
 #[test]
-fn designer_firing_fail_desk_check_with_generic_reason_returns_structured_409() {
+fn designer_firing_fail_desk_check_with_generic_reason_returns_structured() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {

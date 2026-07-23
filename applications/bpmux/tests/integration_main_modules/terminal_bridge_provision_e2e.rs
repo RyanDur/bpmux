@@ -82,7 +82,7 @@ fn provisioned_bridge_config_is_session_pointed_and_the_spawned_config_connects_
 }
 
 #[test]
-fn terminal_spawn_endpoint_with_the_port_extension_returns_a_terminal_id_not_500() {
+fn terminal_spawn_endpoint_with_the_port_extension_returns_a_terminal_id_not() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {

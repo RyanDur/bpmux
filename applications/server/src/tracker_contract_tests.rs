@@ -57,7 +57,7 @@ async fn close_story_issues_patch_with_closed_state() {
 }
 
 #[tokio::test]
-async fn close_story_maps_404_to_error() {
+async fn close_story_maps_to_error() {
     let server = MockServer::start();
     let m = server.mock(|when, then| {
         when.method(Method::PATCH)
@@ -90,7 +90,7 @@ async fn add_label_posts_to_labels_endpoint_with_array_body() {
 }
 
 #[tokio::test]
-async fn remove_label_deletes_and_treats_404_as_idempotent_noop() {
+async fn remove_label_deletes_and_treats_as_idempotent_noop() {
     let server = MockServer::start();
     let m = server.mock(|when, then| {
         when.method(Method::DELETE)
@@ -106,7 +106,7 @@ async fn remove_label_deletes_and_treats_404_as_idempotent_noop() {
 }
 
 #[tokio::test]
-async fn remove_label_succeeds_on_200() {
+async fn remove_label_succeeds_on() {
     let server = MockServer::start();
     let m = server.mock(|when, then| {
         when.method(Method::DELETE)
@@ -201,7 +201,7 @@ async fn get_story_labels_returns_names_from_labels_array() {
 }
 
 #[tokio::test]
-async fn get_story_labels_returns_empty_on_404() {
+async fn get_story_labels_returns_empty_on() {
     let server = MockServer::start();
     let m = server.mock(|when, then| {
         when.method(Method::GET)
@@ -217,7 +217,7 @@ async fn get_story_labels_returns_empty_on_404() {
 }
 
 #[tokio::test]
-async fn get_story_title_returns_title_on_200() {
+async fn get_story_title_returns_title_on() {
     let server = MockServer::start();
     let m = server.mock(|when, then| {
         when.method(Method::GET).path("/repos/acme/bpmux/issues/42");
@@ -467,7 +467,7 @@ async fn get_story_conditional_returns_modified_with_etag_when_no_prior_etag() {
 }
 
 #[tokio::test]
-async fn get_story_conditional_sends_if_none_match_and_returns_not_modified_on_304() {
+async fn get_story_conditional_sends_if_none_match_and_returns_not_modified_on() {
     use integrations::github::tracker::ConditionalIssue;
     let server = MockServer::start();
     let m = server.mock(|when, then| {
@@ -648,7 +648,7 @@ async fn fetch_board_stories_paginates_closed_until_short_page() {
 }
 
 #[tokio::test]
-async fn get_story_conditional_returns_not_found_on_404() {
+async fn get_story_conditional_returns_not_found_on() {
     use integrations::github::tracker::ConditionalIssue;
     let server = MockServer::start();
     let m = server.mock(|when, then| {

@@ -8,7 +8,7 @@ use harness::story_helpers::ensure_current_iteration;
 use std::time::Duration;
 
 #[test]
-fn reorder_story_retired_with_canonical_tool_retired_shape_1403() {
+fn reorder_story_retired_with_canonical_tool_retired_shape() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -49,7 +49,7 @@ fn reorder_story_retired_with_canonical_tool_retired_shape_1403() {
 }
 
 #[test]
-fn move_story_with_same_target_state_preserves_reorder_semantic_1403() {
+fn move_story_with_same_target_state_preserves_reorder_semantic() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {

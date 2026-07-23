@@ -17,6 +17,8 @@ mod accept_story_e2e;
 mod accept_story_substrate_enforce_e2e;
 #[path = "integration_main_modules/acceptance_reject_substrate_enforce_e2e.rs"]
 mod acceptance_reject_substrate_enforce_e2e;
+#[path = "integration_main_modules/activity_read_filter_e2e.rs"]
+mod activity_read_filter_e2e;
 #[path = "integration_main_modules/add_story_to_iteration_e2e.rs"]
 mod add_story_to_iteration_e2e;
 #[path = "integration_main_modules/addressed_to_me_e2e.rs"]
@@ -247,10 +249,8 @@ mod start_story_e2e;
 mod start_story_substrate_enforce_e2e;
 #[path = "integration_main_modules/state_field_rederive.rs"]
 mod state_field_rederive;
-#[path = "integration_main_modules/story59_acceptance.rs"]
-mod story59_acceptance;
-#[path = "integration_main_modules/story87_acceptance.rs"]
-mod story87_acceptance;
+#[path = "integration_main_modules/story_acceptance_flow_e2e.rs"]
+mod story_acceptance_flow_e2e;
 #[path = "integration_main_modules/story_journey_e2e.rs"]
 mod story_journey_e2e;
 #[path = "integration_main_modules/story_state_transition_e2e.rs"]

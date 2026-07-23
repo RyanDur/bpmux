@@ -7,7 +7,7 @@ use harness::pty::TestBpmux;
 use std::time::Duration;
 
 #[test]
-fn set_status_retired_with_canonical_tool_retired_shape_1404() {
+fn set_status_retired_with_canonical_tool_retired_shape() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -41,7 +41,7 @@ fn set_status_retired_with_canonical_tool_retired_shape_1404() {
 }
 
 #[test]
-fn workflow_event_hooks_continue_to_propagate_state_post_retire_1404() {
+fn workflow_event_hooks_continue_to_propagate_state_post_retire() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -69,7 +69,7 @@ fn workflow_event_hooks_continue_to_propagate_state_post_retire_1404() {
 }
 
 #[test]
-fn set_status_retired_regardless_of_status_arg_value_1404() {
+fn set_status_retired_regardless_of_status_arg_value() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {

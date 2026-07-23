@@ -51,7 +51,7 @@ async fn bpmux_create_blocks_a_non_pm_non_owner_for_a_non_chore_via_the_custom_p
 }
 
 #[tokio::test]
-async fn bpmux_create_owner_bypasses_the_custom_pm_lane_guard_via_the_1710_superset() {
+async fn bpmux_create_owner_bypasses_the_custom_pm_lane_guard_via_the_superset() {
     let bpmux = TestBpmux::start();
     bpmux.simulate_secret();
     let out = run_verb(&bpmux, "owner", &create_args()).await;

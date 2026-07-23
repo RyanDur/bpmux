@@ -8,7 +8,7 @@ use harness::story_helpers::create_target_story;
 use std::time::Duration;
 
 #[test]
-fn pm_firing_reject_without_reason_returns_structured_409() {
+fn pm_firing_reject_without_reason_returns_structured() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -41,7 +41,7 @@ fn pm_firing_reject_without_reason_returns_structured_409() {
 }
 
 #[test]
-fn pm_firing_reject_with_empty_reason_returns_structured_409() {
+fn pm_firing_reject_with_empty_reason_returns_structured() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {

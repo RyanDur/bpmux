@@ -4,7 +4,7 @@ use product_management::story::events::{LabelDerivedFields, StoryEvent, StoryEve
 use product_management::story::{Acceptor, StoryId, StoryKind, Tag, Work};
 
 #[test]
-fn acceptor_assigned_lands_typed_without_any_label_projection_1551() {
+fn acceptor_assigned_lands_typed_without_any_label_projection() {
     let store = seeded();
     created(&store, 1, "t", Work::Acceptance);
     apply(

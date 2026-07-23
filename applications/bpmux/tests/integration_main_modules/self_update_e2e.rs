@@ -85,7 +85,7 @@ fn wait_for_healthz(port: u16, deadline: Duration) -> bool {
 }
 
 #[test]
-fn binary_change_triggers_graceful_restart_with_exit_code_200() {
+fn binary_change_triggers_graceful_restart_with_exit_code() {
     let src = debug_bpmux_path();
     if !src.exists() {
         eprintln!("skip: target/debug/bpmux not present (cargo build --bin bpmux first)");

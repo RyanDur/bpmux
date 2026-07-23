@@ -7,7 +7,7 @@ use harness::pty::TestBpmux;
 use std::time::Duration;
 
 #[test]
-fn set_status_returns_tool_retired_post_1404() {
+fn set_status_returns_tool_retired_post() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {

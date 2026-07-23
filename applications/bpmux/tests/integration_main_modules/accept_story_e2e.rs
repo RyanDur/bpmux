@@ -181,7 +181,7 @@ fn accept_story_view_board_reflects_accepted_via_mocked_seed() {
 }
 
 #[test]
-fn accept_role_survives_ingest_poll_after_acceptor_label_seed_1550() {
+fn accept_role_survives_ingest_poll_after_acceptor_label_seed() {
     use harness::mock_gh::{issue_json, mock_story_full};
     use httpmock::MockServer;
 

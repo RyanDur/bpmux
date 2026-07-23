@@ -80,7 +80,7 @@ async fn bpmux_pass_succeeds_for_the_designer_actor_with_fresh_evidence_and_gree
 }
 
 #[tokio::test]
-async fn bpmux_pass_lets_the_owner_clear_the_designer_only_role_guard_via_the_1548_superset() {
+async fn bpmux_pass_lets_the_owner_clear_the_designer_only_role_guard_via_the_superset() {
     let bpmux = TestBpmux::start();
     let pm = TestBridge::connect(&bpmux, "pm").await;
     let id = create_target_story(

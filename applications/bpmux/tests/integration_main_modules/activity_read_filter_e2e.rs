@@ -15,7 +15,7 @@ use std::time::Duration;
 /// WHEN read_messages is called (default: chat_only=true)
 /// THEN only chat messages are returned
 #[test]
-fn ac1_default_read_excludes_activity() {
+fn default_read_excludes_activity() {
     let bpmux = TestBpmux::start();
     let port = bpmux.port();
 
@@ -63,7 +63,7 @@ fn ac1_default_read_excludes_activity() {
 /// WHEN read_messages is called with chat_only=false
 /// THEN all messages including activity are returned
 #[test]
-fn ac2_unfiltered_log_accessible() {
+fn unfiltered_log_accessible() {
     let bpmux = TestBpmux::start();
     let port = bpmux.port();
 

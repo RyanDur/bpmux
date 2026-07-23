@@ -434,7 +434,7 @@ async fn get_ci_does_not_hit_github_when_state_has_a_cached_snapshot() {
 }
 
 #[tokio::test]
-async fn post_ci_rerun_returns_503_when_tracker_missing() {
+async fn post_ci_rerun_returns_when_tracker_missing() {
     let none_tracker: TrackerHandle = None;
     let router = axum::Router::new()
         .route(
@@ -472,7 +472,7 @@ async fn post_ci_rerun_returns_success_when_tracker_post_succeeds() {
 }
 
 #[tokio::test]
-async fn post_ci_rerun_returns_502_when_github_upstream_errors() {
+async fn post_ci_rerun_returns_when_github_upstream_errors() {
     let server = MockServer::start();
     let m = server.mock(|when, then| {
         when.method(Method::POST)

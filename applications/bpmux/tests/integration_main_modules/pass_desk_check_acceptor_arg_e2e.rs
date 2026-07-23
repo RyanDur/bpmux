@@ -8,7 +8,7 @@ use harness::story_helpers::create_target_story;
 use std::time::Duration;
 
 #[test]
-fn pass_desk_check_missing_acceptor_returns_structured_409() {
+fn pass_desk_check_missing_acceptor_returns_structured() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -58,7 +58,7 @@ fn pass_desk_check_missing_acceptor_returns_structured_409() {
 }
 
 #[test]
-fn pass_desk_check_invalid_acceptor_returns_structured_409() {
+fn pass_desk_check_invalid_acceptor_returns_structured() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {

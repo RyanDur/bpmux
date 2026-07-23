@@ -56,7 +56,7 @@ fn create_story_with_substantive_atp_succeeds() {
 }
 
 #[test]
-fn create_story_with_missing_atp_returns_structured_409() {
+fn create_story_with_missing_atp_returns_structured() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -90,7 +90,7 @@ fn create_story_with_missing_atp_returns_structured_409() {
 }
 
 #[test]
-fn create_story_with_stub_atp_returns_structured_409() {
+fn create_story_with_stub_atp_returns_structured() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
@@ -156,7 +156,7 @@ fn create_chore_story_without_atp_succeeds() {
 }
 
 #[test]
-fn edit_story_changing_atp_to_missing_path_returns_structured_409() {
+fn edit_story_changing_atp_to_missing_path_returns_structured() {
     let bpmux = TestBpmux::start();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
