@@ -58,8 +58,8 @@ fn get_ci_state_returns_well_formed_report_without_gh_env() {
             other => panic!("get_ci_state returned unexpected shape: {other:?}"),
         };
         assert!(
-            parsed.is_object() || parsed.is_array(),
-            "get_ci_state returns structured JSON; got {parsed:?}"
+            parsed.get("conclusion").is_some_and(|v| v.is_string()),
+            "the ci state report carries the conclusion the titlebar glyph renders; got {parsed:?}"
         );
 
         dev.close().await;

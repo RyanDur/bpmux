@@ -13,7 +13,6 @@ import {
 import { BoardPage } from './pages/boardPage'
 import { ChatPage } from './pages/chatPage'
 import { DrillInPage } from './pages/drillInPage'
-import { TitlebarPage } from './pages/titlebarPage'
 import { type Page, _electron as electron, expect, test } from '@playwright/test'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
@@ -165,8 +164,6 @@ test.describe('desk-check #350 motion substrate', () => {
   })
 })
 
-const EXIT_EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
-
 const seedReadyMember = async (rpc: RpcFn): Promise<void> => {
   const createResp = await rpc(
     'create_story',
@@ -316,43 +313,7 @@ test.describe('desk-check #351 high-signal transitions', () => {
       await mockGh.close()
     }
   })
-
-  test('capture UI state — theme toggle + board toggle screenshots (motion not frame-capturable)', async () => {
-    const { app, win, mockGh, rpc } = await launchWithMockGh()
-    try {
-      await expect(new ChatPage(win).region()).toBeVisible()
-      await seedReadyMember(rpc)
-      await win.reload()
-      await waitForBoardLoaded(win)
-      await expect(new ChatPage(win).appRoot()).toBeVisible()
-      await win.waitForTimeout(300)
-      await win.screenshot({
-        path: join(EXIT_EVIDENCE_DIR, '60-app-default-dark.png')
-      })
-
-      await new TitlebarPage(win).themeToggle().click()
-      await win.waitForTimeout(300)
-      await win.screenshot({
-        path: join(EXIT_EVIDENCE_DIR, '61-app-light-after-toggle.png')
-      })
-
-      await new TitlebarPage(win).themeToggle().click()
-      await win.waitForTimeout(200)
-
-      await new ChatPage(win).appRoot().click()
-      await win.keyboard.press(process.platform === 'darwin' ? 'Meta+p' : 'Control+p')
-      await win.waitForTimeout(300)
-      await win.screenshot({
-        path: join(EXIT_EVIDENCE_DIR, '62-app-board-hidden.png')
-      })
-    } finally {
-      await app.close()
-      await mockGh.close()
-    }
-  })
 })
-
-const CLOSE_EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
 
 const MOCK_MESSAGES = [
   {
@@ -485,17 +446,6 @@ test.describe('desk-check #352 micro-interactions', () => {
     console.log(`  transform: ${rowProps?.transform}`)
     expect(rowProps?.duration).toMatch(/^0s|^0ms/)
 
-    await app.close()
-  })
-
-  test('capture static state for visual regression (motion not frame-capturable)', async () => {
-    const { app } = await launchWithMessages()
-    const win = await app.firstWindow()
-    await expect(new ChatPage(win).region()).toBeVisible()
-    await win.waitForTimeout(500)
-    await win.screenshot({
-      path: join(CLOSE_EVIDENCE_DIR, '70-micro-interactions-static.png')
-    })
     await app.close()
   })
 })

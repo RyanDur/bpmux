@@ -200,18 +200,34 @@ DONE, each through the full gate:
   parse structured_error and assert values.
 - Final cuts: Ctrl+P duplicate and CI-glyph subset deleted.
 
-REMAINING (itemized, not started):
-- Classicist rewrites: useNotifications (sibling vi.mock + ctor
-  counts), useRefetchOnReconnect (sibling vi.mock).
-- Organization: split ws_tests.rs by concern; merge bridge's two
-  signal files; relocate close_story tests out of view_board_basic;
-  move story-labels-endpoint test out of renderer board/; swap the
-  useMessageHistory/Boundary naming; single-file slice_tests wrapper.
-- Smaller e2e journey merges: drill-in read family, owner-acts,
-  metrics overlay, sidebar derivation, compose-and-send, board
-  disclosure, motion-token quartet.
-- e2e thin-hardening: the screenshot/log-only tests in the avatar-
-  grouping and unfurl specs.
-- CSS-class-as-behavior retargeting (RTL-wide, diffuse).
-- The ~250 #NNN comment refs (fall to the comment gate on touch).
-- Integration wiring-thin reads (is_object-grade) strengthening.
+BACKLOG COMPLETED (2026-07-23 morning):
+- Classicist rewrites: useNotifications drives the real emitter,
+  useRefetchOnReconnect dispatches the real store; only the
+  Notification global (an OS boundary) stays stubbed.
+- Organization: delivery predicate split out of ws_tests; the two
+  signal files merged beside their subject; close_story tests have
+  their own home; story-labels endpoint test moved to test-support;
+  useMessageHistory files swapped to match their subjects; the
+  single-file slice_tests wrapper collapsed.
+- Seven more journeys: drill-in reading, owner-acts-on-delivered,
+  metrics overlay, sidebar channels, compose-and-send, board section
+  disclosure, motion substrate (27 files → 7). The merged specs'
+  self-referential ATP paths repointed — the substantive-gate caught
+  them again.
+- Thin-hardening: the evidence-only avatar-grouping spec and the
+  board-mount gesture spec deleted (their behaviors are pinned in
+  RTL, real-backend, and the invalidate spec); the unfurl log-only
+  tests now assert card presence and metadata-less elision; the two
+  capture-only motion tests deleted.
+- Wiring reads: get_ci_state asserts the conclusion key, the token
+  report asserts total_tokens + by_role.
+
+Deliberately kept, with reasons: the sidebar zero-div/span pin (it
+IS the owner's html5-semantic canon, sister to the eslint substrate);
+useScrollGutter's scrollTo assertion (the DOM call is the observable
+boundary in jsdom); the wire-shape golden and boundary-grep fitness
+functions.
+
+Residual, low-value tail: the ~250 #NNN comment refs fall to the
+comment gate on touch; close_iteration's loose-OR refusal match;
+Header CSS-class asserts beside their text equivalents.

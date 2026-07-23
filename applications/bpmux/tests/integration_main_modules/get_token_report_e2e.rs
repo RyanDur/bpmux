@@ -34,8 +34,9 @@ fn get_token_report_returns_well_formed_json() {
             other => panic!("get_token_report returned unexpected shape: {other:?}"),
         };
         assert!(
-            parsed.is_object() || parsed.is_array(),
-            "payload is structured JSON; got {parsed:?}"
+            parsed.get("total_tokens").is_some_and(|v| v.is_number())
+                && parsed.get("by_role").is_some_and(|v| v.is_object()),
+            "the token report carries total_tokens and the per-role breakdown; got {parsed:?}"
         );
 
         dev.close().await;

@@ -5,8 +5,6 @@ import { join } from 'path'
 import { launchIsolatedElectron, waitForMessagesLoaded } from './helpers/launch'
 import { ChatPage } from './pages/chatPage'
 
-const EVIDENCE_DIR = join(__dirname, 'desk-check-evidence')
-
 const MOCK_MESSAGES = [
   {
     from: 'designer:claude-code',
@@ -82,26 +80,13 @@ const launchWithMessages = async (): Promise<{
 }
 
 test.describe('desk-check #343 URL unfurls', () => {
-  test('messages with URLs render unfurl cards below body', async () => {
+  test('a message with a URL renders an unfurl card below its body', async () => {
     const { app } = await launchWithMessages()
     const win = await app.firstWindow()
     const chat = new ChatPage(win)
     await expect(chat.messageRows().first()).toBeVisible()
-    await win.waitForTimeout(1500)
 
-    // Enumerate unfurl-related DOM.
-    const unfurlElts = await win.evaluate(() =>
-      Array.from(document.querySelectorAll('.unfurl-card, .unfurl-cards')).map((el) => ({
-        className: el.className,
-        text: (el.textContent ?? '').trim().slice(0, 100)
-      }))
-    )
-    console.log(`#343 unfurl elements found: ${unfurlElts.length}`)
-    unfurlElts.forEach((e, i) => console.log(`  [${i}] ${JSON.stringify(e)}`))
-
-    await chat.region().screenshot({
-      path: join(EVIDENCE_DIR, 'b0-unfurl-cards-in-chat.png')
-    })
+    await expect(win.locator('.unfurl-card').first()).toBeVisible({ timeout: 10_000 })
     await app.close()
   })
 
@@ -120,22 +105,14 @@ test.describe('desk-check #343 URL unfurls', () => {
     await app.close()
   })
 
-  test('multiple URLs in one message render multiple cards (AC4)', async () => {
+  test('a two-URL message renders a card for the URL with metadata and elides the metadata-less one', async () => {
     const { app } = await launchWithMessages()
     const win = await app.firstWindow()
     const chat = new ChatPage(win)
     await expect(chat.messageRows().first()).toBeVisible()
-    await win.waitForTimeout(1500)
 
-    // dev message has 2 URLs.
     const devRow = chat.messageRow('Two URLs here')
-    const devCards = await devRow.locator('.unfurl-card').count()
-    console.log(`#343 AC4 dev message (2 URLs) unfurl card count: ${devCards}`)
-    // One URL has no metadata (AC5 elides). Expect 1 card rendered.
-    // If both rendered with one empty, that's a different spec interpretation.
-    await devRow.screenshot({
-      path: join(EVIDENCE_DIR, 'b1-multiple-urls-cards.png')
-    })
+    await expect(devRow.locator('.unfurl-card')).toHaveCount(1, { timeout: 10_000 })
 
     await app.close()
   })
