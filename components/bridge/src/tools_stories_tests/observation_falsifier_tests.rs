@@ -468,7 +468,7 @@ async fn label_story_rejects_invalid_operation_in_migrated_path() {
 }
 
 #[tokio::test]
-async fn label_story_add_propagates_tracker_error_without_broadcast() {
+async fn label_story_add_propagates_tracker_error() {
     let args = serde_json::json!({
         "id": 42,
         "label": "ready",
@@ -491,7 +491,7 @@ async fn label_story_add_propagates_tracker_error_without_broadcast() {
 }
 
 #[tokio::test]
-async fn label_story_remove_propagates_tracker_error_without_broadcast() {
+async fn label_story_remove_propagates_tracker_error() {
     let args = serde_json::json!({
         "id": 42,
         "label": "ready",

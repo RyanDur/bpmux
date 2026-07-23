@@ -71,3 +71,16 @@ fn positional_substrate_tools_remain_advertised() {
         );
     }
 }
+
+#[test]
+fn the_advertised_send_message_description_warns_against_name_prefixing() {
+    let warning = build_advertised_tools()
+        .into_iter()
+        .find(|tool| tool.name == "send_message")
+        .and_then(|tool| tool.description.map(|d| d.to_string()))
+        .unwrap_or_default();
+    assert!(
+        warning.contains("Do not prefix your name"),
+        "the REAL advertised send_message tool carries the self-prefix warning; got: {warning}"
+    );
+}

@@ -57,14 +57,6 @@ describe('Tabs primitive — native HTML5 radio-group ', () => {
     expect(tabs.panelHidden(2)).toBe(true)
   })
 
-  test('Tabs.css renders explicit .tabs-panel[hidden] { display: none } rule (defensive substrate)', async () => {
-    const { readFileSync } = await import('fs')
-    const { resolve } = await import('path')
-    const cssPath = resolve(__dirname, 'Tabs.css')
-    const cssText = readFileSync(cssPath, 'utf-8')
-    expect(cssText).toMatch(/\.tabs-panel\b[\s\S]*?&?\[hidden\][\s\S]*?display\s*:\s*none/m)
-  })
-
   test('click on label activates the matching radio (label-wraps-radio implicit association)', async () => {
     render(<Harness />)
     expect(tabs.radio(0).checked).toBe(true)

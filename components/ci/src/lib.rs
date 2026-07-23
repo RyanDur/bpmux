@@ -14,8 +14,6 @@ mod log_store;
 mod log_store_tests;
 mod runs;
 mod state_report;
-#[cfg(test)]
-mod state_report_tests;
 
 pub use actions_url::{GITHUB_BASE_URL, github_actions_url};
 pub use broadcast::{

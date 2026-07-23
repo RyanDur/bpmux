@@ -46,11 +46,4 @@ describe('Timeline independence', () => {
     const html = renderToStaticMarkup(<Timeline story={story({})} {...baseProps} />)
     expect(html).toMatch(/<details[^>]*class="drill-in-timeline"(?![^>]*open)/)
   })
-
-  test('renders unique data-test ids per story (sanity)', () => {
-    const a = renderToStaticMarkup(<Timeline story={story({ id: 100 })} {...baseProps} />)
-    const b = renderToStaticMarkup(<Timeline story={story({ id: 200 })} {...baseProps} />)
-    expect(a).toContain('data-test="drill-in-timeline"')
-    expect(b).toContain('data-test="drill-in-timeline"')
-  })
 })

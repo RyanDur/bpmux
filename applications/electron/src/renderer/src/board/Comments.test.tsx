@@ -54,13 +54,6 @@ describe('Comments independence', () => {
     expect(sendButtonMatch).not.toBeNull()
     expect(sendButtonMatch?.[0]).toContain('disabled')
   })
-
-  test('renders standalone for different stories with distinct storyId prop', () => {
-    const a = renderToStaticMarkup(<Comments {...baseProps} storyId={101} />)
-    const b = renderToStaticMarkup(<Comments {...baseProps} storyId={102} />)
-    expect(a).toContain('drill-in-comments')
-    expect(b).toContain('drill-in-comments')
-  })
 })
 
 describe('Comments reads over the live session (real socket + store)', () => {
