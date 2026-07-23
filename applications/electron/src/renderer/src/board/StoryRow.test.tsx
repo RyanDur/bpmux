@@ -25,7 +25,7 @@ const baseProps = {
   onSelect: () => {}
 }
 
-describe('#1260 story-row hierarchy + color', () => {
+describe('story-row hierarchy + color', () => {
   test('story-title is the primary visible text and carries data-test="story-title"', () => {
     const s = story({ id: 1258, title: 'close_iteration marker-promote extension' })
     const html = renderToStaticMarkup(<StoryRow story={s} {...baseProps} />)
@@ -49,7 +49,7 @@ describe('#1260 story-row hierarchy + color', () => {
     expect(epicLinkVisible?.[1]).not.toContain('Iteration markers: group icebox stories')
   })
 
-  test('epic-link is a button (clickable affordance) (AC3)', () => {
+  test('epic-link is a button (clickable affordance) ', () => {
     const s = story({ id: 1258, parent_epic: 1189 })
     const html = renderToStaticMarkup(<StoryRow story={s} {...baseProps} />)
     expect(html).toMatch(/<button[^>]*data-test="epic-link"/)

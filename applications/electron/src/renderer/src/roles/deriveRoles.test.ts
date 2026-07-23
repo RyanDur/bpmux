@@ -19,7 +19,7 @@ const msg = (overrides: Partial<ChatMessage>): ChatMessage => ({
   ...overrides
 })
 
-describe('#495 deriveDirectRolesFromRoster — orphan agent-XXXX dedup', () => {
+describe('deriveDirectRolesFromRoster — orphan agent-XXXX dedup', () => {
   test('filters orphan agent when same-tool named entry exists', () => {
     const roster = [
       { identity: 'agent-abcd:claude-code', role: 'agent-abcd' },
@@ -58,7 +58,7 @@ describe('#495 deriveDirectRolesFromRoster — orphan agent-XXXX dedup', () => {
   })
 })
 
-describe('#393 deriveTeamRoles — runtime discovery from message stream (replaces desk-check-393.spec.ts)', () => {
+describe('deriveTeamRoles — runtime discovery from message stream ', () => {
   test('discovers all unique short-names across messages, sorted', () => {
     const messages = [
       msg({ from: 'owner:electron' }),
@@ -68,7 +68,7 @@ describe('#393 deriveTeamRoles — runtime discovery from message stream (replac
     expect(deriveTeamRoles(messages, 'owner:electron')).toEqual(['dev', 'ops', 'owner'])
   })
 
-  test('includes a never-before-seen role (ops) outside the pre-#393 hardcoded list', () => {
+  test('includes a never-before-seen role (ops) outside the pre-hardcoded list', () => {
     const messages = [msg({ from: 'ops:claude-code' })]
     expect(deriveTeamRoles(messages, 'owner:electron')).toContain('ops')
   })

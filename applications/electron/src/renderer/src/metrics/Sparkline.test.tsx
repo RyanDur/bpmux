@@ -8,7 +8,7 @@ afterEach(cleanup)
 const series = (...counts: number[]): WipPoint[] =>
   counts.map((wip_count, i) => ({ date: `2026-06-${10 + i}`, wip_count }))
 
-describe('#1237 WIP-count sparkline', () => {
+describe('WIP-count sparkline', () => {
   test('renders an accessible img with a trend-glance aria-label + a polyline point per data-point', () => {
     render(<Sparkline history={series(1, 2, 3, 2)} />)
     expect(sparkline.svg()).toBeTruthy()
@@ -34,7 +34,7 @@ describe('#1237 WIP-count sparkline', () => {
     expect(table?.querySelectorAll('tbody tr').length).toBe(3)
   })
 
-  test('Scenario 4: a single point renders the "no data yet" placeholder, never a flat-line', () => {
+  test('a single point renders the "no data yet" placeholder, never a flat-line', () => {
     render(<Sparkline history={series(4)} />)
     expect(sparkline.emptyPlaceholder()).toBeTruthy()
     expect(sparkline.svg()).toBeFalsy()

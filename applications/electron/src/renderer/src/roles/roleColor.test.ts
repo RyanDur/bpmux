@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { roleColorFor } from './roleColor'
 
-describe('roleColorFor — dynamic role palette (replaces desk-check-401.spec.ts)', () => {
+describe('roleColorFor — dynamic role palette ', () => {
   test('returns saturated HSL for any role short-name including new ones (e.g. ops)', () => {
     const c = roleColorFor('ops')
     expect(c.color).toMatch(/^hsl\(\d+(?:\.\d+)? 70% 55%\)$/)

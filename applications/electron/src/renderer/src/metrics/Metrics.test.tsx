@@ -8,7 +8,7 @@ const baseProps = {
   onClose: (): void => {}
 }
 
-describe('#1499 Metrics dialog open/close is declarative (no ref)', () => {
+describe('Metrics dialog open/close is declarative (no ref)', () => {
   test('open=true reflects the open attribute on the <dialog> in markup', () => {
     const html = renderToStaticMarkup(<Metrics {...baseProps} open={true} />)
     expect(html).toMatch(/<dialog\b[^>]*\bopen\b/)

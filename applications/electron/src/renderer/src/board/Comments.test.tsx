@@ -23,7 +23,7 @@ afterEach(() => {
   resetStateForTest()
 })
 
-describe('#1355 Comments independence', () => {
+describe('Comments independence', () => {
   test('renders standalone (substrate-axis) — no DrillIn.tsx parent required', () => {
     const html = renderToStaticMarkup(<Comments {...baseProps} />)
     expect(html).toMatch(/<section[^>]*class="drill-in-comments"/)

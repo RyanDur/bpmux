@@ -35,7 +35,7 @@ const enteringRows = (root: HTMLElement): string[] =>
     (el) => el.textContent ?? ''
   )
 
-describe('#1487 message rise-from-below — gated to genuinely-new arrivals', () => {
+describe('message rise-from-below — gated to genuinely-new arrivals', () => {
   afterEach(cleanup)
 
   test('a freshly-loaded channel marks NO row entering (no cascade on channel-open)', () => {
@@ -89,7 +89,7 @@ describe('#1487 message rise-from-below — gated to genuinely-new arrivals', ()
   })
 })
 
-describe('#1750 chat presence reads the single /api/presence roster source — not the legacy activity-message keyword-scan', () => {
+describe('chat presence reads the single /api/presence roster source — not the legacy activity-message keyword-scan', () => {
   afterEach(() => {
     cleanup()
     resetStateForTest()

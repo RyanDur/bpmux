@@ -4,7 +4,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderApp, type RenderAppResult } from '../../../../test/fixtures/renderApp'
 import { resetStories, seedStories } from '../../../../test/fixtures/seedMessages'
 
-describe('#1339 step 2g-b — iteration-itself drag persists via iteration-order label mutation', () => {
+describe('iteration-itself drag persists via iteration-order label mutation', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

@@ -64,7 +64,7 @@ afterEach(async () => {
   vi.unstubAllGlobals()
 })
 
-describe('#1537 connection — lifecycle as a module singleton', () => {
+describe('connection — lifecycle as a module singleton', () => {
   test('startConnection opens a socket, surfaces connecting then connected, and identifies on open', async () => {
     startConnection({ url: server.url })
     expect(getStateSnapshot().status).toBe('connecting')
@@ -142,7 +142,7 @@ describe('#1537 connection — lifecycle as a module singleton', () => {
   })
 })
 
-describe('#1537 connection — message dedup + live-append subscription', () => {
+describe('connection — message dedup + live-append subscription', () => {
   test('a chat message lands in messages; an identical duplicate (same ts|from|text) is deduped', async () => {
     const conn = await connect()
     conn.send(serverMessage())
@@ -162,7 +162,7 @@ describe('#1537 connection — message dedup + live-append subscription', () => 
   })
 })
 
-describe('#1537 connection — history hydrate-on-identify + merge (no live-notify on history)', () => {
+describe('connection — history hydrate-on-identify + merge (no live-notify on history)', () => {
   test('history hydrates over WS on identify and merges; a duplicate start does NOT re-hydrate', async () => {
     const conn = await connect('http://api', 'tok')
     await serveHistory(conn, [{ from: 'pm', text: 'old', ts: '2026-05-23T00:00:00.000Z' }])
@@ -186,7 +186,7 @@ describe('#1537 connection — history hydrate-on-identify + merge (no live-noti
   })
 })
 
-describe('#1537 connection — reconnect with backoff', () => {
+describe('connection — reconnect with backoff', () => {
   test('on close, status goes disconnected and a reconnect opens a second socket', async () => {
     const conn = await connect()
     conn.drop()
@@ -219,7 +219,7 @@ describe('#1537 connection — reconnect with backoff', () => {
   })
 })
 
-describe('#1319 connection — reconnect re-hydrates history to recover the disconnect gap', () => {
+describe('connection — reconnect re-hydrates history to recover the disconnect gap', () => {
   test('on reconnect, history re-hydrates so a message sent during the gap appears after recovery', async () => {
     const conn = await connect('http://api', 'tok')
     await serveHistory(conn, [{ from: 'pm', text: 'pre-gap', ts: '2026-05-28T00:00:00.000Z' }])
@@ -264,7 +264,7 @@ describe('#1319 connection — reconnect re-hydrates history to recover the disc
   }, 10000)
 })
 
-describe('#1618 connection — board-refresh via the board_invalidated state-delta', () => {
+describe('connection — board-refresh via the board_invalidated state-delta', () => {
   test('a board_invalidated state-delta bumps boardInvalidateTick (the structured board-refresh trigger)', async () => {
     const conn = await connect()
     expect(getStateSnapshot().boardInvalidateTick).toBe(0)

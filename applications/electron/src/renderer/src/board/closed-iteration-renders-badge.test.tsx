@@ -4,7 +4,7 @@ import { renderApp, type RenderAppResult } from '../../../../test/fixtures/rende
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { iterationBoard } from './iterationBoard.page'
 
-describe('#1300 — closed iteration renders "(closed)" badge as JSX sibling (no strikethrough inheritance)', () => {
+describe('closed iteration renders "(closed)" badge as JSX sibling (no strikethrough inheritance)', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

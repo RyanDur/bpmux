@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { ReworkGlyph } from './ReworkGlyph'
 
-describe('#1146 ReworkGlyph — column-surface ↩ glyph rendering', () => {
+describe('ReworkGlyph — column-surface ↩ glyph rendering', () => {
   test('renders the glyph when rework_comment is non-null', () => {
     const html = renderToStaticMarkup(<ReworkGlyph reworkComment="user-story not satisfied" />)
     expect(html).toContain('class="board-story-rework-glyph"')

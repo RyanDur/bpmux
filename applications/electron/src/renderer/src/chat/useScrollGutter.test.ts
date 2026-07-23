@@ -15,7 +15,7 @@ const stubUlElement = (
   return el as unknown as HTMLUListElement
 }
 
-describe('#1444 useScrollGutter', () => {
+describe('useScrollGutter', () => {
   test('initial state: newCount is 0', () => {
     const { result } = renderHook(() =>
       useScrollGutter({ visibleCount: 0, isLoadingOlder: false, hasMoreOlder: false })

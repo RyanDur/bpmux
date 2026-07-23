@@ -45,8 +45,8 @@ const memberStory = (overrides: Partial<Story>): Story => ({
 const renderIteration = (members: Story[] = []): string =>
   renderToStaticMarkup(<Iteration stories={members} onOpen={() => {}} />)
 
-describe('#1413 Iteration — renders regardless of member-count or open/closed state', () => {
-  test('Scenario 1 (fix-anchor): open + 0 members surfaces in icebox-iterations-list', () => {
+describe('Iteration — renders regardless of member-count or open/closed state', () => {
+  test(': open + 0 members surfaces in icebox-iterations-list', () => {
     seedIterations([boardIteration({ id: 9000, title: 'Iteration Lyra' })])
     const html = renderIteration()
     expect(html).toContain('data-test="board-iteration-9000"')
@@ -54,7 +54,7 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
     expect(html).toContain('(0)')
   })
 
-  test('Scenario 2 (regression-anchor): closed + 0 members surfaces with closed badge', () => {
+  test('(): closed + 0 members surfaces with closed badge', () => {
     seedIterations([boardIteration({ id: 9001, title: 'Iteration WalkVerify', complete: true })])
     const html = renderIteration()
     expect(html).toContain('data-test="board-iteration-9001"')
@@ -63,7 +63,7 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
     expect(html).toContain('(0)')
   })
 
-  test('Scenario 3 (regression-anchor): open + N members surfaces with member-count', () => {
+  test('(): open + N members surfaces with member-count', () => {
     seedIterations([
       boardIteration({
         id: 9002,
@@ -80,7 +80,7 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
     expect(html).not.toContain('(closed)')
   })
 
-  test('Scenario 4 (regression-anchor): closed + N members surfaces with closed badge + count', () => {
+  test('(): closed + N members surfaces with closed badge + count', () => {
     seedIterations([
       boardIteration({
         id: 9003,
@@ -102,8 +102,8 @@ describe('#1413 Iteration — renders regardless of member-count or open/closed 
   })
 })
 
-describe('#1492 Iteration — member count/membership derives from the iteration container (iteration.stories)', () => {
-  test('Scenario 5 (fix-anchor): container members surface in count', () => {
+describe('Iteration — member count/membership derives from the iteration container (iteration.stories)', () => {
+  test(': container members surface in count', () => {
     seedIterations([
       boardIteration({
         id: 1464,
@@ -119,7 +119,7 @@ describe('#1492 Iteration — member count/membership derives from the iteration
     expect(html).toContain('(2)')
   })
 
-  test('Scenario 6 (regression-anchor): legacy-label-only member is dropped; only container members count', () => {
+  test('(): legacy-label-only member is dropped; only container members count', () => {
     seedIterations([
       boardIteration({
         id: 1491,
@@ -142,7 +142,7 @@ describe('#1492 Iteration — member count/membership derives from the iteration
     expect(html).toContain('(2)')
   })
 
-  test('Scenario 7 (drill-in-axis): container members enumerated in member-list', () => {
+  test('(drill-in-axis): container members enumerated in member-list', () => {
     seedIterations([
       boardIteration({
         id: 1398,
@@ -158,7 +158,7 @@ describe('#1492 Iteration — member count/membership derives from the iteration
     expect(html).toContain('canonical-member-one')
   })
 
-  test('Scenario 8 (other-iteration-isolation): membership for iter A does NOT count toward iter B', () => {
+  test('(other-iteration-isolation): membership for iter A does NOT count toward iter B', () => {
     seedIterations([
       boardIteration({ id: 1464, title: 'Iteration Reticulum', stories: [] }),
       boardIteration({
@@ -183,7 +183,7 @@ describe('#1492 Iteration — member count/membership derives from the iteration
   })
 })
 
-describe('#1547 facet 1 — member workflow-state is legible in the iteration-view', () => {
+describe('facet 1 — member workflow-state is legible in the iteration-view', () => {
   test('a ready member renders a visible state label hooked on data-state', () => {
     seedIterations([boardIteration({ id: 1543, title: 'Iteration Crux', stories: [1537] })])
     const readyMember = memberStory({
@@ -236,8 +236,8 @@ describe('#1547 facet 1 — member workflow-state is legible in the iteration-vi
   })
 })
 
-describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Closed)', () => {
-  test('Scenario 1: renders 2 sub-sections with canonical labels + counts', () => {
+describe('Iteration list scaling — section-grouped (Active+Planned / Closed)', () => {
+  test('renders 2 sub-sections with canonical labels + counts', () => {
     seedIterations([
       boardIteration({ id: 9001, title: 'Iteration ActiveA' }),
       boardIteration({ id: 9002, title: 'Iteration ActiveB' }),
@@ -254,7 +254,7 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
     expect(html.slice(closedCountIdx, closedCountIdx + 200)).toContain('(1)')
   })
 
-  test('Scenario 2: Active+Planned section open by default; Closed collapsed', () => {
+  test('Active+Planned section open by default; Closed collapsed', () => {
     seedIterations([
       boardIteration({ id: 9001, title: 'Iteration A' }),
       boardIteration({ id: 9002, title: 'Iteration B', complete: true })
@@ -268,7 +268,7 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
     expect(closedMatch?.[1]).not.toContain(' open')
   })
 
-  test('Scenario 4: each section count reflects partition counts', () => {
+  test('each section count reflects partition counts', () => {
     seedIterations([
       boardIteration({ id: 9001, title: 'A' }),
       boardIteration({ id: 9002, title: 'B' }),
@@ -283,7 +283,7 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
     expect(html.slice(closedCountIdx, closedCountIdx + 200)).toContain('(2)')
   })
 
-  test('#1540: no iteration is anchored when none is designated (honest-empty, no auto-pick)', () => {
+  test(': no iteration is anchored when none is designated (honest-empty, no auto-pick)', () => {
     seedIterations([
       boardIteration({ id: 9001, title: 'Iteration First', iteration_order: 100 }),
       boardIteration({ id: 9002, title: 'Iteration Second', iteration_order: 200 })
@@ -292,7 +292,7 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
     expect(html.match(/data-current-iteration="true"/)).toBeNull()
   })
 
-  test('#1540: the explicitly-designated iteration is anchored regardless of order or in-flight children', () => {
+  test(': the explicitly-designated iteration is anchored regardless of order or in-flight children', () => {
     seedIterations([
       boardIteration({
         id: 9001,
@@ -333,7 +333,7 @@ describe('#1454 Iteration list scaling — section-grouped (Active+Planned / Clo
   })
 })
 
-describe('#1517 iteration-row redesign — summary toggle-only + grip-sibling-right + navigate-in-body', () => {
+describe('iteration-row redesign — summary toggle-only + grip-sibling-right + navigate-in-body', () => {
   const summaryOf = (html: string): string => {
     const start = html.indexOf('<summary class="board-iteration-summary"')
     const end = html.indexOf('</summary>', start)
@@ -373,7 +373,7 @@ describe('#1517 iteration-row redesign — summary toggle-only + grip-sibling-ri
   })
 })
 
-describe('#1517 iteration-row drag-sort dispatches a reorder over the wire (truth-on-the-wire)', () => {
+describe('iteration-row drag-sort dispatches a reorder over the wire (truth-on-the-wire)', () => {
   test('dropping a dragged iteration onto a sibling sends its new 1-indexed planning position', () => {
     seedIterations([
       boardIteration({ id: 9001, title: 'Iteration A', iteration_order: 100 }),

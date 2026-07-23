@@ -38,7 +38,7 @@ const NONGROUPED_SEED: SeedMessage[] = [
   }
 ]
 
-describe('human-side E2E #476 — read-class — message grouping 5-min threshold', () => {
+describe('message grouping 5-min threshold', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

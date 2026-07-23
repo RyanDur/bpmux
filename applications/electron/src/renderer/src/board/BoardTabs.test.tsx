@@ -26,22 +26,22 @@ beforeEach(() => {
   window.localStorage.clear()
 })
 
-describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
-  test('Scenario 1: renders 3 tabs with canonical labels Now / Plan / Done', () => {
+describe('BoardTabs — 3-tab Now/Plan/Done shape', () => {
+  test('renders 3 tabs with canonical labels Now / Plan / Done', () => {
     render(<BoardTabs {...buildProps([])} />)
     expect(boardTabs.hasTab('Now')).toBe(true)
     expect(boardTabs.hasTab('Plan')).toBe(true)
     expect(boardTabs.hasTab('Done')).toBe(true)
   })
 
-  test('Scenario 2: default tab is Now on first render (no persisted state)', () => {
+  test('default tab is Now on first render (no persisted state)', () => {
     render(<BoardTabs {...buildProps([])} />)
     expect(boardTabs.isActive('now')).toBe(true)
     expect(boardTabs.isActive('plan')).toBe(false)
     expect(boardTabs.isActive('done')).toBe(false)
   })
 
-  test('#1549: NOW sections show the current iteration members per state, not the global ready column', () => {
+  test(': NOW sections show the current iteration members per state, not the global ready column', () => {
     seedIterations([
       boardIteration({
         id: 1552,
@@ -65,13 +65,13 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     expect(boardTabs.panelHasStory('now', 9999)).toBe(false)
   })
 
-  test('#1684: NOW shows the roadmap-view (what is coming) when none is current — not a dead board', () => {
+  test(': NOW shows the roadmap-view (what is coming) when none is current — not a dead board', () => {
     seedIterations([boardIteration({ id: 1, title: 'Iteration A' })])
     render(<BoardTabs {...buildProps([])} />)
     expect(boardTabs.nowHasRoadmap()).toBe(true)
   })
 
-  test('#1510: Now tab renders the current iteration member directly (no dedicated anchor-box)', () => {
+  test(': Now tab renders the current iteration member directly (no dedicated anchor-box)', () => {
     seedIterations([
       boardIteration({
         id: 1500,
@@ -88,7 +88,7 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     expect(boardTabs.panelHasStory('now', 9101)).toBe(true)
   })
 
-  test('Scenario 3 cont.: Now tab Epic-card shows only Epics belonging to current iteration', () => {
+  test('cont.: Now tab Epic-card shows only Epics belonging to current iteration', () => {
     seedIterations([
       boardIteration({
         id: 1500,
@@ -112,7 +112,7 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     expect(boardTabs.epicTitleCount('Epic Out')).toBe(1)
   })
 
-  test('Scenario 4: Plan tab renders active Epics, the Iteration component, and the icebox section', async () => {
+  test('Plan tab renders active Epics, the Iteration component, and the icebox section', async () => {
     seedIterations([boardIteration({ id: 1500, title: 'Iteration Sextans' })])
     const epic = epicStory({ id: 8001, title: 'Epic Foo' })
     render(<BoardTabs {...buildProps([epic])} />)
@@ -121,7 +121,7 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     expect(boardTabs.panelHasIteration('plan', 'Iteration Sextans')).toBe(true)
   })
 
-  test('Scenario 5: Done tab renders ACCEPTED + RETIRED sections, not the ready column', async () => {
+  test('Done tab renders ACCEPTED + RETIRED sections, not the ready column', async () => {
     render(<BoardTabs {...buildProps([])} />)
     await boardTabs.selectTab('done')
     expect(boardTabs.panelHasGroup('done', 'Accepted')).toBe(true)
@@ -129,7 +129,7 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     expect(boardTabs.panelHasGroup('done', 'Ready')).toBe(false)
   })
 
-  test('Scenario 6: clicking Plan tab activates it; previously-active Now becomes inactive and hidden', async () => {
+  test('clicking Plan tab activates it; previously-active Now becomes inactive and hidden', async () => {
     render(<BoardTabs {...buildProps([])} />)
     await boardTabs.selectTab('plan')
     expect(boardTabs.isActive('plan')).toBe(true)
@@ -138,7 +138,7 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     expect(boardTabs.isPanelVisible('now')).toBe(false)
   })
 
-  test('Scenario 7: tab choice persists across remounts via localStorage', async () => {
+  test('tab choice persists across remounts via localStorage', async () => {
     const props = buildProps([])
     const first = render(<BoardTabs {...props} />)
     await boardTabs.selectTab('done')
@@ -147,7 +147,7 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     expect(boardTabs.isActive('done')).toBe(true)
   })
 
-  test('Scenario 10: a current-iteration member appears in Now, not in Done', async () => {
+  test('a current-iteration member appears in Now, not in Done', async () => {
     seedIterations([
       boardIteration({
         id: 1552,
@@ -166,7 +166,7 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     expect(boardTabs.panelHasStory('done', 9101)).toBe(false)
   })
 
-  test('CM-2: Now renders the configured middle columns (build/review/harden) as headers in config order', () => {
+  test(': Now renders the configured middle columns (build/review/harden) as headers in config order', () => {
     seedIterations([
       boardIteration({ id: 1600, title: 'Iteration Lyra', is_current: true, stories: [] })
     ])
@@ -180,7 +180,7 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     ])
   })
 
-  test('CM-2: a member in a configured middle stage buckets into that stage column', () => {
+  test(': a member in a configured middle stage buckets into that stage column', () => {
     seedIterations([
       boardIteration({ id: 1601, title: 'Iteration Vega', is_current: true, stories: [9200] })
     ])
@@ -189,7 +189,7 @@ describe('#1453 BoardTabs — 3-tab Now/Plan/Done shape', () => {
     expect(boardTabs.groupHasStory('now', 'Review', 9200)).toBe(true)
   })
 
-  test('CM-2: with no wire columns, Now falls back to the legacy middle (In Progress, Desk Check)', () => {
+  test(': with no wire columns, Now falls back to the legacy middle (In Progress, Desk Check)', () => {
     seedIterations([
       boardIteration({ id: 1602, title: 'Iteration Orion', is_current: true, stories: [] })
     ])

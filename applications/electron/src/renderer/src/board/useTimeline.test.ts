@@ -23,7 +23,7 @@ const bumpBoard = (): void =>
     )
   )
 
-describe('#1456 useTimeline — re-hydrates over WS when the board changes (tick replaces marker-scan)', () => {
+describe('useTimeline — re-hydrates over WS when the board changes (tick replaces marker-scan)', () => {
   let server: TestWsServer
   let conn: TestWsConnection
 

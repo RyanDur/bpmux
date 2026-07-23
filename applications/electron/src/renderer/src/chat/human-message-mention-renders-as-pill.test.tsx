@@ -23,7 +23,7 @@ const SEED: SeedMessage[] = [
   }
 ]
 
-describe('human-side E2E #476 — read-class — message @mention pill', () => {
+describe('message @mention pill', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

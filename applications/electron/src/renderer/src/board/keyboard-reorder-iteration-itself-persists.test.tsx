@@ -7,7 +7,7 @@ import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { pressReorderShortcut } from '../../../../test/fixtures/pressReorderShortcut'
 import { keyboardReorder } from './keyboardReorder.page'
 
-describe('#1339 step 2h-4 — keyboard-reorder iteration-itself persists via iteration-order label mutation', () => {
+describe('keyboard-reorder iteration-itself persists via iteration-order label mutation', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

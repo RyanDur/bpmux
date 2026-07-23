@@ -5,7 +5,7 @@ import { renderApp, type RenderAppResult } from '../../../../test/fixtures/rende
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { iterationBoard, newDragGesture } from './iterationBoard.page'
 
-describe('#1339 — drag-within-iteration visual no snap-back (optimistic UI)', () => {
+describe('drag-within-iteration visual no snap-back (optimistic UI)', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {
@@ -13,7 +13,7 @@ describe('#1339 — drag-within-iteration visual no snap-back (optimistic UI)', 
     rendered = null
   })
 
-  it('after drop, the rendered member order reflects the new position without waiting for backend state-delta — falsifier for the snap-back bug owner flagged at 04:18 UTC', async () => {
+  it('after drop, the rendered member order reflects the new position without waiting for backend state-delta — falsifier for the snap-back bug owner flagged', async () => {
     const port = inject('bpmuxBackendPort')
     const authToken = inject('bpmuxAuthToken')
     const apiBase = `http://127.0.0.1:${port}`

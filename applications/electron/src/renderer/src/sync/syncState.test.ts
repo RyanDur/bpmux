@@ -11,7 +11,7 @@ const ALL_STATES: SyncState[] = [
   'startup-fail'
 ]
 
-describe('#1636 stateGlyph — each state maps to its own distinct glyph', () => {
+describe('stateGlyph — each state maps to its own distinct glyph', () => {
   const cases: Array<[SyncState, string]> = [
     ['connected', '●'],
     ['loading', '○'],
@@ -33,7 +33,7 @@ describe('#1636 stateGlyph — each state maps to its own distinct glyph', () =>
   })
 })
 
-describe('#1636 stateAriaLabel — each state announces its true condition', () => {
+describe('stateAriaLabel — each state announces its true condition', () => {
   const fixedCases: Array<[SyncState, string]> = [
     ['connected', 'Sync state: connected'],
     ['loading', 'Sync state: loading — awaiting first report'],

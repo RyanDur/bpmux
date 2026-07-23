@@ -2,7 +2,7 @@ import { describe, test, expect, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { useMentionScoping } from './useMentionScoping'
 
-describe('#1444 useMentionScoping', () => {
+describe('useMentionScoping', () => {
   test('mentionRoles wraps presenceRoles in a Set', () => {
     const { result } = renderHook(() => useMentionScoping(['dev', 'pm', 'owner']))
     expect(result.current.mentionRoles).toBeInstanceOf(Set)

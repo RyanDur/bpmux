@@ -16,7 +16,7 @@ const ruleFor = (
   ruleId: string
 ): ESLint.LintResult['messages'] => msgs.filter((m) => m.ruleId === ruleId)
 
-describe('#1493 ESLint html5-semantic substrate — JSX div/span banned in renderer production', () => {
+describe('ESLint html5-semantic substrate — JSX div/span banned in renderer production', () => {
   test('production .tsx: <div> fires no-restricted-syntax error', async () => {
     const code = `export const Card = () => <div className="card">hi</div>\n`
     const [result] = await lintAs(code, STUB_PRODUCTION_TSX)

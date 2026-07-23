@@ -47,7 +47,7 @@ describe('isConcluded — closedness derives from the workflow state', () => {
   })
 })
 
-describe('CM-2 columnForIn — bucketing against the live middle stage list', () => {
+describe('columnForIn — bucketing against the live middle stage list', () => {
   const middle = ['build', 'review', 'harden']
   const bucket = columnForIn(middle)
 
@@ -85,7 +85,7 @@ describe('CM-2 columnForIn — bucketing against the live middle stage list', ()
   })
 })
 
-describe('CM-2 groupOrderFrom — wire columns map to display order', () => {
+describe('groupOrderFrom — wire columns map to display order', () => {
   const columns: BoardColumn[] = [
     { id: 'icebox', label: 'Icebox' },
     { id: 'ready', label: 'Ready' },
@@ -124,7 +124,7 @@ describe('CM-2 groupOrderFrom — wire columns map to display order', () => {
   })
 })
 
-describe('CM-2 groupOrderOrFallback — absent wire columns keep the legacy board', () => {
+describe('groupOrderOrFallback — absent wire columns keep the legacy board', () => {
   test('no wire columns falls back to the legacy GROUP_ORDER', () => {
     expect(groupOrderOrFallback([])).toBe(GROUP_ORDER)
   })

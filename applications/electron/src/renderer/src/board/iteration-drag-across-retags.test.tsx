@@ -5,7 +5,7 @@ import { renderApp, type RenderAppResult } from '../../../../test/fixtures/rende
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { iterationBoard, newDragGesture } from './iterationBoard.page'
 
-describe('#1339 — drag-across-iteration retags member with new iteration prefix', () => {
+describe('drag-across-iteration retags member with new iteration prefix', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

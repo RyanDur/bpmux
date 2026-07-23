@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { composeTerminalFontFamily } from './terminalFont'
 
-describe('#1610 composeTerminalFontFamily — name a Nerd Font in the chain (leverage system, no bundle)', () => {
+describe('composeTerminalFontFamily — name a Nerd Font in the chain (leverage system, no bundle)', () => {
   test('with no user --font-mono, MesloLGS NF is the floor before system mono', () => {
     expect(composeTerminalFontFamily('')).toBe(
       '"MesloLGS NF", ui-monospace, SFMono-Regular, Menlo, monospace'

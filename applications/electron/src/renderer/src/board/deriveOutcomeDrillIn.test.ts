@@ -16,7 +16,7 @@ const iteration = (
   checks: IterationReadiness
 ): RoadmapIteration => ({ id, name, position, readiness: checks })
 
-describe('#1737 deriveOutcomeDrillIn — an outcome → the iterations building it, in order', () => {
+describe('deriveOutcomeDrillIn — an outcome → the iterations building it, in order', () => {
   test('orders the building iterations by position', () => {
     const drill = deriveOutcomeDrillIn([
       iteration(20, 'Lyra', 2, readiness(false, false, false, false)),

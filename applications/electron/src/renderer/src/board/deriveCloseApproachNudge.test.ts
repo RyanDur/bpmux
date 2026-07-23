@@ -45,7 +45,7 @@ const drainingMembers = (): Story[] => [
   member('in-progress')
 ]
 
-describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not ready at close-approach', () => {
+describe('deriveCloseApproachNudge — warn when the NEXT iteration is not ready at close-approach', () => {
   test('FIRES: current draining (>=75% work-done, in-acceptance pre-batch-accept) + next exists + next not-ready', () => {
     const members = drainingMembers()
     const current = iteration({
@@ -91,7 +91,7 @@ describe('#1705 deriveCloseApproachNudge — warn when the NEXT iteration is not
     expect(deriveCloseApproachNudge([current, next], members)).not.toBeNull()
   })
 
-  test('NULL: no current iteration (the #1684 no-iteration board state)', () => {
+  test('NULL: no current iteration (the no-iteration board state)', () => {
     const planned = iteration({
       id: 200,
       title: 'Iteration Fornax',

@@ -9,7 +9,7 @@ import {
   decodePtyData
 } from '../state'
 
-describe('#1592 SLICE-2 interact — raw keystrokes reach the PTY stdin plane', () => {
+describe('interact — raw keystrokes reach the PTY stdin plane', () => {
   beforeEach(() => resetStateForTest())
 
   test('a control-key encodes as its raw byte, not a line-buffered string', () => {

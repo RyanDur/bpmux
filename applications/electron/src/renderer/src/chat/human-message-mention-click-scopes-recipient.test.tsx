@@ -25,7 +25,7 @@ const SEED: SeedMessage[] = [
   }
 ]
 
-describe('human-side E2E #476 — direct-action — message @mention click', () => {
+describe('direct-action — message @mention click', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

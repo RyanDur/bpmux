@@ -7,7 +7,7 @@ const renderHeader = (status: ConnectionStatus): string => {
   return renderToStaticMarkup(<AppShell status={status} messages={[]} onSend={() => {}} />)
 }
 
-describe('Header title-as-state-canvas (Pictor S3 #1449 rework)', () => {
+describe('Header title-as-state-canvas ', () => {
   test('title carries app name + state text + connected-state-class when status=connected', () => {
     const html = renderHeader('connected')
     expect(html).toContain('data-test="titlebar-app"')
@@ -17,7 +17,7 @@ describe('Header title-as-state-canvas (Pictor S3 #1449 rework)', () => {
     expect(html).toContain('aria-label="bpmux online"')
   })
 
-  test('title state-text shows "reconnecting" for connecting class (Scenario 2)', () => {
+  test('title state-text shows "reconnecting" for connecting class ()', () => {
     const html = renderHeader('connecting')
     expect(html).toMatch(/data-test="titlebar-app-state"[^>]*>reconnecting</)
     expect(html).toContain('titlebar-app--connecting')
@@ -31,13 +31,13 @@ describe('Header title-as-state-canvas (Pictor S3 #1449 rework)', () => {
     expect(html).toContain('aria-label="bpmux offline"')
   })
 
-  test('CI indicator renders without redundant text wrapper (Scenario 4 — CiGlyph self-labels)', () => {
+  test('CI indicator renders without redundant text wrapper (CiGlyph self-labels)', () => {
     const html = renderHeader('connected')
     expect(html).toContain('data-test="titlebar-ci"')
     expect(html).not.toMatch(/data-test="titlebar-ci"[^>]*>[\s\S]*?<small[^>]*>CI<\/small>/)
   })
 
-  test('Board indicator NOT in titlebar — relocated to Board column-header per Scenario 5', () => {
+  test('Board indicator NOT in titlebar — relocated to Board column-header per ', () => {
     const html = renderHeader('connected')
     expect(html).not.toContain('data-test="titlebar-board"')
   })
@@ -48,13 +48,13 @@ describe('Header title-as-state-canvas (Pictor S3 #1449 rework)', () => {
     expect(html).not.toContain('data-test="titlebar-lanes-toggle"')
   })
 
-  test('standalone "● online" indicator is NOT present — folded into title per Scenario 2', () => {
+  test('standalone "● online" indicator is NOT present — folded into title per ', () => {
     const html = renderHeader('connected')
     expect(html).not.toContain('data-test="titlebar-connection"')
     expect(html).not.toContain('data-test="titlebar-connection-label"')
   })
 
-  test('multi-modal signal — title text + class together (WCAG 2.1 SC 1.4.1; Scenario 8)', () => {
+  test('multi-modal signal — title text + class together (WCAG 2.1 SC 1.4.1; )', () => {
     const html = renderHeader('disconnected')
     expect(html).toContain('titlebar-app--disconnected')
     expect(html).toContain('>offline<')

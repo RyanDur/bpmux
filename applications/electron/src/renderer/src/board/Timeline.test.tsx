@@ -19,7 +19,7 @@ const baseProps = {
   apiBase: undefined
 }
 
-describe('#1355 Timeline independence', () => {
+describe('Timeline independence', () => {
   test('renders standalone (substrate-axis) — no DrillIn.tsx parent required', () => {
     const html = renderToStaticMarkup(<Timeline story={story({})} {...baseProps} />)
     expect(html).toContain('data-test="drill-in-timeline"')

@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { DRAG_MIMETYPE_REGISTRY } from './useStoryDrag'
 import { ITERATION_MEMBER_DRAG, READY_STORY_DRAG } from './sortableDragConfigs'
 
-describe('#1524 drag-mime root-cause guard', () => {
+describe('drag-mime root-cause guard', () => {
   test('every registered drag mime is an application/x- type, because a real-OS drag strips custom text/* subtypes from dataTransfer.types during dragover and kills the felt drag', () => {
     for (const mime of Object.values(DRAG_MIMETYPE_REGISTRY)) {
       expect(mime.startsWith('application/x-')).toBe(true)

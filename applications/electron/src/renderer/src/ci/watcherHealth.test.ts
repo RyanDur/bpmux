@@ -11,7 +11,7 @@ const NOW = Date.parse('2026-05-05T00:00:00.000Z')
 
 const isoSecondsAgo = (secs: number): string => new Date(NOW - secs * 1000).toISOString()
 
-describe('#1175 watcherHealth pure helpers', () => {
+describe('watcherHealth pure helpers', () => {
   describe('isWatcherUnhealthy', () => {
     it('returns false when state is null', () => {
       expect(isWatcherUnhealthy(null, NOW)).toBe(false)

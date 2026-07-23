@@ -9,7 +9,7 @@ describe('extractUrls', () => {
   })
 })
 
-describe('#1499 useUnfurl surfaces resolved data without a mounted-guard ref', () => {
+describe('useUnfurl surfaces resolved data without a mounted-guard ref', () => {
   it('resolves unfurl data after fetch (bump fires on resolve)', async () => {
     const url = `https://example.test/${Math.random().toString(36).slice(2)}`
     const payload = { url, title: 'Title', description: 'desc' }

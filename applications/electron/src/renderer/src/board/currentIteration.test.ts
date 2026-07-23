@@ -25,7 +25,7 @@ const story = (overrides: Partial<Story>): Story => ({
   ...overrides
 })
 
-describe('#1540 findCurrentIteration — explicit designation, never auto-picks', () => {
+describe('findCurrentIteration — explicit designation, never auto-picks', () => {
   test('returns null when no open iterations', () => {
     const closed = iteration({ id: 1, complete: true, is_current: true })
     expect(findCurrentIteration([closed])).toBeNull()
@@ -67,7 +67,7 @@ describe('#1540 findCurrentIteration — explicit designation, never auto-picks'
   })
 })
 
-describe('#1453 isMemberOfIteration', () => {
+describe('isMemberOfIteration', () => {
   test('a story listed in the iterations stories matches', () => {
     const iter = iteration({
       id: 1464,
@@ -100,7 +100,7 @@ describe('#1453 isMemberOfIteration', () => {
   })
 })
 
-describe('#1453 epicIdsInIteration', () => {
+describe('epicIdsInIteration', () => {
   test('returns distinct sorted parent_epic numbers of iteration members', () => {
     const iter = iteration({
       id: 1464,

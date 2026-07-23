@@ -34,7 +34,7 @@ const fakeDragEvent = (overrides: Partial<DataTransfer> = {}): React.DragEvent<H
   } as unknown as React.DragEvent<HTMLElement>
 }
 
-describe('#1358 useStoryDrag lifecycle', () => {
+describe('useStoryDrag lifecycle', () => {
   test('initial state: draggedId and hoveredId are null', () => {
     const { result } = renderHook(() => useStoryDrag(stringOptions))
     expect(result.current.draggedId).toBeNull()
@@ -116,7 +116,7 @@ describe('#1358 useStoryDrag lifecycle', () => {
     expect(result.current.decode(event)).toEqual(payload)
   })
 
-  test('#1517 startDrag sets the drag image from a detached, test-id-stripped CLONE of the row — not the live row that gets opacity-hidden (so the ghost stays visible)', () => {
+  test('startDrag sets the drag image from a detached, test-id-stripped CLONE of the row — not the live row that gets opacity-hidden (so the ghost stays visible)', () => {
     const li = document.createElement('li')
     li.setAttribute('data-test', 'board-iteration-42')
     document.body.appendChild(li)

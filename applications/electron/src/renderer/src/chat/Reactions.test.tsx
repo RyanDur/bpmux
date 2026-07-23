@@ -18,7 +18,7 @@ const SEEDED_REACTIONS: AggregatedReaction[] = [
   }
 ]
 
-describe('Reactions — direct prop injection (replaces desk-check-340.spec.ts)', () => {
+describe('Reactions — direct prop injection ', () => {
   test('seeded reactions render as pills with emoji, count, and aria-label', () => {
     const html = renderToStaticMarkup(
       <Reactions reactions={SEEDED_REACTIONS} viewer="owner" onToggle={() => {}} />

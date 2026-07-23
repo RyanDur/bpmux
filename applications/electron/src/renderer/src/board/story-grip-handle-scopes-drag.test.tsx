@@ -6,7 +6,7 @@ import { renderApp, type RenderAppResult } from '../../../../test/fixtures/rende
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { keyboardReorder } from './keyboardReorder.page'
 
-describe('#1339 Scenario 4 — grip-handle is the sole drag-initiator', () => {
+describe('grip-handle is the sole drag-initiator', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

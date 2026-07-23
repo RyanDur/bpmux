@@ -4,7 +4,7 @@ import { renderApp, type RenderAppResult } from '../../../../test/fixtures/rende
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { iterationBoard } from './iterationBoard.page'
 
-describe('#1339 step 2g-a — iteration containers sort by iteration-order.{N} label', () => {
+describe('iteration containers sort by iteration-order.{N} label', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

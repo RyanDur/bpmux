@@ -25,7 +25,7 @@ afterEach(() => {
   listeners.clear()
 })
 
-describe('#1537 useRefetchOnReconnect — refetch on the service reconnect signal (no local ref)', () => {
+describe('useRefetchOnReconnect — refetch on the service reconnect signal (no local ref)', () => {
   test('does NOT refetch on mount when no reconnect has occurred (tick 0)', () => {
     const refetch = vi.fn()
     renderHook(() => useRefetchOnReconnect(refetch))

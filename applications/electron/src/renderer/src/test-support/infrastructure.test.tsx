@@ -4,7 +4,7 @@ import { renderApp, type RenderAppResult } from '../../../../test/fixtures/rende
 
 const PER_TEST_BUDGET_MS = 500
 
-describe('#1303 RTL+real-backend infrastructure', () => {
+describe('RTL+real-backend infrastructure', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

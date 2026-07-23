@@ -38,7 +38,7 @@ const anEpic = (overrides: Partial<EpicData>): EpicData => ({
   ...overrides
 })
 
-describe('#1185 Epic — meta-card DOM shape (falsifiers a-c, j)', () => {
+describe('Epic — meta-card DOM shape ', () => {
   test('does NOT nest full child rows inside the Epic card (falsifier-a; mini-board badges are not full rows)', () => {
     const epic = anEpic({ id: 1100, title: 'parent-epic' })
     const child = story({
@@ -169,7 +169,7 @@ describe('#1185 Epic — meta-card DOM shape (falsifiers a-c, j)', () => {
     expect(html).toContain('max="4"')
   })
 
-  test('progress aria-label exposes accepted/denom + state-breakdown for screen readers (#1451 retire-aware)', () => {
+  test('progress aria-label exposes accepted/denom + state-breakdown for screen readers (retire-aware)', () => {
     const epic = anEpic({ id: 1100 })
     const children: Story[] = [
       story({
@@ -312,7 +312,7 @@ describe('#1185 Epic — meta-card DOM shape (falsifiers a-c, j)', () => {
   })
 })
 
-describe('#1234 retired-Epic exclusion still applies through Epic surface', () => {
+describe('retired-Epic exclusion still applies through Epic surface', () => {
   test('renders only active Epics from a mixed stories array', () => {
     const epicsAll: EpicData[] = [
       anEpic({ id: 1100, title: 'active-epic-A', state: 'in-progress' }),
@@ -339,7 +339,7 @@ describe('#1234 retired-Epic exclusion still applies through Epic surface', () =
   })
 })
 
-describe('#1234 isActiveEpic predicate (carried over from EpicSummary surface)', () => {
+describe('isActiveEpic predicate (carried over from EpicSummary surface)', () => {
   test('open Epic in active workflow state → visible', () => {
     expect(isActiveEpic(anEpic({ id: 100, state: 'in-progress' }))).toBe(true)
   })
@@ -373,7 +373,7 @@ describe('#1234 isActiveEpic predicate (carried over from EpicSummary surface)',
   })
 })
 
-describe('#1235 Epic-card collapse — native <details>/<summary> + activity-class defaults + persistence', () => {
+describe('Epic-card collapse — native <details>/<summary> + activity-class defaults + persistence', () => {
   test('Epic card wraps in native <details> + <summary> (falsifier-a)', () => {
     const epic = anEpic({ id: 1100, state: 'in-progress' })
     const html = renderToStaticMarkup(<Epic epics={[epic]} stories={[]} onOpen={() => {}} />)
@@ -400,7 +400,7 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
     expect(html).not.toMatch(/<details[^>]*\sopen\b/)
   })
 
-  test('#1455 summary shows plain "{accepted} / {denom}" count format (no glyphs)', () => {
+  test('summary shows plain "{accepted} / {denom}" count format (no glyphs)', () => {
     const epic = anEpic({ id: 1100, state: 'in-progress' })
     const children: Story[] = [
       story({
@@ -431,7 +431,7 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
     expect(html).not.toContain('⊘')
   })
 
-  test('#1455 100% complete still renders plain "N / N" (no done-marker glyph)', () => {
+  test('100% complete still renders plain "N / N" (no done-marker glyph)', () => {
     const epic = anEpic({ id: 1100, state: 'in-progress' })
     const children: Story[] = [
       story({
@@ -453,7 +453,7 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
     expect(html).not.toContain('data-test="board-epic-1100-count-done"')
   })
 
-  test('#1455 retired children EXCLUDED from count-display entirely (soft-delete = invisible)', () => {
+  test('retired children EXCLUDED from count-display entirely (soft-delete = invisible)', () => {
     const epic = anEpic({ id: 1100, state: 'in-progress' })
     const children: Story[] = [
       story({
@@ -489,7 +489,7 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
     expect(html).not.toContain('line-through')
   })
 
-  test('#1455 Scenario 3 — title-prefix `[Epic]` retired from rendered title', () => {
+  test('title-prefix `[Epic]` retired from rendered title', () => {
     const epic = anEpic({
       id: 1100,
       title: '[Epic] Visual coherence',
@@ -500,7 +500,7 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
     expect(html).not.toMatch(/\[Epic\]\s*Visual coherence/)
   })
 
-  test('#1455 Scenario 8 — empty Epic (zero children) reads "empty" not "0/0"', () => {
+  test('empty Epic (zero children) reads "empty" not "0/0"', () => {
     const epic = anEpic({ id: 1100, title: 'Lonely Epic', state: 'icebox' })
     const html = renderToStaticMarkup(<Epic epics={[epic]} stories={[]} onOpen={() => {}} />)
     expect(html).toContain('data-test="board-epic-1100-count-empty"')
@@ -530,7 +530,7 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
     expect(html).toContain('data-test="board-epic-1100-state"')
   })
 
-  test('expanded body contains description + mini-board (per #1244 replaces breakdown text)', () => {
+  test('expanded body contains description + mini-board (per replaces breakdown text)', () => {
     const epic = anEpic({
       id: 1100,
       state: 'in-progress',
@@ -548,7 +548,7 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
     expect(html).not.toContain('data-test="board-epic-1100-breakdown"')
   })
 
-  test('#1243 progress bar renders inside <summary> for always-visible at all collapse-states', () => {
+  test('progress bar renders inside <summary> for always-visible at all collapse-states', () => {
     const epic = anEpic({ id: 1100, state: 'in-progress' })
     const html = renderToStaticMarkup(<Epic epics={[epic]} stories={[]} onOpen={() => {}} />)
     const summaryMatch = html.match(/<summary[^>]*>([\s\S]*?)<\/summary>/)
@@ -556,13 +556,13 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
     expect(summaryMatch?.[1]).toContain('data-test="board-epic-1100-progress"')
   })
 
-  test('#1243 progress bar carries thinner-summary class for CSS sizing', () => {
+  test('progress bar carries thinner-summary class for CSS sizing', () => {
     const epic = anEpic({ id: 1100, state: 'in-progress' })
     const html = renderToStaticMarkup(<Epic epics={[epic]} stories={[]} onOpen={() => {}} />)
     expect(html).toContain('board-epic-progress--summary')
   })
 
-  test('#1243 progress bar visible even when Epic <details> is closed by default', () => {
+  test('progress bar visible even when Epic <details> is closed by default', () => {
     const epic = anEpic({ id: 1100, state: 'accepted' })
     const html = renderToStaticMarkup(<Epic epics={[epic]} stories={[]} onOpen={() => {}} />)
     expect(html).not.toMatch(/<details[^>]*\sopen\b/)
@@ -572,7 +572,7 @@ describe('#1235 Epic-card collapse — native <details>/<summary> + activity-cla
   })
 })
 
-describe('#1244 Epic dropdown mini-board — replaces breakdown text', () => {
+describe('Epic dropdown mini-board — replaces breakdown text', () => {
   test('renders mini-board container with all 6 named state-columns (falsifier-b)', () => {
     const epic = anEpic({ id: 1100, state: 'in-progress' })
     const html = renderToStaticMarkup(<Epic epics={[epic]} stories={[]} onOpen={() => {}} />)

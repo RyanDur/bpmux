@@ -5,7 +5,7 @@ import { renderApp, type RenderAppResult } from '../../../../test/fixtures/rende
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { iterationBoard, newDragGesture } from './iterationBoard.page'
 
-describe('#1339 Sc1 user-axis — drop on displaced source row still posts label mutation', () => {
+describe('Sc1 user-axis — drop on displaced source row still posts label mutation', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

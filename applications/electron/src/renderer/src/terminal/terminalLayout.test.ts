@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { restoreTerminalLayout } from './terminalLayout'
 
-describe('#1608 restoreTerminalLayout — re-attach the live SET on refresh, never resurrect an exited one', () => {
+describe('restoreTerminalLayout — re-attach the live SET on refresh, never resurrect an exited one', () => {
   test('with no saved hint, the full live set restores in server order and the first is active', () => {
     const restored = restoreTerminalLayout(['a', 'b', 'c'], null)
     expect(restored.orderedIds).toEqual(['a', 'b', 'c'])

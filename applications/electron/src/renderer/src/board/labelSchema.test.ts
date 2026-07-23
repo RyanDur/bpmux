@@ -8,7 +8,7 @@ import {
   isIterationPositionLabel
 } from './labelSchema'
 
-describe('#1365 labelSchema — single-source-of-truth constants + parsers', () => {
+describe('labelSchema — single-source-of-truth constants + parsers', () => {
   it('iteration label constructor mirrors prefix + position', () => {
     expect(iterationLabel('Andromeda', 200)).toBe('iteration-Andromeda.200')
   })

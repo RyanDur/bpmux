@@ -51,7 +51,7 @@ const baseProps = {
   onToggleCollapse: () => {}
 }
 
-describe('#1357 BoardGroup independence', () => {
+describe('BoardGroup independence', () => {
   test('renders standalone (substrate-axis) — no Board.tsx parent required', () => {
     const stories = [story({ id: 101, title: 'first ready story' })]
     const html = renderToStaticMarkup(<BoardGroup {...baseProps} stories={stories} />)
@@ -120,7 +120,7 @@ describe('#1357 BoardGroup independence', () => {
   })
 })
 
-describe('#1524 ready-queue real per-row drop fires onReorder(state, moved, targetId)', () => {
+describe('ready-queue real per-row drop fires onReorder(state, moved, targetId)', () => {
   afterEach(cleanup)
 
   test('dragging a grip and dropping onto a sibling row reorders (not the dropAt/ul path)', () => {

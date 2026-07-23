@@ -4,7 +4,7 @@ import { renderApp, type RenderAppResult } from '../../../../test/fixtures/rende
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { iterationBoard } from './iterationBoard.page'
 
-describe('#1339 — iteration members render in the parent iteration stories order', () => {
+describe('iteration members render in the parent iteration stories order', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

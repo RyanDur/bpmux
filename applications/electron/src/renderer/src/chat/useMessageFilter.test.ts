@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { classOf } from './useMessageFilter'
 
-describe('#1456 classOf — exhaustive remap (no bpmux-class broadcast leaks to chat)', () => {
+describe('classOf — exhaustive remap (no bpmux-class broadcast leaks to chat)', () => {
   test('genuine chat (null / undefined / "chat") classifies as chat', () => {
     expect(classOf(null)).toBe('chat')
     expect(classOf(undefined)).toBe('chat')

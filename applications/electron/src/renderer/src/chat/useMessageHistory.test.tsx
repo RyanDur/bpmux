@@ -27,7 +27,7 @@ const mkOlderRow = (
   ts: `2026-05-03T03:${String(10 + i).padStart(2, '0')}:00.000Z`
 })
 
-describe('#1153 mergeOlderHistory — pure dedupe + chronological merge', () => {
+describe('mergeOlderHistory — pure dedupe + chronological merge', () => {
   test('empty inputs return empty prepended buffer', () => {
     expect(mergeOlderHistory([], [], [])).toEqual([])
   })

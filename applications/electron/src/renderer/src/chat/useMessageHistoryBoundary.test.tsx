@@ -52,7 +52,7 @@ afterEach(async () => {
   vi.unstubAllGlobals()
 })
 
-describe('#1359 useMessageHistory — WS older-history boundary behavior', () => {
+describe('useMessageHistory — WS older-history boundary behavior', () => {
   test('a socket drop mid-request flips hasError=true (request rejected, not a raw throw)', async () => {
     const { result } = renderHook(() => useMessageHistory(props))
     expect(result.current.hasError).toBe(false)

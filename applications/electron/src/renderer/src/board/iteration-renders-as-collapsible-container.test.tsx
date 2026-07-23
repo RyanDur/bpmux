@@ -6,7 +6,7 @@ import { renderApp, type RenderAppResult } from '../../../../test/fixtures/rende
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { iterationBoard } from './iterationBoard.page'
 
-describe('#1297 — iteration renders as a collapsible container in the icebox', () => {
+describe('iteration renders as a collapsible container in the icebox', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

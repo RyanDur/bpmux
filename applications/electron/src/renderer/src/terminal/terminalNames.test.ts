@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { resolveTerminalName, readTerminalNames, writeTerminalNames } from './terminalNames'
 
-describe('#1609 terminal names — custom overrides the auto dir, clearing falls back', () => {
+describe('terminal names — custom overrides the auto dir, clearing falls back', () => {
   test('a custom name overrides the auto dir', () => {
     expect(resolveTerminalName('build', 'bpmux')).toBe('build')
   })

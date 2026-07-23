@@ -4,7 +4,7 @@ import { renderApp, type RenderAppResult } from '../../../../test/fixtures/rende
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { iterationBoard, newDragGesture } from './iterationBoard.page'
 
-describe('#1339 step 2d-b — eager-reorder during drag-over (ChosenPicachu pattern)', () => {
+describe('eager-reorder during drag-over (ChosenPicachu pattern)', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

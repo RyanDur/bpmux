@@ -4,7 +4,7 @@ import { renderApp, type RenderAppResult } from '../../../../test/fixtures/rende
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { iterationBoard } from './iterationBoard.page'
 
-describe('#1297 — iteration container shows members regardless of workflow state (historical-marker)', () => {
+describe('iteration container shows members regardless of workflow state (historical-marker)', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {
@@ -12,7 +12,7 @@ describe('#1297 — iteration container shows members regardless of workflow sta
     rendered = null
   })
 
-  it('an in-acceptance story with parent-iteration-#9300.100 label renders inside the Cassiopeia container body AND in its workflow column', async () => {
+  it('an in-acceptance story with parent-iteration-.100 label renders inside the Cassiopeia container body AND in its workflow column', async () => {
     const port = inject('bpmuxBackendPort')
     const authToken = inject('bpmuxAuthToken')
     const apiBase = `http://127.0.0.1:${port}`

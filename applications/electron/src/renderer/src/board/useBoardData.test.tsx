@@ -39,7 +39,7 @@ const containerIds = (stories: Story[], iterations: BoardIterationData[] = []): 
   return result.current.iterationContainerStories.map((s) => s.id)
 }
 
-describe('#1547 facet 1 — iterationContainerStories gates on membership, not workflow-state', () => {
+describe('facet 1 — iterationContainerStories gates on membership, not workflow-state', () => {
   test('a canonical member promoted to ready stays in the iteration container (empty-Crux fix)', () => {
     const member = story({ id: 1547, state: 'ready', labels: ['ready', 'bug'] })
     expect(containerIds([member], [iteration(1543, [1547])])).toContain(1547)
@@ -92,7 +92,7 @@ describe('epics are sourced from the wire param, not derived from the story stre
   })
 })
 
-describe('CM-2 useBoardData — groupOrder + bucketing follow the wire columns', () => {
+describe('useBoardData — groupOrder + bucketing follow the wire columns', () => {
   const threeStageColumns: BoardColumn[] = [
     { id: 'icebox', label: 'Icebox' },
     { id: 'ready', label: 'Ready' },

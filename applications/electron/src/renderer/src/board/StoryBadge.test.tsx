@@ -12,7 +12,7 @@ const baseStory = (overrides: Partial<Story> = {}): Story => ({
   ...overrides
 })
 
-describe('#1551 deriveBadge — acceptor-class from typed field, honest-neutral when absent', () => {
+describe('deriveBadge — acceptor-class from typed field, honest-neutral when absent', () => {
   test('acceptor=team routes to team-accepted', () => {
     expect(deriveBadge(baseStory({ acceptor: 'team' }))).toBe('team-accepted')
   })

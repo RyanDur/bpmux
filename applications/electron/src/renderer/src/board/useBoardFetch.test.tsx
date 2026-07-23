@@ -13,7 +13,7 @@ afterEach(() => {
   resetStateForTest()
 })
 
-describe('#1720 useBoardFetch — a pushed stories delta becomes the data (render=f(substrate))', () => {
+describe('useBoardFetch — a pushed stories delta becomes the data (render=f(substrate))', () => {
   test('a stories delta populates board data over WS (no REST)', async () => {
     const { result } = renderHook(() => useBoardFetch({ apiBase: 'http://127.0.0.1:9' }))
 

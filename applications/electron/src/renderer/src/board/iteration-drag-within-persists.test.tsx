@@ -5,7 +5,7 @@ import { renderApp, type RenderAppResult } from '../../../../test/fixtures/rende
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { iterationBoard, newDragGesture } from './iterationBoard.page'
 
-describe('#1339 — drag-within-iteration persists via label mutation', () => {
+describe('drag-within-iteration persists via label mutation', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

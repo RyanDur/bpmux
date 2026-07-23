@@ -14,7 +14,7 @@ const ptyOutputFrame = (terminalId: string, raw: string): string =>
 const ptyModeFrame = (terminalId: string, bracketedPaste: boolean): string =>
   JSON.stringify({ type: 'pty_mode', terminal_id: terminalId, bracketed_paste: bracketedPaste })
 
-describe('#1597 TerminalView — the header follows an OSC-7 cwd update from the PTY stream', () => {
+describe('TerminalView — the header follows an OSC-7 cwd update from the PTY stream', () => {
   beforeEach(() => resetStateForTest())
   afterEach(() => {
     cleanup()
@@ -31,7 +31,7 @@ describe('#1597 TerminalView — the header follows an OSC-7 cwd update from the
   })
 })
 
-describe('#1656 TerminalView — the input-mode mirrors the live bracketed-paste state from pty_mode', () => {
+describe('TerminalView — the input-mode mirrors the live bracketed-paste state from pty_mode', () => {
   beforeEach(() => resetStateForTest())
   afterEach(() => {
     cleanup()
@@ -62,7 +62,7 @@ describe('#1656 TerminalView — the input-mode mirrors the live bracketed-paste
   })
 })
 
-describe('#1595 TerminalView — a backgrounded (inactive) terminal still receives and buffers its live stream (bpmux keeps streaming the inactive pane)', () => {
+describe('TerminalView — a backgrounded (inactive) terminal still receives and buffers its live stream (bpmux keeps streaming the inactive pane)', () => {
   beforeEach(() => {
     resetStateForTest()
     window.bpmux = { e2e: true, wsUrl: '', authToken: '', apiBase: '' }
@@ -85,7 +85,7 @@ describe('#1595 TerminalView — a backgrounded (inactive) terminal still receiv
   })
 })
 
-describe('#1598 TerminalView — the Cmd-C copy handler does NOT shadow Ctrl-C (SIGINT passes through to xterm)', () => {
+describe('TerminalView — the Cmd-C copy handler does NOT shadow Ctrl-C (SIGINT passes through to xterm)', () => {
   let writeText: ReturnType<typeof vi.fn>
   const termWithSelection = (selection: string): Terminal =>
     ({ getSelection: () => selection }) as unknown as Terminal

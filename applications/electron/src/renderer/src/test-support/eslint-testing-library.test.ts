@@ -20,7 +20,7 @@ const lintFixture = async (): Promise<ESLint.LintResult[]> => {
   return eslint.lintFiles([FIXTURE_PATH])
 }
 
-describe('Dodds RTL anti-pattern eslint substrate (#1423)', () => {
+describe('Dodds RTL anti-pattern eslint substrate ()', () => {
   test.each(EXPECTED_RULE_IDS)('rule %s fires on its anti-pattern in fixture', async (ruleId) => {
     const [result] = await lintFixture()
     const firedRuleIds = result.messages.map((m) => m.ruleId)

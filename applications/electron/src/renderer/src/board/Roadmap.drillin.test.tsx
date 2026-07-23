@@ -28,7 +28,7 @@ const seedSingle = (): void =>
     ]
   )
 
-describe('#1737 Roadmap drill-in — focus an outcome → its iterations building it, in order', () => {
+describe('Roadmap drill-in — focus an outcome → its iterations building it, in order', () => {
   it('is collapsed by default — the drillbody is NOT in the DOM (render-on-demand)', () => {
     seedSingle()
     render(<Roadmap />)

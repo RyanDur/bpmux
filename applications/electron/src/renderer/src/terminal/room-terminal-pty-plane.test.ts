@@ -7,7 +7,7 @@ import {
   getStateSnapshot
 } from '../state'
 
-describe('#1466 SLICE-1 watch — PTY output is a non-persisted plane (falsifier e)', () => {
+describe('watch — PTY output is a non-persisted plane ', () => {
   beforeEach(() => resetStateForTest())
 
   test('pty_output streams to the terminal-id subscriber and is NOT persisted as message history', () => {

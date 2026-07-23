@@ -5,7 +5,7 @@ import { renderApp, type RenderAppResult } from '../../../../test/fixtures/rende
 import { resetMessages } from '../../../../test/fixtures/seedMessages'
 import { humanMessage } from './humanMessage.page'
 
-describe('human-side E2E #476 — persistence-class — message filter (#1456 3-class mute-toggle)', () => {
+describe('message filter (3-class mute-toggle)', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

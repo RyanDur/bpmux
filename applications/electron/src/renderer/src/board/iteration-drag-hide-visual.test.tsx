@@ -4,7 +4,7 @@ import { renderApp, type RenderAppResult } from '../../../../test/fixtures/rende
 import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { iterationBoard, newDragGesture } from './iterationBoard.page'
 
-describe('#1339 step 2d — dragged member carries data-dragging during drag gesture', () => {
+describe('dragged member carries data-dragging during drag gesture', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

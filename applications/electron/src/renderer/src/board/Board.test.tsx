@@ -57,7 +57,7 @@ afterEach(() => {
   delete window.bpmux
 })
 
-describe('#1684 no active iteration → the board panel defaults to the #1704 roadmap-view', () => {
+describe('no active iteration → the board panel defaults to the roadmap-view', () => {
   test('with no active iteration the board panel renders the roadmap-view, not a dead/empty board', () => {
     renderBoard(NO_ITERATION)
     const panel = boardPanel()
@@ -82,7 +82,7 @@ describe('#1684 no active iteration → the board panel defaults to the #1704 ro
     expect(panel.querySelector('[data-test="roadmap"]')).toBeNull()
   })
 
-  test('LIVE on iteration-CLOSE: dropping the current iteration switches the board to the roadmap with no reload (#1720 freshness)', async () => {
+  test('LIVE on iteration-CLOSE: dropping the current iteration switches the board to the roadmap with no reload (freshness)', async () => {
     seedCurrentIteration()
     renderBoard(MEMBERS)
     expect(boardPanel().querySelector('[data-test="roadmap"]')).toBeNull()

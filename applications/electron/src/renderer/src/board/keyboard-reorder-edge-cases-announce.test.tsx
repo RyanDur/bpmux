@@ -7,7 +7,7 @@ import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { pressReorderShortcut } from '../../../../test/fixtures/pressReorderShortcut'
 import { keyboardReorder } from './keyboardReorder.page'
 
-describe('#1339 step 2h-3 — keyboard-reorder edge-cases announce intent to SR users', () => {
+describe('keyboard-reorder edge-cases announce intent to SR users', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

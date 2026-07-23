@@ -23,7 +23,7 @@ const SEED_MESSAGES: SeedMessage[] = [
   }
 ]
 
-describe('human-side E2E #476 — read-class — message list (RTL+real-backend archetype)', () => {
+describe('message list (RTL+real-backend archetype)', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

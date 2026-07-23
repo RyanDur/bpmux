@@ -5,7 +5,7 @@ import type { ChatMessage } from '../transport/types'
 const msg = (from: string, to: string[] | null): ChatMessage =>
   ({ from, to, text: 't', ts: '2026-06-14T00:00:00Z' }) as ChatMessage
 
-describe('isMessageInScope — owner-omniscience scoping (#1733)', () => {
+describe('isMessageInScope — owner-omniscience scoping ()', () => {
   test('the owner all-conversations view renders every message, regardless of --to', () => {
     expect(
       isMessageInScope(msg('dev:claude-code', ['pm', 'designer']), null, 'owner:human', true)

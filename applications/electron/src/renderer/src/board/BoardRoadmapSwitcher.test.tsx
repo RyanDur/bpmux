@@ -24,7 +24,7 @@ const renderSwitcher = (): void => {
   )
 }
 
-describe('#1704 BoardRoadmapSwitcher — header-as-Board-tab sibling-switcher (design-of-record IA)', () => {
+describe('BoardRoadmapSwitcher — header-as-Board-tab sibling-switcher (design-of-record IA)', () => {
   test('renders the Board-tab (the header content) and the 🗺 Roadmap tab as the two siblings', () => {
     renderSwitcher()
     expect(ui.tabHasText('board', 'Crux')).toBe(true)
@@ -79,7 +79,7 @@ const renderWithNudge = (): void => {
   )
 }
 
-describe('#1705 close-approach readiness nudge — strip + tab-badge', () => {
+describe('close-approach readiness nudge — strip + tab-badge', () => {
   test('renders the close-approach strip (plain gap) + the ◐ tab-badge when a nudge is present', () => {
     renderWithNudge()
     const strip = ui.nudge()

@@ -3,7 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TerminalCompose } from './TerminalCompose'
 
-describe('#1656 TerminalCompose — the renderer-owned cooked-mode line', () => {
+describe('TerminalCompose — the renderer-owned cooked-mode line', () => {
   beforeEach(() => window.localStorage.clear())
   afterEach(() => {
     cleanup()

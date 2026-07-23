@@ -24,7 +24,7 @@ const story = (overrides: Partial<Story>): Story => ({
   ...overrides
 })
 
-describe('#1578 deriveNowView — narrowed NOW render-input', () => {
+describe('deriveNowView — narrowed NOW render-input', () => {
   test('empty variant when no iteration is designated', () => {
     expect(deriveNowView([], []).kind).toBe('empty')
     const undesignated = iteration({ id: 1 })

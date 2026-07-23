@@ -7,7 +7,7 @@ import { seedStories } from '../../../../test/fixtures/seedMessages'
 import { pressReorderShortcut } from '../../../../test/fixtures/pressReorderShortcut'
 import { keyboardReorder } from './keyboardReorder.page'
 
-describe('#1339 step 2h-2 — keyboard-reorder announces container-context for screen readers', () => {
+describe('keyboard-reorder announces container-context for screen readers', () => {
   let rendered: RenderAppResult | null = null
 
   afterEach(() => {

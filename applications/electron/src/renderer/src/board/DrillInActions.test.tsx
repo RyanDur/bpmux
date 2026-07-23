@@ -23,7 +23,7 @@ const baseProps = {
   onError: () => {}
 }
 
-describe('#1355 DrillInActions independence', () => {
+describe('DrillInActions independence', () => {
   test('renders standalone (substrate-axis) when canAct=true', () => {
     const html = renderToStaticMarkup(
       <DrillInActions {...baseProps} story={story({})} canAct={true} />

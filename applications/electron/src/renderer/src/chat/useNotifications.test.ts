@@ -33,36 +33,36 @@ const baseMsg = (overrides: Partial<ChatMessage>): ChatMessage => ({
   ...overrides
 })
 
-describe('#382 isRelevant — notification gating matrix', () => {
-  it('AC2: broadcast (no addressee, no to) → not relevant', () => {
+describe('isRelevant — notification gating matrix', () => {
+  it('broadcast (no addressee, no to) → not relevant', () => {
     expect(isRelevant(baseMsg({ from: 'pm:claude-code' }), SELF)).toBe(false)
   })
 
-  it('AC2: broadcast with explicit to=["all"] → not relevant', () => {
+  it('broadcast with explicit to=["all"] → not relevant', () => {
     expect(isRelevant(baseMsg({ from: 'pm:claude-code', to: ['all'] }), SELF)).toBe(false)
   })
 
-  it('AC3: DM with to=[self] → relevant', () => {
+  it('DM with to=[self] → relevant', () => {
     expect(isRelevant(baseMsg({ from: 'pm:claude-code', to: ['dev'] }), SELF)).toBe(true)
   })
 
-  it('AC3: group DM with to including self + others → relevant', () => {
+  it('group DM with to including self + others → relevant', () => {
     expect(isRelevant(baseMsg({ from: 'owner', to: ['dev', 'designer'] }), SELF)).toBe(true)
   })
 
-  it('AC3: DM with to=[other] (not self) → not relevant', () => {
+  it('DM with to=[other] (not self) → not relevant', () => {
     expect(isRelevant(baseMsg({ from: 'pm:claude-code', to: ['designer'] }), SELF)).toBe(false)
   })
 
-  it('AC4: @mention with addressee=self → relevant', () => {
+  it('@mention with addressee=self → relevant', () => {
     expect(isRelevant(baseMsg({ from: 'pm:claude-code', addressee: 'dev' }), SELF)).toBe(true)
   })
 
-  it('AC4: @mention with addressee=other → not relevant', () => {
+  it('@mention with addressee=other → not relevant', () => {
     expect(isRelevant(baseMsg({ from: 'pm:claude-code', addressee: 'designer' }), SELF)).toBe(false)
   })
 
-  it('AC5: accept_story signal (addressee=dev, viewer=dev) → relevant', () => {
+  it('accept_story signal (addressee=dev, viewer=dev) → relevant', () => {
     const msg = baseMsg({
       from: 'owner:electron',
       addressee: 'dev',
@@ -71,7 +71,7 @@ describe('#382 isRelevant — notification gating matrix', () => {
     expect(isRelevant(msg, SELF)).toBe(true)
   })
 
-  it('AC5: reject_story signal (addressee=dev, to=[dev]) → relevant', () => {
+  it('reject_story signal (addressee=dev, to=[dev]) → relevant', () => {
     const msg = baseMsg({
       from: 'owner:electron',
       addressee: 'dev',
@@ -81,13 +81,13 @@ describe('#382 isRelevant — notification gating matrix', () => {
     expect(isRelevant(msg, SELF)).toBe(true)
   })
 
-  it('AC6: activity messageType → not relevant even when @mentioned', () => {
+  it('activity messageType → not relevant even when @mentioned', () => {
     expect(
       isRelevant(baseMsg({ from: 'pm', addressee: 'dev', messageType: 'activity' }), SELF)
     ).toBe(false)
   })
 
-  it('AC6: system messageType → not relevant even when DM-targeted', () => {
+  it('system messageType → not relevant even when DM-targeted', () => {
     expect(isRelevant(baseMsg({ from: 'bpmux', to: ['dev'], messageType: 'system' }), SELF)).toBe(
       false
     )
@@ -107,7 +107,7 @@ describe('#382 isRelevant — notification gating matrix', () => {
   })
 })
 
-describe('#1537 useNotifications — notifies per live-message append (no length-cursor)', () => {
+describe('useNotifications — notifies per live-message append (no length-cursor)', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.restoreAllMocks()

@@ -15,14 +15,14 @@ const typeWarnings = async (code: string, codeFilename: string): Promise<styleli
   return results[0].warnings.filter((w) => w.rule === 'selector-max-type')
 }
 
-describe('#1502 Stylelint tag-selector substrate — bare tag-selectors banned in app CSS', () => {
-  test('app CSS: bare `details {}` fires selector-max-type (the #1516/#1517 disclosure case)', async () => {
+describe('Stylelint tag-selector substrate — bare tag-selectors banned in app CSS', () => {
+  test('app CSS: bare `details {}` fires selector-max-type (the /disclosure case)', async () => {
     const warnings = await typeWarnings('details {\n  color: red;\n}\n', APP_CSS_STUB)
     expect(warnings.length).toBeGreaterThan(0)
     expect(warnings[0].severity).toBe('error')
   })
 
-  test('app CSS: `details::details-content {}` fires (the owner 11:14 UTC anti-pattern)', async () => {
+  test('app CSS: `details::details-content {}` fires (the anti-pattern)', async () => {
     const warnings = await typeWarnings(
       'details::details-content {\n  height: 0;\n}\n',
       APP_CSS_STUB

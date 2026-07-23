@@ -51,7 +51,7 @@ afterEach(() => {
   resetStateForTest()
 })
 
-describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-check-402.spec.ts)', () => {
+describe('Sidebar — +5g-fix mirror-roster derivation ', () => {
   test('non-speaking peer roles from mirror.roster render as direct entries', () => {
     pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
@@ -69,7 +69,7 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
     expect(html).toContain('data-test="sidebar-direct-designer"')
   })
 
-  test('viewer (owner) excluded from sidebar-direct entries (#393 AC1 self-filter)', () => {
+  test('viewer (owner) excluded from sidebar-direct entries ', () => {
     pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
@@ -84,7 +84,7 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
     expect(html).not.toContain('data-test="sidebar-direct-owner"')
   })
 
-  test('#1246: only-self in roster shows NO peer direct-entries (no message-history fallback)', () => {
+  test(': only-self in roster shows NO peer direct-entries (no message-history fallback)', () => {
     const SELF_ONLY: RosterMemberWire[] = [
       wire({ name: 'owner', identity: 'owner:electron', role: 'Owner' })
     ]
@@ -113,7 +113,7 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
     expect(html).not.toContain('data-test="sidebar-direct-dev"')
   })
 
-  test('#1457: broadcast button retired — all conversations entry remains', () => {
+  test(': broadcast button retired — all conversations entry remains', () => {
     const html = renderToStaticMarkup(
       <Sidebar
         recipient={null}
@@ -147,7 +147,7 @@ describe('Sidebar — slice 5g+5g-fix mirror-roster derivation (replaces desk-ch
   })
 })
 
-describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-walk regression)', () => {
+describe('Sidebar — targeting survives a GROUPS surface-change (owner-walk regression)', () => {
   test('clicking a group scopes the recipient to that group', async () => {
     pushRoster(ROSTER_FIXTURE)
     const onSelectRecipient = vi.fn()
@@ -166,7 +166,7 @@ describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-wa
     expect([...onSelectRecipient.mock.calls[0][0]].sort()).toEqual(['designer', 'dev'])
   })
 
-  test('#1733: a 2-peer roster scopes its only group to that exact pair, not broadcast', async () => {
+  test(': a 2-peer roster scopes its only group to that exact pair, not broadcast', async () => {
     const onSelectRecipient = vi.fn()
     const TWO_PEER_ROSTER: RosterMemberWire[] = [
       wire({ name: 'owner', identity: 'owner:electron', role: 'Owner' }),
@@ -208,7 +208,7 @@ describe('Sidebar — targeting survives a GROUPS surface-change (#1605 owner-wa
   })
 })
 
-describe('#1246 Sidebar — roster is source-of-truth; no message-history fallback', () => {
+describe('Sidebar — roster is source-of-truth; no message-history fallback', () => {
   test('empty roster + only-message-history renders NO peer direct-entries', () => {
     const messages: ChatMessage[] = [
       {
@@ -310,8 +310,8 @@ describe('#1246 Sidebar — roster is source-of-truth; no message-history fallba
   })
 })
 
-describe('#1457 Sidebar — Pictor-rework: retire +owner / 3-role-group / BPMUX section', () => {
-  test('Scenario 1: GROUP rows do NOT carry +owner affordance (owner-is-constant; canon-cite 18:31 UTC "I am already here")', () => {
+describe('Sidebar — retire +owner / 3-role-group / BPMUX section', () => {
+  test('GROUP rows do NOT carry +owner affordance (owner-is-constant; canon-cite 18:31 UTC "I am already here")', () => {
     pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
@@ -329,7 +329,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +owner / 3-role-group / BPMUX 
     expect(html).not.toMatch(/data-test="sidebar-group-[^"]+-owner"/)
   })
 
-  test('Scenario 2: BPMUX section retired entirely (filter pills handle bpmux class)', () => {
+  test('BPMUX section retired entirely (filter pills handle bpmux class)', () => {
     pushRoster(ROSTER_FIXTURE)
     const messages: ChatMessage[] = [
       {
@@ -359,7 +359,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +owner / 3-role-group / BPMUX 
     expect(html).not.toContain('data-test="sidebar-system"')
   })
 
-  test('Scenario 3: 3-role all-members group retired (subsumed by "all conversations")', () => {
+  test('3-role all-members group retired (subsumed by "all conversations")', () => {
     pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
@@ -375,7 +375,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +owner / 3-role-group / BPMUX 
     expect(html).not.toContain('data-all-members="true"')
   })
 
-  test('Scenario 4: 2-role GROUP rooms preserved with member-list-naming', () => {
+  test('2-role GROUP rooms preserved with member-list-naming', () => {
     pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
@@ -393,7 +393,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +owner / 3-role-group / BPMUX 
     expect(html).toMatch(/data-test="sidebar-group-dev\+pm"/)
   })
 
-  test('Scenario 5: "all conversations" entry preserved with explanatory title', () => {
+  test('"all conversations" entry preserved with explanatory title', () => {
     pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
@@ -410,7 +410,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +owner / 3-role-group / BPMUX 
     expect(html).toMatch(/title="meta-view of every channel"/)
   })
 
-  test('Scenario 6 canon: zero <div> + zero <span> in rendered sidebar (feedback_html5_semantic_no_divs_spans)', () => {
+  test('canon: zero <div> + zero <span> in rendered sidebar (feedback_html5_semantic_no_divs_spans)', () => {
     pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
@@ -426,7 +426,7 @@ describe('#1457 Sidebar — Pictor-rework: retire +owner / 3-role-group / BPMUX 
     expect(html).not.toMatch(/<span\b/)
   })
 
-  test('Scenario 7: presence-dot still renders per DIRECT role (semantic refactored to <i>)', () => {
+  test('presence-dot still renders per DIRECT role (semantic refactored to <i>)', () => {
     pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
@@ -444,8 +444,8 @@ describe('#1457 Sidebar — Pictor-rework: retire +owner / 3-role-group / BPMUX 
   })
 })
 
-describe('Sidebar — presence dot honestly reflects wire roster state, never green from mere connection (#1719)', () => {
-  test('wire presence Online (connected, no signal yet) shows UNKNOWN hollow, NEVER available/green (#1739 S1: the dot reflects a pushed state; mere connection is unknown)', () => {
+describe('Sidebar — presence dot honestly reflects wire roster state, never green from mere connection ()', () => {
+  test('wire presence Online (connected, no signal yet) shows UNKNOWN hollow, NEVER available/green (: the dot reflects a pushed state; mere connection is unknown)', () => {
     pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
@@ -501,7 +501,7 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
     expect(html).not.toMatch(/data-test="presence-dot-dev"[^>]*data-presence="available"/)
   })
 
-  test('no path yields data-presence="available" from connection alone in S1', () => {
+  test('no path yields data-presence="available" from connection alone in ', () => {
     pushRoster(ROSTER_FIXTURE)
     const html = renderToStaticMarkup(
       <Sidebar
@@ -536,7 +536,7 @@ describe('Sidebar — presence dot honestly reflects wire roster state, never gr
   })
 })
 
-describe('#1749 S3 — terminal=connection: the dot flickers on message-I/O (motion keyed off messages, never colour)', () => {
+describe('terminal=connection: the dot flickers on message-I/O (motion keyed off messages, never colour)', () => {
   const baseProps = {
     recipient: null,
     allView: false,

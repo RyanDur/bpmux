@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { BOARD_MIN_WIDTH, clampBoardWidth, computeCollapseToggle } from './BoardResizeHandle.utils'
 
-describe('#1538 computeCollapseToggle — collapse/expand width state-machine (restore-memory at the width-owner)', () => {
+describe('computeCollapseToggle — collapse/expand width state-machine (restore-memory at the width-owner)', () => {
   const VIEWPORT = 1440
 
   test('collapse: when width is above min, returns min and remembers the pre-collapse width', () => {

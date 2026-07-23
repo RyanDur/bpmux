@@ -27,7 +27,7 @@ const Harness = ({ initial = 'one' as Id }: { initial?: Id }): React.JSX.Element
   )
 }
 
-describe('#1453 Tabs primitive — native HTML5 radio-group (owner-canon supersession)', () => {
+describe('Tabs primitive — native HTML5 radio-group ', () => {
   test('renders fieldset (role=group) with 3 native radios + label-text', () => {
     render(<Harness />)
     expect(tabs.group('Test tabs')).toBeTruthy()

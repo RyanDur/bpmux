@@ -10,7 +10,7 @@ afterEach(() => {
   resetStateForTest()
 })
 
-describe('#1704 Roadmap — outcomes by horizon, the overview', () => {
+describe('Roadmap — outcomes by horizon, the overview', () => {
   it('groups outcomes under Now / Next / Later band headings', () => {
     seedRoadmap([
       card({ id: 1, name: 'Now outcome', horizon: 'now' }),
