@@ -2,12 +2,9 @@ import { defineConfig } from '@playwright/test'
 
 const SERIAL_HEAVY_SPECS = [
   '**/real-backend.spec.ts',
-  '**/a11y-audit.spec.ts',
   '**/canary-env-leak.spec.ts',
   '**/terminal-session-journey.spec.ts',
-  '**/terminals-multi.spec.ts',
-  '**/confirm-before-close.spec.ts',
-  '**/exited-restart-close.spec.ts'
+  '**/agent-message-routing.spec.ts'
 ]
 
 export default defineConfig({
