@@ -4,7 +4,7 @@
 # $REPO_ROOT, no temp worktree). Targets are PHONY — no file outputs
 # to track; each target re-runs its underlying tool every invocation.
 
-.PHONY: help cargo-test audit npm-unit npm-e2e pre-push
+.PHONY: help cargo-test audit npm-unit npm-e2e pre-push push
 
 help:
 	@echo "make cargo-test   # cargo nextest run --no-fail-fast --retries 1"
@@ -24,6 +24,10 @@ npm-unit:
 
 npm-e2e:
 	cd applications/electron && npm run test:e2e
+
+push:
+	git push
+	scripts/verify-push.sh
 
 pre-push:
 	bash scripts/git-hooks/pre-push

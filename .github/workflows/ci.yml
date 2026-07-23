@@ -70,7 +70,7 @@ jobs:
         run: cargo build -p bpmux
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: applications/electron/package-lock.json
           registry-url: "https://npm.pkg.github.com"

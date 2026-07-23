@@ -44,6 +44,12 @@ fi
 
 echo "Running pre-commit quality gates (parallel)..."
 
+registered_canary_before=0
+if [ -f "$HOME/.bpmux/diag.log" ]; then
+    registered_canary_before=$(grep -c "Routing.Registered" "$HOME/.bpmux/diag.log" || true)
+fi
+
+
 fmt_log=$(mktemp); fmt_exit=0
 clippy_log=$(mktemp); clippy_exit=0
 nextest_log=$(mktemp); nextest_exit=0
@@ -58,10 +64,10 @@ fmt_pid=$!
 cargo clippy --lib --tests -- -D warnings >"$clippy_log" 2>&1 &
 clippy_pid=$!
 
-cargo nextest run --no-fail-fast --retries 1 --status-level fail --hide-progress-bar >"$nextest_log" 2>&1 &
+env -u BPMUX_PORT -u BPMUX_TERMINAL_ID -u BPMUX_USER_ID -u BPMUX_ROLE -u BPMUX_DATA_BASE cargo nextest run --no-fail-fast --retries 1 --status-level fail --hide-progress-bar >"$nextest_log" 2>&1 &
 nextest_pid=$!
 
-(cd "$REPO_ROOT/applications/electron" && npm run test:unit) >"$unit_log" 2>&1 &
+(cd "$REPO_ROOT/applications/electron" && env -u BPMUX_PORT -u BPMUX_TERMINAL_ID -u BPMUX_USER_ID -u BPMUX_ROLE -u BPMUX_DATA_BASE npm run test:unit) >"$unit_log" 2>&1 &
 unit_pid=$!
 
 { (cd "$REPO_ROOT/applications/electron" && npm run depcruise && npx knip) && cargo machete; } >"$signals_log" 2>&1 &
@@ -86,6 +92,12 @@ wait $lint_pid || lint_exit=$?
 echo "--- cargo fmt ---"; cat "$fmt_log"
 echo "--- cargo clippy ---"; cat "$clippy_log"
 echo "--- cargo nextest ---"; cat "$nextest_log"
+if grep -qE "FLAKY|flaky" "$nextest_log" 2>/dev/null; then
+    echo "=============================================================="
+    echo "WARNING: FLAKY test(s) passed only on retry — see the nextest log above."
+    echo "Flaky tests are serious problems (canon). Hunt it, don't ship it silently."
+    echo "=============================================================="
+fi
 echo "--- npm test:unit ---"; cat "$unit_log"
 echo "--- architecture signals (depcruise + knip + machete) ---"; cat "$signals_log"
 echo "--- comment-class gate ---"; cat "$inline_log"
@@ -116,3 +128,15 @@ if command -v cargo-audit &> /dev/null; then
 fi
 
 echo "pre-commit: clean."
+
+if [ -f "$HOME/.bpmux/diag.log" ]; then
+    registered_canary_after=$(grep -c "Routing.Registered" "$HOME/.bpmux/diag.log" || true)
+    if [ "$registered_canary_after" -gt "$registered_canary_before" ]; then
+        echo "FAIL: live-daemon canary — the LIVE daemon registered $((registered_canary_after - registered_canary_before)) new identit(y/ies) during the pre-commit run."
+        echo "A test or tool leaked onto the live daemon (ambient port/terminal env, or a hardcoded 4117)."
+        echo "If a human genuinely registered mid-run, re-run to confirm."
+        exit 1
+    fi
+fi
+
+exit 0
