@@ -5,7 +5,7 @@ import CloseApproachNudge from './CloseApproachNudge'
 import type { CloseApproachNudge as CloseApproachNudgeData } from './deriveCloseApproachNudge'
 import './BoardRoadmapSwitcher.css'
 
-export type BoardRoadmapView = 'board' | 'roadmap'
+type BoardRoadmapView = 'board' | 'roadmap'
 
 const STORAGE_PREFIX = 'bpmux-board-roadmap-view'
 const VALID_VIEWS: ReadonlyArray<BoardRoadmapView> = ['board', 'roadmap'] as const

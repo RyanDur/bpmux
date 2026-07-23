@@ -28,7 +28,7 @@ export interface StateSnapshot {
   timelineByStory: ReadonlyMap<number, TimelineEventWire[]>
 }
 
-export const messageKey = (m: { from: string; text: string; ts: string }): string =>
+const messageKey = (m: { from: string; text: string; ts: string }): string =>
   `${m.ts}|${m.from}|${m.text}`
 
 export const emptySnapshot = (url: string | undefined): StateSnapshot => ({

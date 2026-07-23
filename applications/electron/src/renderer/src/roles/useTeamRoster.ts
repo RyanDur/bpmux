@@ -8,7 +8,7 @@ export interface RosterEntry {
   presence: Presence
 }
 
-export const wireToRosterEntry = (wire: RosterMemberWire): RosterEntry => ({
+const wireToRosterEntry = (wire: RosterMemberWire): RosterEntry => ({
   identity: wire.identity,
   role: wire.name,
   presence: presenceFromWire(wire.presence)

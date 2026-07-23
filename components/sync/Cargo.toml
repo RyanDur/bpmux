@@ -8,7 +8,6 @@ description = "Eventually-consistent sync engine between the store and the story
 [dependencies]
 kernel = { path = "../kernel" }
 store = { path = "../store" }
-message = { path = "../message" }
 product_management = { path = "../product_management" }
 source_codec = { path = "../source_codec" }
 source_sync = { path = "../source_sync" }
@@ -19,7 +18,6 @@ workflow = { path = "../workflow" }
 chrono = { workspace = true }
 tokio = { workspace = true, features = ["sync", "rt", "time", "macros"] }
 tokio-util = { workspace = true }
-serde_json = { workspace = true }
 
 [dev-dependencies]
 integrations = { path = "../integrations" }

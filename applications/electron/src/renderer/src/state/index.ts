@@ -40,7 +40,7 @@ export {
 } from './emitter'
 export { encodeKeystroke, decodePtyData } from './ptyCodec'
 export { RENDERER_IDENTITY } from './constants'
-export type { StateSnapshot } from './reducer'
+
 export type { SendOptions, ConnectionConfig } from './actions'
 
 export const startConnection = (config: ConnectionConfig): void =>

@@ -11,7 +11,7 @@ import {
   setCaret
 } from './inputCommands'
 
-export interface SearchState {
+interface SearchState {
   query: string
   matchIndex: number | null
   priorValue: string

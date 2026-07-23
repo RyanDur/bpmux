@@ -20,7 +20,7 @@ import {
 } from './types'
 import './BoardTabs.css'
 
-export type BoardTabId = 'now' | 'plan' | 'done'
+type BoardTabId = 'now' | 'plan' | 'done'
 
 const BOARD_TAB_STORAGE_PREFIX = 'bpmux-board-active-tab'
 const VALID_TAB_IDS: ReadonlyArray<BoardTabId> = ['now', 'plan', 'done'] as const

@@ -8,7 +8,7 @@ export const CHECK_ORDER: ReadonlyArray<{ key: keyof IterationReadiness; label: 
   { key: 'dev_ok', label: 'dev-OK' }
 ]
 
-export const NOTHING_DONE: IterationReadiness = {
+const NOTHING_DONE: IterationReadiness = {
   drafted: false,
   stories_ordered: false,
   review_closed: false,

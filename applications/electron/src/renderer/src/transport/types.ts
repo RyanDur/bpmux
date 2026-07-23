@@ -39,7 +39,7 @@ export interface CiSnapshotWire {
   url?: string | null
 }
 
-export interface DroppedEventWire {
+interface DroppedEventWire {
   story_id: number
   error: string
   ts: string
@@ -55,7 +55,7 @@ export interface SyncStatusWire {
   startup_fail: boolean
 }
 
-export type RosterRoleWire = 'Designer' | 'Dev' | 'Pm' | 'Owner' | 'Other'
+type RosterRoleWire = 'Designer' | 'Dev' | 'Pm' | 'Owner' | 'Other'
 
 export type PresenceWire = 'Online' | 'Busy' | 'Idle' | 'Offline' | 'Blocked' | 'Help'
 
@@ -173,14 +173,14 @@ export interface ServerPtyMode {
   bracketed_paste: boolean
 }
 
-export interface ClientIdentify {
+interface ClientIdentify {
   type: 'identify'
   name: string
   tool?: string
   owner_nonce?: string
 }
 
-export interface ClientSend {
+interface ClientSend {
   type: 'send'
   text: string
   to?: string[]
@@ -188,29 +188,29 @@ export interface ClientSend {
   message_type?: string
 }
 
-export interface ClientPing {
+interface ClientPing {
   type: 'ping'
 }
 
-export interface ClientPtySubscribe {
+interface ClientPtySubscribe {
   type: 'pty_subscribe'
   terminal_id: string
 }
 
-export interface ClientPtyInput {
+interface ClientPtyInput {
   type: 'pty_input'
   terminal_id: string
   data: string
 }
 
-export interface ClientPtyResize {
+interface ClientPtyResize {
   type: 'pty_resize'
   terminal_id: string
   cols: number
   rows: number
 }
 
-export interface ClientReactionToggle {
+interface ClientReactionToggle {
   type: 'reaction_toggle'
   channel: string
   message_key: string
@@ -218,55 +218,55 @@ export interface ClientReactionToggle {
   user: string
 }
 
-export interface ClientCommentsHydrate {
+interface ClientCommentsHydrate {
   type: 'comments_hydrate'
   story_id: number
 }
 
-export interface ClientTimelineHydrate {
+interface ClientTimelineHydrate {
   type: 'timeline_hydrate'
   story_id: number
 }
 
-export interface ClientHistoryHydrate {
+interface ClientHistoryHydrate {
   type: 'history_hydrate'
   chat_limit: number
   activity_limit: number
 }
 
-export interface ClientHistoryPage {
+interface ClientHistoryPage {
   type: 'history_page'
   request_id: number
   before: string
   limit: number
 }
 
-export interface ClientSetOutcomeHorizon {
+interface ClientSetOutcomeHorizon {
   type: 'set_outcome_horizon'
   outcome_id: number
   horizon: 'now' | 'next' | 'later'
 }
 
-export interface ClientReorderOutcomeIteration {
+interface ClientReorderOutcomeIteration {
   type: 'reorder_outcome_iteration'
   outcome_id: number
   iteration_id: number
   position: number
 }
 
-export interface ClientReprioritizeOutcome {
+interface ClientReprioritizeOutcome {
   type: 'reprioritize_outcome'
   outcome_id: number
   position: number
 }
 
-export interface ClientReorderIteration {
+interface ClientReorderIteration {
   type: 'reorder_iteration'
   iteration_id: number
   position: number
 }
 
-export interface ClientAddStoryToIteration {
+interface ClientAddStoryToIteration {
   type: 'add_story_to_iteration'
   iteration_id: number
   story_id: number

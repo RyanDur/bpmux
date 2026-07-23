@@ -3,7 +3,7 @@ import { roleColorFor } from '../roles/roleColor'
 
 const MENTION_RE = /(^|[^A-Za-z0-9_@])@([A-Za-z0-9_-]+)/g
 
-export const splitMentions = (
+const splitMentions = (
   text: string,
   knownRoles: ReadonlySet<string>,
   onMention: ((role: string) => void) | undefined,

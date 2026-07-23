@@ -6,7 +6,7 @@ import { type GripDragProps, type RowDragProps } from './useDragReorder'
 import { storyNavigateLabel } from './storyNavigateLabel'
 import { isConcluded, storyTypeFromLabels, type Story } from './types'
 
-export interface StoryRowProps {
+interface StoryRowProps {
   story: Story
   parentEpicTitle?: string
   selected: boolean

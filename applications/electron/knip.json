@@ -1,0 +1,3 @@
+{
+  "ignore": ["src/renderer/src/test-support/fixtures/**"]
+}

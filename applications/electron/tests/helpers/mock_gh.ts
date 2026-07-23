@@ -5,7 +5,7 @@ import type { AddressInfo } from 'net'
 // the entire issue gets silently dropped by serde, leaving the
 // BoardStore empty with no error surface. label_json mirrors the
 // Rust helper: emit the full shape from a single name argument.
-export const labelJson = (name: string): Record<string, unknown> => {
+const labelJson = (name: string): Record<string, unknown> => {
   let id = 0
   for (const c of Buffer.from(name, 'utf-8')) {
     id = (id * 131 + c) >>> 0
@@ -92,7 +92,7 @@ const ghUser = (login = 'actor'): Record<string, unknown> => ({
   site_admin: false
 })
 
-export interface MockRoute {
+interface MockRoute {
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE'
   // Exact path prefix or regex. Matched in registration order.
   match: string | RegExp
@@ -100,7 +100,7 @@ export interface MockRoute {
   bodyJson?: unknown
 }
 
-export interface MockGhRequest {
+interface MockGhRequest {
   method: string
   path: string
   authorization?: string

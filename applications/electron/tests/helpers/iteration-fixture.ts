@@ -1,7 +1,6 @@
 import { expect } from '@playwright/test'
-import { launchIsolatedWithWindow, launchWithMockGh } from './launch'
-import type { LaunchOpts, LaunchResult, MockGhLaunchResult } from './launch'
-import type { Page } from '@playwright/test'
+import { launchWithMockGh } from './launch'
+import type { LaunchOpts, MockGhLaunchResult } from './launch'
 
 export type RpcFn = (tool: string, body: unknown, agent?: string) => Promise<Response>
 
@@ -70,21 +69,6 @@ export const seedCurrentIterationViaTestApi = async (
     agent: 'pm:test'
   })
   return iterationId
-}
-
-export const launchIsolatedWithSeededIteration = async (
-  opts: LaunchOpts & { name?: string } = {}
-): Promise<LaunchResult & { win: Page; currentIterationId: number }> => {
-  const { name = 'SeededIteration', ...launchOpts } = opts
-  const result = await launchIsolatedWithWindow(launchOpts)
-  const currentIterationId = await seedCurrentIterationViaTestApi(
-    result.backendPort,
-    result.authToken,
-    name
-  )
-  await result.win.reload()
-  await expect(result.win.locator('[data-test="board-region"]')).toBeVisible()
-  return { ...result, currentIterationId }
 }
 
 export const launchWithMockGhAndSeededIteration = async (

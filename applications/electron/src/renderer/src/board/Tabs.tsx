@@ -8,7 +8,7 @@ export interface TabDef<TabId extends string> {
   panelTestId?: string
 }
 
-export interface TabsProps<TabId extends string> {
+interface TabsProps<TabId extends string> {
   ariaLabel: string
   tabs: ReadonlyArray<TabDef<TabId>>
   activeId: TabId
@@ -18,7 +18,7 @@ export interface TabsProps<TabId extends string> {
   panelClassName?: string
 }
 
-export const Tabs = <TabId extends string>({
+const Tabs = <TabId extends string>({
   ariaLabel,
   tabs,
   activeId,

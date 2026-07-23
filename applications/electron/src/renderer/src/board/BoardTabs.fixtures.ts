@@ -12,17 +12,6 @@ import {
 import { selectIterations } from './selectIterations'
 import { getStateSnapshot } from '../state/store'
 
-export const iterationStory = (overrides: Partial<Story>): Story => ({
-  id: 9000,
-  title: 'Iteration Sextans',
-  state: 'icebox',
-  labels: ['iteration', 'iteration-order.100'],
-  assignees: [],
-  created_at: '2026-05-18T00:00:00Z',
-  body: '',
-  ...overrides
-})
-
 export const epicStory = (overrides: Partial<Story>): Story => ({
   id: 8000,
   title: 'Epic Foo',

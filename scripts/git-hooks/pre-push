@@ -25,6 +25,11 @@ if ! command -v cargo-nextest &> /dev/null; then
     exit 1
 fi
 
+if ! command -v cargo-machete &> /dev/null; then
+    echo "ERROR: cargo-machete not found. Install: cargo install cargo-machete --locked" >&2
+    exit 1
+fi
+
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
@@ -107,7 +112,7 @@ build_pid=$!
 (cd "$REPO_ROOT/applications/electron" && npm run test:unit) >"$unit_log" 2>&1 &
 unit_pid=$!
 
-(cd "$REPO_ROOT/applications/electron" && npm run depcruise) >"$depcruise_log" 2>&1 &
+{ (cd "$REPO_ROOT/applications/electron" && npm run depcruise && npx knip) && cargo machete; } >"$depcruise_log" 2>&1 &
 depcruise_pid=$!
 
 "$REPO_ROOT/scripts/check-inline-comments.sh" >"$inline_log" 2>&1 &
@@ -129,7 +134,7 @@ echo "--- cargo fmt ---"; cat "$fmt_log"
 echo "--- cargo clippy ---"; cat "$clippy_log"
 echo "--- cargo nextest ---"; cat "$nextest_log"
 echo "--- electron build + typecheck ---"; cat "$build_log"
-echo "--- dependency rules ---"; cat "$depcruise_log"
+echo "--- architecture signals (depcruise + knip + machete) ---"; cat "$depcruise_log"
 echo "--- npm test:unit ---"; cat "$unit_log"
 echo "--- comment-class gate ---"; cat "$inline_log"
 echo "--- eslint + stylelint (pushed files) ---"; cat "$lint_log"
@@ -153,7 +158,7 @@ for_each_exit_check() {
 for_each_exit_check "cargo nextest" "$nextest_exit"
 [ $build_exit -ne 0 ] && exit $build_exit
 for_each_exit_check "npm test:unit" "$unit_exit"
-[ $depcruise_exit -ne 0 ] && { echo "FAIL: dependency rules"; exit $depcruise_exit; }
+[ $depcruise_exit -ne 0 ] && { echo "FAIL: architecture signals"; exit $depcruise_exit; }
 [ $inline_exit -ne 0 ] && exit $inline_exit
 [ $lint_exit -ne 0 ] && exit $lint_exit
 

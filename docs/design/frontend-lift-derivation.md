@@ -168,8 +168,14 @@ imports tests. Pinned by a substrate test in the eslint-fixture idiom
 (the cycle fixture proves no-circular fires; a second pin proves the
 live tree holds zero violations). Runs in pre-push wave 1 and CI.
 The Rust side needs no cycle rule — cargo forbids circular crate
-deps structurally. Candidate signals parked with Ryan: knip (dead
-exports — would have caught the orphan asyncFailure re-export),
-cargo-machete (unused crate deps), feature-isolation rules (today
-chat/board/sidebar legitimately cross-import; outlawing needs an
-allowed-edges ruling).
+deps structurally. All three candidates landed same day on
+Ryan's "do all three" (pre-commit + pre-push): feature contracts
+(each feature's cross-imports at ruling time are its named
+allowlist — chat→{terminal,roles,metrics}, board→{chat,sync},
+sidebar→{chat,terminal,roles}; a new edge is a design conversation);
+knip (zero-findings — the sweep killed labelsClient.ts, a dead file
+that survived two refactors, four dead icons, the parent-iteration
+label remnants, an unused @electron-toolkit/preload dep, and listed
+highlight.js which was imported but only transitively present);
+cargo-machete (19 unused crate deps across transport/sync/server/cli
+— lift fallout, every removal compile-verified).

@@ -6,11 +6,11 @@ export interface RoadmapIteration {
   readiness: IterationReadiness
 }
 
-export type RoadmapReadinessState = 'ready' | 'gap' | 'none'
+type RoadmapReadinessState = 'ready' | 'gap' | 'none'
 
 export type OutcomeState = 'done' | 'ready' | 'needs-attention' | 'planned'
 
-export type OutcomeCardTone = 'now' | 'ready' | 'gap' | 'future'
+type OutcomeCardTone = 'now' | 'ready' | 'gap' | 'future'
 
 export interface OutcomeWhy {
   benefit?: string
@@ -29,7 +29,7 @@ export interface RoadmapOutcome {
   iterations: RoadmapIteration[]
 }
 
-export interface RoadmapBand {
+interface RoadmapBand {
   horizon: Horizon
   label: string
   outcomes: RoadmapOutcome[]

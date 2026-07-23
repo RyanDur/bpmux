@@ -44,6 +44,94 @@ module.exports = {
       to: { path: '^src/renderer/' }
     },
     {
+      name: 'chat-keeps-to-its-contract',
+      comment:
+        'Cross-feature edges are a contract, not a free-for-all: the edges that existed at ruling time (2026-07-23) are named in pathNot; a new edge between features is a design conversation, not an import.',
+      severity: 'error',
+      from: {
+        path: '^src/renderer/src/chat/',
+        pathNot: '(\\.test\\.(ts|tsx)$|\\.page\\.ts$|\\.fixtures\\.ts$)'
+      },
+      to: { path: '^src/renderer/src/(board|sidebar|ci|sync)/' }
+    },
+    {
+      name: 'board-keeps-to-its-contract',
+      comment:
+        'Cross-feature edges are a contract, not a free-for-all: the edges that existed at ruling time (2026-07-23) are named in pathNot; a new edge between features is a design conversation, not an import.',
+      severity: 'error',
+      from: {
+        path: '^src/renderer/src/board/',
+        pathNot: '(\\.test\\.(ts|tsx)$|\\.page\\.ts$|\\.fixtures\\.ts$)'
+      },
+      to: { path: '^src/renderer/src/(terminal|roles|sidebar|metrics|ci)/' }
+    },
+    {
+      name: 'terminal-keeps-to-its-contract',
+      comment:
+        'Cross-feature edges are a contract, not a free-for-all: the edges that existed at ruling time (2026-07-23) are named in pathNot; a new edge between features is a design conversation, not an import.',
+      severity: 'error',
+      from: {
+        path: '^src/renderer/src/terminal/',
+        pathNot: '(\\.test\\.(ts|tsx)$|\\.page\\.ts$|\\.fixtures\\.ts$)'
+      },
+      to: { path: '^src/renderer/src/(chat|board|roles|sidebar|metrics|ci|sync)/' }
+    },
+    {
+      name: 'roles-keeps-to-its-contract',
+      comment:
+        'Cross-feature edges are a contract, not a free-for-all: the edges that existed at ruling time (2026-07-23) are named in pathNot; a new edge between features is a design conversation, not an import.',
+      severity: 'error',
+      from: {
+        path: '^src/renderer/src/roles/',
+        pathNot: '(\\.test\\.(ts|tsx)$|\\.page\\.ts$|\\.fixtures\\.ts$)'
+      },
+      to: { path: '^src/renderer/src/(chat|board|terminal|sidebar|metrics|ci|sync)/' }
+    },
+    {
+      name: 'sidebar-keeps-to-its-contract',
+      comment:
+        'Cross-feature edges are a contract, not a free-for-all: the edges that existed at ruling time (2026-07-23) are named in pathNot; a new edge between features is a design conversation, not an import.',
+      severity: 'error',
+      from: {
+        path: '^src/renderer/src/sidebar/',
+        pathNot: '(\\.test\\.(ts|tsx)$|\\.page\\.ts$|\\.fixtures\\.ts$)'
+      },
+      to: { path: '^src/renderer/src/(board|metrics|ci|sync)/' }
+    },
+    {
+      name: 'metrics-keeps-to-its-contract',
+      comment:
+        'Cross-feature edges are a contract, not a free-for-all: the edges that existed at ruling time (2026-07-23) are named in pathNot; a new edge between features is a design conversation, not an import.',
+      severity: 'error',
+      from: {
+        path: '^src/renderer/src/metrics/',
+        pathNot: '(\\.test\\.(ts|tsx)$|\\.page\\.ts$|\\.fixtures\\.ts$)'
+      },
+      to: { path: '^src/renderer/src/(chat|board|terminal|roles|sidebar|ci|sync)/' }
+    },
+    {
+      name: 'ci-keeps-to-its-contract',
+      comment:
+        'Cross-feature edges are a contract, not a free-for-all: the edges that existed at ruling time (2026-07-23) are named in pathNot; a new edge between features is a design conversation, not an import.',
+      severity: 'error',
+      from: {
+        path: '^src/renderer/src/ci/',
+        pathNot: '(\\.test\\.(ts|tsx)$|\\.page\\.ts$|\\.fixtures\\.ts$)'
+      },
+      to: { path: '^src/renderer/src/(chat|board|terminal|roles|sidebar|metrics|sync)/' }
+    },
+    {
+      name: 'sync-keeps-to-its-contract',
+      comment:
+        'Cross-feature edges are a contract, not a free-for-all: the edges that existed at ruling time (2026-07-23) are named in pathNot; a new edge between features is a design conversation, not an import.',
+      severity: 'error',
+      from: {
+        path: '^src/renderer/src/sync/',
+        pathNot: '(\\.test\\.(ts|tsx)$|\\.page\\.ts$|\\.fixtures\\.ts$)'
+      },
+      to: { path: '^src/renderer/src/(chat|board|terminal|roles|sidebar|metrics|ci)/' }
+    },
+    {
       name: 'production-never-imports-tests',
       comment:
         'A prod module importing a test module or test-support smuggles test seams into the product.',

@@ -14,7 +14,7 @@ import {
   spawnTerminalRequest
 } from '../terminal/terminalApi'
 
-export type TerminalState = 'spawning' | 'ready' | 'spawn-failed' | 'exited'
+type TerminalState = 'spawning' | 'ready' | 'spawn-failed' | 'exited'
 
 export interface TerminalEntry {
   key: string
@@ -24,7 +24,7 @@ export interface TerminalEntry {
   error?: string
 }
 
-export interface ConfirmClose {
+interface ConfirmClose {
   key: string
   id: string
 }

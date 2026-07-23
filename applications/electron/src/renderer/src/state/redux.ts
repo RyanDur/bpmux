@@ -6,7 +6,7 @@ export type Reducer<S, A extends Action> = (state: S, action: A) => S
 
 export type Dispatch<A extends Action> = (action: A) => void
 
-export type Listener = () => void
+type Listener = () => void
 
 export interface Store<S, A extends Action> {
   getState: () => S

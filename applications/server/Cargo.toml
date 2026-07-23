@@ -28,12 +28,9 @@ kernel = { path = "../../components/kernel" }
 rate_limit = { path = "../../components/rate_limit" }
 diag = { path = "../../components/diag" }
 user_routing = { path = "../../components/user_routing" }
-local_url = { path = "../../components/local_url" }
 roster = { path = "../../components/roster" }
 view = { path = "../../components/view" }
 board = { path = "../../components/board" }
-telemetry = { path = "../../components/telemetry" }
-serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
 tokio = { workspace = true, features = ["full"] }
@@ -44,7 +41,6 @@ auth = { path = "../../components/auth" }
 reactions = { path = "../../components/reactions" }
 axum = { version = "0.8", features = ["ws"] }
 tower-http = { version = "0.6", features = ["cors"] }
-uuid = { workspace = true, features = ["v4"] }
 
 [dev-dependencies]
 store_test_support = { path = "../../components/store_test_support" }

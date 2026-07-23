@@ -9,13 +9,13 @@ export interface BoardColumn {
 
 export type StoryType = 'feature' | 'bug' | 'chore' | 'epic' | 'iteration' | 'outcome' | 'unknown'
 
-export type Acceptor = 'team' | 'owner' | 'dev'
+type Acceptor = 'team' | 'owner' | 'dev'
 
 export type Horizon = 'now' | 'next' | 'later'
 
 export const ICEBOX_COLUMN: ColumnState = 'icebox'
-export const READY_COLUMN: ColumnState = 'ready'
-export const ACCEPTANCE_COLUMN: ColumnState = 'acceptance'
+const READY_COLUMN: ColumnState = 'ready'
+const ACCEPTANCE_COLUMN: ColumnState = 'acceptance'
 export const ACCEPTED_COLUMN: ColumnState = 'accepted'
 export const RETIRED_COLUMN: ColumnState = 'retired'
 
@@ -83,7 +83,7 @@ export interface IterationReadiness {
   dev_ok: boolean
 }
 
-export interface OutcomeMembership {
+interface OutcomeMembership {
   outcome_id: number
   position: number
 }

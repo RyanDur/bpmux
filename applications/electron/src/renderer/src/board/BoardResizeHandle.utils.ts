@@ -1,6 +1,6 @@
 export const BOARD_MIN_WIDTH = 260
-export const BOARD_MAX_WIDTH_ABS = 800
-export const BOARD_MAX_WIDTH_VP_FRAC = 0.5
+const BOARD_MAX_WIDTH_ABS = 800
+const BOARD_MAX_WIDTH_VP_FRAC = 0.5
 export const BOARD_DEFAULT_WIDTH = 360
 export const BOARD_RESIZE_KEYBOARD_STEP = 24
 

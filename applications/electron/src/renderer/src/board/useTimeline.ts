@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react'
 import { requestTimelineHydrate, useBoardInvalidateTick, useTimelineEvents } from '../state'
 import type { TimelineEventWire } from '../transport/types'
-export type TimelineEvent = TimelineEventWire
+type TimelineEvent = TimelineEventWire
 
 export const TIMELINE_GATE = {
   Filed: 'filed',
@@ -33,7 +33,7 @@ export interface UseTimelineResult {
   refetch: () => void
 }
 
-export const classifyEvent = (e: TimelineEvent): TimelineGate | null => {
+const classifyEvent = (e: TimelineEvent): TimelineGate | null => {
   if (e.event === 'filed') return TIMELINE_GATE.Filed
   if (e.event === 'closed') return TIMELINE_GATE.Closed
   if (e.event === 'reopened') return TIMELINE_GATE.Reopened
