@@ -13,7 +13,7 @@ use store::AppAction;
 use store_test_support::{SeededStore, build_seeded_orch};
 use sync::SyncOrchestrator;
 
-mod slice_7_2_mutation_id_dispatch {
+mod mutation_id_dispatch {
     use super::*;
     use source_sync::MutationId;
 
@@ -111,7 +111,7 @@ mod slice_7_2_mutation_id_dispatch {
     }
 }
 
-mod slice_7_3_drain_pass {
+mod drain_pass {
     use super::*;
 
     #[tokio::test]
@@ -183,7 +183,7 @@ mod slice_7_3_drain_pass {
     }
 }
 
-mod slice_7_4_drain_pass_falsifiers {
+mod drain_pass_edge_cases {
     use super::*;
 
     #[tokio::test]

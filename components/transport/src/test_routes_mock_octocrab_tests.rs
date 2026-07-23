@@ -69,7 +69,7 @@ fn issue_with_body(number: u64, title: &str, body: &str) -> Value {
 }
 
 #[tokio::test]
-async fn roundtrip_coherence_create_story_through_real_github_decode_path() {
+async fn create_story_through_real_github_decode_path() {
     let server = MockServer::start();
 
     let list_mock = server.mock(|when, then| {
@@ -138,7 +138,7 @@ async fn roundtrip_coherence_create_story_through_real_github_decode_path() {
 }
 
 #[tokio::test]
-async fn roundtrip_coherence_user_job_and_falsifier_preserved_through_real_github_decode_path() {
+async fn user_job_and_falsifier_preserved_through_real_github_decode_path() {
     let server = MockServer::start();
 
     let composed_body =
@@ -216,8 +216,7 @@ async fn roundtrip_coherence_user_job_and_falsifier_preserved_through_real_githu
 }
 
 #[tokio::test]
-async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic_through_real_github_decode_path()
- {
+async fn rejects_parent_epic_referencing_non_epic_through_real_github_decode_path() {
     let server = MockServer::start();
 
     let list_mock = server.mock(|when, then| {

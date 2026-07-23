@@ -95,7 +95,7 @@ aaa\x1faaa\x1f#411: valid\x1fdev\x1f2026-04-20T00:00:00Z
 }
 
 #[test]
-fn parse_disambiguates_4110_from_411() {
+fn parse_disambiguates_from() {
     let text = "\
 aaa\x1faaa\x1f#4110: different story\x1fdev\x1f2026-04-20T00:00:00Z
 bbb\x1fbbb\x1f#411: our story\x1fdev\x1f2026-04-21T00:00:00Z

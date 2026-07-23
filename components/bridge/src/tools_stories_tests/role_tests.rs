@@ -86,7 +86,7 @@ fn require_role_rejects_designer_from_close_iteration() {
 }
 
 #[test]
-fn require_role_lets_owner_bypass_close_iteration_via_the_1548_superset() {
+fn require_role_lets_owner_bypass_close_iteration_via_the_owner_superset() {
     assert!(require_role("owner", &["pm"], "close iteration").is_ok());
 }
 
@@ -197,7 +197,7 @@ fn move_args(
 }
 
 #[tokio::test]
-async fn move_story_bare_column_move_is_pm_only_1548() {
+async fn move_story_bare_column_move_is_pm_only() {
     for caller in ["dev:claude-code", "designer:claude-code"] {
         let args = move_args(42, "ready", None);
         let err = crate::move_story::handle_move_story(
@@ -219,7 +219,7 @@ async fn move_story_bare_column_move_is_pm_only_1548() {
 }
 
 #[tokio::test]
-async fn move_story_positioned_move_is_pm_only_1548() {
+async fn move_story_positioned_move_is_pm_only() {
     for caller in ["dev:claude-code", "designer:claude-code"] {
         let args = move_args(42, "ready", Some(1));
         let err = crate::move_story::handle_move_story(
@@ -241,7 +241,7 @@ async fn move_story_positioned_move_is_pm_only_1548() {
 }
 
 #[tokio::test]
-async fn move_story_pm_passes_role_gate_on_both_paths_1548() {
+async fn move_story_pm_passes_role_gate_on_both_paths() {
     for position in [None, Some(1)] {
         let args = move_args(42, "ready", position);
         let err = crate::move_story::handle_move_story(
@@ -267,7 +267,7 @@ async fn move_story_pm_passes_role_gate_on_both_paths_1548() {
 }
 
 #[tokio::test]
-async fn reorder_story_returns_tool_retired_regardless_of_role_1403() {
+async fn reorder_story_returns_tool_retired_regardless_of_role() {
     let args = reorder_args(42, 1, "ready");
     for caller in [
         "designer:claude-code",
@@ -300,7 +300,7 @@ async fn reorder_story_returns_tool_retired_regardless_of_role_1403() {
 }
 
 #[tokio::test]
-async fn reorder_story_retire_returns_actionable_successor_path_1403() {
+async fn reorder_story_retire_returns_actionable_successor_path() {
     let args = reorder_args(42, 1, "ready");
     let err = handle_reorder_story(&args, "pm:claude-code", None)
         .await

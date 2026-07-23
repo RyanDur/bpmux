@@ -92,7 +92,7 @@ fn args(outcome: u64, title: Option<&str>, body: Option<&str>) -> Map<String, Va
 }
 
 #[tokio::test]
-async fn editing_an_outcome_title_reflects_as_its_roadmap_name_1760() {
+async fn editing_an_outcome_title_reflects_as_its_roadmap_name() {
     let (_store, refresh, select) = build_refresh(vec![seed_outcome(
         700,
         "Stale headline why",
@@ -126,7 +126,7 @@ async fn editing_an_outcome_title_reflects_as_its_roadmap_name_1760() {
 }
 
 #[tokio::test]
-async fn editing_an_outcome_why_persists_for_the_bpmux_story_disclosure_read_1760() {
+async fn editing_an_outcome_why_persists_for_the_bpmux_story_disclosure_read() {
     let (_store, refresh, select) =
         build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
     let (dispatch, mut rx) = dispatch_channel();
@@ -152,7 +152,7 @@ async fn editing_an_outcome_why_persists_for_the_bpmux_story_disclosure_read_176
 }
 
 #[tokio::test]
-async fn edit_outcome_is_pm_lane_non_pm_refused_1760() {
+async fn edit_outcome_is_pm_lane_non_pm_refused() {
     let (_store, refresh, select) =
         build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
     let (dispatch, _rx) = dispatch_channel();
@@ -169,7 +169,7 @@ async fn edit_outcome_is_pm_lane_non_pm_refused_1760() {
 }
 
 #[tokio::test]
-async fn edit_outcome_aimed_at_a_non_outcome_teaches_the_boundary_1760() {
+async fn edit_outcome_aimed_at_a_non_outcome_teaches_the_boundary() {
     let (_store, refresh, select) = build_refresh(vec![seed(
         700,
         "A story",
@@ -194,7 +194,7 @@ async fn edit_outcome_aimed_at_a_non_outcome_teaches_the_boundary_1760() {
 }
 
 #[tokio::test]
-async fn edit_outcome_with_no_change_is_rejected_1760() {
+async fn edit_outcome_with_no_change_is_rejected() {
     let (_store, refresh, select) =
         build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
     let (dispatch, _rx) = dispatch_channel();

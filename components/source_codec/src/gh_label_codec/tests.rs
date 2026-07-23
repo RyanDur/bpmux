@@ -2,7 +2,7 @@ use super::GhLabelCodec;
 use product_management::story::Acceptor;
 
 #[test]
-fn decode_acceptor_maps_each_awaiting_label_1551() {
+fn decode_acceptor_maps_each_awaiting_label() {
     assert_eq!(
         GhLabelCodec.decode_acceptor("awaiting team"),
         Some(Acceptor::Team)

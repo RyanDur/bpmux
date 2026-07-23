@@ -5,7 +5,7 @@ use product_management::story::StoryId;
 use protocol::ClientMessage;
 
 #[tokio::test]
-async fn view_board_requires_refresh_after_5l_fallback_retirement() {
+async fn view_board_requires_refresh_fallback_retirement() {
     let select = store::Select::new(std::sync::Weak::new());
     let result = handle_view_board(&serde_json::Map::new(), None, &select).await;
     assert!(result.is_err());
@@ -274,7 +274,7 @@ async fn view_board_buckets_concluded_stories_into_retired_or_accepted_column() 
 }
 
 #[tokio::test]
-async fn close_story_migrated_path_emits_story_closed_event_with_reason() {
+async fn close_story_emits_story_closed_event_with_reason() {
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;
     use product_management::story::events::{StoryEvent, StoryEventKind};

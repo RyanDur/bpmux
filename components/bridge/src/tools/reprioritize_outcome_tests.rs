@@ -150,7 +150,7 @@ fn args(outcome: u64, to: &str) -> Map<String, Value> {
 }
 
 #[tokio::test]
-async fn pm_moves_an_outcome_to_a_new_band_and_the_horizon_rederives_1759() {
+async fn pm_moves_an_outcome_to_a_new_band_and_the_horizon_rederives() {
     let (_store, refresh, select) = build_refresh(vec![seed_outcome(
         700,
         "Agents reason from the substrate",
@@ -181,7 +181,7 @@ async fn pm_moves_an_outcome_to_a_new_band_and_the_horizon_rederives_1759() {
 }
 
 #[tokio::test]
-async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_new_band_1759() {
+async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_new_band() {
     let (_store, refresh, select) = build_refresh(vec![seed_outcome(
         700,
         "Agents reason from the substrate",
@@ -226,7 +226,7 @@ async fn reprioritize_closes_the_read_write_loop_the_roadmap_view_reflects_the_n
 }
 
 #[tokio::test]
-async fn reprioritize_outcome_is_pm_lane_non_pm_refused_1759() {
+async fn reprioritize_outcome_is_pm_lane_non_pm_refused() {
     let (_store, refresh, select) =
         build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.next"])]).await;
     let (dispatch, _rx) = dispatch_channel();
@@ -255,7 +255,7 @@ async fn reprioritize_outcome_is_pm_lane_non_pm_refused_1759() {
 }
 
 #[tokio::test]
-async fn reprioritize_aimed_at_a_non_outcome_teaches_the_boundary_1759() {
+async fn reprioritize_aimed_at_a_non_outcome_teaches_the_boundary() {
     let (_store, refresh, select) = build_refresh(vec![seed(
         700,
         "A plain story",
@@ -282,7 +282,7 @@ async fn reprioritize_aimed_at_a_non_outcome_teaches_the_boundary_1759() {
 }
 
 #[tokio::test]
-async fn reprioritize_to_the_current_band_is_an_idempotent_noop_1759() {
+async fn reprioritize_to_the_current_band_is_an_idempotent_noop() {
     let (_store, refresh, select) = build_refresh(vec![seed_outcome(
         700,
         "Already here",
@@ -318,7 +318,7 @@ async fn reprioritize_to_the_current_band_is_an_idempotent_noop_1759() {
 }
 
 #[tokio::test]
-async fn position_reorders_an_outcome_within_its_band_observed_through_the_derive_1759() {
+async fn position_reorders_an_outcome_within_its_band_observed_through_the_derive() {
     let seeds = vec![
         seed_outcome(700, "A", &["outcome", "horizon.now"]),
         seed_outcome(710, "B", &["outcome", "horizon.now"]),
@@ -354,7 +354,7 @@ async fn position_reorders_an_outcome_within_its_band_observed_through_the_deriv
 }
 
 #[tokio::test]
-async fn position_overshoot_clamps_to_the_band_end_and_labels_it_1759() {
+async fn position_overshoot_clamps_to_the_band_end_and_labels_it() {
     let seeds = vec![
         seed_outcome(700, "A", &["outcome", "horizon.now"]),
         seed_outcome(710, "B", &["outcome", "horizon.now"]),
@@ -386,7 +386,7 @@ async fn position_overshoot_clamps_to_the_band_end_and_labels_it_1759() {
 }
 
 #[tokio::test]
-async fn band_move_and_position_compose_in_one_verb_1759() {
+async fn band_move_and_position_compose_in_one_verb() {
     let seeds = vec![
         seed_outcome(700, "A", &["outcome", "horizon.now"]),
         seed_outcome(710, "B", &["outcome", "horizon.now"]),
@@ -419,7 +419,7 @@ async fn band_move_and_position_compose_in_one_verb_1759() {
 }
 
 #[tokio::test]
-async fn band_move_resets_a_stale_within_band_position_1759() {
+async fn band_move_resets_a_stale_within_band_position() {
     let (_store, refresh, select) = build_refresh(vec![seed_outcome(
         700,
         "A",
@@ -446,7 +446,7 @@ async fn band_move_resets_a_stale_within_band_position_1759() {
 }
 
 #[tokio::test]
-async fn reprioritize_with_neither_target_is_rejected_1759() {
+async fn reprioritize_with_neither_target_is_rejected() {
     let (_store, refresh, select) =
         build_refresh(vec![seed_outcome(700, "A", &["outcome", "horizon.now"])]).await;
     let (dispatch, _rx) = dispatch_channel();
@@ -468,7 +468,7 @@ async fn reprioritize_with_neither_target_is_rejected_1759() {
 }
 
 #[tokio::test]
-async fn reprioritize_rejects_an_invalid_band_1759() {
+async fn reprioritize_rejects_an_invalid_band() {
     let (_store, refresh, select) =
         build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
     let (dispatch, _rx) = dispatch_channel();

@@ -673,19 +673,19 @@ fn parent_epic_from_labels_picks_first_well_formed_match() {
 }
 
 #[test]
-fn iteration_order_from_labels_extracts_position_1735() {
+fn iteration_order_from_labels_extracts_position() {
     let labels = vec!["iteration".to_string(), "iteration-order.300".to_string()];
     assert_eq!(iteration_order_from_labels(&labels), Some(300));
 }
 
 #[test]
-fn iteration_order_from_labels_returns_none_when_absent_1735() {
+fn iteration_order_from_labels_returns_none_when_absent() {
     let labels = vec!["iteration-Octans.3".to_string(), "ready".to_string()];
     assert_eq!(iteration_order_from_labels(&labels), None);
 }
 
 #[test]
-fn iteration_order_from_labels_picks_lowest_when_multiple_1735() {
+fn iteration_order_from_labels_picks_lowest_when_multiple() {
     let labels = vec![
         "iteration-order.300".to_string(),
         "iteration-order.100".to_string(),
@@ -695,7 +695,7 @@ fn iteration_order_from_labels_picks_lowest_when_multiple_1735() {
 }
 
 #[test]
-fn decode_iteration_from_story_sets_iteration_order_from_label_1735() {
+fn decode_iteration_from_story_sets_iteration_order_from_label() {
     let v = serde_json::json!({
         "number": 1397,
         "title": "Iteration Fornax",

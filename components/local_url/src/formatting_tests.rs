@@ -23,7 +23,7 @@ fn api_url_passes_path_verbatim_with_query_string() {
 }
 
 #[test]
-fn default_api_port_pins_4117() {
+fn default_api_port_pins() {
     assert_eq!(DEFAULT_API_PORT, 4117);
 }
 

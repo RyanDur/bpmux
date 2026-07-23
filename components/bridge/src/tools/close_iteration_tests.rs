@@ -3,7 +3,7 @@
 #![allow(clippy::panic)]
 #![allow(unsafe_code)]
 
-mod canonical_via_gh_1300 {
+mod canonical_via_gh {
     use crate::iteration_close::{CloseIterationError, close_iteration};
     use crate::iteration_close::{close_iteration_canonical, collect_ready_queue_blockers};
     use chrono::{TimeZone, Utc};
@@ -118,7 +118,7 @@ mod canonical_via_gh_1300 {
     }
 
     #[tokio::test]
-    async fn close_promotes_nothing_and_does_not_error_on_canonical_member_1556() {
+    async fn close_promotes_nothing_and_does_not_error_on_canonical_member() {
         let canonical_member = Story::new_minimal(
             StoryId::new(200),
             "[Feature] canonical-member".to_string(),
@@ -158,7 +158,7 @@ mod canonical_via_gh_1300 {
     }
 
     #[tokio::test]
-    async fn closing_the_current_iteration_clears_its_designation_1540() {
+    async fn closing_the_current_iteration_clears_its_designation() {
         let (current, mut current_labels) = seed_iteration_issue(1400, "Pegasus");
         current_labels.push("current-iteration".to_string());
         let (refresh, _adapter, select) = build_refresh(vec![(current, current_labels)]).await;
@@ -264,7 +264,7 @@ mod canonical_via_gh_1300 {
     }
 
     #[tokio::test]
-    async fn close_fires_storyclosed_without_member_promotion_mutations_1556() {
+    async fn close_fires_storyclosed_without_member_promotion_mutations() {
         let (refresh, adapter, select) = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
             seed_member(200, Work::NotStarted, Some(("Pegasus", 100))),

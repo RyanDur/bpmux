@@ -226,7 +226,7 @@ async fn create_iteration_attaches_iteration_label_atomically_at_source() {
 }
 
 #[tokio::test]
-async fn create_iteration_assigns_order_at_birth_1735() {
+async fn create_iteration_assigns_order_at_birth() {
     let (refresh, _adapter, select) = build_empty_refresh().await;
     let (dispatch, mut rx) = dispatch_channel();
     handle_create_iteration(
@@ -249,7 +249,7 @@ async fn create_iteration_assigns_order_at_birth_1735() {
 }
 
 #[tokio::test]
-async fn create_iteration_appends_order_after_existing_1735() {
+async fn create_iteration_appends_order_after_existing() {
     let (existing, mut existing_labels, existing_closed) =
         seed_iteration_story(42, "Aquila", false);
     existing_labels.push("iteration-order.100".to_string());

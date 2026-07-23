@@ -4,7 +4,7 @@ use super::super::tools_stories::*;
 use protocol::ClientMessage;
 
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-mod notification_bridge_push_filter_integration_1432 {
+mod notification_bridge_push_filter_integration {
     use crate::message_type_reaches_llm_stream;
     use hub::Hub;
     use message::Message;
@@ -96,7 +96,7 @@ mod notification_bridge_push_filter_integration_1432 {
     }
 
     #[tokio::test]
-    async fn verdict_cast_1429_chat_class_reaches_pm_retroactive_coverage() {
+    async fn verdict_cast_chat_class_reaches_pm() {
         let dir = TempDir::new().unwrap();
         let hub = make_hub(dir.path().to_path_buf());
         let msg = make_message(

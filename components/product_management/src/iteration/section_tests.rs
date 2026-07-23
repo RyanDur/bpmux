@@ -3,19 +3,19 @@
 use super::section::{derive_iteration_member_section, substitute_member_stories_section};
 
 #[test]
-fn derive_member_section_returns_placeholder_when_empty_1462() {
+fn derive_member_section_returns_placeholder_when_empty() {
     let section = derive_iteration_member_section(&[]);
     assert_eq!(section, "_(no members yet)_\n");
 }
 
 #[test]
-fn derive_member_section_renders_single_member_as_bullet_1462() {
+fn derive_member_section_renders_single_member_as_bullet() {
     let section = derive_iteration_member_section(&[(1309, "Add ci_get_job_status MCP tool")]);
     assert_eq!(section, "- #1309 — Add ci_get_job_status MCP tool\n");
 }
 
 #[test]
-fn derive_member_section_renders_multi_member_in_input_order_1462() {
+fn derive_member_section_renders_multi_member_in_input_order() {
     let members = [
         (1309, "Add ci_get_job_status MCP tool"),
         (1265, "Reorder_story PM-only authority-gate"),
@@ -31,7 +31,7 @@ fn derive_member_section_renders_multi_member_in_input_order_1462() {
 }
 
 #[test]
-fn substitute_member_section_replaces_placeholder_with_derived_list_1462() {
+fn substitute_member_section_replaces_placeholder_with_derived_list() {
     let body = "## Iteration Telescopium\n\
                 \n\
                 **Created**: 2026-05-19\n\
@@ -74,7 +74,7 @@ fn substitute_member_section_replaces_placeholder_with_derived_list_1462() {
 }
 
 #[test]
-fn substitute_member_section_with_empty_derived_keeps_placeholder_form_1462() {
+fn substitute_member_section_with_empty_derived_keeps_placeholder_form() {
     let body = "## Iteration Telescopium\n\
                 \n\
                 ## Member stories\n\
@@ -93,7 +93,7 @@ fn substitute_member_section_with_empty_derived_keeps_placeholder_form_1462() {
 }
 
 #[test]
-fn substitute_member_section_returns_body_unchanged_when_header_missing_1462() {
+fn substitute_member_section_returns_body_unchanged_when_header_missing() {
     let body = "## Iteration No-Members-Section\n\n## Notes\nbpmux.\n";
     let derived = "- #1234 — some title\n";
     let out = substitute_member_stories_section(body, derived);
@@ -101,7 +101,7 @@ fn substitute_member_section_returns_body_unchanged_when_header_missing_1462() {
 }
 
 #[test]
-fn substitute_member_section_handles_body_without_trailing_h2_1462() {
+fn substitute_member_section_handles_body_without_trailing_h2() {
     let body = "## Iteration Solo\n\n## Member stories\n\n_(no members yet)_\n";
     let derived = "- #42 — Solo member\n";
     let out = substitute_member_stories_section(body, derived);
@@ -116,7 +116,7 @@ fn substitute_member_section_handles_body_without_trailing_h2_1462() {
 }
 
 #[test]
-fn substitute_member_section_idempotent_under_re_derivation_1462() {
+fn substitute_member_section_idempotent_under_re_derivation() {
     let body = "## Iteration Pegasus\n\
                 \n\
                 ## Member stories\n\
@@ -135,7 +135,7 @@ fn substitute_member_section_idempotent_under_re_derivation_1462() {
 }
 
 #[test]
-fn substitute_member_section_re_derivation_reflects_membership_mutation_1462() {
+fn substitute_member_section_re_derivation_reflects_membership_mutation() {
     let body = "## Iteration Carina\n\
                 \n\
                 ## Member stories\n\

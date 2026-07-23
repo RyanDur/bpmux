@@ -101,7 +101,7 @@ fn addressee_roundtrips_through_json() {
 }
 
 #[test]
-fn addressee_deserializes_from_pre_158_json() {
+fn addressee_deserializes_from_legacy_json() {
     let json = r#"{"from":"owner:human","text":"hi","ts":"2026-04-02T12:00:00Z","to":null}"#;
     let parsed: Message = serde_json::from_str(json).expect("deserialize");
     assert!(parsed.addressee.is_none());
@@ -252,7 +252,7 @@ fn message_without_multi_depth_serializes_without_the_field() {
 }
 
 #[test]
-fn message_deserializes_from_pre_187_json_without_multi_depth() {
+fn message_deserializes_from_legacy_json_without_multi_depth() {
     let json = r#"{"from":"owner:human","text":"hi","ts":"2026-04-02T12:00:00Z","to":null}"#;
     let parsed: Message = serde_json::from_str(json).expect("deserialize");
     assert!(parsed.multi_depth.is_none());

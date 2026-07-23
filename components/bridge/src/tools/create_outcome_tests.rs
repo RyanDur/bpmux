@@ -126,7 +126,7 @@ fn args(title: &str, horizon: &str) -> Map<String, Value> {
 }
 
 #[tokio::test]
-async fn pm_creates_a_first_class_outcome_distinct_from_epic_with_horizon_1738() {
+async fn pm_creates_a_first_class_outcome_distinct_from_epic_with_horizon() {
     let (refresh, bound_store) = build_empty_refresh().await;
     let (dispatch, mut rx) = dispatch_channel();
     let result = handle_create_outcome(
@@ -162,7 +162,7 @@ async fn pm_creates_a_first_class_outcome_distinct_from_epic_with_horizon_1738()
 }
 
 #[tokio::test]
-async fn create_outcome_is_pm_lane_non_pm_refused_1738() {
+async fn create_outcome_is_pm_lane_non_pm_refused() {
     let (refresh, _bound_store) = build_empty_refresh().await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_create_outcome(
@@ -179,7 +179,7 @@ async fn create_outcome_is_pm_lane_non_pm_refused_1738() {
 }
 
 #[tokio::test]
-async fn create_outcome_rejects_invalid_horizon_1738() {
+async fn create_outcome_rejects_invalid_horizon() {
     let (refresh, _bound_store) = build_empty_refresh().await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_create_outcome(
@@ -199,7 +199,7 @@ async fn create_outcome_rejects_invalid_horizon_1738() {
 }
 
 #[tokio::test]
-async fn pm_maps_an_iteration_to_an_outcome_in_order_1738() {
+async fn pm_maps_an_iteration_to_an_outcome_in_order() {
     let (_store, refresh, select) =
         build_refresh(vec![seed_outcome(700), seed_iteration(710)]).await;
     let (dispatch, mut rx) = dispatch_channel();
@@ -242,7 +242,7 @@ async fn pm_maps_an_iteration_to_an_outcome_in_order_1738() {
 }
 
 #[tokio::test]
-async fn map_iteration_to_outcome_is_pm_lane_non_pm_refused_1738() {
+async fn map_iteration_to_outcome_is_pm_lane_non_pm_refused() {
     let (_store, refresh, select) =
         build_refresh(vec![seed_outcome(700), seed_iteration(710)]).await;
     let (dispatch, _rx) = dispatch_channel();
@@ -259,7 +259,7 @@ async fn map_iteration_to_outcome_is_pm_lane_non_pm_refused_1738() {
 }
 
 #[tokio::test]
-async fn map_rejects_non_outcome_target_1738() {
+async fn map_rejects_non_outcome_target() {
     let (_store, refresh, select) = build_refresh(vec![
         typed_seed(700, StoryKind::Feature, "feature"),
         seed_iteration(710),

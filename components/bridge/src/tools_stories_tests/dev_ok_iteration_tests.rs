@@ -83,7 +83,7 @@ fn args(iteration_id: u64) -> serde_json::Map<String, serde_json::Value> {
 }
 
 #[tokio::test]
-async fn dev_ok_records_act_and_flips_dev_ok_readiness_1736() {
+async fn dev_ok_records_act_and_flips_dev_ok_readiness() {
     let (_store, orch, select) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let (dispatch, mut rx) = dispatch_channel();
     handle_dev_ok_iteration(
@@ -114,7 +114,7 @@ async fn dev_ok_records_act_and_flips_dev_ok_readiness_1736() {
 }
 
 #[tokio::test]
-async fn no_dev_ok_on_record_means_not_ready_1736() {
+async fn no_dev_ok_on_record_means_not_ready() {
     let (_store, _orch, select) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let iteration = select
         .select(|state| {
@@ -128,7 +128,7 @@ async fn no_dev_ok_on_record_means_not_ready_1736() {
 }
 
 #[tokio::test]
-async fn non_builder_role_is_refused_1736() {
+async fn non_builder_role_is_refused() {
     let (_store, orch, select) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_dev_ok_iteration(
@@ -149,7 +149,7 @@ async fn non_builder_role_is_refused_1736() {
 }
 
 #[tokio::test]
-async fn non_iteration_story_is_refused_1736() {
+async fn non_iteration_story_is_refused() {
     let (_store, orch, select) = build_orchestrator(vec![feature_seed(1552)]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_dev_ok_iteration(

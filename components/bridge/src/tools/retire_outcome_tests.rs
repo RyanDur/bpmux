@@ -150,7 +150,7 @@ fn band_numbers(select: &store::Select) -> Vec<u64> {
 }
 
 #[tokio::test]
-async fn retire_mutates_the_domain_and_the_outcome_drops_from_the_roadmap_view_1761() {
+async fn retire_mutates_the_domain_and_the_outcome_drops_from_the_roadmap_view() {
     let (live, live_labels) = seed_outcome(700, "Live", &["outcome", "horizon.now"]);
     let (_store, refresh, select) = build_refresh(vec![
         (live.clone(), live_labels.clone()),
@@ -201,7 +201,7 @@ async fn retire_mutates_the_domain_and_the_outcome_drops_from_the_roadmap_view_1
 }
 
 #[tokio::test]
-async fn retire_with_no_reason_is_rejected_1761() {
+async fn retire_with_no_reason_is_rejected() {
     let (_store, refresh, select) =
         build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
     let (dispatch, _rx) = dispatch_channel();
@@ -232,7 +232,7 @@ async fn retire_with_no_reason_is_rejected_1761() {
 }
 
 #[tokio::test]
-async fn retire_states_the_orphaned_iteration_mapping_count_1761() {
+async fn retire_states_the_orphaned_iteration_mapping_count() {
     let (_store, refresh, select) = build_refresh(vec![
         outcome_with(700, vec![710, 720]),
         iteration_in_outcome(710, 700),
@@ -266,7 +266,7 @@ async fn retire_states_the_orphaned_iteration_mapping_count_1761() {
 }
 
 #[tokio::test]
-async fn retire_outcome_is_pm_lane_non_pm_refused_1761() {
+async fn retire_outcome_is_pm_lane_non_pm_refused() {
     let (_store, refresh, select) =
         build_refresh(vec![seed_outcome(700, "X", &["outcome", "horizon.now"])]).await;
     let (dispatch, _rx) = dispatch_channel();
@@ -285,7 +285,7 @@ async fn retire_outcome_is_pm_lane_non_pm_refused_1761() {
 }
 
 #[tokio::test]
-async fn retire_aimed_at_a_non_outcome_teaches_the_boundary_1761() {
+async fn retire_aimed_at_a_non_outcome_teaches_the_boundary() {
     let (_store, refresh, select) = build_refresh(vec![seed(
         700,
         "A story",

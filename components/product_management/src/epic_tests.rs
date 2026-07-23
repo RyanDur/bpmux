@@ -60,7 +60,7 @@ fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
 }
 
 #[test]
-fn derive_epic_state_returns_icebox_for_empty_children_1450() {
+fn derive_epic_state_returns_icebox_for_empty_children() {
     assert_eq!(
         derive_epic_state(&[], &[]),
         ProjectedState::Icebox,
@@ -69,7 +69,7 @@ fn derive_epic_state_returns_icebox_for_empty_children_1450() {
 }
 
 #[test]
-fn derive_epic_state_returns_icebox_when_all_children_icebox_1450() {
+fn derive_epic_state_returns_icebox_when_all_children_icebox() {
     let kids = [
         epic_child(1, Work::NotStarted),
         epic_child(2, Work::NotStarted),
@@ -83,7 +83,7 @@ fn derive_epic_state_returns_icebox_when_all_children_icebox_1450() {
 }
 
 #[test]
-fn derive_epic_state_returns_ready_for_one_ready_no_active_1450() {
+fn derive_epic_state_returns_ready_for_one_ready_no_active() {
     let kids = [
         epic_child(1, Work::NotStarted),
         epic_child(2, Work::NotStarted),
@@ -97,7 +97,7 @@ fn derive_epic_state_returns_ready_for_one_ready_no_active_1450() {
 }
 
 #[test]
-fn derive_epic_state_returns_in_progress_for_active_child_1450() {
+fn derive_epic_state_returns_in_progress_for_active_child() {
     for active_state in [Work::InProgress, Work::InProgress, Work::Acceptance] {
         let kids = [
             epic_child(1, Work::NotStarted),
@@ -113,7 +113,7 @@ fn derive_epic_state_returns_in_progress_for_active_child_1450() {
 }
 
 #[test]
-fn derive_epic_state_returns_accepted_when_all_non_retired_accepted_1450() {
+fn derive_epic_state_returns_accepted_when_all_non_retired_accepted() {
     let kids = [epic_child(1, Work::Accepted), epic_child(2, Work::Accepted)];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
@@ -124,7 +124,7 @@ fn derive_epic_state_returns_accepted_when_all_non_retired_accepted_1450() {
 }
 
 #[test]
-fn derive_epic_state_returns_retired_when_all_retired_1450() {
+fn derive_epic_state_returns_retired_when_all_retired() {
     let kids = [epic_child(1, Work::Retired), epic_child(2, Work::Retired)];
     let refs: Vec<&Story> = kids.iter().collect();
     assert_eq!(
@@ -135,7 +135,7 @@ fn derive_epic_state_returns_retired_when_all_retired_1450() {
 }
 
 #[test]
-fn derive_epic_state_mixed_accepted_and_retired_no_active_derives_accepted_1450() {
+fn derive_epic_state_mixed_accepted_and_retired_no_active_derives_accepted() {
     let kids = [
         epic_child(1, Work::Accepted),
         epic_child(2, Work::Retired),
@@ -150,7 +150,7 @@ fn derive_epic_state_mixed_accepted_and_retired_no_active_derives_accepted_1450(
 }
 
 #[test]
-fn derive_epic_state_active_dominates_terminal_at_in_progress_axis_1450() {
+fn derive_epic_state_active_dominates_terminal_at_in_progress_axis() {
     let kids = [
         epic_child(1, Work::Accepted),
         epic_child(2, Work::Retired),
@@ -179,7 +179,7 @@ fn derive_epic_state_not_started_non_member_child_derives_icebox() {
 }
 
 #[test]
-fn derive_epic_state_ready_with_terminal_children_derives_ready_1450() {
+fn derive_epic_state_ready_with_terminal_children_derives_ready() {
     let kids = [
         epic_child(1, Work::NotStarted),
         epic_child(2, Work::Accepted),
@@ -194,7 +194,7 @@ fn derive_epic_state_ready_with_terminal_children_derives_ready_1450() {
 }
 
 #[test]
-fn derive_epic_state_1189_paradox_regression_1450() {
+fn derive_epic_state_paradox_regression() {
     let mut kids: Vec<Story> = Vec::new();
     for n in 1..=30 {
         kids.push(epic_child(n, Work::Accepted));
@@ -211,7 +211,7 @@ fn derive_epic_state_1189_paradox_regression_1450() {
 }
 
 #[test]
-fn derive_epic_state_does_not_return_non_epic_states_1450() {
+fn derive_epic_state_does_not_return_non_epic_states() {
     let kids = [
         epic_child(1, Work::InProgress),
         epic_child(2, Work::Acceptance),
@@ -237,7 +237,7 @@ fn derive_epic_state_does_not_return_non_epic_states_1450() {
 }
 
 #[test]
-fn derive_epic_counts_empty_children_returns_zero_axes_1451() {
+fn derive_epic_counts_empty_children_returns_zero_axes() {
     let counts = derive_epic_counts(&[], &[]);
     assert_eq!(counts.accepted_count, 0);
     assert_eq!(counts.retired_count, 0);
@@ -248,7 +248,7 @@ fn derive_epic_counts_empty_children_returns_zero_axes_1451() {
 }
 
 #[test]
-fn derive_epic_counts_single_axis_per_state_1451() {
+fn derive_epic_counts_single_axis_per_state() {
     let kids = [
         epic_child(1, Work::Accepted),
         epic_child(2, Work::Accepted),
@@ -266,7 +266,7 @@ fn derive_epic_counts_single_axis_per_state_1451() {
 }
 
 #[test]
-fn derive_epic_counts_active_includes_all_canonical_active_states_1451() {
+fn derive_epic_counts_active_includes_all_canonical_active_states() {
     let kids = [
         epic_child(1, Work::NotStarted),
         epic_child(2, Work::InProgress),
@@ -285,7 +285,7 @@ fn derive_epic_counts_active_includes_all_canonical_active_states_1451() {
 }
 
 #[test]
-fn derive_epic_counts_progress_denominator_excludes_only_retired_1451() {
+fn derive_epic_counts_progress_denominator_excludes_only_retired() {
     let kids = [
         epic_child(1, Work::Accepted),
         epic_child(2, Work::Accepted),
@@ -309,7 +309,7 @@ fn derive_epic_counts_progress_denominator_excludes_only_retired_1451() {
 }
 
 #[test]
-fn derive_epic_counts_progress_denominator_includes_icebox_1451_canon_refinement() {
+fn derive_epic_counts_progress_denominator_includes_icebox() {
     let kids = [
         epic_child(1, Work::NotStarted),
         epic_child(2, Work::NotStarted),
@@ -335,7 +335,7 @@ fn derive_epic_counts_progress_denominator_includes_icebox_1451_canon_refinement
 }
 
 #[test]
-fn derive_epic_counts_progress_denominator_mixed_excludes_retired_only_1451_canon() {
+fn derive_epic_counts_progress_denominator_mixed_excludes_retired_only() {
     let kids = [
         epic_child(1, Work::Accepted),
         epic_child(2, Work::Accepted),
@@ -358,7 +358,7 @@ fn derive_epic_counts_progress_denominator_mixed_excludes_retired_only_1451_cano
 }
 
 #[test]
-fn derive_epic_counts_1189_paradox_regression_1451() {
+fn derive_epic_counts_paradox_regression() {
     let mut kids: Vec<Story> = Vec::new();
     for n in 1..=25 {
         kids.push(epic_child(n, Work::Accepted));
@@ -386,7 +386,7 @@ fn derive_epic_counts_1189_paradox_regression_1451() {
 }
 
 #[test]
-fn derive_epic_counts_all_retired_zero_accepted_1451() {
+fn derive_epic_counts_all_retired_zero_accepted() {
     let kids = [epic_child(1, Work::Retired), epic_child(2, Work::Retired)];
     let refs: Vec<&Story> = kids.iter().collect();
     let counts = derive_epic_counts(&refs, &[]);
@@ -405,7 +405,7 @@ fn derive_epic_counts_all_retired_zero_accepted_1451() {
 }
 
 #[test]
-fn derive_epic_counts_icebox_separate_from_active_1451() {
+fn derive_epic_counts_icebox_separate_from_active() {
     let kids = [
         epic_child(1, Work::NotStarted),
         epic_child(2, Work::NotStarted),
@@ -421,7 +421,7 @@ fn derive_epic_counts_icebox_separate_from_active_1451() {
 }
 
 #[test]
-fn derive_epic_counts_total_equals_sum_of_axes_1451() {
+fn derive_epic_counts_total_equals_sum_of_axes() {
     let kids = [
         epic_child(1, Work::Accepted),
         epic_child(2, Work::Retired),

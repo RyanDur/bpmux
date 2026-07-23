@@ -246,7 +246,7 @@ fn seed_to_arity_messages(dir: &TempDir) -> Arc<hub::Hub> {
 }
 
 #[tokio::test]
-async fn issue_1319_scenario_1_recipient_sees_multi_recipient_to_scoped_history() {
+async fn a_recipient_sees_multi_recipient_to_scoped_history() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let hub = seed_to_arity_messages(&dir);
@@ -280,7 +280,7 @@ async fn issue_1319_scenario_1_recipient_sees_multi_recipient_to_scoped_history(
 }
 
 #[tokio::test]
-async fn issue_1319_scenario_2_non_recipient_does_not_see_to_scoped_history() {
+async fn a_non_recipient_does_not_see_to_scoped_history() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let hub = seed_to_arity_messages(&dir);
@@ -314,7 +314,7 @@ async fn issue_1319_scenario_2_non_recipient_does_not_see_to_scoped_history() {
 }
 
 #[tokio::test]
-async fn issue_1319_scenario_3_owner_view_sees_all_messages_including_to_scoped() {
+async fn the_owner_view_sees_all_messages_including_to_scoped() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let hub = seed_to_arity_messages(&dir);
@@ -348,7 +348,7 @@ async fn issue_1319_scenario_3_owner_view_sees_all_messages_including_to_scoped(
 }
 
 #[tokio::test]
-async fn issue_1568_full_identity_to_recipient_delivers_on_reload() {
+async fn full_identity_to_recipient_delivers_on_reload() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (tx, _rx) = broadcast::channel(16);

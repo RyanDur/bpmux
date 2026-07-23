@@ -86,7 +86,7 @@ async fn start_story_rejects_missing_falsifier_reframing() {
 }
 
 #[tokio::test]
-async fn start_story_validation_passes_then_refresh_required_after_5n() {
+async fn start_story_validation_passes_then_refresh_required() {
     let args = serde_json::json!({
         "id": 398,
         "pickup_paraphrase": "User-job: dev articulates their read of the story at pickup so the team knows work is in flight.",

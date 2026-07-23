@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
-mod gate_retire_1348 {
+mod gate_retire {
     use crate::tools_stories::{handle_deliver_story, handle_start_story};
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;

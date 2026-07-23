@@ -5,7 +5,7 @@ use product_management::story::StoryId;
 use protocol::ClientMessage;
 
 #[tokio::test]
-async fn accept_requires_refresh_after_5n_fallback_retirement() {
+async fn accept_requires_refresh_fallback_retirement() {
     let args = serde_json::json!({"id": 213, "would_file_bug": false});
     let select = store::Select::new(std::sync::Weak::new());
     let result = handle_accept_story(

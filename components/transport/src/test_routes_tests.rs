@@ -87,7 +87,7 @@ async fn read_json(resp: axum::http::Response<Body>) -> Value {
 }
 
 #[tokio::test]
-async fn response_correctness_happy_path_returns_message_with_assigned_number() {
+async fn happy_path_returns_message_with_assigned_number() {
     let (router, _refresh, _select) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] response-correctness-happy",
@@ -109,7 +109,7 @@ async fn response_correctness_happy_path_returns_message_with_assigned_number() 
 }
 
 #[tokio::test]
-async fn response_correctness_rejects_empty_observation_falsifier() {
+async fn rejects_empty_observation_falsifier() {
     let (router, _refresh, _select) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] x",
@@ -127,7 +127,7 @@ async fn response_correctness_rejects_empty_observation_falsifier() {
 }
 
 #[tokio::test]
-async fn response_correctness_rejects_empty_user_job() {
+async fn rejects_empty_user_job() {
     let (router, _refresh, _select) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] x",
@@ -145,7 +145,7 @@ async fn response_correctness_rejects_empty_user_job() {
 }
 
 #[tokio::test]
-async fn response_correctness_returns_503_when_test_mode_disabled() {
+async fn returns_when_test_mode_disabled() {
     let router = fixture_test_mode_off();
     let body = r#"{
         "title":"[Feature] x",
@@ -163,7 +163,7 @@ async fn response_correctness_returns_503_when_test_mode_disabled() {
 }
 
 #[tokio::test]
-async fn roundtrip_coherence_view_board_reflects_new_story() {
+async fn view_board_reflects_new_story() {
     let (router, refresh, select) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] roundtrip-marker-A",
@@ -187,7 +187,7 @@ async fn roundtrip_coherence_view_board_reflects_new_story() {
 }
 
 #[tokio::test]
-async fn roundtrip_coherence_user_job_and_falsifier_preserved_in_body() {
+async fn user_job_and_falsifier_preserved_in_body() {
     let (router, refresh, select) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] roundtrip-body-marker",
@@ -270,7 +270,7 @@ async fn rest_get_board_auto_reingests_when_orchestrator_store_is_empty() {
 }
 
 #[tokio::test]
-async fn roundtrip_coherence_api_board_reflects_new_story_in_test_mode() {
+async fn api_board_reflects_new_story_in_test_mode() {
     let (router, _refresh, _select) = fixture_test_mode_on().await;
     let body = r#"{
         "title":"[Feature] http-roundtrip-marker",
@@ -301,7 +301,7 @@ async fn roundtrip_coherence_api_board_reflects_new_story_in_test_mode() {
 }
 
 #[tokio::test]
-async fn roundtrip_coherence_rejects_parent_epic_referencing_non_epic() {
+async fn rejects_parent_epic_referencing_non_epic() {
     let (router, _refresh, select) = fixture_test_mode_on().await;
     let feature = r#"{
         "title":"[Feature] not-an-epic",

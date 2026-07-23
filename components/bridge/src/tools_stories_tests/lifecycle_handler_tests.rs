@@ -9,7 +9,7 @@ fn td() -> store::Dispatch {
 }
 
 #[tokio::test]
-async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
+async fn start_story_emits_pickup_gate_and_state_events() {
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;
     use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -106,7 +106,7 @@ async fn start_story_migrated_path_emits_pickup_gate_and_state_events() {
 }
 
 #[tokio::test]
-async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_state_events() {
+async fn deliver_story_emits_delivered_gate_with_observation_and_state_events() {
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;
     use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -197,7 +197,7 @@ async fn deliver_story_migrated_path_emits_delivered_gate_with_observation_and_s
 }
 
 #[tokio::test]
-async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
+async fn accept_story_emits_gate_state_and_close_events() {
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;
     use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -289,7 +289,7 @@ async fn accept_story_migrated_path_emits_gate_state_and_close_events() {
 }
 
 #[tokio::test]
-async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
+async fn accept_story_on_delivered_story_drains_full_cascade() {
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;
     use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -369,7 +369,7 @@ async fn accept_story_on_delivered_story_post_slice_5b_drains_full_cascade() {
 }
 
 #[tokio::test]
-async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
+async fn reject_story_emits_gate_with_reason_and_state_events() {
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;
     use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -466,7 +466,7 @@ async fn reject_story_migrated_path_emits_gate_with_reason_and_state_events() {
 }
 
 #[tokio::test]
-async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
+async fn create_story_assigns_id_and_emits_story_created_event() {
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;
     use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -561,7 +561,7 @@ async fn create_story_migrated_path_assigns_id_and_emits_story_created_event() {
 }
 
 #[tokio::test]
-async fn deliver_story_migrated_path_uses_store_title_not_tracker() {
+async fn deliver_story_uses_store_title_not_tracker() {
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;
     use product_management::story::{Stage, Story, Work};

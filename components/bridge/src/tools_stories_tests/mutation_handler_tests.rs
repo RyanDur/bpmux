@@ -5,7 +5,7 @@ use product_management::story::StoryId;
 use protocol::ClientMessage;
 
 #[tokio::test]
-async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
+async fn comment_on_story_enqueues_event_via_orchestrator() {
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;
     use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -59,7 +59,7 @@ async fn comment_on_story_migrated_path_enqueues_event_via_orchestrator() {
 }
 
 #[tokio::test]
-async fn label_story_migrated_path_enqueues_tag_added_event() {
+async fn label_story_enqueues_tag_added_event() {
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;
     use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -128,7 +128,7 @@ async fn label_story_migrated_path_enqueues_tag_added_event() {
 }
 
 #[tokio::test]
-async fn label_story_migrated_path_enqueues_tag_removed_event() {
+async fn label_story_enqueues_tag_removed_event() {
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;
     use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -217,7 +217,7 @@ async fn label_story_migrated_path_enqueues_tag_removed_event() {
 }
 
 #[tokio::test]
-async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
+async fn pass_desk_check_emits_gate_and_state_events() {
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;
     use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -317,7 +317,7 @@ async fn pass_desk_check_migrated_path_emits_gate_and_state_events() {
 }
 
 #[tokio::test]
-async fn fail_desk_check_migrated_path_emits_gate_with_reason_and_state_events() {
+async fn fail_desk_check_emits_gate_with_reason_and_state_events() {
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;
     use product_management::story::events::{StoryEvent, StoryEventKind};

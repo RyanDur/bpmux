@@ -83,7 +83,7 @@ fn args(iteration_id: u64) -> serde_json::Map<String, serde_json::Value> {
 }
 
 #[tokio::test]
-async fn designer_close_records_act_and_flips_review_readiness_1703() {
+async fn designer_close_records_act_and_flips_review_readiness() {
     let (_store, orch, select) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let (dispatch, mut rx) = dispatch_channel();
     handle_close_pre_pickup_review(
@@ -114,7 +114,7 @@ async fn designer_close_records_act_and_flips_review_readiness_1703() {
 }
 
 #[tokio::test]
-async fn no_close_on_record_means_review_not_ready_1703() {
+async fn no_close_on_record_means_review_not_ready() {
     let (_store, _orch, select) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let iteration = select
         .select(|state| {
@@ -128,7 +128,7 @@ async fn no_close_on_record_means_review_not_ready_1703() {
 }
 
 #[tokio::test]
-async fn non_reviewer_role_is_refused_1703() {
+async fn non_reviewer_role_is_refused() {
     let (_store, orch, select) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_close_pre_pickup_review(
@@ -149,7 +149,7 @@ async fn non_reviewer_role_is_refused_1703() {
 }
 
 #[tokio::test]
-async fn non_iteration_story_is_refused_1703() {
+async fn non_iteration_story_is_refused() {
     let (_store, orch, select) = build_orchestrator(vec![feature_seed(1552)]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_close_pre_pickup_review(

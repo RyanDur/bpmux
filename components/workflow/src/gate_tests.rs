@@ -428,7 +428,7 @@ fn gate_mismatch_json_includes_class_and_missing_evidence_fields() {
 }
 
 #[test]
-fn evidence_check_surfaces_verdict_state_per_role_when_missing_or_stale_1461() {
+fn evidence_check_surfaces_verdict_state_per_role_when_missing_or_stale() {
     let now = Utc::now();
     let messages = vec![msg("designer", 60), msg("dev", 800)];
     let err = check_evidence_present(&accept_team_verifiable(), "pm", &messages, now, None)
@@ -460,7 +460,7 @@ fn evidence_check_surfaces_verdict_state_per_role_when_missing_or_stale_1461() {
 }
 
 #[test]
-fn evidence_check_distinguishes_missing_from_stale_in_verdict_state_1461() {
+fn evidence_check_distinguishes_missing_from_stale_in_verdict_state() {
     let now = Utc::now();
     let messages = vec![msg("designer", 9999)];
     let err = check_evidence_present(&accept_team_verifiable(), "pm", &messages, now, None)
@@ -488,7 +488,7 @@ fn evidence_check_distinguishes_missing_from_stale_in_verdict_state_1461() {
 }
 
 #[test]
-fn evidence_check_no_verdict_state_when_class_is_none_or_no_required_roles_1461() {
+fn evidence_check_no_verdict_state_when_class_is_none_or_no_required_roles() {
     let now = Utc::now();
     let owner_walk = accept_owner_walk();
     let result = check_evidence_present(&owner_walk, "owner", &[], now, None);

@@ -266,7 +266,7 @@ async fn an_optimistic_reject_is_visible_on_the_board_snapshot_before_it_reaches
 }
 
 #[tokio::test]
-async fn outcomes_delta_carries_rolled_up_readiness_and_building_iterations_1738() {
+async fn outcomes_delta_carries_rolled_up_readiness_and_building_iterations() {
     let store = seeded_store(vec![
         outcome(3000, vec![3010]),
         building_iteration(3010, 3000, vec![3011]),
@@ -300,7 +300,7 @@ async fn outcomes_delta_carries_rolled_up_readiness_and_building_iterations_1738
 }
 
 #[tokio::test]
-async fn outcomes_never_ride_in_the_board_story_collection_1738() {
+async fn outcomes_never_ride_in_the_board_story_collection() {
     let store = seeded_store(vec![outcome(3000, vec![])]).await;
     let stories = ordered_board_stories(&store.select());
     assert!(
@@ -310,7 +310,7 @@ async fn outcomes_never_ride_in_the_board_story_collection_1738() {
 }
 
 #[tokio::test]
-async fn iteration_readiness_rides_the_iterations_wire_1703() {
+async fn iteration_readiness_rides_the_iterations_wire() {
     let store = seeded_store(vec![iteration_with_stories(2000, vec![2001])]).await;
     let iterations = board_iterations(&store.select());
     let readiness = &find(&iterations, 2000)["readiness"];
@@ -329,7 +329,7 @@ async fn iteration_readiness_rides_the_iterations_wire_1703() {
 }
 
 #[tokio::test]
-async fn iterations_never_ride_in_the_board_story_collection_1703() {
+async fn iterations_never_ride_in_the_board_story_collection() {
     let store = seeded_store(vec![iteration(2000)]).await;
     let stories = ordered_board_stories(&store.select());
     assert!(
@@ -339,7 +339,7 @@ async fn iterations_never_ride_in_the_board_story_collection_1703() {
 }
 
 #[tokio::test]
-async fn non_iteration_story_has_no_readiness_key_1703() {
+async fn non_iteration_story_has_no_readiness_key() {
     let store = seeded_store(vec![member(2001, 2000, 100)]).await;
     let stories = ordered_board_stories(&store.select());
     assert!(

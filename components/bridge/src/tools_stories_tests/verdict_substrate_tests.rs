@@ -5,7 +5,7 @@ use protocol::ClientMessage;
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
-mod verdict_substrate_integration_1407 {
+mod verdict_substrate_integration {
     use crate::tools::handle_submit_verdict;
     use crate::tools_stories::handle_accept_story;
     use crate::tools_stories::role_from_name;

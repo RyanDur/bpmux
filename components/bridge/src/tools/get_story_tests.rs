@@ -563,7 +563,7 @@ _(no members yet)_\n\
 bpmux iteration substrate.\n";
 
 #[tokio::test]
-async fn get_story_auto_derives_iteration_members_into_body_1462() {
+async fn get_story_auto_derives_iteration_members_into_body() {
     let iteration = make_iteration_with_members(
         1397,
         "Telescopium",
@@ -610,7 +610,7 @@ async fn get_story_auto_derives_iteration_members_into_body_1462() {
 }
 
 #[tokio::test]
-async fn get_story_preserves_placeholder_when_iteration_has_no_members_1462() {
+async fn get_story_preserves_placeholder_when_iteration_has_no_members() {
     let iteration = make_iteration(1397, "Telescopium", ITERATION_BODY_TEMPLATE);
     let (_store, orch, select) = seeded_orchestrator(vec![iteration], vec![]).await;
     let args = serde_json::json!({"id": 1397});
@@ -626,7 +626,7 @@ async fn get_story_preserves_placeholder_when_iteration_has_no_members_1462() {
 }
 
 #[tokio::test]
-async fn get_story_does_not_derive_members_for_non_iteration_stories_1462() {
+async fn get_story_does_not_derive_members_for_non_iteration_stories() {
     let story = make_story(
         1463,
         Work::Accepted,
@@ -646,7 +646,7 @@ async fn get_story_does_not_derive_members_for_non_iteration_stories_1462() {
 }
 
 #[tokio::test]
-async fn get_story_excludes_closed_member_stories_from_derivation_1462() {
+async fn get_story_excludes_closed_member_stories_from_derivation() {
     let iteration = make_iteration_with_members(
         1397,
         "Telescopium",

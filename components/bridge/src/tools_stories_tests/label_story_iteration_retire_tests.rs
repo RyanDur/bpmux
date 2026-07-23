@@ -40,7 +40,7 @@ fn label_args(label: &str, operation: &str) -> serde_json::Map<String, serde_jso
 }
 
 #[tokio::test]
-async fn label_story_rejects_iteration_label_with_tool_retired_kind_1402() {
+async fn label_story_rejects_iteration_label_with_tool_retired_kind() {
     let (_store, orch, select) = build_orchestrator().await;
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "add"),
@@ -71,7 +71,7 @@ async fn label_story_rejects_iteration_label_with_tool_retired_kind_1402() {
 }
 
 #[tokio::test]
-async fn label_story_rejects_iteration_label_for_different_names_1402() {
+async fn label_story_rejects_iteration_label_for_different_names() {
     let (_store, orch, select) = build_orchestrator().await;
     for label in [
         "iteration-Pegasus.100",
@@ -97,7 +97,7 @@ async fn label_story_rejects_iteration_label_for_different_names_1402() {
 }
 
 #[tokio::test]
-async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
+async fn label_story_accepts_non_iteration_labels_unchanged() {
     let (_store, orch, select) = build_orchestrator().await;
     for label in [
         "desk-check-fail",
@@ -145,7 +145,7 @@ async fn label_story_accepts_non_iteration_labels_unchanged_1402() {
 }
 
 #[tokio::test]
-async fn label_story_rejects_iteration_label_before_canonical_store_check_1402() {
+async fn label_story_rejects_iteration_label_before_canonical_store_check() {
     let select = store::Select::new(std::sync::Weak::new());
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "add"),
@@ -164,7 +164,7 @@ async fn label_story_rejects_iteration_label_before_canonical_store_check_1402()
 }
 
 #[tokio::test]
-async fn label_story_rejects_malformed_label_shapes_through_normal_path_1402() {
+async fn label_story_rejects_malformed_label_shapes_through_normal_path() {
     let (_store, orch, select) = build_orchestrator().await;
     for label in [
         "iteration-",
@@ -190,7 +190,7 @@ async fn label_story_rejects_malformed_label_shapes_through_normal_path_1402() {
 }
 
 #[tokio::test]
-async fn label_story_remove_iteration_label_still_works_for_migration_1402() {
+async fn label_story_remove_iteration_label_still_works_for_migration() {
     let (_store, orch, select) = build_orchestrator().await;
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "remove"),
@@ -208,7 +208,7 @@ async fn label_story_remove_iteration_label_still_works_for_migration_1402() {
 }
 
 #[tokio::test]
-async fn non_pm_role_rejected_before_retire_gate_fires_1402() {
+async fn non_pm_role_rejected_before_retire_gate_fires() {
     let (_store, orch, select) = build_orchestrator().await;
     let result = handle_label_story(
         &label_args("iteration-Telescopium.100", "add"),

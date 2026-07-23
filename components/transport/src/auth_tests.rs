@@ -81,12 +81,12 @@ fn rejects_basic_auth_scheme() {
 }
 
 #[test]
-fn loopback_host_accepts_bare_127() {
+fn loopback_host_accepts_bare() {
     assert!(is_loopback_host("127.0.0.1"));
 }
 
 #[test]
-fn loopback_host_accepts_127_with_port() {
+fn loopback_host_accepts_with_port() {
     assert!(is_loopback_host("127.0.0.1:4117"));
 }
 

@@ -270,7 +270,7 @@ async fn create_story_rejects_missing_observation_falsifier() {
 }
 
 #[tokio::test]
-async fn create_story_validation_passes_then_refresh_required_after_5n() {
+async fn create_story_validation_passes_then_refresh_required() {
     let args = serde_json::json!({
         "title": "a story",
         "body": "author body",
@@ -340,7 +340,7 @@ async fn deliver_story_rejects_empty_verified_observation() {
 }
 
 #[tokio::test]
-async fn label_story_default_op_requires_refresh_after_5n() {
+async fn label_story_default_op_requires_refresh() {
     let args = serde_json::json!({
         "id": 42,
         "label": "ready"
@@ -360,7 +360,7 @@ async fn label_story_default_op_requires_refresh_after_5n() {
 }
 
 #[tokio::test]
-async fn label_story_add_op_requires_refresh_after_5n() {
+async fn label_story_add_op_requires_refresh() {
     let args = serde_json::json!({
         "id": 42,
         "label": "blocked",
@@ -381,7 +381,7 @@ async fn label_story_add_op_requires_refresh_after_5n() {
 }
 
 #[tokio::test]
-async fn label_story_remove_op_requires_refresh_after_5n() {
+async fn label_story_remove_op_requires_refresh() {
     let args = serde_json::json!({
         "id": 42,
         "label": "in progress",
@@ -402,7 +402,7 @@ async fn label_story_remove_op_requires_refresh_after_5n() {
 }
 
 #[tokio::test]
-async fn label_story_remove_idempotent_call_requires_refresh_after_5n() {
+async fn label_story_remove_idempotent_call_requires_refresh() {
     let args = serde_json::json!({
         "id": 99,
         "label": "never-attached-label",

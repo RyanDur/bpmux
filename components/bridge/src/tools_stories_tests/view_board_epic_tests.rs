@@ -31,7 +31,7 @@ fn seeded_store_with_epics(seeded: &[(Story, Vec<String>)]) -> store_test_suppor
 }
 
 #[tokio::test]
-async fn set_parent_epic_migrated_path_emits_parent_epic_set_event() {
+async fn set_parent_epic_emits_parent_epic_set_event() {
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;
     use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -194,7 +194,7 @@ async fn set_parent_epic_rejects_non_epic_parent() {
 }
 
 #[tokio::test]
-async fn unset_parent_epic_migrated_path_emits_parent_epic_unset_event() {
+async fn unset_parent_epic_emits_parent_epic_unset_event() {
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;
     use product_management::story::events::{StoryEvent, StoryEventKind};
@@ -576,7 +576,7 @@ async fn view_board_filters_epic_stories_out_of_state_lanes() {
 }
 
 #[tokio::test]
-async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450() {
+async fn view_board_epic_with_delivered_children_derives_in_progress_post() {
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;
     use product_management::story::{Story, Work};
@@ -632,7 +632,7 @@ async fn view_board_epic_with_delivered_children_derives_in_progress_post_1450()
 }
 
 #[tokio::test]
-async fn view_board_epic_ignores_explicit_state_when_children_present_post_1450() {
+async fn view_board_epic_ignores_explicit_state_when_children_present_post() {
     use chrono::{TimeZone, Utc};
     use integrations::in_memory::InMemorySourceAdapter;
     use product_management::story::{Stage, Story, Work};

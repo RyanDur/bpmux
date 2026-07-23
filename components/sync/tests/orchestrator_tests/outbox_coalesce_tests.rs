@@ -13,7 +13,7 @@ use store::AppAction;
 use store_test_support::SeededStore;
 use sync::SyncOrchestrator;
 
-mod outbox_coalesce_1339_step_2e {
+mod outbox_coalesce_step_2e {
     use super::*;
 
     fn extract_label(event: &StoryEvent) -> Option<(&'static str, &str)> {

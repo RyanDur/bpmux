@@ -154,7 +154,7 @@ async fn drill_iteration_ids(
 }
 
 #[tokio::test]
-async fn unmap_removes_the_relation_and_the_drill_drops_the_iteration_1763() {
+async fn unmap_removes_the_relation_and_the_drill_drops_the_iteration() {
     let (_store, refresh, adapter, select) = build_refresh(vec![
         outcome(700, vec![710, 720]),
         iteration_for(710, 700),
@@ -186,7 +186,7 @@ async fn unmap_removes_the_relation_and_the_drill_drops_the_iteration_1763() {
 }
 
 #[tokio::test]
-async fn unmap_leaves_the_iteration_itself_untouched_1763() {
+async fn unmap_leaves_the_iteration_itself_untouched() {
     let (_store, refresh, _adapter, select) =
         build_refresh(vec![outcome(700, vec![710]), iteration_for(710, 700)]).await;
     let (dispatch, mut rx) = dispatch_channel();
@@ -210,7 +210,7 @@ async fn unmap_leaves_the_iteration_itself_untouched_1763() {
 }
 
 #[tokio::test]
-async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
+async fn reorder_repositions_the_iteration_within_the_outcome() {
     let (_store, refresh, adapter, select) = build_refresh(vec![
         outcome(700, vec![710, 720]),
         iteration_for(710, 700),
@@ -245,7 +245,7 @@ async fn reorder_repositions_the_iteration_within_the_outcome_1763() {
 }
 
 #[tokio::test]
-async fn unmap_is_pm_lane_non_pm_refused_1763() {
+async fn unmap_is_pm_lane_non_pm_refused() {
     let (_store, refresh, _adapter, select) =
         build_refresh(vec![outcome(700, vec![710]), iteration_for(710, 700)]).await;
     let err = handle_unmap_outcome_iteration(
@@ -261,7 +261,7 @@ async fn unmap_is_pm_lane_non_pm_refused_1763() {
 }
 
 #[tokio::test]
-async fn unmap_rejects_an_unmapped_iteration_1763() {
+async fn unmap_rejects_an_unmapped_iteration() {
     let (_store, refresh, _adapter, select) =
         build_refresh(vec![outcome(700, vec![]), iteration_for(710, 999)]).await;
     let err =
@@ -275,7 +275,7 @@ async fn unmap_rejects_an_unmapped_iteration_1763() {
 }
 
 #[tokio::test]
-async fn unmap_aimed_at_a_non_outcome_teaches_the_boundary_1763() {
+async fn unmap_aimed_at_a_non_outcome_teaches_the_boundary() {
     let feature = Story::new_minimal(
         StoryId::new(700),
         "[Feature] plain".into(),

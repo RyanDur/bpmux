@@ -97,7 +97,7 @@ fn args(
 }
 
 #[tokio::test]
-async fn pm_can_add_story_to_iteration_canonical_relation_recorded_1399() {
+async fn pm_can_add_story_to_iteration_canonical_relation_recorded() {
     let (_store, orch, select) = build_orchestrator(vec![
         iteration_seed(1397, "Telescopium"),
         member_seed(1500, "child story"),
@@ -124,7 +124,7 @@ async fn pm_can_add_story_to_iteration_canonical_relation_recorded_1399() {
 }
 
 #[tokio::test]
-async fn non_pm_non_owner_rejected_with_workflow_role_not_allowed_1399() {
+async fn non_pm_non_owner_rejected_with_workflow_role_not_allowed() {
     let (_store, orch, select) = build_orchestrator(vec![
         iteration_seed(1397, "Telescopium"),
         member_seed(1500, "x"),
@@ -166,7 +166,7 @@ async fn non_pm_non_owner_rejected_with_workflow_role_not_allowed_1399() {
 }
 
 #[tokio::test]
-async fn owner_bypasses_add_story_to_iteration_via_superset_1548() {
+async fn owner_bypasses_add_story_to_iteration_via_superset() {
     let (_store, orch, select) = build_orchestrator(vec![
         iteration_seed(1397, "Telescopium"),
         member_seed(1500, "child story"),
@@ -188,7 +188,7 @@ async fn owner_bypasses_add_story_to_iteration_via_superset_1548() {
 }
 
 #[tokio::test]
-async fn parent_must_be_iteration_storytype_rejects_non_iteration_1399() {
+async fn parent_must_be_iteration_storytype_rejects_non_iteration() {
     let (_store, orch, select) = build_orchestrator(vec![
         member_seed(2000, "not an iteration"),
         member_seed(1500, "child"),
@@ -211,7 +211,7 @@ async fn parent_must_be_iteration_storytype_rejects_non_iteration_1399() {
 }
 
 #[tokio::test]
-async fn self_add_rejected_1399() {
+async fn self_add_rejected() {
     let (_store, orch, select) =
         build_orchestrator(vec![iteration_seed(1397, "Telescopium")]).await;
     let (dispatch, _rx) = dispatch_channel();
@@ -231,7 +231,7 @@ async fn self_add_rejected_1399() {
 }
 
 #[tokio::test]
-async fn missing_iteration_id_rejected_1399() {
+async fn missing_iteration_id_rejected() {
     let (dispatch, _rx) = dispatch_channel();
     let select = store::Select::new(std::sync::Weak::new());
     let mut m = serde_json::Map::new();
@@ -246,7 +246,7 @@ async fn missing_iteration_id_rejected_1399() {
 }
 
 #[tokio::test]
-async fn missing_story_id_rejected_1399() {
+async fn missing_story_id_rejected() {
     let (dispatch, _rx) = dispatch_channel();
     let select = store::Select::new(std::sync::Weak::new());
     let mut m = serde_json::Map::new();
@@ -261,7 +261,7 @@ async fn missing_story_id_rejected_1399() {
 }
 
 #[tokio::test]
-async fn missing_position_rejected_1399() {
+async fn missing_position_rejected() {
     let (dispatch, _rx) = dispatch_channel();
     let select = store::Select::new(std::sync::Weak::new());
     let mut m = serde_json::Map::new();
@@ -276,7 +276,7 @@ async fn missing_position_rejected_1399() {
 }
 
 #[tokio::test]
-async fn add_records_the_member_in_the_iterations_ordered_stories_1399() {
+async fn add_records_the_member_in_the_iterations_ordered_stories() {
     let (_store, orch, select) = build_orchestrator(vec![
         iteration_seed(1397, "Telescopium"),
         member_seed(1500, "child"),
@@ -300,7 +300,7 @@ async fn add_records_the_member_in_the_iterations_ordered_stories_1399() {
 }
 
 #[tokio::test]
-async fn replace_semantic_overwrites_existing_membership_1399() {
+async fn replace_semantic_overwrites_existing_membership() {
     let (mut it1, it1_labels) = iteration_seed(1397, "Telescopium");
     it1.body = Some(
         IterationRelationships {

@@ -125,7 +125,7 @@ fn remove_args(iteration: u64, story: u64, reason: Option<&str>) -> Map<String, 
 }
 
 #[tokio::test]
-async fn remove_member_clears_membership_so_the_board_no_longer_shows_it_1762() {
+async fn remove_member_clears_membership_so_the_board_no_longer_shows_it() {
     let (_store, refresh, select) = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710]),
         member_story(710, Work::NotStarted),
@@ -154,7 +154,7 @@ async fn remove_member_clears_membership_so_the_board_no_longer_shows_it_1762() 
 }
 
 #[tokio::test]
-async fn remove_member_flags_an_in_flight_story_state_not_a_silent_scope_cut_1762() {
+async fn remove_member_flags_an_in_flight_story_state_not_a_silent_scope_cut() {
     let (_store, refresh, select) = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710]),
         member_story(710, Work::InProgress),
@@ -177,7 +177,7 @@ async fn remove_member_flags_an_in_flight_story_state_not_a_silent_scope_cut_176
 }
 
 #[tokio::test]
-async fn remove_member_with_no_reason_is_rejected_1762() {
+async fn remove_member_with_no_reason_is_rejected() {
     let (_store, refresh, select) = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710]),
         member_story(710, Work::NotStarted),
@@ -210,7 +210,7 @@ async fn remove_member_with_no_reason_is_rejected_1762() {
 }
 
 #[tokio::test]
-async fn remove_member_is_pm_lane_non_pm_refused_1762() {
+async fn remove_member_is_pm_lane_non_pm_refused() {
     let (_store, refresh, select) = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710]),
         member_story(710, Work::NotStarted),
@@ -230,7 +230,7 @@ async fn remove_member_is_pm_lane_non_pm_refused_1762() {
 }
 
 #[tokio::test]
-async fn remove_member_rejects_a_non_member_1762() {
+async fn remove_member_rejects_a_non_member() {
     let (_store, refresh, select) = build_refresh(vec![
         iteration(1700, "Circinus"),
         member_story(710, Work::NotStarted),
@@ -253,7 +253,7 @@ async fn remove_member_rejects_a_non_member_1762() {
 }
 
 #[tokio::test]
-async fn move_member_reorders_within_the_iteration_1762() {
+async fn move_member_reorders_within_the_iteration() {
     let (_store, refresh, select) = build_refresh(vec![
         iteration_with_members(1700, "Circinus", vec![710, 720]),
         member_story(710, Work::NotStarted),
@@ -276,7 +276,7 @@ async fn move_member_reorders_within_the_iteration_1762() {
 }
 
 #[tokio::test]
-async fn reorder_iteration_insert_shifts_the_planning_order_1762() {
+async fn reorder_iteration_insert_shifts_the_planning_order() {
     let (_store, refresh, select) = build_refresh(vec![
         iteration_at(1700, "Circinus", 100),
         iteration_at(1710, "Dorado", 200),
@@ -313,7 +313,7 @@ async fn reorder_iteration_insert_shifts_the_planning_order_1762() {
 }
 
 #[tokio::test]
-async fn reorder_iteration_is_pm_lane_non_pm_refused_1762() {
+async fn reorder_iteration_is_pm_lane_non_pm_refused() {
     let (_store, refresh, select) = build_refresh(vec![iteration_at(1700, "Circinus", 100)]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_reorder_iteration(
@@ -334,7 +334,7 @@ async fn reorder_iteration_is_pm_lane_non_pm_refused_1762() {
 }
 
 #[tokio::test]
-async fn rename_updates_the_iteration_title_1762() {
+async fn rename_updates_the_iteration_title() {
     let (_store, refresh, select) = build_refresh(vec![iteration(1700, "Circinus")]).await;
     let (dispatch, mut rx) = dispatch_channel();
     let args = json!({ "iteration_id": 1700, "name": "Vela" })
@@ -384,7 +384,7 @@ async fn renaming_a_current_iteration_preserves_its_current_designation() {
 }
 
 #[tokio::test]
-async fn iteration_reorg_verbs_teach_the_boundary_on_a_non_iteration_1762() {
+async fn iteration_reorg_verbs_teach_the_boundary_on_a_non_iteration() {
     let feature = Story::new_minimal(
         StoryId::new(700),
         "[Feature] plain".into(),

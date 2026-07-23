@@ -32,7 +32,7 @@ fn generate_produces_distinct_tokens() {
 
 #[cfg(unix)]
 #[test]
-fn generate_writes_mode_0600() {
+fn generate_writes_mode() {
     use std::os::unix::fs::PermissionsExt;
     let (_dir, path) = tmp();
     generate_and_write(&path).unwrap();

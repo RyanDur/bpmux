@@ -88,7 +88,7 @@ fn args(iteration_id: u64) -> serde_json::Map<String, serde_json::Value> {
 }
 
 #[tokio::test]
-async fn pm_designates_current_iteration_sets_is_current_1540() {
+async fn pm_designates_current_iteration_sets_is_current() {
     let (_store, orch, select) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let (dispatch, mut rx) = dispatch_channel();
     handle_designate_current_iteration(
@@ -114,7 +114,7 @@ async fn pm_designates_current_iteration_sets_is_current_1540() {
 }
 
 #[tokio::test]
-async fn designate_clears_prior_current_holder_replace_semantic_1540() {
+async fn designate_clears_prior_current_holder_replace_semantic() {
     let (_store, orch, select) = build_orchestrator(vec![
         current_iteration_seed(1398, "Microscopium"),
         iteration_seed(1552, "Carina"),
@@ -152,7 +152,7 @@ async fn designate_clears_prior_current_holder_replace_semantic_1540() {
 }
 
 #[tokio::test]
-async fn designate_rejects_non_iteration_story_1540() {
+async fn designate_rejects_non_iteration_story() {
     let (_store, orch, select) = build_orchestrator(vec![feature_seed(1500)]).await;
     let (dispatch, _rx) = dispatch_channel();
     let err = handle_designate_current_iteration(
@@ -173,7 +173,7 @@ async fn designate_rejects_non_iteration_story_1540() {
 }
 
 #[tokio::test]
-async fn designate_rejected_for_non_pm_1540() {
+async fn designate_rejected_for_non_pm() {
     let (_store, orch, select) = build_orchestrator(vec![iteration_seed(1552, "Carina")]).await;
     let (dispatch, _rx) = dispatch_channel();
     handle_designate_current_iteration(

@@ -33,7 +33,7 @@ async fn get_json(router: axum::Router, uri: &str) -> axum::http::Response<Body>
 }
 
 #[tokio::test]
-async fn get_board_returns_503_when_tracker_missing() {
+async fn get_board_returns_when_tracker_missing() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (session, _tx) = board_test_session(&dir);
@@ -119,7 +119,7 @@ async fn get_story_returns_single_issue_with_body() {
 }
 
 #[tokio::test]
-async fn get_story_returns_404_when_github_returns_404() {
+async fn get_story_returns_when_github_returns() {
     let server = MockServer::start();
     let m = server.mock(|when, then| {
         when.method(Method::GET)
@@ -143,7 +143,7 @@ async fn get_story_returns_404_when_github_returns_404() {
 }
 
 #[tokio::test]
-async fn get_story_returns_503_when_tracker_missing() {
+async fn get_story_returns_when_tracker_missing() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (session, _tx) = board_test_session(&dir);
@@ -154,7 +154,7 @@ async fn get_story_returns_503_when_tracker_missing() {
 }
 
 #[tokio::test]
-async fn post_accept_story_returns_503_when_orchestrator_missing() {
+async fn post_accept_story_returns_when_orchestrator_missing() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (session, _tx) = board_test_session(&dir);
@@ -170,7 +170,7 @@ async fn post_accept_story_returns_503_when_orchestrator_missing() {
 }
 
 #[tokio::test]
-async fn post_accept_story_400_when_would_file_bug_missing() {
+async fn post_accept_story_when_would_file_bug_missing() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (session, _tx) = board_test_session(&dir);
@@ -188,7 +188,7 @@ async fn post_accept_story_400_when_would_file_bug_missing() {
 }
 
 #[tokio::test]
-async fn post_accept_story_400_when_would_file_bug_true_without_force() {
+async fn post_accept_story_when_would_file_bug_true_without_force() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (session, _tx) = board_test_session(&dir);
@@ -214,7 +214,7 @@ async fn post_accept_story_400_when_would_file_bug_true_without_force() {
 }
 
 #[tokio::test]
-async fn post_reject_story_400_on_empty_note() {
+async fn post_reject_story_on_empty_note() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (session, _tx) = board_test_session(&dir);
@@ -229,7 +229,7 @@ async fn post_reject_story_400_on_empty_note() {
 }
 
 #[tokio::test]
-async fn post_reject_story_400_on_whitespace_note() {
+async fn post_reject_story_on_whitespace_note() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (session, _tx) = board_test_session(&dir);
@@ -242,7 +242,7 @@ async fn post_reject_story_400_on_whitespace_note() {
 }
 
 #[tokio::test]
-async fn post_reject_story_returns_503_when_tracker_missing() {
+async fn post_reject_story_returns_when_tracker_missing() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);
     let (session, _tx) = board_test_session(&dir);
