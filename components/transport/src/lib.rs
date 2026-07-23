@@ -20,6 +20,8 @@ mod auth_tests;
 #[cfg(test)]
 mod ci_watcher_tests;
 #[cfg(test)]
+mod delivery_predicate_tests;
+#[cfg(test)]
 mod external_mutation_tests;
 #[cfg(test)]
 mod rest_tests;

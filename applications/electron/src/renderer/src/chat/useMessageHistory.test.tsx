@@ -1,10 +1,18 @@
-import { describe, expect, test } from 'vitest'
-import { mergeOlderHistory } from './useMessageHistory'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { useMessageHistory } from './useMessageHistory'
+import {
+  BrowserWebSocket,
+  startTestWsServer,
+  type TestWsConnection,
+  type TestWsServer
+} from '../../../../test/wsTestServer'
+import { startConnection, getStateSnapshot, resetStateForTest } from '../state'
 import type { ChatMessage } from '../transport/types'
 
-const mkLive = (i: number): ChatMessage => ({
+const live = (i: number): ChatMessage => ({
   id: `live-${i}`,
-  from: 'user',
+  from: 'owner',
   text: `live ${i}`,
   ts: `2026-05-03T03:${String(50 + i).padStart(2, '0')}:00.000Z`,
   to: null,
@@ -12,80 +20,109 @@ const mkLive = (i: number): ChatMessage => ({
   messageType: null
 })
 
-const mkOlderRow = (
-  i: number
-): {
-  from: string
-  text: string
-  ts: string
-  to?: string[] | null
-  addressee?: string | null
-  message_type?: string | null
-} => ({
-  from: 'user',
-  text: `older ${i}`,
-  ts: `2026-05-03T03:${String(10 + i).padStart(2, '0')}:00.000Z`
+let server: TestWsServer
+let conn: TestWsConnection
+
+const pageRequestId = (): number | null => {
+  for (let i = conn.received.length - 1; i >= 0; i -= 1) {
+    try {
+      const frame = JSON.parse(conn.received[i]) as { type?: string; request_id?: number }
+      if (frame.type === 'history_page') return frame.request_id ?? null
+    } catch {
+      continue
+    }
+  }
+  return null
+}
+
+const props = { liveMessages: [live(0)], apiBase: 'http://test' }
+
+beforeEach(async () => {
+  vi.stubGlobal('WebSocket', BrowserWebSocket)
+  server = await startTestWsServer()
+  resetStateForTest()
+  startConnection({ url: server.url })
+  conn = await server.waitForConnection()
+  await waitFor(() => expect(getStateSnapshot().status).toBe('connected'))
 })
 
-describe('mergeOlderHistory — pure dedupe + chronological merge', () => {
-  test('empty inputs return empty prepended buffer', () => {
-    expect(mergeOlderHistory([], [], [])).toEqual([])
+afterEach(async () => {
+  resetStateForTest()
+  await server.close()
+  vi.unstubAllGlobals()
+})
+
+describe('useMessageHistory — WS older-history boundary behavior', () => {
+  test('a socket drop mid-request flips hasError=true (request rejected, not a raw throw)', async () => {
+    const { result } = renderHook(() => useMessageHistory(props))
+    expect(result.current.hasError).toBe(false)
+
+    let pending!: Promise<void>
+    act(() => {
+      pending = result.current.loadOlder()
+    })
+    await waitFor(() => expect(pageRequestId()).not.toBeNull())
+
+    await act(async () => {
+      conn.drop()
+      await pending
+    })
+
+    expect(result.current.hasError).toBe(true)
+    expect(result.current.isLoadingOlder).toBe(false)
   })
 
-  test('prepends fetched rows in chronological order', () => {
-    const older = [mkOlderRow(2), mkOlderRow(0), mkOlderRow(1)]
-    const result = mergeOlderHistory([], older, [])
-    expect(result.map((m) => m.text)).toEqual(['older 0', 'older 1', 'older 2'])
+  test('an empty page reply flips hasMoreOlder=false', async () => {
+    const { result } = renderHook(() => useMessageHistory(props))
+
+    let pending!: Promise<void>
+    act(() => {
+      pending = result.current.loadOlder()
+    })
+    await waitFor(() => expect(pageRequestId()).not.toBeNull())
+
+    await act(async () => {
+      conn.send(
+        JSON.stringify({ type: 'history_page_loaded', request_id: pageRequestId(), messages: [] })
+      )
+      await pending
+    })
+
+    expect(result.current.hasMoreOlder).toBe(false)
+    expect(result.current.hasError).toBe(false)
   })
 
-  test('dedupes against live messages by ts+from+text', () => {
-    const live = [mkLive(0), mkLive(1)]
-    const older = [{ from: live[0].from, text: live[0].text, ts: live[0].ts }, mkOlderRow(0)]
-    const result = mergeOlderHistory([], older, live)
-    expect(result.length).toBe(1)
-    expect(result[0].text).toBe('older 0')
-  })
+  test('a page reply with rows prepends older history without raising', async () => {
+    const { result } = renderHook(() => useMessageHistory(props))
 
-  test('dedupes against existing prepended buffer (avoids double-prepend on retry)', () => {
-    const live = [mkLive(0)]
-    const existing: ChatMessage[] = [
-      {
-        id: 'hist-older-existing',
-        from: 'user',
-        text: 'older 0',
-        ts: '2026-05-03T03:10:00.000Z',
-        to: null,
-        addressee: null,
-        messageType: null
-      }
-    ]
-    const older = [mkOlderRow(0)]
-    const result = mergeOlderHistory(existing, older, live)
-    expect(result.length).toBe(1)
-    expect(result[0].text).toBe('older 0')
-  })
+    let pending!: Promise<void>
+    act(() => {
+      pending = result.current.loadOlder()
+    })
+    await waitFor(() => expect(pageRequestId()).not.toBeNull())
 
-  test('prepends new older rows BEFORE existing prepended buffer (chronological)', () => {
-    const live = [mkLive(0)]
-    const existing: ChatMessage[] = [
-      {
-        id: 'hist-existing',
-        from: 'user',
-        text: 'older 5',
-        ts: '2026-05-03T03:15:00.000Z',
-        to: null,
-        addressee: null,
-        messageType: null
-      }
-    ]
-    const older = [mkOlderRow(0), mkOlderRow(1)]
-    const result = mergeOlderHistory(existing, older, live)
-    expect(result.map((m) => m.text)).toEqual(['older 0', 'older 1', 'older 5'])
-  })
+    await act(async () => {
+      conn.send(
+        JSON.stringify({
+          type: 'history_page_loaded',
+          request_id: pageRequestId(),
+          messages: [
+            {
+              from: 'pm',
+              text: 'older message',
+              ts: '2026-05-03T03:00:00.000Z',
+              to: null,
+              addressee: null,
+              message_type: null
+            }
+          ]
+        })
+      )
+      await pending
+    })
 
-  test('preserves stable id format for prepended rows', () => {
-    const older = [mkOlderRow(0)]
-    const result = mergeOlderHistory([], older, [])
-    expect(result[0].id).toMatch(/^hist-older-/)
+    expect(result.current.combinedMessages.length).toBeGreaterThanOrEqual(2)
+    expect(result.current.hasError).toBe(false)
+    expect(result.current.combinedMessages.some((m) => m.text === 'older message')).toBe(true)
   })
 })

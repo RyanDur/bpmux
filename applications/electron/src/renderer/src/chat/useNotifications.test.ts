@@ -2,23 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import type { ChatMessage } from '../transport/types'
 
-const { liveHandlers } = vi.hoisted(() => ({
-  liveHandlers: [] as ((m: ChatMessage) => void)[]
-}))
-
-vi.mock('../state', () => ({
-  RENDERER_IDENTITY: 'owner',
-  subscribeLiveMessages: (h: (m: ChatMessage) => void) => {
-    liveHandlers.push(h)
-    return () => {
-      const i = liveHandlers.indexOf(h)
-      if (i >= 0) liveHandlers.splice(i, 1)
-    }
-  }
-}))
-
 import { isRelevant, useNotifications } from './useNotifications'
 import { RENDERER_IDENTITY } from '../state'
+import { emitLiveMessage } from '../state/emitter'
 
 const SELF = 'dev'
 
@@ -111,7 +97,6 @@ describe('useNotifications — notifies per live-message append (no length-curso
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
-    liveHandlers.length = 0
   })
 
   const relevant = (id: string): ChatMessage =>
@@ -133,14 +118,13 @@ describe('useNotifications — notifies per live-message append (no length-curso
   }
 
   const fireLive = (msg: ChatMessage): void => {
-    for (const h of liveHandlers) h(msg)
+    emitLiveMessage(msg)
   }
 
-  it('subscribes at mount and emits NO notification before any live message arrives', () => {
+  it('emits NO notification before any live message arrives', () => {
     vi.spyOn(document, 'hasFocus').mockReturnValue(false)
     const ctor = installNotificationSpy()
     renderHook(() => useNotifications())
-    expect(liveHandlers.length).toBe(1)
     expect(ctor).not.toHaveBeenCalled()
   })
 

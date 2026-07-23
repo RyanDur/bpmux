@@ -27,7 +27,7 @@ mod order_state_pin_tests;
 #[cfg(test)]
 mod rework_tests;
 #[cfg(test)]
-mod slice_tests;
+mod selector_tests;
 #[cfg(test)]
 mod story_type_tests;
 

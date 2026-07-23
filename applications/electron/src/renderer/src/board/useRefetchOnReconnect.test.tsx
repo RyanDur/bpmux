@@ -1,28 +1,17 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { act, cleanup, renderHook } from '@testing-library/react'
 
-let reconnectTick = 0
-const listeners = new Set<() => void>()
-
-vi.mock('../state', () => ({
-  subscribeState: (l: () => void) => {
-    listeners.add(l)
-    return () => listeners.delete(l)
-  },
-  getStateSnapshot: () => ({ reconnectTick })
-}))
-
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
+import { dispatchState, resetStateForTest } from '../state/store'
+import { reconnected } from '../state/actions'
 
 const signalReconnect = (): void => {
-  reconnectTick += 1
-  for (const l of listeners) l()
+  dispatchState(reconnected())
 }
 
 afterEach(() => {
   cleanup()
-  reconnectTick = 0
-  listeners.clear()
+  resetStateForTest()
 })
 
 describe('useRefetchOnReconnect — refetch on the service reconnect signal (no local ref)', () => {
