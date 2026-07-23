@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchWithMockGh } from './helpers/launch'
@@ -13,7 +14,7 @@ const createStory = async (rpc: RpcFn, title: string): Promise<number> => {
       title,
       user_job: `Board-header fixture: ${title}.`,
       observation_falsifier: 'reject if the iteration member does not render',
-      acceptance_test_path: 'applications/electron/tests/board-header-iteration-context.spec.ts'
+      acceptance_test_path: atpPath(__filename)
     },
     'pm'
   )

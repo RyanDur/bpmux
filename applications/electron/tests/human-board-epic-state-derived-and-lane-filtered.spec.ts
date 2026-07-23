@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { launchWithMockGh, type MockGhLaunchResult } from './helpers/launch'
 import {
   seedCurrentIterationViaRpc,
@@ -13,8 +14,7 @@ const createStory = async (rpc: RpcFn, title: string, parentEpic?: number): Prom
     user_job: `Fixture story for desk-check #457 slice 6: ${title}.`,
     observation_falsifier:
       'reject if the Epic state-derivation does not match the #1450 truth-table',
-    acceptance_test_path:
-      'applications/electron/tests/human-board-epic-state-derived-and-lane-filtered.spec.ts'
+    acceptance_test_path: atpPath(__filename)
   }
   if (parentEpic !== undefined) body.parent_epic = parentEpic
   const resp = await rpc('create_story', body, 'pm')

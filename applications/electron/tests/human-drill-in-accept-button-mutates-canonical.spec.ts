@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { launchWithMockGh } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
 import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
@@ -20,8 +21,7 @@ test.describe('#1170 — UI accept-button mutates canonical store via REST (no s
       const drillIn = new DrillInPage(win)
       await expect(board.region()).toBeVisible()
 
-      const acceptanceTestPath =
-        'applications/electron/tests/human-drill-in-accept-button-mutates-canonical.spec.ts'
+      const acceptanceTestPath = atpPath(__filename)
       const createResp = await rpc(
         'create_story',
         {

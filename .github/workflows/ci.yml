@@ -105,3 +105,28 @@ jobs:
       - name: Vitest (RTL + real-backend)
         working-directory: applications/electron
         run: npm run test:unit
+
+  lighthouse-renderer:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: applications/electron/package-lock.json
+          registry-url: "https://npm.pkg.github.com"
+      - name: Install Electron deps
+        working-directory: applications/electron
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm ci
+      - name: Build renderer bundle
+        working-directory: applications/electron
+        run: npm run build
+      - name: Lighthouse floor on the built renderer
+        working-directory: applications/electron
+        run: npx --yes @lhci/cli@0.14.x autorun --config=lighthouserc.json

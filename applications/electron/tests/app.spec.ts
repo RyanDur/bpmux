@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { launchIsolatedWithWindow, launchWithMockGh } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
 import {
@@ -17,7 +18,7 @@ const createStory = async (rpc: RpcFn, title: string): Promise<number> => {
       title,
       user_job: `App-spec fixture: ${title}.`,
       observation_falsifier: 'reject if the board does not render this fixture row',
-      acceptance_test_path: 'applications/electron/tests/app.spec.ts'
+      acceptance_test_path: atpPath(__filename)
     },
     'pm'
   )

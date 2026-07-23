@@ -3,12 +3,76 @@
 Connect to bpmux. Call `list_lessons()` for team context.
 
 ```bash
-cargo build              # Build
-cargo test               # Run all tests
-cargo clippy -- -D warnings  # Lint (warnings are errors)
-cargo fmt --check        # Check formatting
-cargo run                # Run bpmux
+cargo nextest run        # Rust tests (whole workspace — narrow -p sets hit tokio feature-unification landmines)
+cargo clippy --workspace --all-targets -- -D warnings
+cargo fmt --check
+(cd applications/electron && npm run test:unit)   # renderer vitest+RTL against a real spawned backend
+(cd applications/electron && npx playwright test) # e2e journeys
+make check T=<pattern>   # scoped fast loop (iteration only — never a substitute for the gates)
+make push                # push + verify the remote ref moved (push exit codes lie under SIGPIPE)
 ```
+
+## The model (owner's canon — never invent past it)
+
+- **The store IS the engine.** Slices (middleware, reducers, listeners,
+  actions) register into it; everything else is a door. Backend:
+  `components/store`. Renderer: `src/renderer/src/state/`.
+- **Transport is a door, not a consumer** — enforced by
+  dependency-cruiser (renderer) and boundary tests (Rust).
+- **MCP and CLI affordances are 1:1** — enforced by
+  `applications/cli/src/parity_audit.rs`.
+- **No sessions, no central identity registry.** Data lives flat in
+  `~/.bpmux/data`; the directory an agent starts in IS its identity
+  (`.bpmux-user-id` marker; resolution: `BPMUX_USER_ID` pin → marker →
+  mint into the dir).
+
+## Gates
+
+- `pre-commit` (fast loop, ~2min): fmt, clippy, nextest, vitest,
+  depcruise+knip+machete, comment gate, staged lint, live-daemon
+  canary, cargo audit.
+- `pre-push` (THE gate, ~8min): all of the above plus electron
+  build/typecheck and the full Playwright run. There is no CI safety
+  net for e2e — pre-push is it.
+- Activate per-clone: `git config core.hooksPath scripts/git-hooks`.
+- 200-line max per production file (test-named files exempt).
+
+## Tests document behavior
+
+Names say the behavior, never the story number — provenance lives in
+git. Tests never couple to the machine: the gates scrub ambient
+`BPMUX_*` env and a live-daemon canary fails the run if the real
+daemon registers anyone mid-suite. Classicist: real collaborators;
+stub only true boundaries (OS notification, the network via msw,
+mock GH).
+
+- E2E specs are behavior-named journeys. PTY-heavy or multi-electron
+  specs belong in `SERIAL_HEAVY_SPECS` (playwright.config.ts) and run
+  at workers=1. A spec passing at `--workers=1` but failing in the
+  parallel pool is load contention: move it to serial, don't retry
+  harder.
+- Seeding specs: `create_story` validates `acceptance_test_path`
+  against the real file tree — always derive it with `atpPath` from
+  `tests/helpers/atp.ts`, never write the filename as a literal.
+- Harness map (`applications/electron/tests/helpers/`): `launch.ts`
+  (`launchIsolatedElectron`, `launchWithMockGh` + `rpc`,
+  `launchTwoElectronsSharedBackend`), `iteration-fixture.ts`
+  (`setupCurrentIterationViaRpc` — the In Progress lane only renders
+  with a current iteration), `seed-evidence.ts` (`seedTeamVerdicts`
+  before accepts), `atp.ts`. Page objects in `tests/pages/`.
+
+## Registries
+
+`@ryandur/sand` installs from GitHub Packages (`@ryandur:registry` in
+`applications/electron/.npmrc`; CI authenticates via setup-node
+registry-url + `NODE_AUTH_TOKEN: GITHUB_TOKEN` + `packages: read`).
+
+## Working with the owner
+
+Ryan speaks from the agent's own terminal — stop and answer plainly
+before resuming tool calls. Broadcasts (`bpmux send`) are team
+coordination. Conversation is not authorization: agree on the
+increment, then run it; report at green.
 
 ## Team principles (apply per-commit, every story)
 

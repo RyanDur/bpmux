@@ -64,5 +64,21 @@ pub fn validate_and_log(action: &AppAction) {
         AppAction::SharedHistory(_) => "SharedHistory",
         AppAction::OwnerSession(_) => "OwnerSession",
     };
-    diag::log_diag(&format!("store: dispatch {label}"));
+    match action {
+        AppAction::Routing(RoutingAction::Registered {
+            user_id, display, ..
+        }) => diag::log_diag(&format!(
+            "store: dispatch {label} id={user_id} display={display}"
+        )),
+        AppAction::Routing(RoutingAction::TerminalLinked {
+            user_id,
+            terminal_id,
+        }) => diag::log_diag(&format!(
+            "store: dispatch {label} id={user_id} terminal={terminal_id}"
+        )),
+        AppAction::Routing(RoutingAction::Reaped { display }) => {
+            diag::log_diag(&format!("store: dispatch {label} display={display}"))
+        }
+        _ => diag::log_diag(&format!("store: dispatch {label}")),
+    }
 }

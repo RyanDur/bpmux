@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { launchWithMockGh, waitForBoardLoaded } from './helpers/launch'
 import {
   addStoryToIterationViaRpc,
@@ -18,8 +19,7 @@ const seedReadyMembers = async (rpc: RpcFn): Promise<void> => {
         title: `[Feature] ${title}`,
         user_job: 'When the human reorders a Ready row, the order persists through refetch.',
         observation_falsifier: 'reject if the reordered order snaps back after board refetch',
-        acceptance_test_path:
-          'applications/electron/tests/human-board-ready-row-drag-and-keyboard-reorder-persists.spec.ts'
+        acceptance_test_path: atpPath(__filename)
       },
       'pm'
     )

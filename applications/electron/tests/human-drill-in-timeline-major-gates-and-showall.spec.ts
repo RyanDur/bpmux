@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { join } from 'path'
 import { launchWithMockGh } from './helpers/launch'
 import { setupCurrentIterationViaRpc, type RpcFn } from './helpers/iteration-fixture'
@@ -59,8 +60,7 @@ const seedFixture = async (rpc: RpcFn, mockGh: MockGhServer): Promise<void> => {
       title: `[Feature] ${MEMBER_TITLE}`,
       user_job: 'When a human opens a story, the drill-in shows a timeline of major gates.',
       observation_falsifier: 'reject if the timeline omits a major gate or mis-groups rework',
-      acceptance_test_path:
-        'applications/electron/tests/human-drill-in-timeline-major-gates-and-showall.spec.ts'
+      acceptance_test_path: atpPath(__filename)
     },
     'pm'
   )

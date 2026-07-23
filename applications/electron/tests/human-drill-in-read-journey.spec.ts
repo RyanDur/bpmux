@@ -1,4 +1,5 @@
 import { launchWithMockGh } from './helpers/launch'
+import { atpPath } from './helpers/atp'
 import { BoardPage } from './pages/boardPage'
 import { DrillInPage } from './pages/drillInPage'
 import { expect, test } from '@playwright/test'
@@ -29,7 +30,7 @@ test.describe('human-side E2E #476 — direct-action — board drill-in', () => 
           user_job:
             'When a human clicks a story row, the drill-in panel opens with the story title visible.',
           observation_falsifier: 'reject if drill-in panel does not appear after row click',
-          acceptance_test_path: 'applications/electron/tests/human-drill-in-read-journey.spec.ts'
+          acceptance_test_path: atpPath(__filename)
         },
         'pm'
       )
@@ -85,7 +86,7 @@ test.describe('human-side E2E #476 — read-class — drill-in body content', ()
           title: '[Feature] drill-body-target',
           user_job: userJobMarker,
           observation_falsifier: falsifierMarker,
-          acceptance_test_path: 'applications/electron/tests/human-drill-in-read-journey.spec.ts'
+          acceptance_test_path: atpPath(__filename)
         },
         'pm'
       )
@@ -138,7 +139,7 @@ test.describe('human-side E2E #476 — direct-action — drill-in close', () => 
           title: '[Feature] drill-close-target',
           user_job: 'When the human presses Escape in a drill-in, the drill-in closes.',
           observation_falsifier: 'reject if Escape does not close the drill-in panel',
-          acceptance_test_path: 'applications/electron/tests/human-drill-in-read-journey.spec.ts'
+          acceptance_test_path: atpPath(__filename)
         },
         'pm'
       )
@@ -194,7 +195,7 @@ test.describe('human-side E2E #476 — direct-action — drill-in comment input'
             'When the human opens a drill-in, the comment send button should be disabled until they type something.',
           observation_falsifier:
             'reject if comment send button is enabled with empty input OR remains disabled after typing',
-          acceptance_test_path: 'applications/electron/tests/human-drill-in-read-journey.spec.ts'
+          acceptance_test_path: atpPath(__filename)
         },
         'pm'
       )

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { join } from 'path'
 import { launchWithMockGh, type MockGhLaunchResult } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
@@ -19,8 +20,7 @@ const createStory = async (rpc: RpcFn, title: string): Promise<void> => {
       title,
       user_job: `Fixture story for desk-check #375: ${title}.`,
       observation_falsifier: 'reject if the state-aware badge label is wrong for this fixture row',
-      acceptance_test_path:
-        'applications/electron/tests/human-board-badge-state-aware-tense.spec.ts'
+      acceptance_test_path: atpPath(__filename)
     },
     'pm'
   )

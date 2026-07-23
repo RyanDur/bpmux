@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchWithMockGh } from './helpers/launch'
@@ -10,7 +11,7 @@ import {
 } from './helpers/iteration-fixture'
 import { BoardPage } from './pages/boardPage'
 
-const SPEC_PATH = 'applications/electron/tests/disclosure-summary-bg-uniform.spec.ts'
+const SPEC_PATH = atpPath(__filename)
 
 const createStory = async (rpc: RpcFn, title: string, parentEpic?: number): Promise<number> => {
   const body: Record<string, unknown> = {

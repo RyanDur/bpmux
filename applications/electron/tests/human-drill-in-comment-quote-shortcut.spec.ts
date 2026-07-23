@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { join } from 'path'
 import { launchWithMockGh } from './helpers/launch'
 import { commentJson } from './helpers/mock_gh'
@@ -35,8 +36,7 @@ const seedFixture = async (rpc: RpcFn, mockGh: MockGhServer): Promise<void> => {
       title: `[Feature] ${MEMBER_TITLE}`,
       user_job: 'When a human selects comment text, Cmd+E prepends a blockquote to the draft.',
       observation_falsifier: 'reject if Cmd+E on a selected comment does not quote into the draft',
-      acceptance_test_path:
-        'applications/electron/tests/human-drill-in-comment-quote-shortcut.spec.ts'
+      acceptance_test_path: atpPath(__filename)
     },
     'pm'
   )

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import type { Page } from '@playwright/test'
@@ -96,7 +97,7 @@ const createMember = async (rpc: RpcFn, label: string): Promise<number> => {
       title: `[Feature] ${label}`,
       user_job: `Member ${label} so the iteration counts as stories-ordered.`,
       observation_falsifier: 'reject if the member does not order the iteration',
-      acceptance_test_path: 'applications/electron/tests/roadmap-outcome-drill-in.spec.ts'
+      acceptance_test_path: atpPath(__filename)
     },
     'pm'
   )

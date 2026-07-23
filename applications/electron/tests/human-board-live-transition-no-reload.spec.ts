@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { launchWithMockGh, waitForBoardLoaded } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
 import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
@@ -25,8 +26,7 @@ test.describe('#1720 — board reflects a real state-transition LIVE (no reload)
             'When a peer transitions a story, the human watching the Electron board needs the card to move to its new column live, without a manual reload.',
           observation_falsifier:
             'reject if the card stays in its prior column after a real transition until a manual reload',
-          acceptance_test_path:
-            'applications/electron/tests/human-board-live-transition-no-reload.spec.ts'
+          acceptance_test_path: atpPath(__filename)
         },
         'pm'
       )

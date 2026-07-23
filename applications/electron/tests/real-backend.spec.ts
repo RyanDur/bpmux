@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -589,7 +590,7 @@ test.describe('real-backend', () => {
               'When the human Ctrl+Shift+Down-reorders a Ready row twice, it shifts two positions.',
             observation_falsifier:
               'reject if Ctrl+Shift+Down twice does not move the focused Ready row by two positions',
-            acceptance_test_path: 'applications/electron/tests/real-backend.spec.ts'
+            acceptance_test_path: atpPath(__filename)
           },
           'pm'
         )
@@ -792,7 +793,7 @@ test.describe('real-backend', () => {
           user_job:
             'When the human types a comment and presses Cmd+Enter, the comment is submitted.',
           observation_falsifier: 'reject if Cmd+Enter in the comment textarea does not POST',
-          acceptance_test_path: 'applications/electron/tests/real-backend.spec.ts'
+          acceptance_test_path: atpPath(__filename)
         },
         'pm'
       )

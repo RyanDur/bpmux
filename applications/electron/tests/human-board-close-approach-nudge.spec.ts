@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { launchWithMockGh, type MockGhLaunchResult } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
 import type { RpcFn } from './helpers/iteration-fixture'
@@ -58,7 +59,7 @@ const createMember = async (rpc: RpcFn, label: string): Promise<number> => {
       title: `[Feature] ${label}`,
       user_job: `Member ${label} so the current iteration can drain toward close-approach.`,
       observation_falsifier: 'reject if the member does not land in the current iteration column',
-      acceptance_test_path: 'applications/electron/tests/human-board-close-approach-nudge.spec.ts'
+      acceptance_test_path: atpPath(__filename)
     },
     'pm'
   )

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { launchWithMockGh } from './helpers/launch'
 import { commentJson } from './helpers/mock_gh'
 import { setupCurrentIterationViaRpc, type RpcFn } from './helpers/iteration-fixture'
@@ -25,8 +26,7 @@ const seedFixture = async (rpc: RpcFn, mockGh: MockGhServer): Promise<void> => {
       user_job:
         'When the owner picks Quote-in-reply from the native menu, the renderer inserts a blockquote.',
       observation_falsifier: 'reject if the quote-comment IPC frame does not insert a blockquote',
-      acceptance_test_path:
-        'applications/electron/tests/human-drill-in-comment-quote-native-menu.spec.ts'
+      acceptance_test_path: atpPath(__filename)
     },
     'pm'
   )

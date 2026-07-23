@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { join } from 'path'
 import { launchWithMockGh, waitForBoardLoaded } from './helpers/launch'
 import { commentJson } from './helpers/mock_gh'
@@ -42,8 +43,7 @@ const seedFixture = async (rpc: RpcFn, mockGh: MockGhServer): Promise<void> => {
       user_job: 'When the human opens a drill-in, comments hydrate and optimistic-add on submit.',
       observation_falsifier:
         'reject if comments do not hydrate on mount or optimistic-add on submit',
-      acceptance_test_path:
-        'applications/electron/tests/human-drill-in-comment-optimistic-add-and-rollback.spec.ts'
+      acceptance_test_path: atpPath(__filename)
     },
     'pm'
   )

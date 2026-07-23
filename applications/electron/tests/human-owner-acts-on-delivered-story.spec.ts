@@ -1,4 +1,5 @@
 import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
+import { atpPath } from './helpers/atp'
 import { launchWithMockGh } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
 import { BoardPage } from './pages/boardPage'
@@ -22,8 +23,7 @@ test.describe('human-side E2E #476 — owner-specific — accept/reject buttons 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const acceptanceTestPath =
-        'applications/electron/tests/human-owner-acts-on-delivered-story.spec.ts'
+      const acceptanceTestPath = atpPath(__filename)
       const createResp = await rpc(
         'create_story',
         {
@@ -115,8 +115,7 @@ test.describe('human-side E2E #476 — owner-specific — actions hidden on non-
             'When the owner opens an icebox story, accept/reject buttons should NOT be present (story is not delivered yet).',
           observation_falsifier:
             'reject if accept/reject buttons appear on a non-delivered story drill-in',
-          acceptance_test_path:
-            'applications/electron/tests/human-owner-acts-on-delivered-story.spec.ts'
+          acceptance_test_path: atpPath(__filename)
         },
         'pm'
       )
@@ -168,8 +167,7 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const acceptanceTestPath =
-        'applications/electron/tests/human-owner-acts-on-delivered-story.spec.ts'
+      const acceptanceTestPath = atpPath(__filename)
       const createResp = await rpc(
         'create_story',
         {
@@ -252,8 +250,7 @@ test.describe('human-side E2E #476 — direct-action — drill-in reject form', 
 
       await expect(board.region()).toBeVisible()
 
-      const acceptanceTestPath =
-        'applications/electron/tests/human-owner-acts-on-delivered-story.spec.ts'
+      const acceptanceTestPath = atpPath(__filename)
       await rpc(
         'create_story',
         {

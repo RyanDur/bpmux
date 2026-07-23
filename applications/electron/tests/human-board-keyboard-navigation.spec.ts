@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { launchWithMockGh, waitForBoardLoaded } from './helpers/launch'
 import { addStoryToIterationViaRpc, seedCurrentIterationViaRpc } from './helpers/iteration-fixture'
 import { BoardPage } from './pages/boardPage'
@@ -26,8 +27,7 @@ test.describe('human-side E2E #476 — direct-action — board keyboard navigati
               'When the human keyboard-navigates the board, arrows rove and Enter opens the focused row.',
             observation_falsifier:
               'reject if board is not one tab-stop OR arrows do not rove OR native Enter does not open drill-in',
-            acceptance_test_path:
-              'applications/electron/tests/human-board-keyboard-navigation.spec.ts'
+            acceptance_test_path: atpPath(__filename)
           },
           'pm'
         )

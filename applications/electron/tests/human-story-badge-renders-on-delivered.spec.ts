@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { launchWithMockGh } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
 import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
@@ -25,8 +26,7 @@ test.describe('human-side E2E #476 — read-class — story badge', () => {
       consoleErrors.length = 0
       pageErrors.length = 0
 
-      const acceptanceTestPath =
-        'applications/electron/tests/human-story-badge-renders-on-delivered.spec.ts'
+      const acceptanceTestPath = atpPath(__filename)
       const createResp = await rpc(
         'create_story',
         {

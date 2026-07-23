@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { launchWithMockGh, type MockGhLaunchResult } from './helpers/launch'
 import { setupCurrentIterationViaRpc, type RpcFn } from './helpers/iteration-fixture'
 import { BoardPage } from './pages/boardPage'
@@ -13,8 +14,7 @@ const createStory = async (rpc: RpcFn, title: string): Promise<void> => {
       user_job:
         'When a human drafts a comment and presses Cmd+Enter, the comment posts and the draft clears.',
       observation_falsifier: 'reject if Cmd+Enter does not submit the comment or clear the draft',
-      acceptance_test_path:
-        'applications/electron/tests/human-drill-in-comment-cmd-enter-submits.spec.ts'
+      acceptance_test_path: atpPath(__filename)
     },
     'pm'
   )

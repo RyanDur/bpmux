@@ -1,3 +1,4 @@
+import { atpPath } from './helpers/atp'
 import {
   type RpcFn,
   addStoryToIterationViaRpc,
@@ -172,7 +173,7 @@ const seedReadyMember = async (rpc: RpcFn): Promise<void> => {
       body: 'Body.',
       user_job: 'When the human toggles theme or board, transitions animate the change smoothly.',
       observation_falsifier: 'reject if theme/board/drill-in transitions are missing or jarring',
-      acceptance_test_path: 'applications/electron/tests/human-motion-substrate.spec.ts'
+      acceptance_test_path: atpPath(__filename)
     },
     'pm'
   )
@@ -459,7 +460,7 @@ const seedDrillInMember = async (rpc: RpcFn): Promise<void> => {
       title: `[Feature] ${MEMBER_TITLE}`,
       user_job: 'When the owner closes the drill-in, the close-direction transition plays.',
       observation_falsifier: 'reject if the drill-in does not animate its exit transition',
-      acceptance_test_path: 'applications/electron/tests/human-motion-substrate.spec.ts'
+      acceptance_test_path: atpPath(__filename)
     },
     'pm'
   )

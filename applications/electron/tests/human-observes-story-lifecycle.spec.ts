@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { launchWithMockGh, type MockGhLaunchResult } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
 import { setupCurrentIterationViaRpc } from './helpers/iteration-fixture'
 import { BoardPage } from './pages/boardPage'
 
-const ATP = 'applications/electron/tests/human-observes-story-lifecycle.spec.ts'
+const ATP = atpPath(__filename)
 
 const watchErrors = (
   win: MockGhLaunchResult['win']

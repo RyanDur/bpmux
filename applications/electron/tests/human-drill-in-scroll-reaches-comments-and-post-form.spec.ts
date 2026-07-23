@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { join } from 'path'
 import { launchWithMockGh, waitForBoardLoaded } from './helpers/launch'
 import { commentJson } from './helpers/mock_gh'
@@ -47,8 +48,7 @@ const seedFixture = async (rpc: RpcFn, mockGh: MockGhServer): Promise<void> => {
         'When a human opens a drill-in with comments, scroll reaches the comments + post-form.',
       observation_falsifier:
         'reject if the comments list + post-form cannot be reached by natural scroll',
-      acceptance_test_path:
-        'applications/electron/tests/human-drill-in-scroll-reaches-comments-and-post-form.spec.ts'
+      acceptance_test_path: atpPath(__filename)
     },
     'pm'
   )

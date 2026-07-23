@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { launchWithMockGh, waitForBoardLoaded } from './helpers/launch'
 import {
   addStoryToIterationViaRpc,
@@ -19,8 +20,7 @@ const seedReadyMembers = async (rpc: RpcFn): Promise<void> => {
         user_job: 'When the human keyboard-reorders a Ready row, it moves + announces position.',
         observation_falsifier:
           'reject if Ctrl+Shift+Up/Down does not move the focused Ready row or announce position',
-        acceptance_test_path:
-          'applications/electron/tests/human-board-ready-row-keyboard-reorder-announces.spec.ts'
+        acceptance_test_path: atpPath(__filename)
       },
       'pm'
     )

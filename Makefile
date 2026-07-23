@@ -4,7 +4,7 @@
 # $REPO_ROOT, no temp worktree). Targets are PHONY — no file outputs
 # to track; each target re-runs its underlying tool every invocation.
 
-.PHONY: help cargo-test audit npm-unit npm-e2e pre-push push
+.PHONY: help cargo-test audit npm-unit npm-e2e pre-push push check
 
 help:
 	@echo "make cargo-test   # cargo nextest run --no-fail-fast --retries 1"
@@ -24,6 +24,14 @@ npm-unit:
 
 npm-e2e:
 	cd applications/electron && npm run test:e2e
+
+check:
+ifndef T
+	@echo "usage: make check T=<pattern>   (nextest filter AND/OR vitest path fragment)"
+else
+	env -u BPMUX_PORT -u BPMUX_TERMINAL_ID -u BPMUX_USER_ID -u BPMUX_ROLE -u BPMUX_DATA_BASE cargo nextest run -E 'test(/$(T)/)' --no-fail-fast || true
+	cd applications/electron && env -u BPMUX_PORT -u BPMUX_TERMINAL_ID -u BPMUX_USER_ID -u BPMUX_ROLE -u BPMUX_DATA_BASE npx vitest run --passWithNoTests "$(T)" || true
+endif
 
 push:
 	git push

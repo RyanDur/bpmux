@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { atpPath } from './helpers/atp'
 import { join } from 'path'
 import { launchWithMockGh, type MockGhLaunchResult } from './helpers/launch'
 import { seedTeamVerdicts } from './helpers/seed-evidence'
@@ -19,8 +20,7 @@ const createStory = async (rpc: RpcFn, title: string): Promise<void> => {
       title,
       user_job: `Fixture story for desk-check #376: ${title}.`,
       observation_falsifier: 'reject if the awaiting vs accepted badge color does not differ',
-      acceptance_test_path:
-        'applications/electron/tests/human-board-badge-awaiting-vs-accepted-color.spec.ts'
+      acceptance_test_path: atpPath(__filename)
     },
     'pm'
   )
