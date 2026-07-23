@@ -174,3 +174,44 @@ the one deliberate whole-substrate pass (owner's call).
    spec; largest wins first (terminal, cross-instance, observes).
 4. Thin-test hardening — every screenshot/log test either gains a
    real assertion or dies.
+
+## Execution ledger (overnight 2026-07-23)
+
+DONE, each through the full gate:
+- Phase 1: all 44 provenance/lying names renamed (b6e5b4df); the
+  specs' self-referential ATP paths followed — the substantive-gate
+  caught the hidden filename coupling exactly as designed.
+- RTL + Rust provenance strip (feda68d4): 84 RTL files, 41 Rust
+  component files, 24 harness/server files, story-numbered files and
+  slice modules renamed.
+- Thin-test kill (8d169476): three empty placeholders deleted;
+  tautologies deleted or replaced with real pins (the advertised
+  send_message warning now pinned against the REAL registry);
+  misleading names honest.
+- Duplicate collapse (44792577): user_routing facade copies (7),
+  bridge share/curate block (9), notification wrappers (3), CiGlyph
+  matrix re-pins (2), message-size interior rungs (2).
+- Journeys (593413c9 + prior): cross-instance-board-sync (5→1),
+  human-observes-story-lifecycle (4→1 with happy/rework/retire
+  branches), agent-message-routing (3→1, serial project),
+  agent-cli-story-lifecycle (2→1), terminal-session-journey (11→1,
+  16 beats); stale a11y glob dropped; SERIAL list updated.
+- Typed refusal contracts (0cb1dedc): 88 raw JSON substrings now
+  parse structured_error and assert values.
+- Final cuts: Ctrl+P duplicate and CI-glyph subset deleted.
+
+REMAINING (itemized, not started):
+- Classicist rewrites: useNotifications (sibling vi.mock + ctor
+  counts), useRefetchOnReconnect (sibling vi.mock).
+- Organization: split ws_tests.rs by concern; merge bridge's two
+  signal files; relocate close_story tests out of view_board_basic;
+  move story-labels-endpoint test out of renderer board/; swap the
+  useMessageHistory/Boundary naming; single-file slice_tests wrapper.
+- Smaller e2e journey merges: drill-in read family, owner-acts,
+  metrics overlay, sidebar derivation, compose-and-send, board
+  disclosure, motion-token quartet.
+- e2e thin-hardening: the screenshot/log-only tests in the avatar-
+  grouping and unfurl specs.
+- CSS-class-as-behavior retargeting (RTL-wide, diffuse).
+- The ~250 #NNN comment refs (fall to the comment gate on touch).
+- Integration wiring-thin reads (is_object-grade) strengthening.
