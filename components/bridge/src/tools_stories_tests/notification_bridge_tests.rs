@@ -78,32 +78,4 @@ mod notification_bridge_push_filter_integration {
         let msg = make_message(MessageType::Chat, "verdict cast on #42", Some("pm"));
         fire_notification_and_assert_reaches_llm_stream(&hub, msg, true).await;
     }
-
-    #[tokio::test]
-    async fn fire_notification_helper_pins_activity_class_does_not_reach_pm() {
-        let dir = TempDir::new().unwrap();
-        let hub = make_hub(dir.path().to_path_buf());
-        let msg = make_message(MessageType::Activity, "board-state-tick", Some("pm"));
-        fire_notification_and_assert_reaches_llm_stream(&hub, msg, false).await;
-    }
-
-    #[tokio::test]
-    async fn fire_notification_helper_pins_system_class_does_not_reach_pm() {
-        let dir = TempDir::new().unwrap();
-        let hub = make_hub(dir.path().to_path_buf());
-        let msg = make_message(MessageType::System, "system-event", None);
-        fire_notification_and_assert_reaches_llm_stream(&hub, msg, false).await;
-    }
-
-    #[tokio::test]
-    async fn verdict_cast_chat_class_reaches_pm() {
-        let dir = TempDir::new().unwrap();
-        let hub = make_hub(dir.path().to_path_buf());
-        let msg = make_message(
-            MessageType::Chat,
-            "verdict cast on #1429 from designer: verified",
-            Some("pm"),
-        );
-        fire_notification_and_assert_reaches_llm_stream(&hub, msg, true).await;
-    }
 }

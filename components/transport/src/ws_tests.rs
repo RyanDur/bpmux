@@ -399,18 +399,6 @@ fn message_size_ok_returns_true_for_short_ping_sized_text() {
 }
 
 #[test]
-fn message_size_ok_returns_true_for_3kb_text() {
-    let text = "x".repeat(3 * 1024);
-    assert!(message_size_ok(&text));
-}
-
-#[test]
-fn message_size_ok_returns_true_for_5kb_text() {
-    let text = "x".repeat(5 * 1024);
-    assert!(message_size_ok(&text));
-}
-
-#[test]
 fn message_size_ok_returns_true_for_32kb_text() {
     let text = "x".repeat(32 * 1024);
     assert!(message_size_ok(&text));

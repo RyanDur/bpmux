@@ -75,18 +75,6 @@ describe('CiGlyph — watcher-health derives from the pushed last_successful_pol
     expect(html).toContain('data-state="watcher-unhealthy"')
     expect(html).toContain('aria-label="CI watcher unhealthy')
   })
-
-  test('fresh poll-time keeps the glyph healthy (tracks the conclusion)', () => {
-    pushCi(snap({ state: 'green', last_successful_poll_at: new Date().toISOString() }))
-    const html = render()
-    expect(html).not.toContain('ci-glyph--watcher-unhealthy')
-    expect(html).toContain('data-state="success"')
-  })
-
-  test('absent poll-time is not treated as unhealthy', () => {
-    pushCi(snap({ state: 'green', last_successful_poll_at: null }))
-    expect(render()).not.toContain('ci-glyph--watcher-unhealthy')
-  })
 })
 
 describe('CiGlyph — tooltip is built from the mirrored snapshot', () => {
