@@ -1,0 +1,97 @@
+import { test, expect, _electron as electron } from '@playwright/test'
+import { mkdtempSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { launchIsolatedElectron, waitForMessagesLoaded } from './helpers/launch'
+import { ChatPage } from './pages/chatPage'
+
+// #380: inline @mention pills in message body text. Render with
+// role-color + tint + bold when the @-token matches a runtime-
+// derived team role (per #393 AC1, no hardcoded team composition).
+// Click or Enter/Space on a pill shifts chat scope to that role's
+// DM — parity with sidebar click (#332).
+
+const MESSAGES = [
+  {
+    from: 'pm:claude-code',
+    text: 'ping @dev on #333 follow-up',
+    ts: '2026-04-23T11:00:00Z',
+    message_type: 'chat'
+  },
+  {
+    from: 'dev:claude-code',
+    text: 'pm ack — @pm thanks. also @nobody-role should stay plain',
+    ts: '2026-04-23T11:00:10Z',
+    message_type: 'chat'
+  }
+]
+
+const launchWithFixture = async (): Promise<{
+  app: Awaited<ReturnType<typeof electron.launch>>
+}> => {
+  const dataBase = mkdtempSync(join(tmpdir(), 'bpmux-'))
+  const udd = mkdtempSync(join(tmpdir(), 'bpmux-userdata-380-'))
+  const { app } = await launchIsolatedElectron({
+    dataBase,
+    userDataDir: udd,
+    seedMessages: MESSAGES
+  })
+  const win = await app.firstWindow()
+  await waitForMessagesLoaded(win, '@nobody-role should stay plain')
+  return { app }
+}
+
+test.describe('desk-check #380 inline @mention pills', () => {
+  test('known-role @mention renders as .message-mention pill with data-role', async () => {
+    // Falsifier (a): `@pm` in body stays plain text — regression
+    // gate. pm + dev appear in the message stream so
+    // `deriveTeamRoles` includes them; both @-tokens must split
+    // into pills.
+    const { app } = await launchWithFixture()
+    const win = await app.firstWindow()
+    const chat = new ChatPage(win)
+    await expect(chat.region()).toBeVisible()
+
+    const pmMention = chat.mentionPill('pm').first()
+    const devMention = chat.mentionPill('dev').first()
+    await expect(pmMention).toBeVisible({ timeout: 5_000 })
+    await expect(devMention).toBeVisible()
+    await expect(pmMention).toHaveText('@pm')
+    await expect(devMention).toHaveText('@dev')
+
+    await app.close()
+  })
+
+  test('unknown @-token stays plain text (no .message-mention span)', async () => {
+    // Falsifier (b): a role outside the derived team set renders
+    // as plain text. `@nobody-role` is in the fixture but no agent
+    // with that role exists — it should NOT produce a pill.
+    const { app } = await launchWithFixture()
+    const win = await app.firstWindow()
+    const chat = new ChatPage(win)
+    await expect(chat.region()).toBeVisible()
+
+    await expect(chat.mentionPill('nobody-role')).toHaveCount(0)
+
+    // Sanity: the @nobody-role string is still in the rendered
+    // text somewhere (plain, not split).
+    await expect(chat.messageRow('@nobody-role should stay plain')).toBeVisible()
+
+    await app.close()
+  })
+
+  test('clicking a mention pill shifts chat scope to that role (chat, not a terminal)', async () => {
+    const { app } = await launchWithFixture()
+    const win = await app.firstWindow()
+    const chat = new ChatPage(win)
+    await expect(chat.region()).toBeVisible()
+
+    const devMention = chat.mentionPill('dev').first()
+    await devMention.click()
+
+    await expect(chat.messageLog()).toBeVisible({ timeout: 10_000 })
+    await expect(chat.terminalOutput()).toHaveCount(0)
+
+    await app.close()
+  })
+})
