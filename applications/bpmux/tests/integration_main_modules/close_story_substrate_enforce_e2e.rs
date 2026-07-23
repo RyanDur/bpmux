@@ -35,15 +35,15 @@ fn dev_firing_close_story_returns_structured_with_workflow_role_not_allowed_kind
             .expect_err("dev should be substrate-refused at close axis");
 
         assert!(
-            err.contains("\"kind\":\"workflow-role-not-allowed\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "workflow-role-not-allowed",
             "structured kind discriminator present; got {err}"
         );
         assert!(
-            err.contains("\"actor_role\":\"dev\""),
+            crate::harness::story_helpers::structured_error(&err)["actor_role"] == "dev",
             "actor_role names firing role; got {err}"
         );
         assert!(
-            err.contains("\"attempted_transition\":\"close\""),
+            crate::harness::story_helpers::structured_error(&err)["attempted_transition"] == "close",
             "attempted_transition names the gate; got {err}"
         );
         assert!(
@@ -84,11 +84,11 @@ fn designer_firing_close_story_returns_structured() {
             .expect_err("designer should be substrate-refused at close axis");
 
         assert!(
-            err.contains("\"kind\":\"workflow-role-not-allowed\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "workflow-role-not-allowed",
             "structured kind discriminator present; got {err}"
         );
         assert!(
-            err.contains("\"actor_role\":\"designer\""),
+            crate::harness::story_helpers::structured_error(&err)["actor_role"] == "designer",
             "actor_role names firing role; got {err}"
         );
 
@@ -128,7 +128,8 @@ fn pm_firing_close_story_with_short_reason_returns_structured_reason_cite_missin
             "missing_evidence cites reason-cite; got {err}"
         );
         assert!(
-            err.contains("\"attempted_transition\":\"close\""),
+            crate::harness::story_helpers::structured_error(&err)["attempted_transition"]
+                == "close",
             "attempted_transition names the gate; got {err}"
         );
 

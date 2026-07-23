@@ -207,7 +207,7 @@ async fn bpmux_close_blocks_a_non_pm_with_the_same_structured_role_error_as_mcp(
     let e = stderr(&out);
     assert!(
         e.contains("workflow-role-not-allowed")
-            && e.contains("\"actor_role\":\"dev\"")
+            && crate::harness::story_helpers::structured_error(&e)["actor_role"] == "dev"
             && e.contains("pm"),
         "bpmux close hits the SAME gated close transition role-guard as MCP close_story (PM-only); dev refused; stderr: {e}"
     );

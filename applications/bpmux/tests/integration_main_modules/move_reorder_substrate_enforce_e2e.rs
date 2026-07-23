@@ -36,15 +36,15 @@ fn dev_firing_reorder_returns_tool_retired_post() {
             .expect_err("dev firing retired reorder_story tool must error");
 
         assert!(
-            err.contains("\"kind\":\"tool-retired\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "tool-retired",
             "structured kind cites tool-retired post-#1403 retire; got {err}"
         );
         assert!(
-            err.contains("\"successor\":\"move_story\""),
+            crate::harness::story_helpers::structured_error(&err)["successor"] == "move_story",
             "rejection cites successor=move_story; got {err}"
         );
         assert!(
-            err.contains("\"retired_axis\":\"reorder-tool\""),
+            crate::harness::story_helpers::structured_error(&err)["retired_axis"] == "reorder-tool",
             "rejection cites retired_axis=reorder-tool; got {err}"
         );
         assert!(
@@ -86,11 +86,11 @@ fn designer_firing_reorder_returns_tool_retired_post() {
             .expect_err("designer firing retired reorder_story tool must error");
 
         assert!(
-            err.contains("\"kind\":\"tool-retired\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "tool-retired",
             "structured kind cites tool-retired post-#1403; got {err}"
         );
         assert!(
-            err.contains("\"successor\":\"move_story\""),
+            crate::harness::story_helpers::structured_error(&err)["successor"] == "move_story",
             "rejection cites successor; got {err}"
         );
 
@@ -130,15 +130,15 @@ fn dev_firing_move_with_position_returns_structured() {
             .expect_err("dev should be substrate-refused at position-move axis");
 
         assert!(
-            err.contains("\"kind\":\"workflow-role-not-allowed\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "workflow-role-not-allowed",
             "structured kind discriminator present; got {err}"
         );
         assert!(
-            err.contains("\"actor_role\":\"dev\""),
+            crate::harness::story_helpers::structured_error(&err)["actor_role"] == "dev",
             "actor_role names firing role; got {err}"
         );
         assert!(
-            err.contains("\"attempted_transition\":\"move-with-position\""),
+            crate::harness::story_helpers::structured_error(&err)["attempted_transition"] == "move-with-position",
             "attempted_transition names the gate; got {err}"
         );
 

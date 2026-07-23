@@ -44,7 +44,7 @@ fn pass_desk_check_missing_acceptor_returns_structured() {
             .expect_err("missing acceptor-arg should be rejected");
 
         assert!(
-            err.contains("\"kind\":\"workflow-gate-mismatch\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "workflow-gate-mismatch",
             "rejection cites structured kind; got {err}"
         );
         assert!(

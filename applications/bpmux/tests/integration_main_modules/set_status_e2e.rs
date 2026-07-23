@@ -26,15 +26,17 @@ fn set_status_returns_tool_retired_post() {
                 ));
 
             assert!(
-                err.contains("\"kind\":\"tool-retired\""),
+                crate::harness::story_helpers::structured_error(&err)["kind"] == "tool-retired",
                 "{role}: structured kind cites tool-retired; got {err}"
             );
             assert!(
-                err.contains("\"successor\":\"workflow-event-hooks\""),
+                crate::harness::story_helpers::structured_error(&err)["successor"]
+                    == "workflow-event-hooks",
                 "{role}: rejection cites successor=workflow-event-hooks; got {err}"
             );
             assert!(
-                err.contains("\"retired_axis\":\"manual-status-mutation\""),
+                crate::harness::story_helpers::structured_error(&err)["retired_axis"]
+                    == "manual-status-mutation",
                 "{role}: rejection cites retired_axis=manual-status-mutation; got {err}"
             );
 

@@ -28,7 +28,8 @@ fn pm_firing_reject_without_reason_returns_structured() {
             .expect_err("reject without reason should be refused");
 
         assert!(
-            err.contains("\"kind\":\"workflow-gate-mismatch\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"]
+                == "workflow-gate-mismatch",
             "rejection cites structured kind; got {err}"
         );
         assert!(
@@ -100,15 +101,15 @@ fn dev_firing_reject_returns_workflow_role_not_allowed() {
             .expect_err("dev should be substrate-refused");
 
         assert!(
-            err.contains("\"kind\":\"workflow-role-not-allowed\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "workflow-role-not-allowed",
             "rejection cites structured kind; got {err}"
         );
         assert!(
-            err.contains("\"actor_role\":\"dev\""),
+            crate::harness::story_helpers::structured_error(&err)["actor_role"] == "dev",
             "rejection cites firing role; got {err}"
         );
         assert!(
-            err.contains("\"attempted_transition\":\"reject\""),
+            crate::harness::story_helpers::structured_error(&err)["attempted_transition"] == "reject",
             "rejection cites the attempted transition; got {err}"
         );
 

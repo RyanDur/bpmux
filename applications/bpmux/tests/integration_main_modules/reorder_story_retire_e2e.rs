@@ -28,15 +28,15 @@ fn reorder_story_retired_with_canonical_tool_retired_shape() {
             .expect_err("reorder_story is retired per #1403; must error with tool-retired");
 
         assert!(
-            err.contains("\"kind\":\"tool-retired\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "tool-retired",
             "rejection cites tool-retired kind; got {err}"
         );
         assert!(
-            err.contains("\"successor\":\"move_story\""),
+            crate::harness::story_helpers::structured_error(&err)["successor"] == "move_story",
             "rejection cites successor; got {err}"
         );
         assert!(
-            err.contains("\"retired_axis\":\"reorder-tool\""),
+            crate::harness::story_helpers::structured_error(&err)["retired_axis"] == "reorder-tool",
             "rejection cites retired_axis; got {err}"
         );
         assert!(

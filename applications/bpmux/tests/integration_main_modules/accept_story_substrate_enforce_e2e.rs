@@ -43,15 +43,15 @@ fn dev_firing_accept_returns_structured_with_workflow_role_not_allowed_kind() {
             .expect_err("dev should be substrate-refused");
 
         assert!(
-            err.contains("\"kind\":\"workflow-role-not-allowed\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "workflow-role-not-allowed",
             "structured kind discriminator present; got {err}"
         );
         assert!(
-            err.contains("\"actor_role\":\"dev\""),
+            crate::harness::story_helpers::structured_error(&err)["actor_role"] == "dev",
             "actor_role names firing role; got {err}"
         );
         assert!(
-            err.contains("\"attempted_transition\":\"accept\""),
+            crate::harness::story_helpers::structured_error(&err)["attempted_transition"] == "accept",
             "attempted_transition names the gate; got {err}"
         );
         assert!(
@@ -206,11 +206,12 @@ fn pm_fires_team_verifiable_without_designer_verdict_returns_structured() {
             .expect_err("accept_story should be refused without designer-verdict");
 
         assert!(
-            err.contains("\"kind\":\"workflow-gate-mismatch\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"]
+                == "workflow-gate-mismatch",
             "rejection cites structured kind; got {err}"
         );
         assert!(
-            err.contains("\"class\":\"team-verifiable\""),
+            crate::harness::story_helpers::structured_error(&err)["class"] == "team-verifiable",
             "rejection cites the gate-class; got {err}"
         );
         assert!(
@@ -311,11 +312,12 @@ fn pm_firing_accept_on_owner_walk_story_returns_role_not_allowed() {
             .expect_err("pm firing owner-walk accept should be refused");
 
         assert!(
-            err.contains("\"kind\":\"workflow-role-not-allowed\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"]
+                == "workflow-role-not-allowed",
             "rejection cites structured kind; got {err}"
         );
         assert!(
-            err.contains("\"actor_role\":\"pm\""),
+            crate::harness::story_helpers::structured_error(&err)["actor_role"] == "pm",
             "rejection cites pm as firing role; got {err}"
         );
         assert!(

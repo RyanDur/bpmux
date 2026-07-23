@@ -46,7 +46,7 @@ async fn bpmux_move_blocks_a_non_pm_with_the_same_structured_role_error_as_mcp()
     let e = stderr(&out);
     assert!(
         e.contains("workflow-role-not-allowed")
-            && e.contains("\"actor_role\":\"dev\"")
+            && crate::harness::story_helpers::structured_error(&e)["actor_role"] == "dev"
             && e.contains("pm"),
         "bpmux move hits the SAME gated move-with-position role-guard as MCP move_story — PM-only for ALL moves (substrate [pm], not the prose's any-role-column); dev refused; stderr: {e}"
     );

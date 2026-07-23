@@ -77,7 +77,7 @@ fn create_story_with_missing_atp_returns_structured() {
             .expect_err("missing ATP must be refused at create_story-time");
 
         assert!(
-            err.contains("\"kind\":\"atp-not-substantive\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "atp-not-substantive",
             "structured kind cited; got {err}"
         );
         assert!(
@@ -119,7 +119,7 @@ fn create_story_with_stub_atp_returns_structured() {
             .expect_err("stub ATP must be refused at create_story-time");
 
         assert!(
-            err.contains("\"kind\":\"atp-not-substantive\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "atp-not-substantive",
             "structured kind cited; got {err}"
         );
     });
@@ -194,7 +194,7 @@ fn edit_story_changing_atp_to_missing_path_returns_structured() {
             .expect_err("edit_story with missing ATP path must be refused");
 
         assert!(
-            err.contains("\"kind\":\"atp-not-substantive\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "atp-not-substantive",
             "edit_story refusal cites structured kind; got {err}"
         );
         assert!(

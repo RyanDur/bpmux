@@ -338,7 +338,8 @@ fn pass_desk_check_rejects_non_designer_callers() {
             .await
             .expect_err("dev should be rejected from pass_desk_check");
         assert!(
-            err.contains("workflow-role-not-allowed") && err.contains("\"actor_role\":\"dev\""),
+            err.contains("workflow-role-not-allowed")
+                && crate::harness::story_helpers::structured_error(&err)["actor_role"] == "dev",
             "rejection cites structured workflow-role-not-allowed kind; got {err}"
         );
 
@@ -496,7 +497,8 @@ fn accept_story_refuses_designer_and_dev_per_workflow_substrate() {
             .expect_err("designer should be substrate-refused per workflow.toml");
         assert!(
             err.contains("workflow-role-not-allowed")
-                && err.contains("\"actor_role\":\"designer\""),
+                && crate::harness::story_helpers::structured_error(&err)["actor_role"]
+                    == "designer",
             "designer rejection cites structured kind + actor; got {err}"
         );
 
@@ -508,7 +510,8 @@ fn accept_story_refuses_designer_and_dev_per_workflow_substrate() {
             .await
             .expect_err("dev should be substrate-refused per workflow.toml");
         assert!(
-            err.contains("workflow-role-not-allowed") && err.contains("\"actor_role\":\"dev\""),
+            err.contains("workflow-role-not-allowed")
+                && crate::harness::story_helpers::structured_error(&err)["actor_role"] == "dev",
             "dev rejection cites structured kind + actor; got {err}"
         );
 

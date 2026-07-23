@@ -27,15 +27,17 @@ fn label_story_rejects_iteration_label_with_tool_retired_kind() {
             .expect_err("iteration-axis label must be rejected post-#1402 retire");
 
         assert!(
-            err.contains("\"kind\":\"tool-retired\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "tool-retired",
             "rejection cites tool-retired kind; got {err}"
         );
         assert!(
-            err.contains("\"successor\":\"add_story_to_iteration\""),
+            crate::harness::story_helpers::structured_error(&err)["successor"]
+                == "add_story_to_iteration",
             "rejection cites successor; got {err}"
         );
         assert!(
-            err.contains("\"retired_axis\":\"iteration-label\""),
+            crate::harness::story_helpers::structured_error(&err)["retired_axis"]
+                == "iteration-label",
             "rejection cites retired_axis; got {err}"
         );
 

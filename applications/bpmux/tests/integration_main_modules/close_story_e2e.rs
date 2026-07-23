@@ -128,7 +128,8 @@ fn close_story_rejects_empty_reason() {
             "structured rejection cites missing reason-cite; got {err}"
         );
         assert!(
-            err.contains("\"attempted_transition\":\"close\""),
+            crate::harness::story_helpers::structured_error(&err)["attempted_transition"]
+                == "close",
             "rejection cites attempted_transition; got {err}"
         );
 

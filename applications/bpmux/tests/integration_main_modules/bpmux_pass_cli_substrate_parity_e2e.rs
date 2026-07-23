@@ -33,7 +33,8 @@ async fn bpmux_pass_blocks_a_non_actor_role_with_the_same_structured_role_error_
         "the CLI hits the SAME gated /api/rpc/pass_desk_check handler as the bridge — dev's block is the structured role-gate, not a routing/auth miss; stderr: {stderr}"
     );
     assert!(
-        stderr.contains("\"actor_role\":\"dev\"") && stderr.contains("designer"),
+        crate::harness::story_helpers::structured_error(&stderr)["actor_role"] == "dev"
+            && stderr.contains("designer"),
         "the structured error names dev as the firing role and designer as the only allowed actor — identical to the MCP path; stderr: {stderr}"
     );
 }

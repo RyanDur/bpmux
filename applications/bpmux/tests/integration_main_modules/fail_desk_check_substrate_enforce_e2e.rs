@@ -35,15 +35,15 @@ fn dev_firing_fail_desk_check_returns_structured_with_workflow_role_not_allowed_
             .expect_err("dev should be substrate-refused at fail-desk-check axis");
 
         assert!(
-            err.contains("\"kind\":\"workflow-role-not-allowed\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "workflow-role-not-allowed",
             "structured kind discriminator present; got {err}"
         );
         assert!(
-            err.contains("\"actor_role\":\"dev\""),
+            crate::harness::story_helpers::structured_error(&err)["actor_role"] == "dev",
             "actor_role names firing role; got {err}"
         );
         assert!(
-            err.contains("\"attempted_transition\":\"fail-desk-check\""),
+            crate::harness::story_helpers::structured_error(&err)["attempted_transition"] == "fail-desk-check",
             "attempted_transition names the gate; got {err}"
         );
         assert!(
@@ -84,7 +84,8 @@ fn designer_firing_fail_desk_check_with_empty_reason_returns_structured_falsifie
             .expect_err("empty reason should be substrate-refused");
 
         assert!(
-            err.contains("\"kind\":\"workflow-gate-mismatch\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"]
+                == "workflow-gate-mismatch",
             "structured kind cites workflow-gate-mismatch; got {err}"
         );
         assert!(
@@ -92,7 +93,8 @@ fn designer_firing_fail_desk_check_with_empty_reason_returns_structured_falsifie
             "missing_evidence cites falsifier-cite; got {err}"
         );
         assert!(
-            err.contains("\"attempted_transition\":\"fail-desk-check\""),
+            crate::harness::story_helpers::structured_error(&err)["attempted_transition"]
+                == "fail-desk-check",
             "attempted_transition names the gate; got {err}"
         );
 

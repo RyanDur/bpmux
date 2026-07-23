@@ -44,7 +44,8 @@ async fn bpmux_iteration_add_blocks_a_non_pm_with_the_workflow_role_error() {
     );
     let e = stderr(&out);
     assert!(
-        e.contains("workflow-role-not-allowed") && e.contains("\"actor_role\":\"dev\""),
+        e.contains("workflow-role-not-allowed")
+            && crate::harness::story_helpers::structured_error(&e)["actor_role"] == "dev",
         "bpmux iteration add hits the SAME gated add-to-iteration transition guard as MCP add_story_to_iteration; dev refused; stderr: {e}"
     );
 }

@@ -315,7 +315,7 @@ fn move_story_dev_bare_column_move_is_pm_rejected() {
             );
 
         assert!(
-            err.contains("\"kind\":\"workflow-role-not-allowed\"") && err.contains("\"actor_role\":\"dev\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "workflow-role-not-allowed" && crate::harness::story_helpers::structured_error(&err)["actor_role"] == "dev",
             "dev bare column-move rejection cites workflow-role-not-allowed for actor dev; got {err}"
         );
 

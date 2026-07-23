@@ -30,15 +30,16 @@ fn reorder_story_returns_tool_retired_for_any_role() {
                 ));
 
             assert!(
-                err.contains("\"kind\":\"tool-retired\""),
+                crate::harness::story_helpers::structured_error(&err)["kind"] == "tool-retired",
                 "{role}: structured kind cites tool-retired; got {err}"
             );
             assert!(
-                err.contains("\"successor\":\"move_story\""),
+                crate::harness::story_helpers::structured_error(&err)["successor"] == "move_story",
                 "{role}: rejection cites successor=move_story; got {err}"
             );
             assert!(
-                err.contains("\"retired_axis\":\"reorder-tool\""),
+                crate::harness::story_helpers::structured_error(&err)["retired_axis"]
+                    == "reorder-tool",
                 "{role}: rejection cites retired_axis=reorder-tool; got {err}"
             );
 

@@ -197,3 +197,17 @@ pub async fn create_target_story(pm: &TestBridge, title: &str, falsifier: &str) 
     let create_msg = create.as_str().unwrap_or("").to_string();
     extract_story_id(&create_msg)
 }
+
+pub fn structured_error(raw: &str) -> serde_json::Value {
+    let text = raw.trim();
+    let start = text.find('{').unwrap_or(0);
+    let outer: serde_json::Value = serde_json::from_str(&text[start..])
+        .unwrap_or_else(|e| panic!("refusal is not JSON ({e}): {raw}"));
+    match &outer {
+        serde_json::Value::Object(map) if map.contains_key("error") => {
+            let inner = map["error"].as_str().unwrap_or_default();
+            serde_json::from_str(inner).unwrap_or(outer)
+        }
+        _ => outer,
+    }
+}

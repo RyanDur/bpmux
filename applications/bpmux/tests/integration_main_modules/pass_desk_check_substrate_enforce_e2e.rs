@@ -48,15 +48,15 @@ fn dev_firing_pass_desk_check_returns_workflow_role_not_allowed() {
             .expect_err("dev should be substrate-refused");
 
         assert!(
-            err.contains("\"kind\":\"workflow-role-not-allowed\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "workflow-role-not-allowed",
             "rejection cites structured kind; got {err}"
         );
         assert!(
-            err.contains("\"actor_role\":\"dev\""),
+            crate::harness::story_helpers::structured_error(&err)["actor_role"] == "dev",
             "rejection cites firing role; got {err}"
         );
         assert!(
-            err.contains("\"attempted_transition\":\"pass-desk-check\""),
+            crate::harness::story_helpers::structured_error(&err)["attempted_transition"] == "pass-desk-check",
             "rejection cites the attempted transition; got {err}"
         );
 
@@ -90,7 +90,8 @@ fn designer_firing_pass_desk_check_without_broadcast_returns_structured() {
             .expect_err("pass_desk_check without designer-evidence should be refused");
 
         assert!(
-            err.contains("\"kind\":\"workflow-gate-mismatch\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"]
+                == "workflow-gate-mismatch",
             "rejection cites structured kind; got {err}"
         );
         assert!(

@@ -20,15 +20,17 @@ fn set_status_retired_with_canonical_tool_retired_shape() {
             .expect_err("set_status is retired per #1404; must error with tool-retired");
 
         assert!(
-            err.contains("\"kind\":\"tool-retired\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "tool-retired",
             "rejection cites tool-retired kind; got {err}"
         );
         assert!(
-            err.contains("\"successor\":\"workflow-event-hooks\""),
+            crate::harness::story_helpers::structured_error(&err)["successor"]
+                == "workflow-event-hooks",
             "rejection cites successor=workflow-event-hooks; got {err}"
         );
         assert!(
-            err.contains("\"retired_axis\":\"manual-status-mutation\""),
+            crate::harness::story_helpers::structured_error(&err)["retired_axis"]
+                == "manual-status-mutation",
             "rejection cites retired_axis=manual-status-mutation; got {err}"
         );
         assert!(
@@ -87,7 +89,7 @@ fn set_status_retired_regardless_of_status_arg_value() {
                     "set_status retired regardless of status arg value; status={status_value}"
                 ));
             assert!(
-                err.contains("\"kind\":\"tool-retired\""),
+                crate::harness::story_helpers::structured_error(&err)["kind"] == "tool-retired",
                 "status={status_value}: rejection cites tool-retired regardless of arg value; got {err}"
             );
         }
@@ -97,7 +99,7 @@ fn set_status_retired_regardless_of_status_arg_value() {
             .await
             .expect_err("set_status retired even with empty args");
         assert!(
-            err.contains("\"kind\":\"tool-retired\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "tool-retired",
             "retire-gate fires before arg-validation; got {err}"
         );
 

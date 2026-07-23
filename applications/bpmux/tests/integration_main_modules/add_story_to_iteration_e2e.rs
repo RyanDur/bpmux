@@ -27,11 +27,13 @@ fn add_story_to_iteration_rejects_dev_caller_per_pm_lane_gate() {
             .expect_err("dev should be rejected by add-to-iteration pm-lane gate");
 
         assert!(
-            err.contains("\"kind\":\"workflow-role-not-allowed\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"]
+                == "workflow-role-not-allowed",
             "structured kind cites workflow-role-not-allowed; got {err}"
         );
         assert!(
-            err.contains("\"attempted_transition\":\"add-to-iteration\""),
+            crate::harness::story_helpers::structured_error(&err)["attempted_transition"]
+                == "add-to-iteration",
             "rejection cites attempted_transition; got {err}"
         );
 

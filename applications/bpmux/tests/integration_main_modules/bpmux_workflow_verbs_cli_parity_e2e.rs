@@ -40,7 +40,7 @@ async fn bpmux_start_blocks_a_non_dev_with_the_same_structured_role_error_as_mcp
     let e = stderr(&out);
     assert!(
         e.contains("workflow-role-not-allowed")
-            && e.contains("\"actor_role\":\"pm\"")
+            && crate::harness::story_helpers::structured_error(&e)["actor_role"] == "pm"
             && e.contains("dev"),
         "bpmux start hits the SAME gated pickup role-guard as MCP start_story (dev-only) — pm is refused with the structured error; stderr: {e}"
     );
@@ -75,7 +75,7 @@ async fn bpmux_deliver_blocks_a_non_dev_with_the_same_structured_role_error_as_m
     let e = stderr(&out);
     assert!(
         e.contains("workflow-role-not-allowed")
-            && e.contains("\"actor_role\":\"pm\"")
+            && crate::harness::story_helpers::structured_error(&e)["actor_role"] == "pm"
             && e.contains("dev"),
         "bpmux deliver hits the SAME gated deliver role-guard as MCP deliver_story; stderr: {e}"
     );
@@ -105,7 +105,7 @@ async fn bpmux_fail_blocks_a_non_actor_against_the_substrate_role_map_not_the_do
     let e = stderr(&out);
     assert!(
         e.contains("workflow-role-not-allowed")
-            && e.contains("\"actor_role\":\"dev\"")
+            && crate::harness::story_helpers::structured_error(&e)["actor_role"] == "dev"
             && e.contains("pm")
             && e.contains("designer"),
         "bpmux fail hits the SAME gated fail-desk-check role-guard as MCP — and the allowed set is the SUBSTRATE [pm,designer] (bundled_default), not the tool-doc's 'designer-only'; dev is refused; stderr: {e}"
@@ -136,7 +136,7 @@ async fn bpmux_reject_blocks_a_non_pm_with_the_same_structured_role_error_as_mcp
     let e = stderr(&out);
     assert!(
         e.contains("workflow-role-not-allowed")
-            && e.contains("\"actor_role\":\"dev\"")
+            && crate::harness::story_helpers::structured_error(&e)["actor_role"] == "dev"
             && e.contains("pm"),
         "bpmux reject hits the SAME gated reject role-guard as MCP reject_story (pm-only); dev is refused; stderr: {e}"
     );
@@ -306,7 +306,7 @@ async fn bpmux_accept_blocks_a_non_acceptor_proving_it_routes_through_the_gated_
     let e = stderr(&out);
     assert!(
         e.contains("workflow-role-not-allowed")
-            && e.contains("\"actor_role\":\"dev\"")
+            && crate::harness::story_helpers::structured_error(&e)["actor_role"] == "dev"
             && e.contains("pm"),
         "bpmux accept routes through the GATED handle_accept_story (the structured role-error proves it) — NOT the gate-skipping post_accept_story-direct REST (which has no role-guard); dev is refused; stderr: {e}"
     );

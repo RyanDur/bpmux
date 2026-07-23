@@ -34,15 +34,15 @@ fn pm_firing_deliver_returns_structured_with_workflow_role_not_allowed_kind() {
             .expect_err("pm should be substrate-refused at deliver-axis");
 
         assert!(
-            err.contains("\"kind\":\"workflow-role-not-allowed\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "workflow-role-not-allowed",
             "structured kind discriminator present; got {err}"
         );
         assert!(
-            err.contains("\"actor_role\":\"pm\""),
+            crate::harness::story_helpers::structured_error(&err)["actor_role"] == "pm",
             "actor_role names firing role; got {err}"
         );
         assert!(
-            err.contains("\"attempted_transition\":\"deliver\""),
+            crate::harness::story_helpers::structured_error(&err)["attempted_transition"] == "deliver",
             "attempted_transition names the gate; got {err}"
         );
         assert!(
@@ -82,15 +82,15 @@ fn designer_firing_deliver_returns_structured() {
             .expect_err("designer should be substrate-refused at deliver-axis");
 
         assert!(
-            err.contains("\"kind\":\"workflow-role-not-allowed\""),
+            crate::harness::story_helpers::structured_error(&err)["kind"] == "workflow-role-not-allowed",
             "structured kind discriminator present; got {err}"
         );
         assert!(
-            err.contains("\"actor_role\":\"designer\""),
+            crate::harness::story_helpers::structured_error(&err)["actor_role"] == "designer",
             "actor_role names firing role; got {err}"
         );
         assert!(
-            err.contains("\"attempted_transition\":\"deliver\""),
+            crate::harness::story_helpers::structured_error(&err)["attempted_transition"] == "deliver",
             "attempted_transition names the gate; got {err}"
         );
 

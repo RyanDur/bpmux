@@ -83,11 +83,11 @@ fn reject_story_designer_refused_per_workflow_substrate() {
             "rejection cites structured kind; got {err}"
         );
         assert!(
-            err.contains("\"actor_role\":\"designer\""),
+            crate::harness::story_helpers::structured_error(&err)["actor_role"] == "designer",
             "rejection cites the firing role; got {err}"
         );
         assert!(
-            err.contains("\"attempted_transition\":\"reject\""),
+            crate::harness::story_helpers::structured_error(&err)["attempted_transition"] == "reject",
             "rejection cites the attempted transition; got {err}"
         );
 
