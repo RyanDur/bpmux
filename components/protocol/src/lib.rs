@@ -176,5 +176,24 @@ impl From<Message> for ServerMessage {
     }
 }
 
+pub const SEND_FIELDS: [&str; 6] = ["type", "text", "to", "addressee", "message_type", "to_ids"];
+
+pub fn parse_client_frame(text: &str) -> Result<ClientMessage, String> {
+    let message: ClientMessage = serde_json::from_str(text).map_err(|e| e.to_string())?;
+    if matches!(message, ClientMessage::Send { .. }) {
+        let value: serde_json::Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
+        if let Some(frame) = value.as_object() {
+            for key in frame.keys() {
+                if !SEND_FIELDS.contains(&key.as_str()) {
+                    return Err(format!(
+                        "unknown field '{key}' on a send frame — client/server version skew; a send must never degrade silently (rebuild both sides)"
+                    ));
+                }
+            }
+        }
+    }
+    Ok(message)
+}
+
 #[cfg(test)]
 mod frame_tests;

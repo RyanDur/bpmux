@@ -1,0 +1,5 @@
+{
+  "type": "send",
+  "text": "a direct send to one individual",
+  "to_ids": ["pm-alpha"]
+}

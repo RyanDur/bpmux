@@ -306,3 +306,91 @@ fn message_frame_without_delivery_id_fields_still_deserializes_bridge_side() {
         other => panic!("expected Message, got {other:?}"),
     }
 }
+
+#[test]
+fn a_send_frame_with_only_known_fields_parses() {
+    let json = r#"{"type": "send", "text": "hi", "to_ids": ["id-1"]}"#;
+    let parsed = parse_client_frame(json).expect("known fields parse");
+    assert!(matches!(parsed, ClientMessage::Send { .. }));
+}
+
+#[test]
+fn a_send_frame_with_an_unknown_field_is_rejected_loudly_not_silently_broadcast() {
+    let json = r#"{"type": "send", "text": "private thing", "to_groups": ["future-feature"]}"#;
+    let error = parse_client_frame(json).expect_err(
+        "an unknown routing field means version skew — the send must FAIL, never silently widen to broadcast (the to_ids rollout incident)",
+    );
+    assert!(
+        error.contains("to_groups"),
+        "the rejection names the unknown field; got: {error}"
+    );
+}
+
+#[test]
+fn non_send_frames_keep_their_tolerant_parse() {
+    let json = r#"{"type": "identify", "name": "claude", "some_future_field": true}"#;
+    assert!(
+        parse_client_frame(json).is_ok(),
+        "identify stays tolerant — evolving optional fields must not break the connect handshake"
+    );
+}
+
+#[test]
+fn the_send_field_allowlist_covers_every_field_the_struct_can_serialize() {
+    let full = ClientMessage::Send {
+        text: "t".to_string(),
+        to: Some(vec!["dev".to_string()]),
+        addressee: Some("dev".to_string()),
+        message_type: Some("chat".to_string()),
+        to_ids: Some(vec!["id-1".to_string()]),
+    };
+    let value: serde_json::Value = serde_json::to_value(&full).expect("send serializes");
+    for key in value.as_object().expect("object").keys() {
+        assert!(
+            parse_client_frame(&value.to_string()).is_ok(),
+            "a frame the CURRENT struct serializes must always parse strictly"
+        );
+        assert!(
+            SEND_FIELDS.contains(&key.as_str()),
+            "field '{key}' is serializable but missing from SEND_FIELDS — the allowlist rotted"
+        );
+    }
+}
+
+#[test]
+fn the_server_chat_golden_is_exactly_what_the_rust_serializer_produces() {
+    let canonical = ServerMessage::Message {
+        from: "dev:claude-code".to_string(),
+        sender_id: Some("6b3054e9-a6b4-4e5b-84db-f788ebdec25b".to_string()),
+        text: "the canonical fully-routed chat frame".to_string(),
+        ts: "2026-07-23T12:00:00Z".to_string(),
+        to: Some(vec!["pm".to_string()]),
+        to_ids: Some(vec!["pm-alpha".to_string()]),
+        addressee: Some("pm".to_string()),
+        addressee_ids: Some(vec!["pm-alpha".to_string()]),
+        message_type: Some("chat".to_string()),
+        multi_depth: Box::new(None),
+        state_delta: None,
+        state_snapshot: None,
+    };
+    let golden: serde_json::Value =
+        serde_json::from_str(include_str!("../golden/server-chat-message.json"))
+            .expect("golden parses");
+    assert_eq!(
+        serde_json::to_value(&canonical).expect("serializes"),
+        golden,
+        "the golden IS the wire — if the Rust side changes shape, this fails HERE instead of at runtime in the renderer (the renderer decodes the same file in transport/golden.test.ts)"
+    );
+}
+
+#[test]
+fn the_client_send_golden_parses_strictly_and_serializes_back_to_itself() {
+    let golden_text = include_str!("../golden/client-send.json");
+    let parsed = parse_client_frame(golden_text).expect("the golden send parses strictly");
+    let golden: serde_json::Value = serde_json::from_str(golden_text).expect("golden parses");
+    assert_eq!(
+        serde_json::to_value(&parsed).expect("serializes"),
+        golden,
+        "a send round-trips through the struct without gaining or losing fields"
+    );
+}

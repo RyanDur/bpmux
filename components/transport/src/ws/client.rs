@@ -52,7 +52,7 @@ pub async fn handle_client_message(
         .await?;
         return Ok(None);
     }
-    match serde_json::from_str::<ClientMessage>(text) {
+    match protocol::parse_client_frame(text) {
         Ok(ClientMessage::Send {
             text: msg_text,
             to,

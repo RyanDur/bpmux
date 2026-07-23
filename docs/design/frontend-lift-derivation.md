@@ -179,3 +179,23 @@ label remnants, an unused @electron-toolkit/preload dep, and listed
 highlight.js which was imported but only transitively present);
 cargo-machete (19 unused crate deps across transport/sync/server/cli
 — lift fallout, every removal compile-verified).
+
+**Safety signals round two (2026-07-23, Ryan's "lets do all of
+them").** (1) Gate test runs scrub ambient BPMUX_* env AND a
+live-daemon canary fails the gate if Routing.Registered grew in the
+live diag log during a run — catches every future leak class, not
+just the two known envs. (2) Flaky passes (nextest retry, playwright
+retry) print a shouting warning — flaky is canon-serious, no longer
+silent. (3) protocol::parse_client_frame rejects send frames
+carrying unknown fields, naming the field — version skew fails loud
+instead of silently broadcasting a direct message (the to_ids
+rollout incident, mechanized); identify stays tolerant for the
+handshake; a drift-pin asserts the allowlist covers every field the
+struct serializes. (4) Golden wire frames in
+components/protocol/golden/ pinned by BOTH sides: the Rust
+serializer must produce exactly the golden, and the renderer's
+messageDecoder must decode it — the type mirror now breaks at commit
+time, not at runtime. (5) `make push` verifies the remote ref
+matches local HEAD after pushing — the push exit code has lied twice.
+(6) Node pinned: .nvmrc 22, engines >=22.12, workflows fetch node 22
+(kills the EBADENGINE class; runners were fetching 20).
