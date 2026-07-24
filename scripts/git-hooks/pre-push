@@ -174,6 +174,19 @@ for_each_exit_check "npm test:unit" "$unit_exit"
 [ $inline_exit -ne 0 ] && exit $inline_exit
 [ $lint_exit -ne 0 ] && exit $lint_exit
 
+# Lighthouse floor on the renderer wave 1 just built (same config CI asserts:
+# a11y 1.0, best-practices 0.85). Local rendering differs from the Linux
+# runner (fonts, compositing) so CI keeps the final word — this catches the
+# structural failures (missing meta, DOM-level a11y) without a CI round-trip.
+echo "Running pre-push quality gates: Lighthouse floor on the built renderer..."
+lhci_log=$(mktemp)
+set +e
+(cd "$REPO_ROOT/applications/electron" && npx --yes @lhci/cli@0.14.x autorun --config=lighthouserc.json) >"$lhci_log" 2>&1
+lhci_exit=$?
+set -e
+echo "--- lighthouse (built renderer) ---"; cat "$lhci_log"; rm -f "$lhci_log"
+[ $lhci_exit -ne 0 ] && { echo "FAIL: Lighthouse floor — run 'npx @lhci/cli autorun --config=lighthouserc.json' in applications/electron to see the audits"; exit $lhci_exit; }
+
 echo "Running pre-push quality gates, wave 2: e2e (serial heavy specs at workers=1, main at workers=4 parallel)..."
 
 # Main e2e runs PARALLEL (workers=4, unsharded). Each spec launches

@@ -32,8 +32,10 @@ make push                # push + verify the remote ref moved (push exit codes l
   depcruise+knip+machete, comment gate, staged lint, live-daemon
   canary, cargo audit.
 - `pre-push` (THE gate, ~8min): all of the above plus electron
-  build/typecheck and the full Playwright run. There is no CI safety
-  net for e2e — pre-push is it.
+  build/typecheck, the Lighthouse floor on the built renderer (a11y
+  1.0 — CI re-runs it on Linux, which renders differently and has the
+  final word), and the full Playwright run. There is no CI safety net
+  for e2e — pre-push is it.
 - Activate per-clone: `git config core.hooksPath scripts/git-hooks`.
 - 200-line max per production file (test-named files exempt).
 
