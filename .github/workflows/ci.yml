@@ -130,3 +130,10 @@ jobs:
       - name: Lighthouse floor on the built renderer
         working-directory: applications/electron
         run: npx --yes @lhci/cli@0.14.x autorun --config=lighthouserc.json
+      - name: Name the failing audits
+        if: failure()
+        working-directory: applications/electron
+        run: |
+          for f in .lighthouseci/lhr-*.json; do
+            jq -r '[.categories.accessibility.auditRefs[].id] as $a11y | .audits | to_entries[] | select(.value.score != null and .value.score < 1 and ([.key] | inside($a11y))) | "A11Y \(.key): \(.value.title)\n\(.value.details.items // [] | map(.node.selector // .node.snippet // "") | join("\n"))"' "$f"
+          done
