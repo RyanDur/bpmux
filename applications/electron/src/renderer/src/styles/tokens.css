@@ -86,7 +86,7 @@
   --bg-highlighted: rgb(229 232 239);
   --fg-primary: rgb(26 26 26);
   --fg-secondary: rgb(74 85 104);
-  --fg-dim: rgb(90 101 120);
+  --fg-dim: rgb(80 91 110);
   --fg-dimmer: rgb(113 128 150);
   --msg-fg-muted: rgb(107 114 128);
   --accent-brand: rgb(37 99 235);
@@ -96,7 +96,7 @@
   --accent-warning-bg: rgb(253 243 231);
   --accent-warning-text: rgb(138 61 0);
   --accent-error: rgb(220 38 38);
-  --accent-info: rgb(2 132 199);
+  --accent-info: rgb(3 105 161);
   --border-subtle: rgb(226 232 240);
   --border-strong: rgb(203 213 224);
   --role-owner: rgb(161 98 7);

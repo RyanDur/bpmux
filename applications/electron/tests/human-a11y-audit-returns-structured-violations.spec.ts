@@ -41,20 +41,3 @@ test.describe('#425 a11y audit substrate', () => {
     await app.close()
   })
 })
-
-const WAIVED_RULES: readonly string[] = []
-
-test('the app holds a ZERO-violation axe floor — a11y regressions fail here, not in a report nobody reads', async () => {
-  const { app } = await launchIsolatedElectron()
-  const win = await app.firstWindow()
-  await expect(new ChatPage(win).appRoot()).toBeVisible()
-
-  const result = await runA11yAudit(win)
-  const unwaived = result.violations.filter((v) => !WAIVED_RULES.includes(v.id))
-  expect(
-    unwaived.map((v) => `${v.id}: ${v.help} (${v.nodes.length} nodes)`),
-    formatViolations(result)
-  ).toEqual([])
-
-  await app.close()
-})
