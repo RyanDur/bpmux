@@ -15,6 +15,7 @@
   --accent-success: rgb(63 185 80);
   --accent-success-text: rgb(63 185 80);
   --accent-warning: rgb(212 161 60);
+  --accent-warning-bg: color-mix(in srgb, var(--accent-warning) 12%, transparent);
   --accent-error: rgb(255 107 107);
   --accent-info: rgb(79 195 247);
   --accent-info-bg: color-mix(in srgb, var(--accent-info) 12%, transparent);
@@ -91,6 +92,7 @@
   --accent-success: rgb(22 163 74);
   --accent-success-text: rgb(21 128 61);
   --accent-warning: rgb(180 83 9);
+  --accent-warning-bg: color-mix(in srgb, var(--accent-warning) 12%, transparent);
   --accent-error: rgb(220 38 38);
   --accent-info: rgb(2 132 199);
   --border-subtle: rgb(226 232 240);
