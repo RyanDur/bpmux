@@ -2,7 +2,7 @@ import type { RosterMemberWire } from '../transport/types'
 import { useRoster } from '../state'
 import { presenceFromWire, type Presence } from './usePresence'
 
-export interface RosterEntry {
+export type RosterEntry = {
   identity: string
   role: string
   presence: Presence

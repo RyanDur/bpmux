@@ -2,21 +2,21 @@ import { Fragment } from 'react'
 import { useDragReorder, type GripDragProps, type RowDragProps } from './useDragReorder'
 import type { DragMimeType } from './useStoryDrag'
 
-export interface SortableDragConfig<P> {
+export type SortableDragConfig<P> = {
   mimeType: DragMimeType
   encode: (payload: P) => string
   decode: (raw: string) => P | null
   payloadKey: (payload: P) => number
 }
 
-export interface SortableRowContext {
+export type SortableRowContext = {
   rowDragProps: RowDragProps
   gripDragProps: GripDragProps
   dragging: boolean
   index: number
 }
 
-export interface SortableListProps<P, T> {
+export type SortableListProps<P, T> = {
   items: T[]
   keyOf: (item: T) => number
   rowKey: (item: T) => React.Key

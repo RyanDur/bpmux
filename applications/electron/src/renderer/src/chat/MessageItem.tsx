@@ -9,7 +9,7 @@ import UnfurlCards from './UnfurlCards'
 import { channelLabelOf } from './scope'
 import { avatarClasses, formatTime, messageKey, shortName } from './MessageItem.utils'
 
-interface Props {
+type Props = {
   m: ChatMessage
   grouped: boolean
   isNew?: boolean

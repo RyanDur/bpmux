@@ -11,18 +11,18 @@ import {
   setCaret
 } from './inputCommands'
 
-interface SearchState {
+type SearchState = {
   query: string
   matchIndex: number | null
   priorValue: string
 }
 
-export interface UseInputKeyboardResult {
+export type UseInputKeyboardResult = {
   handleKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
   search: SearchState | null
 }
 
-export interface SubmitOptions {
+export type SubmitOptions = {
   trimOnSubmit?: boolean
   submitEmpty?: boolean
 }

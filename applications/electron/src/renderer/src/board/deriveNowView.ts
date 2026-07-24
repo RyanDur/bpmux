@@ -7,7 +7,7 @@ import {
 import type { BoardIterationData } from './selectIterations'
 import type { Story, IterationMembership } from './types'
 
-export interface NowRow {
+export type NowRow = {
   story: Story
   membership: IterationMembership
 }

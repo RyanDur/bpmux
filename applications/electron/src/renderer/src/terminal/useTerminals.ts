@@ -16,7 +16,7 @@ import {
 
 type TerminalState = 'spawning' | 'ready' | 'spawn-failed' | 'exited'
 
-export interface TerminalEntry {
+export type TerminalEntry = {
   key: string
   state: TerminalState
   id?: string
@@ -24,12 +24,12 @@ export interface TerminalEntry {
   error?: string
 }
 
-interface ConfirmClose {
+type ConfirmClose = {
   key: string
   id: string
 }
 
-export interface UseTerminalsResult {
+export type UseTerminalsResult = {
   terminals: TerminalEntry[]
   activeKey: string | null
   terminalNames: Record<string, string>

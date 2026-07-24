@@ -1,5 +1,5 @@
 import type { IterationReadiness } from './types'
-export interface BoardIterationData {
+export type BoardIterationData = {
   id: number
   title: string
   iteration_order: number | null
@@ -9,7 +9,7 @@ export interface BoardIterationData {
   stories: number[]
 }
 
-export interface IterationsState {
+export type IterationsState = {
   iterations: BoardIterationData[]
 }
 

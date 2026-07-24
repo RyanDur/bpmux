@@ -7,7 +7,7 @@ import {
 import { useBoardWidthStorage } from '../board/useBoardWidthStorage'
 import { RENDERER_IDENTITY } from '../state'
 
-export interface UseBoardLayoutResult {
+export type UseBoardLayoutResult = {
   boardOpen: boolean
   toggleBoardOpen: () => void
   width: number

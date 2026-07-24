@@ -15,7 +15,7 @@ import { TerminalCompose } from './TerminalCompose'
 import { copyOnCmdC } from './terminalCopy'
 import './TerminalView.css'
 
-interface TerminalViewProps {
+type TerminalViewProps = {
   terminalId: string
   cwd: string
   isActive: boolean

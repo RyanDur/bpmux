@@ -11,7 +11,7 @@ const hashRole = (role: string): number => {
   return h
 }
 
-export interface RoleColor {
+export type RoleColor = {
   color: string
   background: string
 }

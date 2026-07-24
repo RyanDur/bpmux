@@ -72,6 +72,7 @@ export default defineConfig(
       'prefer-arrow-callback': 'error',
       'prefer-const': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
@@ -141,6 +142,12 @@ export default defineConfig(
       'testing-library/prefer-find-by': 'warn',
       'testing-library/no-debugging-utils': 'warn',
       'jest-dom/prefer-enabled-disabled': 'warn'
+    }
+  },
+  {
+    files: ['**/*.d.ts', 'tests/playwright/notifications.spec.ts'],
+    rules: {
+      '@typescript-eslint/consistent-type-definitions': 'off'
     }
   },
   eslintConfigPrettier

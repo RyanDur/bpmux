@@ -1,27 +1,27 @@
 import { eagerReorder } from './iterationMembers'
 import { useStoryDrag, type UseStoryDragOptions } from './useStoryDrag'
 
-export interface UseDragReorderOptions<P, T> extends UseStoryDragOptions<P> {
+export type UseDragReorderOptions<P, T> = {
   items: T[]
   keyOf: (item: T) => number
   payloadKey: (payload: P) => number
   buildPayload: (item: T) => P
   onReorder: (payload: P, targetKey: number) => void
   disabled?: boolean
-}
+} & UseStoryDragOptions<P>
 
-export interface RowDragProps {
+export type RowDragProps = {
   onDragOver: (event: React.DragEvent<HTMLElement>) => void
   onDrop: (event: React.DragEvent<HTMLElement>) => void
 }
 
-export interface GripDragProps {
+export type GripDragProps = {
   draggable: true
   onDragStart: (event: React.DragEvent<HTMLElement>) => void
   onDragEnd: () => void
 }
 
-export interface UseDragReorderResult<T> {
+export type UseDragReorderResult<T> = {
   orderedItems: T[]
   draggedId: number | null
   hoveredId: number | null

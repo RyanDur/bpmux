@@ -1,4 +1,4 @@
-export interface SelfUpdateRestartPolicy {
+export type SelfUpdateRestartPolicy = {
   windowMs: number
   maxRestarts: number
 }

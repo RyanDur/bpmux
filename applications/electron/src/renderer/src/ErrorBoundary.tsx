@@ -3,11 +3,11 @@ import { ErrorBoundary as LibErrorBoundary, type FallbackProps } from 'react-err
 import { asyncTryCatch, toError } from '@ryandur/sand'
 import './ErrorBoundary.css'
 
-interface Props {
+type Props = {
   children: ReactNode
 }
 
-interface ErrorShape {
+type ErrorShape = {
   name: string
   message: string
   stack: string | null
@@ -47,7 +47,7 @@ const PlainFallback = ({ error }: FallbackProps): React.JSX.Element => {
   )
 }
 
-interface SurfaceProps {
+type SurfaceProps = {
   error: unknown
   componentStack: string | null
   resetErrorBoundary: () => void

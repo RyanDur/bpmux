@@ -1,13 +1,13 @@
 import AxeBuilder from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
 
-interface A11yViolationNode {
+type A11yViolationNode = {
   readonly target: readonly string[]
   readonly html: string
   readonly failureSummary: string | null
 }
 
-interface A11yViolation {
+type A11yViolation = {
   readonly id: string
   readonly impact: 'minor' | 'moderate' | 'serious' | 'critical' | null
   readonly description: string
@@ -16,7 +16,7 @@ interface A11yViolation {
   readonly nodes: readonly A11yViolationNode[]
 }
 
-export interface A11yAuditResult {
+export type A11yAuditResult = {
   readonly violations: readonly A11yViolation[]
   readonly passes: number
   readonly incomplete: number

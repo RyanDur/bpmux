@@ -3,7 +3,7 @@ import { launchIsolatedElectron } from '../helpers/launch'
 import { formatViolations, runA11yAudit } from '../helpers/a11yAudit'
 import { ChatPage } from '../pages/chatPage'
 
-interface ContrastFailure {
+type ContrastFailure = {
   category: 'contrast'
   tag: string
   className: string
@@ -18,7 +18,7 @@ interface ContrastFailure {
   requiredRatio: number
 }
 
-interface AriaFailure {
+type AriaFailure = {
   category: 'aria'
   tag: string
   className: string
@@ -26,7 +26,7 @@ interface AriaFailure {
   reason: string
 }
 
-interface KeyboardFailure {
+type KeyboardFailure = {
   category: 'keyboard'
   tag: string
   className: string
@@ -34,7 +34,7 @@ interface KeyboardFailure {
   reason: string
 }
 
-interface FocusFailure {
+type FocusFailure = {
   category: 'focus-visible'
   tag: string
   className: string

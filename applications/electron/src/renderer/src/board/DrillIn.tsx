@@ -21,7 +21,7 @@ const LIFECYCLE_LABELS: ReadonlySet<string> = new Set([
 
 const isLifecycleLabel = (label: string): boolean => LIFECYCLE_LABELS.has(label)
 
-interface Props {
+type Props = {
   story: Story
   isOwner: boolean
   apiBase: string | undefined

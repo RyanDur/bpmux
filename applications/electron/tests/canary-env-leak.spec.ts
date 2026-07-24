@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedElectron } from './helpers/launch'
 
-interface BoardResponse {
+type BoardResponse = {
   stories: Array<{ id: number; title: string }>
 }
 

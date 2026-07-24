@@ -17,7 +17,7 @@ export const extractUrls = (text: string): string[] => {
   return out
 }
 
-export interface UnfurlData {
+export type UnfurlData = {
   url: string
   title?: string | null
   description?: string | null
@@ -26,14 +26,14 @@ export interface UnfurlData {
   favicon?: string | null
 }
 
-interface CacheEntry {
+type CacheEntry = {
   state: 'loading' | 'resolved'
   data?: UnfurlData
 }
 
 const cache = new Map<string, CacheEntry>()
 
-interface UseUnfurlArgs {
+type UseUnfurlArgs = {
   apiBase: string | undefined
   authToken: string | undefined
   urls: readonly string[]

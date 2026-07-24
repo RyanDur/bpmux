@@ -1,4 +1,4 @@
-export interface Action {
+export type Action = {
   type: string
 }
 
@@ -8,13 +8,13 @@ export type Dispatch<A extends Action> = (action: A) => void
 
 type Listener = () => void
 
-export interface Store<S, A extends Action> {
+export type Store<S, A extends Action> = {
   getState: () => S
   dispatch: Dispatch<A>
   subscribe: (listener: Listener) => () => void
 }
 
-export interface MiddlewareApi<S, A extends Action> {
+export type MiddlewareApi<S, A extends Action> = {
   getState: () => S
   dispatch: Dispatch<A>
 }

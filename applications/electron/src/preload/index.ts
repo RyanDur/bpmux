@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 
-interface BpmuxConfig {
+type BpmuxConfig = {
   wsUrl: string
   authToken: string
   ownerNonce: string
@@ -8,7 +8,7 @@ interface BpmuxConfig {
   e2e: boolean
 }
 
-interface QuoteCommentPayload {
+type QuoteCommentPayload = {
   commentId: string
   author: string
   text: string

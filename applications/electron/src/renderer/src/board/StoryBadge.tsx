@@ -19,7 +19,7 @@ const KIND_GLYPH: Record<BadgeKind, string> = {
   rework: '↻'
 }
 
-interface Props {
+type Props = {
   story: Story
   onOpenTimeline?: (storyId: number) => void
 }

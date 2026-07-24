@@ -18,7 +18,7 @@ export const builtBpmuxBinary = (): string => {
   return releaseExists ? release : debug
 }
 
-export interface BpmuxCli {
+export type BpmuxCli = {
   run: (role: string, args: string[]) => Promise<string>
   numberFrom: (stdout: string) => number
   cleanup: () => void

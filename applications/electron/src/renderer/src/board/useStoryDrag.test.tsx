@@ -93,7 +93,7 @@ describe('useStoryDrag lifecycle', () => {
   })
 
   test('encoder + decoder round-trip a JSON payload type', () => {
-    interface Payload {
+    type Payload = {
       storyId: number
       name: string
     }

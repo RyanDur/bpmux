@@ -36,7 +36,7 @@ const broadcastLivePeerMessage = async (backendPort: number, text: string): Prom
   expect(res.ok, `live peer message POST should succeed (got ${res.status})`).toBeTruthy()
 }
 
-interface PillGeometry {
+type PillGeometry = {
   centeredWithinWrap: boolean
   inBottomHalfOfWrap: boolean
   overlapsFilterPills: boolean

@@ -3,7 +3,7 @@ import { SortableList } from './SortableList'
 import { READY_STORY_DRAG } from './sortableDragConfigs'
 import { isClosedIterationMarker, type Story, type ColumnState, type GroupSpec } from './types'
 
-interface BoardGroupProps {
+type BoardGroupProps = {
   group: GroupSpec
   stories: Story[]
   epicTitleById: Map<number, string>

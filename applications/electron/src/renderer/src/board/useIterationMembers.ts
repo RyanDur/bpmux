@@ -9,12 +9,12 @@ import {
   positionInParentIteration
 } from './iterationMembers'
 
-export interface IterationMember {
+export type IterationMember = {
   story: Story
   position: number
 }
 
-export interface UseIterationMembersResult {
+export type UseIterationMembersResult = {
   sortedLoose: Story[]
   getMembersFor: (iterationId: number) => IterationMember[]
   setPending: (storyId: number, iterationId: number, position: number) => void

@@ -16,18 +16,18 @@ export const TIMELINE_GATE = {
 
 export type TimelineGate = (typeof TIMELINE_GATE)[keyof typeof TIMELINE_GATE]
 
-export interface ClassifiedEvent {
+export type ClassifiedEvent = {
   raw: TimelineEvent
   gate: TimelineGate | null
   reworkGroup?: number
 }
 
-interface UseTimelineArgs {
+type UseTimelineArgs = {
   apiBase: string | undefined
   storyId: number | null
 }
 
-export interface UseTimelineResult {
+export type UseTimelineResult = {
   events: ClassifiedEvent[] | null
   loading: boolean
   refetch: () => void

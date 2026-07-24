@@ -96,7 +96,7 @@ const deliverMember = async (rpc: RpcFn, id: number): Promise<void> => {
   expect(passResp.status).toBe(200)
 }
 
-interface NudgeTopology {
+type NudgeTopology = {
   nextId: number
   nextName: string
 }

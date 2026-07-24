@@ -2,7 +2,7 @@ export type StoryState = string
 
 export type ColumnState = string
 
-export interface BoardColumn {
+export type BoardColumn = {
   id: string
   label: string
 }
@@ -65,30 +65,30 @@ export const columnFor = columnForIn(DEFAULT_MIDDLE_IDS)
 export const isConcluded = (state: StoryState): boolean =>
   state === ACCEPTED_COLUMN || state === RETIRED_COLUMN
 
-export interface IterationMembership {
+export type IterationMembership = {
   iteration_id: number
   position: number
 }
 
-export interface OutcomeReadiness {
+export type OutcomeReadiness = {
   iteration_count: number
   gap_count: number
   all_ready: boolean
 }
 
-export interface IterationReadiness {
+export type IterationReadiness = {
   drafted: boolean
   stories_ordered: boolean
   review_closed: boolean
   dev_ok: boolean
 }
 
-interface OutcomeMembership {
+type OutcomeMembership = {
   outcome_id: number
   position: number
 }
 
-export interface Story {
+export type Story = {
   id: number
   title: string
   state: StoryState
@@ -107,7 +107,7 @@ export interface Story {
   readiness?: IterationReadiness | null
 }
 
-export interface Epic {
+export type Epic = {
   id: number
   title: string
   state: StoryState
@@ -116,7 +116,7 @@ export interface Epic {
   body: string
 }
 
-export interface GroupSpec {
+export type GroupSpec = {
   state: ColumnState
   label: string
   collapsed: boolean

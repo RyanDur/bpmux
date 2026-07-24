@@ -15,7 +15,7 @@ import {
   type EpicSort
 } from './epicSummary'
 
-interface Props {
+type Props = {
   epics: EpicData[]
   stories: Story[]
   onOpen: (n: number) => void

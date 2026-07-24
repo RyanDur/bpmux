@@ -24,7 +24,7 @@ const writeDraft = (channelKey: string, value: string): void => {
   }
 }
 
-export interface DraftStorage {
+export type DraftStorage = {
   value: string
   setValue: (value: string) => void
 }

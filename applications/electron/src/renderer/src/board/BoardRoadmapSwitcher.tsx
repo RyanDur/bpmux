@@ -10,7 +10,7 @@ type BoardRoadmapView = 'board' | 'roadmap'
 const STORAGE_PREFIX = 'bpmux-board-roadmap-view'
 const VALID_VIEWS: ReadonlyArray<BoardRoadmapView> = ['board', 'roadmap'] as const
 
-interface BoardRoadmapSwitcherProps {
+type BoardRoadmapSwitcherProps = {
   boardLabel: React.ReactNode
   board: React.ReactNode
   roadmap: React.ReactNode

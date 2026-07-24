@@ -7,13 +7,13 @@ const DEFAULT_PAGE_SIZE = 200
 
 type HistoryMessage = HistoryMessageWire
 
-export interface UseMessageHistoryOptions {
+export type UseMessageHistoryOptions = {
   liveMessages: ChatMessage[]
   apiBase?: string
   pageSize?: number
 }
 
-export interface UseMessageHistoryResult {
+export type UseMessageHistoryResult = {
   combinedMessages: ChatMessage[]
   loadOlder: () => Promise<void>
   isLoadingOlder: boolean

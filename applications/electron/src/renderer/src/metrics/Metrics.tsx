@@ -3,14 +3,14 @@ import { describeHttpError, http } from '../transport/http'
 import Sparkline, { type WipPoint } from './Sparkline'
 import './Metrics.css'
 
-interface Props {
+type Props = {
   apiBase: string | undefined
   authToken: string | undefined
   onClose: () => void
   open: boolean
 }
 
-interface VelocityPayload {
+type VelocityPayload = {
   window_days: number
   delivered_in_window: number
   delivered_per_day: number

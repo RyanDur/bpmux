@@ -1,17 +1,17 @@
 import { type ApiContext, type HttpError, http } from './http'
 import { type Result } from '@ryandur/sand'
 
-export interface AcceptPayload {
+export type AcceptPayload = {
   would_file_bug: boolean
   force?: boolean
   bypass_reason?: string
 }
 
-export interface RejectPayload {
+export type RejectPayload = {
   note: string
 }
 
-export interface CommentPayload {
+export type CommentPayload = {
   body: string
 }
 

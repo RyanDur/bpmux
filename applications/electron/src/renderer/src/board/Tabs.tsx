@@ -1,14 +1,14 @@
 import { useId } from 'react'
 import './Tabs.css'
 
-export interface TabDef<TabId extends string> {
+export type TabDef<TabId extends string> = {
   id: TabId
   label: string
   tabTestId?: string
   panelTestId?: string
 }
 
-interface TabsProps<TabId extends string> {
+type TabsProps<TabId extends string> = {
   ariaLabel: string
   tabs: ReadonlyArray<TabDef<TabId>>
   activeId: TabId

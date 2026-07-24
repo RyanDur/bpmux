@@ -1,9 +1,9 @@
-export interface TerminalLayoutHint {
+export type TerminalLayoutHint = {
   order: string[]
   activeId: string | null
 }
 
-export interface RestoredLayout {
+export type RestoredLayout = {
   orderedIds: string[]
   activeId: string | null
 }

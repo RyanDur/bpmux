@@ -1,7 +1,7 @@
 import { extractUrls, useUnfurl, type UnfurlData } from '../chat/useUnfurl'
 import './UnfurlCards.css'
 
-interface Props {
+type Props = {
   text: string
   apiBase: string | undefined
   authToken: string | undefined

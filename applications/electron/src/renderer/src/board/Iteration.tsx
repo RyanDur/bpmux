@@ -13,7 +13,7 @@ import { useIterationReorder } from './useIterationReorder'
 import IterationRow from './IterationRow'
 import UnscheduledList from './UnscheduledList'
 
-interface Props {
+type Props = {
   stories: Story[]
   onOpen: (n: number) => void
   onReorderAnnounce?: (text: string) => void

@@ -10,13 +10,13 @@ export const DRAG_MIMETYPE_REGISTRY = {
 
 export type DragMimeType = (typeof DRAG_MIMETYPE_REGISTRY)[keyof typeof DRAG_MIMETYPE_REGISTRY]
 
-export interface UseStoryDragOptions<P> {
+export type UseStoryDragOptions<P> = {
   mimeType: DragMimeType
   encode: (payload: P) => string
   decode: (raw: string) => P | null
 }
 
-export interface UseStoryDragResult<P> {
+export type UseStoryDragResult<P> = {
   draggedId: number | null
   hoveredId: number | null
   startDrag: (event: React.DragEvent<HTMLElement>, storyId: number, payload: P) => void

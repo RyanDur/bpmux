@@ -13,7 +13,7 @@ import type { ChatMessage, ConnectionStatus } from './transport/types'
 import { type SendOptions } from './state'
 import './AppShell.css'
 
-interface Props {
+type Props = {
   status: ConnectionStatus
   messages: ChatMessage[]
   onSend: (text: string, opts?: SendOptions) => void

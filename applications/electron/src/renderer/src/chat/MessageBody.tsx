@@ -6,7 +6,7 @@ import 'highlight.js/styles/github-dark.css'
 import { replaceMentionsInChildren } from './renderMentions'
 import './MessageBody.css'
 
-interface Props {
+type Props = {
   text: string
   knownRoles?: ReadonlySet<string>
   onMention?: (role: string) => void

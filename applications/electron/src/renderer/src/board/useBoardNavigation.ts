@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { Story } from './types'
 
-interface UseBoardNavigationResult {
+type UseBoardNavigationResult = {
   asideRef: React.RefObject<HTMLElement | null>
   selectedId: number | null
   setSelectedId: React.Dispatch<React.SetStateAction<number | null>>

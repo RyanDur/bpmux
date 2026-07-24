@@ -1,7 +1,7 @@
 import { useBoardColumns } from '../state'
 import { groupOrderOrFallback, groupStoriesIn, middleColumnIds, type Story } from './types'
 
-interface Props {
+type Props = {
   epicId: number
   stories: Story[]
 }

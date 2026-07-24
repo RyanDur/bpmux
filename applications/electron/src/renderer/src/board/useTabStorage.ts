@@ -27,7 +27,7 @@ const writeActive = (prefix: string, viewerIdentity: string, id: string): void =
   }
 }
 
-export interface TabStorage<TabId extends string> {
+export type TabStorage<TabId extends string> = {
   activeId: TabId
   setActiveId: (next: TabId) => void
 }

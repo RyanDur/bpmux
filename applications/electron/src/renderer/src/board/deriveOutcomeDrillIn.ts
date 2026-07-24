@@ -4,7 +4,7 @@ import { CHECK_ORDER, firstUnmetLabel, nothingDone, unmetCount } from './iterati
 
 export type ConveneCheckState = 'met' | 'gap' | 'pending'
 
-interface ConveneCheck {
+type ConveneCheck = {
   key: keyof IterationReadiness
   label: string
   state: ConveneCheckState
@@ -12,7 +12,7 @@ interface ConveneCheck {
 
 type DrillIterationState = 'ready' | 'next' | 'gap' | 'not-started'
 
-export interface DrillIteration {
+export type DrillIteration = {
   id: number
   name: string
   order: number
@@ -21,14 +21,14 @@ export interface DrillIteration {
   checks: ConveneCheck[]
 }
 
-interface ConveneBanner {
+type ConveneBanner = {
   nextIterationName: string
   nextGapCount: number
   activeGapLabel: string | null
   thenIterationName: string | null
 }
 
-export interface OutcomeDrillIn {
+export type OutcomeDrillIn = {
   iterations: DrillIteration[]
   convene: ConveneBanner | null
 }

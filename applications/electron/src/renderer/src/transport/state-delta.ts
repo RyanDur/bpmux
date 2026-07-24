@@ -7,7 +7,7 @@ import type {
   SyncStatusWire
 } from './types'
 
-export interface MirrorState {
+export type MirrorState = {
   reactions: ReadonlyMap<string, ReactionAggregateWire[]>
   ci: CiSnapshotWire | null
   sync: SyncStatusWire | null

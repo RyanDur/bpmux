@@ -40,7 +40,7 @@ const writeState = (
   }
 }
 
-export interface CollapsibleSectionsStorage<K extends string> {
+export type CollapsibleSectionsStorage<K extends string> = {
   state: Record<K, boolean>
   setState: (next: Record<K, boolean>) => void
 }

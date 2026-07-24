@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react'
 
-interface MentionScopingApi {
+type MentionScopingApi = {
   mentionRoles: Set<string>
   handleMention: (role: string) => void
 }

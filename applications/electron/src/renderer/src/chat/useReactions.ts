@@ -1,18 +1,18 @@
 import { useCallback } from 'react'
 import { toggleReaction, useReactionsByChannel } from '../state'
 
-export interface AggregatedReaction {
+export type AggregatedReaction = {
   message_key: string
   emoji: string
   count: number
   users: string[]
 }
 
-interface UseReactionsArgs {
+type UseReactionsArgs = {
   channel: string
 }
 
-export interface UseReactionsResult {
+export type UseReactionsResult = {
   byMessage: Map<string, AggregatedReaction[]>
   toggle: (messageKey: string, emoji: string, user: string) => void
 }

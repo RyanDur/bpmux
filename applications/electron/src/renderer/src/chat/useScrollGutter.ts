@@ -3,7 +3,7 @@ import { isNearTopUnderColumnReverse } from '../chat/scrollMath'
 
 const BOTTOM_THRESHOLD_PX = 8
 
-interface ScrollGutterArgs {
+type ScrollGutterArgs = {
   visibleCount: number
   loadOlder?: () => Promise<void>
   isLoadingOlder: boolean
@@ -11,7 +11,7 @@ interface ScrollGutterArgs {
   onAtBottomChange?: (atBottom: boolean) => void
 }
 
-interface ScrollGutterApi {
+type ScrollGutterApi = {
   listRef: React.RefObject<HTMLUListElement | null>
   handleScroll: () => void
   newCount: number

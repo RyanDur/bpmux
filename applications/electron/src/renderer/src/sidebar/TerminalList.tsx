@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { TerminalEntry } from '../terminal/useTerminals'
 import { resolveTerminalName } from '../terminal/terminalNames'
 
-interface Props {
+type Props = {
   terminals: TerminalEntry[]
   activeTerminalKey: string | null
   terminalNames: Record<string, string>

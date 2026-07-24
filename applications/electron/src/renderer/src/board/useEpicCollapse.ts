@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useCollapseMap } from './useCollapseMap'
 
-export interface EpicCollapseStorage {
+export type EpicCollapseStorage = {
   isOpen: (epicId: number, defaultOpen: boolean) => boolean
   setOpen: (epicId: number, open: boolean) => void
 }

@@ -23,7 +23,7 @@ export const widthPercent = (width: number, viewportWidth: number): number => {
   return Math.round(fraction * 100)
 }
 
-export interface CollapseToggle {
+export type CollapseToggle = {
   nextWidth: number
   nextRestoreWidth: number
 }

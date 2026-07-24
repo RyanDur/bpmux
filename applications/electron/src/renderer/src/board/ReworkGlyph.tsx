@@ -1,6 +1,6 @@
 import type { JSX } from 'react'
 
-interface ReworkGlyphProps {
+type ReworkGlyphProps = {
   reworkComment?: string | null
 }
 

@@ -1,7 +1,7 @@
 import { type Epic, type Story, type StoryState } from './types'
 export type EpicSort = 'progress' | 'created'
 
-export interface StateBreakdown {
+export type StateBreakdown = {
   total: number
   accepted: number
   retired: number

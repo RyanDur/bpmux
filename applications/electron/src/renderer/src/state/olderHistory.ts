@@ -1,6 +1,6 @@
 import type { HistoryMessageWire } from '../transport/types'
 
-interface PendingRequest {
+type PendingRequest = {
   resolve: (messages: HistoryMessageWire[]) => void
   reject: (reason: Error) => void
 }

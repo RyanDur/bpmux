@@ -1,12 +1,12 @@
 import { type ApiContext, type HttpError, http } from '../transport/http'
 import { type Result } from '@ryandur/sand'
 
-export interface SpawnResponse {
+export type SpawnResponse = {
   terminal_id?: string
   cwd?: string
 }
 
-export interface TerminalsListResponse {
+export type TerminalsListResponse = {
   terminals?: { terminal_id: string; cwd?: string }[]
 }
 

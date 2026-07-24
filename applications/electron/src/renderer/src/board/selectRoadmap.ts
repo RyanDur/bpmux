@@ -1,5 +1,5 @@
 import type { Horizon, IterationReadiness, OutcomeReadiness } from './types'
-export interface RoadmapIteration {
+export type RoadmapIteration = {
   id: number
   name: string
   position: number
@@ -12,14 +12,14 @@ export type OutcomeState = 'done' | 'ready' | 'needs-attention' | 'planned'
 
 type OutcomeCardTone = 'now' | 'ready' | 'gap' | 'future'
 
-export interface OutcomeWhy {
+export type OutcomeWhy = {
   benefit?: string
   metric?: string
   confidence?: string
   value?: string
 }
 
-export interface RoadmapOutcome {
+export type RoadmapOutcome = {
   id: number
   name: string
   why: OutcomeWhy
@@ -29,17 +29,17 @@ export interface RoadmapOutcome {
   iterations: RoadmapIteration[]
 }
 
-interface RoadmapBand {
+type RoadmapBand = {
   horizon: Horizon
   label: string
   outcomes: RoadmapOutcome[]
 }
 
-export interface Roadmap {
+export type Roadmap = {
   bands: RoadmapBand[]
 }
 
-export interface RoadmapOutcomeData {
+export type RoadmapOutcomeData = {
   id: number
   title: string
   body: string
@@ -49,7 +49,7 @@ export interface RoadmapOutcomeData {
   iterations: RoadmapIteration[]
 }
 
-export interface RoadmapCard {
+export type RoadmapCard = {
   id: number
   name: string
   why: OutcomeWhy
@@ -87,7 +87,7 @@ const toRoadmapOutcome = (card: RoadmapCard, iterations: RoadmapIteration[]): Ro
   iterations
 })
 
-export interface RoadmapState {
+export type RoadmapState = {
   roadmap: RoadmapCard[]
   outcomes: RoadmapOutcomeData[]
 }

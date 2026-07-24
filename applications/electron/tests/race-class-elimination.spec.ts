@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { launchIsolatedElectron } from './helpers/launch'
 
-interface CapturedFrame {
+type CapturedFrame = {
   type?: string
   message_type?: string
   state_snapshot?: unknown

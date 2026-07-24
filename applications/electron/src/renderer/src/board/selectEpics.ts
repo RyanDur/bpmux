@@ -1,6 +1,6 @@
 import type { Epic } from './types'
 
-export interface EpicsState {
+export type EpicsState = {
   epics: Epic[]
 }
 

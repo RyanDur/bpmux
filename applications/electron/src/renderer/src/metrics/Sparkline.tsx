@@ -1,6 +1,6 @@
 import './Sparkline.css'
 
-export interface WipPoint {
+export type WipPoint = {
   date: string
   wip_count: number
 }
@@ -9,7 +9,7 @@ const VIEW_W = 100
 const VIEW_H = 30
 const HISTORY_TABLE_ID = 'sparkline-wip-history'
 
-interface ScaledPoint {
+type ScaledPoint = {
   x: number
   y: number
 }

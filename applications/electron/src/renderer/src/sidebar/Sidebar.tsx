@@ -13,7 +13,7 @@ import type { TerminalEntry } from '../terminal/useTerminals'
 import TerminalList from './TerminalList'
 import './Sidebar.css'
 
-interface Props {
+type Props = {
   recipient: string[] | null
   allView: boolean
   activeTerminalKey?: string | null

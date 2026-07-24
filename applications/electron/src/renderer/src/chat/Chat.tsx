@@ -11,7 +11,7 @@ import { TerminalView } from './TerminalView'
 import type { TerminalEntry } from '../terminal/useTerminals'
 import './Chat.css'
 
-interface Props {
+type Props = {
   messages: ChatMessage[]
   recipient: string[] | null
   allView: boolean

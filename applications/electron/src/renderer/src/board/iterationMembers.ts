@@ -1,15 +1,15 @@
 import { storyTypeFromLabels, type Story, type IterationMembership } from './types'
-export interface DragPayload {
+export type DragPayload = {
   storyId: number
   iterationId: number
   oldPosition: number
 }
 
-export interface IterationDragPayload {
+export type IterationDragPayload = {
   iterationId: number
 }
 
-export interface PendingMemberPosition {
+export type PendingMemberPosition = {
   iterationId: number
   position: number
 }

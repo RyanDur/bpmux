@@ -35,7 +35,7 @@ export const getFreePort = async (): Promise<number> =>
     })
   })
 
-export interface LaunchOpts {
+export type LaunchOpts = {
   userDataDir?: string
   dataBase?: string
   backendPort?: number
@@ -53,7 +53,7 @@ export interface LaunchOpts {
   preserveTempPaths?: boolean
 }
 
-export interface LaunchResult {
+export type LaunchResult = {
   app: ElectronApplication
   dataBase: string
   userDataDir: string
@@ -280,7 +280,7 @@ export const launchIsolatedWithWindow = async (
   return { ...result, win }
 }
 
-export interface DualElectronResult {
+export type DualElectronResult = {
   app1: ElectronApplication
   app2: ElectronApplication
   win1: Page
@@ -354,7 +354,7 @@ export const launchTwoElectronsSharedBackend = async (
 // the real adapter against the mock boundary. Tests drive mutations
 // via /api/rpc/{tool} (auth-gated), not /api/test/* (deprecated as
 // the InMemoryAdapter substrate retires).
-export interface MockGhLaunchResult extends LaunchResult {
+export type MockGhLaunchResult = {
   win: Page
   mockGh: MockGhServer
   // Pre-read auth token so callers don't race the renderer's read.
@@ -363,7 +363,7 @@ export interface MockGhLaunchResult extends LaunchResult {
   // host headers the gated /api/rpc/{tool} endpoint requires. Default
   // role 'dev'; pass `agent` in opts.callRole to override per-call.
   rpc: (tool: string, body: unknown, agent?: string) => Promise<Response>
-}
+} & LaunchResult
 
 export const launchWithMockGh = async (opts: LaunchOpts = {}): Promise<MockGhLaunchResult> => {
   const mockGh = await startMockGhServer()

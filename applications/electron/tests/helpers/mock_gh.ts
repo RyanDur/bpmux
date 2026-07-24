@@ -92,7 +92,7 @@ const ghUser = (login = 'actor'): Record<string, unknown> => ({
   site_admin: false
 })
 
-interface MockRoute {
+type MockRoute = {
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE'
   // Exact path prefix or regex. Matched in registration order.
   match: string | RegExp
@@ -100,13 +100,13 @@ interface MockRoute {
   bodyJson?: unknown
 }
 
-interface MockGhRequest {
+type MockGhRequest = {
   method: string
   path: string
   authorization?: string
 }
 
-export interface MockGhServer {
+export type MockGhServer = {
   baseUrl: string
   port: number
   on(route: MockRoute): void

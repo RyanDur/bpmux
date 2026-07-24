@@ -1,7 +1,7 @@
 import { MESSAGE_CLASSES, type MessageClass, type MessageFilter } from '../chat/useMessageFilter'
 import './FilterPills.css'
 
-interface Props {
+type Props = {
   filter: MessageFilter
   hiddenCounts: Partial<Record<MessageClass, number>>
   visibleCounts: Partial<Record<MessageClass, number>>

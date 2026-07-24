@@ -14,7 +14,7 @@ import {
   type ColumnState
 } from './types'
 
-export interface UseBoardDataResult {
+export type UseBoardDataResult = {
   stories: Story[]
   epics: Epic[]
   epicTitleById: Map<number, string>

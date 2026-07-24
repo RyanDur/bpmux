@@ -12,7 +12,7 @@ import type { RoadmapCard, RoadmapOutcomeData } from '../board/selectRoadmap'
 import type { BoardIterationData } from '../board/selectIterations'
 import type { MirrorState } from '../transport/state-delta'
 
-export interface StateSnapshot {
+export type StateSnapshot = {
   status: ConnectionStatus
   messages: ChatMessage[]
   mirror: MirrorState

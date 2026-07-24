@@ -3,11 +3,11 @@ import { useStories } from '../state'
 import { useRefetchOnReconnect } from './useRefetchOnReconnect'
 import type { Story } from './types'
 
-export interface UseBoardFetchOptions {
+export type UseBoardFetchOptions = {
   apiBase: string | undefined
 }
 
-export interface UseBoardFetchResult {
+export type UseBoardFetchResult = {
   data: Story[] | null
   setData: React.Dispatch<React.SetStateAction<Story[] | null>>
   loading: boolean

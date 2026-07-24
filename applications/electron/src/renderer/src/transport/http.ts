@@ -7,7 +7,7 @@ import {
   requesting
 } from '@ryandur/sand'
 
-export interface ApiContext {
+export type ApiContext = {
   apiBase: string
   authToken: string | null | undefined
   ownerNonce?: string | null | undefined

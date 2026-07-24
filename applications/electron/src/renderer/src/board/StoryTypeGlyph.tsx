@@ -1,6 +1,6 @@
 import type { StoryType } from './types'
 
-interface Props {
+type Props = {
   type: StoryType
 }
 

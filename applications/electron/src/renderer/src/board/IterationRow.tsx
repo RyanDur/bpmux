@@ -10,7 +10,7 @@ import type { IterationMember } from './useIterationMembers'
 import type { BoardIterationData } from './selectIterations'
 import MemberList from './MemberList'
 
-interface Props {
+type Props = {
   iteration: BoardIterationData
   collapse: ReturnType<typeof useIterationCollapse>
   currentIterationId: number | null

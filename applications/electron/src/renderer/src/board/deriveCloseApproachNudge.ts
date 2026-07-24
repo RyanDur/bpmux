@@ -5,7 +5,7 @@ import { iterationNameFromTitle } from './labelSchema'
 import type { BoardIterationData } from './selectIterations'
 import { columnFor, type Story, type ColumnState } from './types'
 
-export interface CloseApproachNudge {
+export type CloseApproachNudge = {
   nextIterationId: number
   nextIterationName: string
   activeGapLabel: string

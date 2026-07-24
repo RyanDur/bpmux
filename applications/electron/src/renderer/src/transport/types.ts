@@ -2,11 +2,11 @@ import type { MessageType } from './messageType'
 import type { RoadmapCard, RoadmapOutcomeData } from '../board/selectRoadmap'
 import type { BoardIterationData } from '../board/selectIterations'
 import type { BoardColumn, Epic, Story } from '../board/types'
-export interface ServerWelcome {
+export type ServerWelcome = {
   type: 'welcome'
 }
 
-export interface ServerChatMessage {
+export type ServerChatMessage = {
   type: 'message'
   from: string
   text: string
@@ -21,7 +21,7 @@ export interface ServerChatMessage {
   state_snapshot?: StateSnapshotPayload | null
 }
 
-export interface ReactionAggregateWire {
+export type ReactionAggregateWire = {
   message_key: string
   emoji: string
   count: number
@@ -30,7 +30,7 @@ export interface ReactionAggregateWire {
 
 export type CiStateWire = 'unknown' | 'green' | 'red' | 'running' | 'quota_exhausted'
 
-export interface CiSnapshotWire {
+export type CiSnapshotWire = {
   state: CiStateWire
   run_id?: number | null
   head_sha?: string | null
@@ -39,13 +39,13 @@ export interface CiSnapshotWire {
   url?: string | null
 }
 
-interface DroppedEventWire {
+type DroppedEventWire = {
   story_id: number
   error: string
   ts: string
 }
 
-export interface SyncStatusWire {
+export type SyncStatusWire = {
   last_ingest_at: string | null
   last_push_at: string | null
   pending_events: number
@@ -59,7 +59,7 @@ type RosterRoleWire = 'Designer' | 'Dev' | 'Pm' | 'Owner' | 'Other'
 
 export type PresenceWire = 'Online' | 'Busy' | 'Idle' | 'Offline' | 'Blocked' | 'Help'
 
-export interface RosterMemberWire {
+export type RosterMemberWire = {
   routing_id: string
   name: string
   identity: string
@@ -89,31 +89,31 @@ export type StateDeltaPayload =
   | { domain: 'iterations'; iterations: BoardIterationData[] }
   | { domain: 'roadmap'; roadmap: RoadmapCard[] }
 
-export interface ReactionsChannelSnapshot {
+export type ReactionsChannelSnapshot = {
   channel: string
   aggregated: ReactionAggregateWire[]
 }
 
-export interface StateSnapshotPayload {
+export type StateSnapshotPayload = {
   reactions: ReactionsChannelSnapshot[]
   ci?: CiSnapshotWire | null
   roster: RosterMemberWire[]
 }
 
-export interface CommentWire {
+export type CommentWire = {
   id: number
   author: string
   body: string
   created_at: string
 }
 
-export interface ServerCommentsHydrated {
+export type ServerCommentsHydrated = {
   type: 'comments_hydrated'
   story_id: number
   comments: CommentWire[]
 }
 
-export interface TimelineEventWire {
+export type TimelineEventWire = {
   event: string
   actor: string
   ts: string
@@ -121,13 +121,13 @@ export interface TimelineEventWire {
   body?: string
 }
 
-export interface ServerTimelineHydrated {
+export type ServerTimelineHydrated = {
   type: 'timeline_hydrated'
   story_id: number
   events: TimelineEventWire[]
 }
 
-export interface HistoryMessageWire {
+export type HistoryMessageWire = {
   from: string
   text: string
   ts: string
@@ -136,51 +136,51 @@ export interface HistoryMessageWire {
   message_type?: string | null
 }
 
-export interface ServerHistoryHydrated {
+export type ServerHistoryHydrated = {
   type: 'history_hydrated'
   messages: HistoryMessageWire[]
 }
 
-export interface ServerHistoryPageLoaded {
+export type ServerHistoryPageLoaded = {
   type: 'history_page_loaded'
   request_id: number
   messages: HistoryMessageWire[]
 }
 
-export interface ServerError {
+export type ServerError = {
   type: 'error'
   reason: string
 }
 
-export interface ServerPong {
+export type ServerPong = {
   type: 'pong'
 }
 
-export interface ServerPtyOutput {
+export type ServerPtyOutput = {
   type: 'pty_output'
   terminal_id: string
   data: string
 }
 
-export interface ServerPtyExit {
+export type ServerPtyExit = {
   type: 'pty_exit'
   terminal_id: string
 }
 
-export interface ServerPtyMode {
+export type ServerPtyMode = {
   type: 'pty_mode'
   terminal_id: string
   bracketed_paste: boolean
 }
 
-interface ClientIdentify {
+type ClientIdentify = {
   type: 'identify'
   name: string
   tool?: string
   owner_nonce?: string
 }
 
-interface ClientSend {
+type ClientSend = {
   type: 'send'
   text: string
   to?: string[]
@@ -188,29 +188,29 @@ interface ClientSend {
   message_type?: string
 }
 
-interface ClientPing {
+type ClientPing = {
   type: 'ping'
 }
 
-interface ClientPtySubscribe {
+type ClientPtySubscribe = {
   type: 'pty_subscribe'
   terminal_id: string
 }
 
-interface ClientPtyInput {
+type ClientPtyInput = {
   type: 'pty_input'
   terminal_id: string
   data: string
 }
 
-interface ClientPtyResize {
+type ClientPtyResize = {
   type: 'pty_resize'
   terminal_id: string
   cols: number
   rows: number
 }
 
-interface ClientReactionToggle {
+type ClientReactionToggle = {
   type: 'reaction_toggle'
   channel: string
   message_key: string
@@ -218,55 +218,55 @@ interface ClientReactionToggle {
   user: string
 }
 
-interface ClientCommentsHydrate {
+type ClientCommentsHydrate = {
   type: 'comments_hydrate'
   story_id: number
 }
 
-interface ClientTimelineHydrate {
+type ClientTimelineHydrate = {
   type: 'timeline_hydrate'
   story_id: number
 }
 
-interface ClientHistoryHydrate {
+type ClientHistoryHydrate = {
   type: 'history_hydrate'
   chat_limit: number
   activity_limit: number
 }
 
-interface ClientHistoryPage {
+type ClientHistoryPage = {
   type: 'history_page'
   request_id: number
   before: string
   limit: number
 }
 
-interface ClientSetOutcomeHorizon {
+type ClientSetOutcomeHorizon = {
   type: 'set_outcome_horizon'
   outcome_id: number
   horizon: 'now' | 'next' | 'later'
 }
 
-interface ClientReorderOutcomeIteration {
+type ClientReorderOutcomeIteration = {
   type: 'reorder_outcome_iteration'
   outcome_id: number
   iteration_id: number
   position: number
 }
 
-interface ClientReprioritizeOutcome {
+type ClientReprioritizeOutcome = {
   type: 'reprioritize_outcome'
   outcome_id: number
   position: number
 }
 
-interface ClientReorderIteration {
+type ClientReorderIteration = {
   type: 'reorder_iteration'
   iteration_id: number
   position: number
 }
 
-interface ClientAddStoryToIteration {
+type ClientAddStoryToIteration = {
   type: 'add_story_to_iteration'
   iteration_id: number
   story_id: number
@@ -291,7 +291,7 @@ export type ClientMessage =
   | ClientReorderIteration
   | ClientAddStoryToIteration
 
-export interface ChatMessage {
+export type ChatMessage = {
   id: string
   from: string
   text: string

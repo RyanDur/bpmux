@@ -4,7 +4,7 @@ import StoryTypeGlyph from './StoryTypeGlyph'
 import { storyNavigateLabel } from './storyNavigateLabel'
 import { storyTypeFromLabels, type Story } from './types'
 
-interface Props {
+type Props = {
   stories: Story[]
   open: boolean
   onToggle: (open: boolean) => void

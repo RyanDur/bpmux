@@ -12,7 +12,7 @@ import { messageKey, shortName } from './MessageItem.utils'
 import { isMessageInScope } from './scope'
 import './MessageList.css'
 
-interface Props {
+type Props = {
   messages: ChatMessage[]
   visibleClasses: ReadonlySet<MessageClass>
   reactionsByMessage?: Map<string, import('../chat/useReactions').AggregatedReaction[]>

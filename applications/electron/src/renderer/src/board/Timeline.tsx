@@ -90,7 +90,7 @@ const renderTimelineList = (
   )
 }
 
-interface Props {
+type Props = {
   story: Story
   apiBase: string | undefined
   focusTimeline?: boolean

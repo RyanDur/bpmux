@@ -4,7 +4,7 @@ import { useInputHistory } from './useInputHistory'
 import { useInputKeyboard } from './useInputKeyboard'
 import './Input.css'
 
-interface Props {
+type Props = {
   onSend: (text: string, addressee: string | null) => void
   disabled?: boolean
   placeholder?: string

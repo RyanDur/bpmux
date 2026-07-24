@@ -21,7 +21,7 @@ const mergeComments = (
   return [...server, ...keepOptimistic].sort((a, b) => a.created_at.localeCompare(b.created_at))
 }
 
-interface Props {
+type Props = {
   storyId: number
   apiBase: string | undefined
   authToken: string | undefined

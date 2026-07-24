@@ -5,19 +5,19 @@ import type {
   StateSnapshotPayload,
   TimelineEventWire
 } from '../transport/types'
-export interface SendOptions {
+export type SendOptions = {
   addressee?: string | null
   to?: string[] | null
 }
 
-export interface ConnectionConfig {
+export type ConnectionConfig = {
   url: string | undefined
   apiBase?: string
   authToken?: string
   ownerNonce?: string
 }
 
-export interface HistoryMessage {
+export type HistoryMessage = {
   from: string
   text: string
   ts: string

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMessageFilter, type MessageFilter } from './chat/useMessageFilter'
 import { readScope, writeScope } from './scopeStorage'
 
-export interface UseScopeResult {
+export type UseScopeResult = {
   recipient: string[] | null
   allView: boolean
   filter: MessageFilter

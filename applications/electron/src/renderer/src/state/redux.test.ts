@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { applyMiddleware, createStore, type Middleware } from './redux'
 
-interface CountState {
+type CountState = {
   count: number
 }
 

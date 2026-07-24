@@ -1,6 +1,6 @@
 export const WATCHER_UNHEALTHY_THRESHOLD_MS = 120_000
 
-export interface WatcherHealthInput {
+export type WatcherHealthInput = {
   last_successful_poll_at?: string | null
 }
 

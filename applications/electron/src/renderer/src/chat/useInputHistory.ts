@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react'
 
 const MAX_HISTORY = 50
 
-export interface HistoryNavigation {
+export type HistoryNavigation = {
   record: (text: string) => void
   prev: (currentValue: string) => string | null
   next: () => string | null

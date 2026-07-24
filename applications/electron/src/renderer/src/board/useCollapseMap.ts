@@ -32,7 +32,7 @@ const writeStored = (
   }
 }
 
-export interface CollapseMap {
+export type CollapseMap = {
   isOpen: (key: string, defaultOpen: boolean) => boolean
   setOpen: (key: string, open: boolean) => void
 }

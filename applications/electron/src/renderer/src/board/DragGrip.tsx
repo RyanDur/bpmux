@@ -2,7 +2,7 @@ import { GripIcon } from './GripIcon'
 import { STORY_GRIP_TEST_ID } from './testIds'
 import { type GripDragProps } from './useDragReorder'
 
-export interface DragGripProps {
+export type DragGripProps = {
   storyId: number
   gripDragProps: GripDragProps
 }

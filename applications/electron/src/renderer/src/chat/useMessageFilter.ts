@@ -31,7 +31,7 @@ const resolveInitial = (channelKey: string): Set<MessageClass> => {
   return new Set(stored ?? DEFAULT_VISIBLE)
 }
 
-export interface MessageFilter {
+export type MessageFilter = {
   visible: Set<MessageClass>
   toggle: (cls: MessageClass) => void
   reset: () => void

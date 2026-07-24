@@ -7,7 +7,7 @@ import type { Story } from './types'
 export type ActionMode = 'idle' | 'bug-question' | 'rejecting'
 type BusyKind = 'accept' | 'reject' | null
 
-interface Props {
+type Props = {
   story: Story
   canAct: boolean
   apiBase: string | undefined

@@ -3,7 +3,7 @@ import { eagerReorder } from './iterationMembers'
 import { columnFor, type Story, type ColumnState } from './types'
 import { addStoryToIterationRequested, type StateAction } from '../state/actions'
 
-export interface UseBoardReorderOptions {
+export type UseBoardReorderOptions = {
   data: Story[] | null
   setData: React.Dispatch<React.SetStateAction<Story[] | null>>
   setReorderAnnounce: (msg: string) => void

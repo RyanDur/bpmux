@@ -3,7 +3,7 @@ import { useInputHistory } from './useInputHistory'
 import { useInputKeyboard } from './useInputKeyboard'
 import './TerminalCompose.css'
 
-interface TerminalComposeProps {
+type TerminalComposeProps = {
   composeKey: string
   onSubmit: (line: string) => void
   inputRef?: React.Ref<HTMLTextAreaElement>

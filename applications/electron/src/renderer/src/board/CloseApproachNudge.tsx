@@ -1,6 +1,6 @@
 import './CloseApproachNudge.css'
 
-interface CloseApproachNudgeProps {
+type CloseApproachNudgeProps = {
   currentIterationName: string
   nextIterationName: string
   activeGapLabel: string

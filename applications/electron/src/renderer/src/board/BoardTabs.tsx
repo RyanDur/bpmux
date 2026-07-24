@@ -36,7 +36,7 @@ const doneGroups = (groupOrder: GroupSpec[]): GroupSpec[] =>
 const iceboxGroup = (groupOrder: GroupSpec[]): GroupSpec | undefined =>
   groupOrder.find((g) => g.state === ICEBOX_COLUMN)
 
-interface BoardTabsProps {
+type BoardTabsProps = {
   stories: Story[]
   iterations: BoardIterationData[]
   groupOrder: GroupSpec[]

@@ -15,7 +15,7 @@ type SyntheticDataTransfer = Pick<
   'setData' | 'getData' | 'types' | 'effectAllowed' | 'dropEffect'
 >
 
-export interface DragGesture {
+export type DragGesture = {
   dataTransfer: SyntheticDataTransfer
   start: (grip: HTMLElement) => void
   over: (target: HTMLElement) => void

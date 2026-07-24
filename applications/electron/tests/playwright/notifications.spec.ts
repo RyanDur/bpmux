@@ -16,7 +16,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { launchIsolatedWithWindow } from '../helpers/launch'
 import { ChatPage } from '../pages/chatPage'
 
-interface NotificationCall {
+type NotificationCall = {
   title: string
   body: string
 }

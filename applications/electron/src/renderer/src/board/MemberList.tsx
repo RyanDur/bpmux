@@ -28,7 +28,7 @@ const activeStateLabel = (story: Story, groupOrder: GroupSpec[]): string | null 
   return groupOrder.find((group) => group.state === column)?.label ?? null
 }
 
-interface Props {
+type Props = {
   iteration: BoardIterationData
   members: IterationMember[]
   setPending: (storyId: number, iterationId: number, position: number) => void

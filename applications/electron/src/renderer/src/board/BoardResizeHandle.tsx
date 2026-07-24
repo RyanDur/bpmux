@@ -8,7 +8,7 @@ import {
 } from './BoardResizeHandle.utils'
 import './BoardResizeHandle.css'
 
-interface Props {
+type Props = {
   width: number
   setWidth: (next: number) => void
   onToggleCollapse: (viewportWidth: number) => void

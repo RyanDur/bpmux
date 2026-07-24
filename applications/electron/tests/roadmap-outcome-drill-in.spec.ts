@@ -26,7 +26,7 @@ const beforeContent = (win: Page, selector: string): Promise<string> =>
     return el === null ? '' : getComputedStyle(el, '::before').content
   }, selector)
 
-interface IterationSnapshot {
+type IterationSnapshot = {
   id: number
   iteration_order: number | null
   readiness: { drafted: boolean } | null

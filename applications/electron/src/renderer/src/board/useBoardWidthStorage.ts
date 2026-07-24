@@ -24,7 +24,7 @@ const writeWidth = (prefix: string, viewerIdentity: string, width: number): void
   }
 }
 
-export interface BoardWidthStorage {
+export type BoardWidthStorage = {
   width: number
   setWidth: (next: number) => void
 }

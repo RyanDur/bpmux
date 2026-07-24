@@ -2,7 +2,7 @@ import { test, expect, type Page, type Locator } from '@playwright/test'
 import { launchIsolatedWithWindow } from './helpers/launch'
 import { ChatPage } from './pages/chatPage'
 
-interface State {
+type State = {
   value: string
   selStart: number
   selEnd: number

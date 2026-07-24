@@ -3,7 +3,7 @@ import { iterationReorderRequested } from '../state/actions'
 import { eagerReorder, type IterationDragPayload } from './iterationMembers'
 import type { BoardIterationData } from './selectIterations'
 
-interface UseIterationReorderResult {
+type UseIterationReorderResult = {
   reorderIterationByDrag: (payload: IterationDragPayload, targetKey: number) => void
   reorderIterationByKeyboard: (iteration: BoardIterationData, direction: 'up' | 'down') => void
 }

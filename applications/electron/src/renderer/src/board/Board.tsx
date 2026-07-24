@@ -31,7 +31,7 @@ const initialCollapseState: CollapseState = (() => {
   return result as CollapseState
 })()
 
-interface BoardProps {
+type BoardProps = {
   hidden?: boolean
   width?: number
 }

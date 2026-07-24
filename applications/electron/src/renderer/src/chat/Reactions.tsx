@@ -8,7 +8,7 @@ const PICKER_HEIGHT_ESTIMATE = 44
 
 type PickerPosition = 'above' | 'below'
 
-interface PickerProps {
+type PickerProps = {
   anchorRef: React.RefObject<HTMLButtonElement | null>
   onPick: (emoji: string) => void
   onClose: () => void
@@ -80,7 +80,7 @@ const Picker = ({ anchorRef, onPick, onClose }: PickerProps): React.JSX.Element 
   )
 }
 
-interface Props {
+type Props = {
   reactions: AggregatedReaction[] | undefined
   viewer: string
   onToggle: (emoji: string) => void
@@ -144,7 +144,7 @@ const Reactions = ({ reactions, viewer, onToggle }: Props): React.JSX.Element | 
   )
 }
 
-interface AddOnlyProps {
+type AddOnlyProps = {
   onToggle: (emoji: string) => void
 }
 
