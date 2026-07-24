@@ -8,9 +8,9 @@ import {
   type StateSnapshotPayload,
   type SyncStatusWire
 } from './types'
-import type { RoadmapCard, RoadmapOutcomeData } from '../board/roadmap/selectRoadmap'
-import type { BoardIterationData } from '../board/iteration/selectIterations'
-import { column, epic, story } from '../board/boardDecoder'
+import type { RoadmapCard, RoadmapOutcomeData } from '@components/board/roadmap/selectRoadmap'
+import type { BoardIterationData } from '@components/board/iteration/selectIterations'
+import { column, epic, story } from '@components/board/boardDecoder'
 
 const ciState = D.literalUnion('unknown', 'green', 'red', 'running', 'quota_exhausted')
 

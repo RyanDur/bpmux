@@ -1,4 +1,4 @@
-import type { HistoryMessageWire } from '../transport/types'
+import type { HistoryMessageWire } from '@transport/types'
 
 type PendingRequest = {
   resolve: (messages: HistoryMessageWire[]) => void

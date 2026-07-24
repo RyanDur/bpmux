@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import AppShell from './AppShell'
-import { useMessageHistory } from './chat/useMessageHistory'
-import { useNotifications } from './chat/useNotifications'
-import { capPerPush } from './transport/messageCap'
-import { sendChat, startConnection, useConnectionStatus, useLiveMessages } from './state'
+import { useMessageHistory } from '@components/chat/useMessageHistory'
+import { useNotifications } from '@components/chat/useNotifications'
+import { capPerPush } from '@transport/messageCap'
+import { sendChat, startConnection, useConnectionStatus, useLiveMessages } from '@state'
 
 const App = (): React.JSX.Element => {
   const bridge = window.bpmux

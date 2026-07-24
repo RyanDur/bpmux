@@ -15,6 +15,27 @@
     "paths": {
       "@renderer/*": [
         "src/renderer/src/*"
+      ],
+      "@components/*": [
+        "src/renderer/src/components/*"
+      ],
+      "@state": [
+        "src/renderer/src/state/index.ts"
+      ],
+      "@state/*": [
+        "src/renderer/src/state/*"
+      ],
+      "@transport": [
+        "src/renderer/src/transport/index.ts"
+      ],
+      "@transport/*": [
+        "src/renderer/src/transport/*"
+      ],
+      "@test-support": [
+        "src/renderer/src/test-support/index.ts"
+      ],
+      "@test-support/*": [
+        "src/renderer/src/test-support/*"
       ]
     }
   }

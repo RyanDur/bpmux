@@ -1,4 +1,4 @@
-import type { ClientMessage } from '../transport/types'
+import type { ClientMessage } from '@transport/types'
 
 let captured: ClientMessage[] | null = null
 

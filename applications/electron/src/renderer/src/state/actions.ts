@@ -4,7 +4,7 @@ import type {
   StateDeltaPayload,
   StateSnapshotPayload,
   TimelineEventWire
-} from '../transport/types'
+} from '@transport/types'
 export type SendOptions = {
   addressee?: string | null
   to?: string[] | null

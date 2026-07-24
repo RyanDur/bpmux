@@ -102,16 +102,16 @@ export default defineConfig(
   // can hold the element) OR own-scroll-position / component-local UI tracker:
   {
     files: [
-      'src/renderer/src/chat/Reactions.tsx', // pickerRef/addButtonRef/buttonRef — DOM .contains + getBoundingClientRect (click-outside + popover anchor); no declarative API
-      'src/renderer/src/chat/Input.tsx', // textareaRef — DOM .focus + .setSelectionRange (caret); no declarative API
-      'src/renderer/src/chat/TerminalView.tsx', // containerRef — xterm.open() mounts the terminal into a DOM element; no declarative API
-      'src/renderer/src/board/drill-in/DrillIn.tsx', // articleRef — DOM .focus on mount; no declarative API
-      'src/renderer/src/board/drill-in/DrillInActions.tsx', // textareaRef .focus + rejectDialogRef .showModal/.close (modal — Ryan's exemplar); no declarative API
+      'src/renderer/src/components/chat/Reactions.tsx', // pickerRef/addButtonRef/buttonRef — DOM .contains + getBoundingClientRect (click-outside + popover anchor); no declarative API
+      'src/renderer/src/components/chat/Input.tsx', // textareaRef — DOM .focus + .setSelectionRange (caret); no declarative API
+      'src/renderer/src/components/chat/TerminalView.tsx', // containerRef — xterm.open() mounts the terminal into a DOM element; no declarative API
+      'src/renderer/src/components/board/drill-in/DrillIn.tsx', // articleRef — DOM .focus on mount; no declarative API
+      'src/renderer/src/components/board/drill-in/DrillInActions.tsx', // textareaRef .focus + rejectDialogRef .showModal/.close (modal — Ryan's exemplar); no declarative API
       'src/renderer/src/AppShell.tsx', // confirmDialogRef — dialog.showModal() for the confirm-before-close modal (focus-trap + Esc-cancel + top-layer); no declarative API
-      'src/renderer/src/board/drill-in/Timeline.tsx', // detailsRef — DOM .open + .scrollIntoView; no declarative API
-      'src/renderer/src/board/useBoardNavigation.ts', // asideRef — DOM .querySelector focus mgmt (board keyboard-nav owns the region ref); no declarative API
-      'src/renderer/src/board/drill-in/Comments.tsx', // commentsListRef/commentTextareaRef — DOM scroll-measure/focus; wasAtBottomRef — reads scroll-position off the component's own element (state = stale-closure/render-storm)
-      'src/renderer/src/chat/useScrollGutter.ts' // listRef — DOM scroll-measure; atBottomRef — own-scroll-position read in handler; lastLengthRef — component-local list-grew detector (no service home)
+      'src/renderer/src/components/board/drill-in/Timeline.tsx', // detailsRef — DOM .open + .scrollIntoView; no declarative API
+      'src/renderer/src/components/board/useBoardNavigation.ts', // asideRef — DOM .querySelector focus mgmt (board keyboard-nav owns the region ref); no declarative API
+      'src/renderer/src/components/board/drill-in/Comments.tsx', // commentsListRef/commentTextareaRef — DOM scroll-measure/focus; wasAtBottomRef — reads scroll-position off the component's own element (state = stale-closure/render-storm)
+      'src/renderer/src/components/chat/useScrollGutter.ts' // listRef — DOM scroll-measure; atBottomRef — own-scroll-position read in handler; lastLengthRef — component-local list-grew detector (no service home)
     ],
     rules: { 'no-restricted-syntax': ['error', ...NO_DIV_SPAN] }
   },
@@ -125,7 +125,7 @@ export default defineConfig(
   // ref, no no-refs exception spent (Ryan-canon: never spend the no-refs exception when an
   // obvious different solution exists; waive the lesser misfiring lint instead).
   {
-    files: ['src/renderer/src/sidebar/TerminalList.tsx'],
+    files: ['src/renderer/src/components/sidebar/TerminalList.tsx'],
     rules: { 'jsx-a11y/no-autofocus': 'off' }
   },
   {

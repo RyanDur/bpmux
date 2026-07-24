@@ -27,7 +27,11 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@renderer': resolve(__dirname, './src/renderer/src')
+      '@renderer': resolve(__dirname, './src/renderer/src'),
+      '@components': resolve(__dirname, './src/renderer/src/components'),
+      '@state': resolve(__dirname, './src/renderer/src/state'),
+      '@transport': resolve(__dirname, './src/renderer/src/transport'),
+      '@test-support': resolve(__dirname, './src/renderer/src/test-support')
     }
   }
 })

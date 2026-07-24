@@ -1,7 +1,7 @@
 import type { MessageType } from './messageType'
-import type { RoadmapCard, RoadmapOutcomeData } from '../board/roadmap/selectRoadmap'
-import type { BoardIterationData } from '../board/iteration/selectIterations'
-import type { BoardColumn, Epic, Story } from '../board/types'
+import type { RoadmapCard, RoadmapOutcomeData } from '@components/board/roadmap/selectRoadmap'
+import type { BoardIterationData } from '@components/board/iteration/selectIterations'
+import type { BoardColumn, Epic, Story } from '@components/board/types'
 export type ServerWelcome = {
   type: 'welcome'
 }
