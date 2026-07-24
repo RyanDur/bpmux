@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { type MessageClass } from '../chat/useMessageFilter'
+import { type MessageClass } from './useMessageFilter'
 
 const pill = (cls: MessageClass): HTMLInputElement =>
   screen.getByRole<HTMLInputElement>('checkbox', { name: new RegExp(`^${cls} messages`) })

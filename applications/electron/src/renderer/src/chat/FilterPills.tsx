@@ -1,4 +1,4 @@
-import { MESSAGE_CLASSES, type MessageClass, type MessageFilter } from '../chat/useMessageFilter'
+import { MESSAGE_CLASSES, type MessageClass, type MessageFilter } from './useMessageFilter'
 import './FilterPills.css'
 
 type Props = {

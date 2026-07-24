@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useBoardData } from './useBoardData'
-import type { BoardIterationData } from './selectIterations'
+import type { BoardIterationData } from './iteration/selectIterations'
 import { GROUP_ORDER, type BoardColumn, type Epic, type Story } from './types'
 const story = (overrides: Partial<Story>): Story => ({
   id: 0,

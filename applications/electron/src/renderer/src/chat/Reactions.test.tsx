@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import Reactions, { EMOJI_PALETTE, ReactionAddButton } from './Reactions'
-import type { AggregatedReaction } from '../chat/useReactions'
+import type { AggregatedReaction } from './useReactions'
 
 const SEEDED_REACTIONS: AggregatedReaction[] = [
   {

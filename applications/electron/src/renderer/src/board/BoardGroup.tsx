@@ -1,6 +1,6 @@
-import StoryRow from './StoryRow'
-import { SortableList } from './SortableList'
-import { READY_STORY_DRAG } from './sortableDragConfigs'
+import StoryRow from './stories/StoryRow'
+import { SortableList } from './drag/SortableList'
+import { READY_STORY_DRAG } from './drag/sortableDragConfigs'
 import { isClosedIterationMarker, type Story, type ColumnState, type GroupSpec } from './types'
 
 type BoardGroupProps = {

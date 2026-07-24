@@ -2,17 +2,9 @@ import { useEffect, useState } from 'react'
 import { type ApiContext, describeHttpError } from '../transport/http'
 import type { ConnectionStatus } from '../transport/types'
 import { RENDERER_IDENTITY, subscribePtyExit } from '../state'
-import {
-  readTerminalLayout,
-  restoreTerminalLayout,
-  writeTerminalLayout
-} from '../terminal/terminalLayout'
-import { readTerminalNames, writeTerminalNames } from '../terminal/terminalNames'
-import {
-  closeTerminalRequest,
-  listTerminalsRequest,
-  spawnTerminalRequest
-} from '../terminal/terminalApi'
+import { readTerminalLayout, restoreTerminalLayout, writeTerminalLayout } from './terminalLayout'
+import { readTerminalNames, writeTerminalNames } from './terminalNames'
+import { closeTerminalRequest, listTerminalsRequest, spawnTerminalRequest } from './terminalApi'
 
 type TerminalState = 'spawning' | 'ready' | 'spawn-failed' | 'exited'
 

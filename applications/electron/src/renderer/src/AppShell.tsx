@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Board from './board/Board'
-import BoardResizeHandle from './board/BoardResizeHandle'
+import BoardResizeHandle from './board/resize/BoardResizeHandle'
 import Chat from './chat/Chat'
 import CiGlyph from './ci/CiGlyph'
 import { useBoardLayout } from './board/useBoardLayout'

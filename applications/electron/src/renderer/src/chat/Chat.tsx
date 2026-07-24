@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { classOf, useMessageFilter, type MessageClass } from '../chat/useMessageFilter'
-import { useReactions } from '../chat/useReactions'
+import { classOf, useMessageFilter, type MessageClass } from './useMessageFilter'
+import { useReactions } from './useReactions'
 import Metrics from '../metrics/Metrics'
 import { RENDERER_IDENTITY, useConnectionStatus, type SendOptions } from '../state'
 import type { ChatMessage } from '../transport/types'

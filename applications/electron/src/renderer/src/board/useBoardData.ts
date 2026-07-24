@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { buildMembershipIndex } from './iterationMembers'
-import type { BoardIterationData } from './selectIterations'
+import type { BoardIterationData } from './iteration/selectIterations'
 import {
   groupOrderOrFallback,
   groupStoriesIn,

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
 import Board from './Board'
 import { type Story } from './types'
-import { boardIteration, seedIterations } from './Iteration.fixtures'
+import { boardIteration, seedIterations } from './iteration/Iteration.fixtures'
 import { dispatchState, resetStateForTest } from '../state/store'
 import { mirrorDeltaReceived } from '../state/actions'
 

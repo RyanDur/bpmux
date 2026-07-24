@@ -8,8 +8,8 @@ import type {
   TimelineEventWire
 } from '../transport/types'
 import type { BoardColumn, Epic, Story } from '../board/types'
-import type { RoadmapCard, RoadmapOutcomeData } from '../board/selectRoadmap'
-import type { BoardIterationData } from '../board/selectIterations'
+import type { RoadmapCard, RoadmapOutcomeData } from '../board/roadmap/selectRoadmap'
+import type { BoardIterationData } from '../board/iteration/selectIterations'
 import type { MirrorState } from '../transport/state-delta'
 
 export type StateSnapshot = {

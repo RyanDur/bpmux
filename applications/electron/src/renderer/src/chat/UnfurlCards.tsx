@@ -1,4 +1,4 @@
-import { extractUrls, useUnfurl, type UnfurlData } from '../chat/useUnfurl'
+import { extractUrls, useUnfurl, type UnfurlData } from './useUnfurl'
 import './UnfurlCards.css'
 
 type Props = {

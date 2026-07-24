@@ -3,7 +3,7 @@ import { cleanup, render } from '@testing-library/react'
 import { useState } from 'react'
 import FilterPills from './FilterPills'
 import { filterPills } from './FilterPills.page'
-import { MESSAGE_CLASSES, type MessageClass, type MessageFilter } from '../chat/useMessageFilter'
+import { MESSAGE_CLASSES, type MessageClass, type MessageFilter } from './useMessageFilter'
 
 afterEach(() => cleanup())
 beforeEach(() => window.localStorage.clear())

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { isNearTopUnderColumnReverse } from '../chat/scrollMath'
+import { isNearTopUnderColumnReverse } from './scrollMath'
 
 const BOTTOM_THRESHOLD_PX = 8
 
