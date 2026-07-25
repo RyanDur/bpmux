@@ -79,6 +79,12 @@ pub enum Command {
         about = "Migrate the existing jsonl message log into the SQLite store before cutover (#1799). Idempotent; drops the ephemeral board_snapshot deltas (#1642); leaves the jsonl as source-of-truth until you verify and flip BPMUX_STORAGE_BACKEND=sqlite."
     )]
     MigrateStorage,
+    #[command(
+        about = "Import another machine's jsonl conversation log into this store. Merges by message identity (id, or content for the id-less era), drops ephemeral board deltas, and restores conversation order by created-at. Idempotent; run with the daemon stopped."
+    )]
+    ImportConversation {
+        source: std::path::PathBuf,
+    },
     #[command(flatten)]
     Messaging(MessagingCommands),
     #[command(flatten)]
@@ -99,6 +105,9 @@ pub fn dispatch(command: &Command) -> Option<anyhow::Result<()>> {
     match command {
         Command::EmitActivity { from, text } => Some(run_emit_activity(from, text)),
         Command::MigrateStorage => Some(super::migrate::run_migrate_storage()),
+        Command::ImportConversation { source } => {
+            Some(super::import::run_import_conversation(source))
+        }
         Command::Messaging(c) => Some(dispatch_messaging(c)),
         Command::Read(c) => Some(dispatch_read(c)),
         Command::Workflow(c) => Some(dispatch_workflow(c)),

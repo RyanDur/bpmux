@@ -61,8 +61,12 @@ mod sqlite_surfaced_topics;
 mod sqlite_users;
 pub use sqlite::*;
 
+mod import;
 mod migrate;
+pub use import::*;
 pub use migrate::*;
+#[cfg(test)]
+mod import_tests;
 #[cfg(test)]
 mod migrate_tests;
 #[cfg(test)]

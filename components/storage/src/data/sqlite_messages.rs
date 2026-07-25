@@ -88,3 +88,19 @@ pub fn all_payloads_asc(conn: &Connection) -> rusqlite::Result<Vec<String>> {
 pub fn clear(conn: &Connection) -> rusqlite::Result<usize> {
     engine::execute(conn, "DELETE FROM messages", [])
 }
+
+pub fn restore_conversation_order(conn: &Connection) -> rusqlite::Result<()> {
+    conn.execute_batch(
+        "BEGIN;
+         CREATE TEMP TABLE conversation_order AS
+           SELECT seq AS arrival_seq,
+                  ROW_NUMBER() OVER (ORDER BY created_at, seq) AS conversation_seq
+           FROM messages;
+         UPDATE messages
+           SET seq = -(SELECT conversation_seq FROM conversation_order
+                       WHERE arrival_seq = messages.seq);
+         UPDATE messages SET seq = -seq;
+         DROP TABLE conversation_order;
+         COMMIT;",
+    )
+}

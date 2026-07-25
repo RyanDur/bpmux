@@ -10,6 +10,7 @@ mod ci;
 mod commands;
 mod help;
 mod http;
+mod import;
 mod lesson;
 mod messaging;
 #[cfg(test)]
