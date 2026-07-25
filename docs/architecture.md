@@ -35,11 +35,14 @@ Evidence:
     mcp/cli 1:1 parity audit.
   - `applications/mcp` — the agents' door: eleven lines (resolve
     ambient identity, run the bridge).
-  - `applications/bpmux` — the packaging bin: main + a 40-line
-    dispatcher over the three doors. Exists because the runtime
-    contract anchors to ONE binary (agent MCP configs self-anchor to
+  - `applications/composition-root` — the one place the server,
+    cli, and mcp shells meet, so the shells never meet each other
+    (Clean Architecture's Main component: it depends on everything,
+    nothing depends on it). Emits the single `bpmux` binary the
+    runtime contract anchors to (agent MCP configs self-anchor to
     the running executable, electron spawns it, self_update watches
-    it). The product name names no substance — only packaging.
+    it). When the three-binary question un-parks, this is the seam
+    to split along — three thin mains, shells untouched.
   - `applications/electron` — the owner's door, a WS client.
 - **One redux-shaped store** — unchanged doctrine: every state change
   flows `dispatch(action) → pure reducers → listeners`; ONE
@@ -98,7 +101,7 @@ friction presses past v5.
 
 ## Storage layer: per-feature ports over swappable engines
 
-Persistence lives at `applications/bpmux/src/storage/` — the INSTANCE
+Persistence lives at `components/storage/` — the INSTANCE
 data store (`data.db` + sibling json/jsonl files under the data dir;
 bpmux has no sessions, so there is no "session store"). The god
 `Storage` trait was split into five feature-owned ports (design:

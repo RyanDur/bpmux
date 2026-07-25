@@ -1,9 +1,13 @@
 [package]
-name = "bpmux"
+name = "composition-root"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "The bpmux binary: packaging over the server, cli, and mcp application shells"
+description = "The composition root: the one place the server, cli, and mcp shells meet, so the shells never meet each other. Emits the single bpmux binary."
+
+[[bin]]
+name = "bpmux"
+path = "src/main.rs"
 
 [dependencies]
 cli = { path = "../cli" }

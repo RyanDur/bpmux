@@ -299,56 +299,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bpmux"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "auth",
- "axum",
- "board",
- "bookmark",
- "bridge",
- "chrono",
- "ci",
- "clap",
- "cli",
- "diag",
- "electron_capture",
- "futures",
- "futures-util",
- "httpmock",
- "hub",
- "integrations",
- "kernel",
- "location",
- "mcp",
- "message",
- "message_log",
- "portable-pty",
- "product_management",
- "protocol",
- "regex",
- "reqwest",
- "rmcp",
- "room",
- "serde_json",
- "server",
- "source_codec",
- "storage",
- "store",
- "sync",
- "telemetry",
- "tempfile",
- "tokio",
- "tokio-tungstenite 0.26.2",
- "tokio-util",
- "transport",
- "user_routing",
- "uuid",
- "workflow",
-]
-
-[[package]]
 name = "bridge"
 version = "0.1.0"
 dependencies = [
@@ -571,6 +521,56 @@ checksum = "ba5a308b75df32fe02788e748662718f03fde005016435c444eea572398219fd"
 dependencies = [
  "bytes",
  "memchr",
+]
+
+[[package]]
+name = "composition-root"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "auth",
+ "axum",
+ "board",
+ "bookmark",
+ "bridge",
+ "chrono",
+ "ci",
+ "clap",
+ "cli",
+ "diag",
+ "electron_capture",
+ "futures",
+ "futures-util",
+ "httpmock",
+ "hub",
+ "integrations",
+ "kernel",
+ "location",
+ "mcp",
+ "message",
+ "message_log",
+ "portable-pty",
+ "product_management",
+ "protocol",
+ "regex",
+ "reqwest",
+ "rmcp",
+ "room",
+ "serde_json",
+ "server",
+ "source_codec",
+ "storage",
+ "store",
+ "sync",
+ "telemetry",
+ "tempfile",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
+ "tokio-util",
+ "transport",
+ "user_routing",
+ "uuid",
+ "workflow",
 ]
 
 [[package]]

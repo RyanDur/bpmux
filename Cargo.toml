@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "applications/bpmux",
+    "applications/composition-root",
     "applications/cli",
     "applications/mcp",
     "applications/server",

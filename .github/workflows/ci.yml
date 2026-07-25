@@ -67,7 +67,7 @@ jobs:
         with:
           shared-key: "vitest-rtl"
       - name: Build bpmux binary (debug; vitest globalSetup requires target/debug/bpmux)
-        run: cargo build -p bpmux
+        run: cargo build -p composition-root
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
