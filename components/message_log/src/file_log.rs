@@ -44,6 +44,27 @@ pub fn read_messages(data_dir: &Path) -> Result<Vec<Message>, LogError> {
     Ok(messages?)
 }
 
+pub fn read_messages_since(
+    data_dir: &Path,
+    cutoff: chrono::DateTime<chrono::Utc>,
+) -> Result<Vec<Message>, LogError> {
+    let path = log_path(data_dir);
+    if !path.exists() {
+        return Ok(vec![]);
+    }
+    let mut recent = Vec::new();
+    for line in std::fs::read_to_string(&path)?.lines() {
+        if line.is_empty() {
+            continue;
+        }
+        let msg: Message = serde_json::from_str(line)?;
+        if msg.ts >= cutoff {
+            recent.push(msg);
+        }
+    }
+    Ok(recent)
+}
+
 pub fn read_recent(
     data_dir: &Path,
     limit: usize,

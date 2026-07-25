@@ -16,6 +16,19 @@ impl<S: Storage> message_log::MessageLog for InstrumentedStorage<S> {
         result
     }
 
+    fn read_messages_since(
+        &self,
+        cutoff: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Vec<Message>, LogError> {
+        let start = Instant::now();
+        let result = self.inner.read_messages_since(cutoff);
+        self.log(&format!(
+            "read_messages_since {:.1}ms",
+            start.elapsed().as_secs_f64() * 1000.0
+        ));
+        result
+    }
+
     fn read_messages(&self) -> Result<Vec<Message>, LogError> {
         let start = Instant::now();
         let result = self.inner.read_messages();

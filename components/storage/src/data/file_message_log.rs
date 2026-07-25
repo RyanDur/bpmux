@@ -11,6 +11,13 @@ impl message_log::MessageLog for FileStorage {
         message_log::read_messages(&self.dir)
     }
 
+    fn read_messages_since(
+        &self,
+        cutoff: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Vec<Message>, LogError> {
+        message_log::read_messages_since(&self.dir, cutoff)
+    }
+
     fn read_recent(
         &self,
         limit: usize,

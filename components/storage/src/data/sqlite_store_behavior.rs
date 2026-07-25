@@ -76,3 +76,34 @@ fn an_outbox_row_round_trips_byte_identically_through_the_real_store() {
         "the SQLite outbox row survives load + save byte-identically — SQLite has no legacy fallback, so this byte-freeze is its only protection"
     );
 }
+
+#[test]
+fn reading_since_a_cutoff_serves_the_window_from_the_indexed_column() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+
+    let mut old = chat("dev", None);
+    old.text = "#1 started long ago".to_string();
+    old.ts = chrono::Utc::now() - chrono::Duration::days(30);
+    let mut recent = chat("dev", None);
+    recent.text = "#2 started".to_string();
+    recent.ts = chrono::Utc::now() - chrono::Duration::hours(2);
+    let mut recent_activity = Message {
+        from: "bpmux".to_string(),
+        text: "#2 delivered".to_string(),
+        ts: chrono::Utc::now() - chrono::Duration::hours(1),
+        message_type: MessageType::Activity,
+        ..Message::default()
+    };
+    recent_activity.ensure_id();
+
+    storage.append_message(&old).unwrap();
+    storage.append_message(&recent).unwrap();
+    storage.append_message(&recent_activity).unwrap();
+
+    let cutoff = chrono::Utc::now() - chrono::Duration::days(14);
+    let window = storage.read_messages_since(cutoff).unwrap();
+
+    let texts: Vec<&str> = window.iter().map(|m| m.text.as_str()).collect();
+    assert_eq!(texts, vec!["#2 started", "#2 delivered"]);
+}

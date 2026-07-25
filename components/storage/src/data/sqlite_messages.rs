@@ -5,6 +5,13 @@ use message::Message;
 use message_log::LogError;
 
 const RECENT_DESC_SQL: &str = "SELECT payload FROM messages ORDER BY seq DESC";
+const SINCE_ASC_SQL: &str = "SELECT payload FROM messages WHERE created_at >= ?1 ORDER BY seq ASC";
+
+pub fn payloads_since_asc(conn: &Connection, cutoff: i64) -> rusqlite::Result<Vec<String>> {
+    let mut stmt = conn.prepare(SINCE_ASC_SQL)?;
+    let rows = stmt.query_map([cutoff], |row| row.get(0))?;
+    rows.collect()
+}
 
 pub fn append(
     conn: &Connection,

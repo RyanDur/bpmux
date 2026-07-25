@@ -62,3 +62,36 @@ fn read_messages_skips_zero_lines_with_legacy_state_delta_variant() {
     assert_eq!(parsed.len(), 3, "all 3 lines parse — none dropped");
     assert!(parsed[1].state_delta.is_none(), "legacy variant → None");
 }
+
+#[test]
+fn reading_since_a_cutoff_leaves_old_history_on_disk() {
+    let dir = TempDir::new().expect("temp dir");
+    let old = Message {
+        from: "dev".to_string(),
+        text: "#1 started long ago".to_string(),
+        ts: Utc::now() - chrono::Duration::days(30),
+        ..Message::default()
+    };
+    let recent_chat = Message {
+        from: "dev".to_string(),
+        text: "#2 started".to_string(),
+        ts: Utc::now() - chrono::Duration::hours(2),
+        ..Message::default()
+    };
+    let recent_activity = Message {
+        from: "bpmux".to_string(),
+        text: "#2 delivered".to_string(),
+        message_type: message::MessageType::Activity,
+        ts: Utc::now() - chrono::Duration::hours(1),
+        ..Message::default()
+    };
+    append_message(dir.path(), &old).expect("append old");
+    append_message(dir.path(), &recent_chat).expect("append recent chat");
+    append_message(dir.path(), &recent_activity).expect("append recent activity");
+
+    let cutoff = Utc::now() - chrono::Duration::days(14);
+    let recent = read_messages_since(dir.path(), cutoff).expect("read since");
+
+    let texts: Vec<&str> = recent.iter().map(|m| m.text.as_str()).collect();
+    assert_eq!(texts, vec!["#2 started", "#2 delivered"]);
+}

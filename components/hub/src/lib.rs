@@ -154,6 +154,13 @@ impl Hub {
         self.storage.read_messages()
     }
 
+    pub fn read_messages_since(
+        &self,
+        cutoff: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Vec<Message>, LogError> {
+        self.storage.read_messages_since(cutoff)
+    }
+
     pub fn read_recent(
         &self,
         limit: usize,

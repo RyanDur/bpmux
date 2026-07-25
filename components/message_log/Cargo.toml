@@ -6,12 +6,12 @@ license.workspace = true
 description = "Durable message log: the MessageLog port and its file-backed format"
 
 [dependencies]
+chrono = { workspace = true }
 message = { path = "../message" }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-chrono = { workspace = true }
 tempfile = { workspace = true }
 
 [lints]

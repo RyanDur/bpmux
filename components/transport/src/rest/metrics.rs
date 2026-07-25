@@ -7,7 +7,9 @@ use axum::response::IntoResponse;
 use super::shared::{err_body, json_headers};
 
 pub async fn get_metrics(State(hub): State<Arc<hub::Hub>>) -> impl IntoResponse {
-    let messages = match hub.read_messages() {
+    let now = chrono::Utc::now();
+    let window_start = now - chrono::Duration::days(view::velocity::WINDOW_DAYS);
+    let messages = match hub.read_messages_since(window_start) {
         Ok(m) => m,
         Err(e) => {
             return (
@@ -17,7 +19,7 @@ pub async fn get_metrics(State(hub): State<Arc<hub::Hub>>) -> impl IntoResponse 
             );
         }
     };
-    let now = chrono::Utc::now();
+
     let metrics = view::velocity::compute(&messages, now, |_| true);
     (
         StatusCode::OK,

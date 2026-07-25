@@ -79,6 +79,18 @@ impl message_log::MessageLog for SqliteStorage {
         messages::read_recent(&self.lock(), limit, offset, matches)
     }
 
+    fn read_messages_since(
+        &self,
+        cutoff: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Vec<Message>, LogError> {
+        let payloads = messages::payloads_since_asc(&self.lock(), cutoff.timestamp())
+            .map_err(engine::io_err)?;
+        payloads
+            .iter()
+            .map(|p| serde_json::from_str(p).map_err(LogError::from))
+            .collect()
+    }
+
     fn clear_messages(&self) -> Result<(), std::io::Error> {
         messages::clear(&self.lock())
             .map(|_| ())
