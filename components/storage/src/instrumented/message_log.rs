@@ -16,12 +16,14 @@ impl<S: Storage> message_log::MessageLog for InstrumentedStorage<S> {
         result
     }
 
-    fn search_hits(&self, needle_lower: &str) -> Result<Vec<u64>, LogError> {
-        self.inner.search_hits(needle_lower)
-    }
-
-    fn read_cluster(&self, center: u64, radius: u64) -> Result<Vec<(u64, Message)>, LogError> {
-        self.inner.read_cluster(center, radius)
+    fn search_conversations(
+        &self,
+        needle_lower: &str,
+        radius: u64,
+        accept: &mut dyn FnMut(&[Message], usize) -> bool,
+    ) -> Result<(), LogError> {
+        self.inner
+            .search_conversations(needle_lower, radius, accept)
     }
 
     fn read_messages_since(

@@ -45,24 +45,33 @@ impl message_log::MessageLog for SqliteStorage {
         messages::read_recent(&self.lock(), limit, offset, matches)
     }
 
-    fn search_hits(&self, needle_lower: &str) -> Result<Vec<u64>, LogError> {
-        messages::search_hit_seqs(&self.lock(), needle_lower)
+    fn search_conversations(
+        &self,
+        needle_lower: &str,
+        radius: u64,
+        accept: &mut dyn FnMut(&[Message], usize) -> bool,
+    ) -> Result<(), LogError> {
+        let hits = messages::search_hit_seqs(&self.lock(), needle_lower)
             .map_err(engine::io_err)
-            .map_err(LogError::from)
-    }
-
-    fn read_cluster(&self, center: u64, radius: u64) -> Result<Vec<(u64, Message)>, LogError> {
-        let start = center.saturating_sub(radius) as i64;
-        let end = (center + radius) as i64;
-        let rows =
-            messages::payloads_in_seq_range(&self.lock(), start, end).map_err(engine::io_err)?;
-        rows.iter()
-            .map(|(seq, p)| {
-                serde_json::from_str(p)
-                    .map(|m| (*seq as u64, m))
-                    .map_err(LogError::from)
-            })
-            .collect()
+            .map_err(LogError::from)?;
+        message_log::drive_search(
+            hits,
+            radius,
+            |center, r| {
+                let start = center.saturating_sub(r) as i64;
+                let end = (center + r) as i64;
+                let rows = messages::payloads_in_seq_range(&self.lock(), start, end)
+                    .map_err(engine::io_err)?;
+                rows.iter()
+                    .map(|(seq, p)| {
+                        serde_json::from_str(p)
+                            .map(|m| (*seq as u64, m))
+                            .map_err(LogError::from)
+                    })
+                    .collect()
+            },
+            accept,
+        )
     }
 
     fn read_messages_since(

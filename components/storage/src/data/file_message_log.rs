@@ -11,12 +11,19 @@ impl message_log::MessageLog for FileStorage {
         message_log::read_messages(&self.dir)
     }
 
-    fn search_hits(&self, needle_lower: &str) -> Result<Vec<u64>, LogError> {
-        message_log::search_hits(&self.dir, needle_lower)
-    }
-
-    fn read_cluster(&self, center: u64, radius: u64) -> Result<Vec<(u64, Message)>, LogError> {
-        message_log::read_cluster(&self.dir, center, radius)
+    fn search_conversations(
+        &self,
+        needle_lower: &str,
+        radius: u64,
+        accept: &mut dyn FnMut(&[Message], usize) -> bool,
+    ) -> Result<(), LogError> {
+        let hits = message_log::search_hits(&self.dir, needle_lower)?;
+        message_log::drive_search(
+            hits,
+            radius,
+            |center, r| message_log::read_cluster(&self.dir, center, r),
+            accept,
+        )
     }
 
     fn read_messages_since(

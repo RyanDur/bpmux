@@ -154,12 +154,14 @@ impl Hub {
         self.storage.read_messages()
     }
 
-    pub fn search_hits(&self, needle_lower: &str) -> Result<Vec<u64>, LogError> {
-        self.storage.search_hits(needle_lower)
-    }
-
-    pub fn read_cluster(&self, center: u64, radius: u64) -> Result<Vec<(u64, Message)>, LogError> {
-        self.storage.read_cluster(center, radius)
+    pub fn search_conversations(
+        &self,
+        needle_lower: &str,
+        radius: u64,
+        accept: &mut dyn FnMut(&[Message], usize) -> bool,
+    ) -> Result<(), LogError> {
+        self.storage
+            .search_conversations(needle_lower, radius, accept)
     }
 
     pub fn read_messages_since(

@@ -24,12 +24,12 @@ pub struct SearchFilters {
 }
 
 pub fn evaluate_candidate(
-    cluster: &[(u64, Message)],
-    center_ordinal: u64,
+    cluster: &[Message],
+    center_index: usize,
     filters: &SearchFilters,
 ) -> Option<SearchResult> {
     let query_lower = filters.query.to_lowercase();
-    let (_, center) = cluster.iter().find(|(o, _)| *o == center_ordinal)?;
+    let center = cluster.get(center_index)?;
     if !center.is_chat() {
         return None;
     }
@@ -50,18 +50,13 @@ pub fn evaluate_candidate(
             return None;
         }
     }
-    let chat_cluster: Vec<(u64, Message)> = cluster
+    let match_index = cluster[..center_index]
         .iter()
-        .filter(|(_, m)| m.is_chat())
-        .cloned()
-        .collect();
-    let match_index = chat_cluster
-        .iter()
-        .position(|(o, _)| *o == center_ordinal)
-        .unwrap_or(0);
+        .filter(|m| m.is_chat())
+        .count();
     Some(SearchResult {
         match_index,
-        messages: chat_cluster.into_iter().map(|(_, m)| m).collect(),
+        messages: cluster.iter().filter(|m| m.is_chat()).cloned().collect(),
         message_class: msg_class,
     })
 }

@@ -119,20 +119,24 @@ fn search_hits_and_clusters_reconstruct_the_conversation_neighborhood() {
         storage.append_message(&m).unwrap();
     }
 
-    let hits = storage.search_hits("needle").unwrap();
-    assert_eq!(hits.len(), 1, "one message carries the needle");
+    let mut clusters: Vec<(Vec<String>, usize)> = Vec::new();
+    storage
+        .search_conversations("needle", 5, &mut |cluster, center| {
+            let texts = cluster.iter().map(|m| m.text.clone()).collect();
+            clusters.push((texts, center));
+            true
+        })
+        .unwrap();
 
-    let cluster = storage.read_cluster(hits[0], 5).unwrap();
-    let texts: Vec<&str> = cluster.iter().map(|(_, m)| m.text.as_str()).collect();
+    let (texts, center) = clusters.pop().expect("one conversation carries the needle");
+    assert!(clusters.is_empty(), "no other conversation matches");
     assert_eq!(
         texts,
         vec!["opening remarks", "the needle sits here", "closing remarks"],
         "the cluster carries the neighborhood in order"
     );
-    let (center_ordinal, center) = cluster
-        .iter()
-        .find(|(o, _)| *o == hits[0])
-        .expect("the hit ordinal resolves inside its own cluster");
-    assert_eq!(center.text, "the needle sits here");
-    assert_eq!(*center_ordinal, hits[0]);
+    assert_eq!(
+        texts[center], "the needle sits here",
+        "the match marks its own message"
+    );
 }
