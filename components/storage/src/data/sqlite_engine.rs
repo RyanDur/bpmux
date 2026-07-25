@@ -9,7 +9,7 @@ const DB_FILE: &str = "data.db";
 const BUSY_TIMEOUT: Duration = Duration::from_secs(5);
 
 mod embedded {
-    refinery::embed_migrations!();
+    refinery::embed_migrations!("../../databases/conversation-db/migrations");
 }
 
 pub fn io_err(e: rusqlite::Error) -> std::io::Error {

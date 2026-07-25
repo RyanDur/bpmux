@@ -2,7 +2,8 @@
 
 #[test]
 fn migrations_are_forward_only_versioned() {
-    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("migrations");
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../databases/conversation-db/migrations");
     let mut count = 0;
     for entry in std::fs::read_dir(&dir).expect("migrations dir must exist") {
         let name = entry.unwrap().file_name().to_string_lossy().into_owned();

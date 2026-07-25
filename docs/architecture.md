@@ -85,7 +85,6 @@ all — 2026-07-10 through 2026-07-22).
 
 ## Deferred by owner decision
 
-- `databases/` top-level — Ryan pairs on it post-lift.
 - The shared verb-contract component (mcp and cli affordances are 1:1
   by audit today; by construction when both doors derive from one
   contract).
@@ -103,7 +102,15 @@ friction presses past v5.
 
 Persistence lives at `components/storage/` — the INSTANCE
 data store (`data.db` + sibling json/jsonl files under the data dir;
-bpmux has no sessions, so there is no "session store"). The god
+bpmux has no sessions, so there is no "session store"). The schema is
+a first-class design artifact per the Continuum's structure: refinery
+migrations live at `databases/conversation-db/migrations/` — a
+top-level peer of `applications/` and `components/`, named for the
+domain it persists (the collaboration record: conversation, users,
+outbox, surfaced topics), not for the crate that reads it. The
+storage engine embeds them at build time; schema change = new
+append-only `V<n>__*.sql`, never an edit to an applied version.
+(Owner ruling 2026-07-25, resolving the deferred `databases/` item.) The god
 `Storage` trait was split into five feature-owned ports (design:
 `docs/design/storage-repo-ports.md`): `SurfacedTopicsRepo`
 (awareness), `MessageLog` (log), `LessonRepo` (memory), `OutboxRepo`
