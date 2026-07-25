@@ -53,6 +53,7 @@ pub use file_outbox::load_outbox_from_disk;
 
 mod sqlite;
 mod sqlite_engine;
+mod sqlite_message_log;
 mod sqlite_messages;
 mod sqlite_meta;
 mod sqlite_outbox;
