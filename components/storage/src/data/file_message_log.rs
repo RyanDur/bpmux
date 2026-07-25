@@ -28,11 +28,6 @@ impl message_log::MessageLog for FileStorage {
     }
 
     fn clear_messages(&self) -> Result<(), std::io::Error> {
-        let log_path = self.dir.join("log.jsonl");
-        match std::fs::remove_file(&log_path) {
-            Ok(()) => Ok(()),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
-            Err(e) => Err(e),
-        }
+        message_log::clear_messages(&self.dir)
     }
 }

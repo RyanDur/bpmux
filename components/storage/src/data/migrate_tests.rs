@@ -164,14 +164,14 @@ fn recovers_from_a_partial_interrupted_run() {
 
     let report = migrate_file_log_to_sqlite(dir.path()).unwrap();
     assert!(!report.already_complete);
-    assert_eq!(report.migrated, 2);
+    assert_eq!(report.migrated, 3);
 
     let migrated = read_target(dir.path());
     let texts: Vec<String> = migrated.iter().map(|m| m.text.clone()).collect();
     assert_eq!(
         texts,
-        vec!["a", "b"],
-        "the stale partial row is cleared; the store converges to exactly the source survivors"
+        vec!["a", "b", "leftover-partial-row"],
+        "sqlite appends write through to the jsonl, so an interrupted-era append survives recovery instead of being discarded — the store converges to the source, and the source now includes it"
     );
 }
 

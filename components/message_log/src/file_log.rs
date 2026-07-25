@@ -44,6 +44,30 @@ pub fn read_messages(data_dir: &Path) -> Result<Vec<Message>, LogError> {
     Ok(messages?)
 }
 
+pub fn clear_messages(data_dir: &Path) -> Result<(), std::io::Error> {
+    match std::fs::remove_file(log_path(data_dir)) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(e),
+    }
+}
+
+pub fn rotate_if_larger_than(data_dir: &Path, max_bytes: u64) -> Result<bool, std::io::Error> {
+    let path = log_path(data_dir);
+    let size = match std::fs::metadata(&path) {
+        Ok(meta) => meta.len(),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(e) => return Err(e),
+    };
+    if size <= max_bytes {
+        return Ok(false);
+    }
+    let stamp = chrono::Utc::now().format("%Y%m%dT%H%M%S%3f");
+    let archive = data_dir.join(format!("messages-archived-{stamp}.jsonl"));
+    std::fs::rename(&path, archive)?;
+    Ok(true)
+}
+
 pub fn read_messages_since(
     data_dir: &Path,
     cutoff: chrono::DateTime<chrono::Utc>,

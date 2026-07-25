@@ -27,6 +27,12 @@ if [ -f "$LAST_SEEN_FILE" ]; then
   LAST_SEEN=$(cat "$LAST_SEEN_FILE" 2>/dev/null)
 fi
 
+# Rotation resets the file: a shrunken log means the tail was archived,
+# so start counting from the fresh file rather than staying silent forever.
+if [ "$LAST_SEEN" -gt "$TOTAL_LINES" ] 2>/dev/null; then
+  LAST_SEEN=0
+fi
+
 # No new lines since last check
 if [ "$TOTAL_LINES" -le "$LAST_SEEN" ] 2>/dev/null; then
   exit 0

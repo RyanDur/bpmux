@@ -47,6 +47,8 @@ impl SqliteStorage {
     }
 }
 
+const TAIL_MAX_BYTES: u64 = 8 * 1024 * 1024;
+
 impl message_log::MessageLog for SqliteStorage {
     fn append_message(&self, msg: &Message) -> Result<(), LogError> {
         let payload = serde_json::to_string(msg)?;
@@ -59,6 +61,13 @@ impl message_log::MessageLog for SqliteStorage {
         let sender = self.resolve_sender(&conn, msg);
         messages::append(&conn, &msg.id, created_at, sender, &message_type, &payload)
             .map_err(engine::io_err)?;
+        drop(conn);
+        message_log::append_message(&self.dir, msg)?;
+        if let Err(e) = message_log::rotate_if_larger_than(&self.dir, TAIL_MAX_BYTES) {
+            diag::log_diag(&format!(
+                "jsonl tail rotation failed ({e}); the tail keeps growing until it succeeds"
+            ));
+        }
         Ok(())
     }
 
@@ -92,6 +101,7 @@ impl message_log::MessageLog for SqliteStorage {
     }
 
     fn clear_messages(&self) -> Result<(), std::io::Error> {
+        message_log::clear_messages(&self.dir)?;
         messages::clear(&self.lock())
             .map(|_| ())
             .map_err(engine::io_err)

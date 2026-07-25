@@ -4,7 +4,8 @@ mod reverse_line_reader;
 pub const DEFAULT_MESSAGE_LIMIT: usize = 20;
 
 pub use file_log::{
-    LogError, append_message, log_path, read_messages, read_messages_since, read_recent,
+    LogError, append_message, clear_messages, log_path, read_messages, read_messages_since,
+    read_recent, rotate_if_larger_than,
 };
 
 pub trait MessageLog: Send + Sync {

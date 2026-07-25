@@ -384,9 +384,13 @@ contract!(
 
 #[test]
 fn storage_backend_resolves_from_env_value_purely() {
-    assert_eq!(StorageBackend::from_env_value(None), StorageBackend::File);
+    assert_eq!(StorageBackend::from_env_value(None), StorageBackend::Sqlite);
     assert_eq!(
         StorageBackend::from_env_value(Some("unrecognized")),
+        StorageBackend::Sqlite
+    );
+    assert_eq!(
+        StorageBackend::from_env_value(Some("file")),
         StorageBackend::File
     );
     assert_eq!(
@@ -418,7 +422,7 @@ fn file_backend_writes_the_jsonl_log_to_disk() {
 }
 
 #[test]
-fn sqlite_backend_writes_the_db_not_the_flat_log() {
+fn sqlite_backend_writes_the_db_and_the_hook_readable_tail() {
     let dir = tempfile::tempdir().unwrap();
     let (tx, _rx) = tokio::sync::broadcast::channel::<Message>(hub::BROADCAST_CHANNEL_CAPACITY);
     let hub = hub::Hub::with_backend(
@@ -439,8 +443,8 @@ fn sqlite_backend_writes_the_db_not_the_flat_log() {
     );
     let jsonl_path = message_log::log_path(dir.path());
     assert!(
-        !jsonl_path.exists(),
-        "the sqlite backend must NOT also write the flat jsonl log at {jsonl_path:?}"
+        jsonl_path.exists(),
+        "the sqlite backend writes through to the jsonl tail the plugin hook reads at {jsonl_path:?}"
     );
 
     let messages = hub.storage.read_messages().unwrap();

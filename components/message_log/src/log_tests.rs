@@ -95,3 +95,55 @@ fn reading_since_a_cutoff_leaves_old_history_on_disk() {
     let texts: Vec<&str> = recent.iter().map(|m| m.text.as_str()).collect();
     assert_eq!(texts, vec!["#2 started", "#2 delivered"]);
 }
+
+#[test]
+fn clearing_removes_the_log_the_appends_actually_wrote() {
+    let dir = TempDir::new().expect("temp dir");
+    let msg = Message {
+        from: "dev".to_string(),
+        text: "soon to be forgotten".to_string(),
+        ts: Utc::now(),
+        ..Message::default()
+    };
+    append_message(dir.path(), &msg).expect("append");
+
+    clear_messages(dir.path()).expect("clear");
+
+    assert_eq!(read_messages(dir.path()).expect("read").len(), 0);
+}
+
+#[test]
+fn rotation_archives_a_swollen_log_and_starts_fresh() {
+    let dir = TempDir::new().expect("temp dir");
+    let msg = Message {
+        from: "dev".to_string(),
+        text: "x".repeat(200),
+        ts: Utc::now(),
+        ..Message::default()
+    };
+    for _ in 0..5 {
+        append_message(dir.path(), &msg).expect("append");
+    }
+
+    let rotated = rotate_if_larger_than(dir.path(), 500).expect("rotate");
+
+    assert!(rotated, "a log past the threshold rotates");
+    assert_eq!(
+        read_messages(dir.path()).expect("read").len(),
+        0,
+        "the current log starts fresh"
+    );
+    let archives: Vec<_> = std::fs::read_dir(dir.path())
+        .expect("dir")
+        .filter_map(Result::ok)
+        .filter(|e| {
+            e.file_name()
+                .to_string_lossy()
+                .starts_with("messages-archived-")
+        })
+        .collect();
+    assert_eq!(archives.len(), 1, "the history lands in one archive file");
+
+    let not_rotated = rotate_if_larger_than(dir.path(), 500).expect("second rotate");
+    assert!(!not_rotated, "a fresh log stays put");
+}
