@@ -11,6 +11,14 @@ impl message_log::MessageLog for FileStorage {
         message_log::read_messages(&self.dir)
     }
 
+    fn search_hits(&self, needle_lower: &str) -> Result<Vec<u64>, LogError> {
+        message_log::search_hits(&self.dir, needle_lower)
+    }
+
+    fn read_cluster(&self, center: u64, radius: u64) -> Result<Vec<(u64, Message)>, LogError> {
+        message_log::read_cluster(&self.dir, center, radius)
+    }
+
     fn read_messages_since(
         &self,
         cutoff: chrono::DateTime<chrono::Utc>,

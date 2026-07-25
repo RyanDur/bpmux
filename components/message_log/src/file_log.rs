@@ -68,6 +68,42 @@ pub fn rotate_if_larger_than(data_dir: &Path, max_bytes: u64) -> Result<bool, st
     Ok(true)
 }
 
+pub fn search_hits(data_dir: &Path, needle_lower: &str) -> Result<Vec<u64>, LogError> {
+    let path = log_path(data_dir);
+    if !path.exists() {
+        return Ok(vec![]);
+    }
+    let mut hits = Vec::new();
+    for (ordinal, line) in std::fs::read_to_string(&path)?.lines().enumerate() {
+        if !line.is_empty() && line.to_lowercase().contains(needle_lower) {
+            hits.push(ordinal as u64);
+        }
+    }
+    Ok(hits)
+}
+
+pub fn read_cluster(
+    data_dir: &Path,
+    center: u64,
+    radius: u64,
+) -> Result<Vec<(u64, Message)>, LogError> {
+    let path = log_path(data_dir);
+    if !path.exists() {
+        return Ok(vec![]);
+    }
+    let start = center.saturating_sub(radius);
+    let end = center + radius;
+    let mut cluster = Vec::new();
+    for (ordinal, line) in std::fs::read_to_string(&path)?.lines().enumerate() {
+        let ordinal = ordinal as u64;
+        if ordinal < start || ordinal > end || line.is_empty() {
+            continue;
+        }
+        cluster.push((ordinal, serde_json::from_str(line)?));
+    }
+    Ok(cluster)
+}
+
 pub fn read_messages_since(
     data_dir: &Path,
     cutoff: chrono::DateTime<chrono::Utc>,

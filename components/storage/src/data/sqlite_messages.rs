@@ -7,6 +7,26 @@ use message_log::LogError;
 const RECENT_DESC_SQL: &str = "SELECT payload FROM messages ORDER BY seq DESC";
 const SINCE_ASC_SQL: &str = "SELECT payload FROM messages WHERE created_at >= ?1 ORDER BY seq ASC";
 
+pub fn search_hit_seqs(conn: &Connection, needle_lower: &str) -> rusqlite::Result<Vec<u64>> {
+    let mut stmt = conn.prepare(
+        "SELECT seq FROM messages WHERE LOWER(payload) LIKE '%' || ?1 || '%' ORDER BY seq ASC",
+    )?;
+    let rows = stmt.query_map([needle_lower], |row| row.get::<_, i64>(0))?;
+    rows.map(|r| r.map(|s| s as u64)).collect()
+}
+
+pub fn payloads_in_seq_range(
+    conn: &Connection,
+    start: i64,
+    end: i64,
+) -> rusqlite::Result<Vec<(i64, String)>> {
+    let mut stmt = conn.prepare(
+        "SELECT seq, payload FROM messages WHERE seq BETWEEN ?1 AND ?2 ORDER BY seq ASC",
+    )?;
+    let rows = stmt.query_map([start, end], |row| Ok((row.get(0)?, row.get(1)?)))?;
+    rows.collect()
+}
+
 pub fn payloads_since_asc(conn: &Connection, cutoff: i64) -> rusqlite::Result<Vec<String>> {
     let mut stmt = conn.prepare(SINCE_ASC_SQL)?;
     let rows = stmt.query_map([cutoff], |row| row.get(0))?;

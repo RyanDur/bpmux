@@ -22,29 +22,48 @@ pub async fn search_messages(
     axum::Extension(tracker): axum::Extension<TrackerHandle>,
     Query(params): Query<SearchParams>,
 ) -> impl IntoResponse {
-    let messages_part = match hub.read_messages() {
-        Ok(all_messages) => {
-            let message_class = params.message_type.as_deref().and_then(|t| match t {
-                "correction" | "experience" => Some(comprehension::MessageClass::Experience(
-                    comprehension::classifier::ExperienceKind::Correction,
-                )),
-                "decision" => Some(comprehension::MessageClass::Decision),
-                "discussion" => Some(comprehension::MessageClass::Discussion),
-                _ => None,
-            });
-            let filters = comprehension::SearchFilters {
-                query: params.query.clone(),
-                sender: params.sender.clone(),
-                after: params.after.as_ref().and_then(|s| s.parse().ok()),
-                before: params.before.as_ref().and_then(|s| s.parse().ok()),
-                channel: params.channel.clone(),
-                message_class,
-                insight_only: params.message_type.as_deref() == Some("insight"),
-                owner_name: hub.owner_name.clone(),
-            };
-            comprehension::search(&all_messages, &filters)
+    let messages_part = {
+        let message_class = params.message_type.as_deref().and_then(|t| match t {
+            "correction" | "experience" => Some(comprehension::MessageClass::Experience(
+                comprehension::classifier::ExperienceKind::Correction,
+            )),
+            "decision" => Some(comprehension::MessageClass::Decision),
+            "discussion" => Some(comprehension::MessageClass::Discussion),
+            _ => None,
+        });
+        let filters = comprehension::SearchFilters {
+            query: params.query.clone(),
+            sender: params.sender.clone(),
+            after: params.after.as_ref().and_then(|s| s.parse().ok()),
+            before: params.before.as_ref().and_then(|s| s.parse().ok()),
+            channel: params.channel.clone(),
+            message_class,
+            insight_only: params.message_type.as_deref() == Some("insight"),
+            owner_name: hub.owner_name.clone(),
+        };
+        let query_lower = filters.query.to_lowercase();
+        let radius = comprehension::CONTEXT_WINDOW as u64;
+        match hub.search_hits(&query_lower) {
+            Ok(hits) => {
+                let mut results = Vec::new();
+                let mut used_through: Option<u64> = None;
+                for hit in hits {
+                    if used_through.is_some_and(|through| hit <= through) {
+                        continue;
+                    }
+                    let Ok(cluster) = hub.read_cluster(hit, radius) else {
+                        continue;
+                    };
+                    if let Some(result) = comprehension::evaluate_candidate(&cluster, hit, &filters)
+                    {
+                        used_through = Some(hit + radius);
+                        results.push(result);
+                    }
+                }
+                results
+            }
+            Err(_) => Vec::new(),
         }
-        Err(_) => Vec::new(),
     };
 
     let (stories_part, comments_part) = search_stories_and_comments(&tracker, &params.query).await;

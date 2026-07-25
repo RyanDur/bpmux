@@ -8,4 +8,4 @@ mod bayes_tests;
 mod classifier_tests;
 
 pub use classifier::{MessageClass, classify};
-pub use search::{SearchFilters, SearchResult, search};
+pub use search::{CONTEXT_WINDOW, SearchFilters, SearchResult, evaluate_candidate, search};

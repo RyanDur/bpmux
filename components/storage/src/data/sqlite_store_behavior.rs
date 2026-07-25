@@ -107,3 +107,32 @@ fn reading_since_a_cutoff_serves_the_window_from_the_indexed_column() {
     let texts: Vec<&str> = window.iter().map(|m| m.text.as_str()).collect();
     assert_eq!(texts, vec!["#2 started", "#2 delivered"]);
 }
+
+#[test]
+fn search_hits_and_clusters_reconstruct_the_conversation_neighborhood() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+
+    for text in ["opening remarks", "the needle sits here", "closing remarks"] {
+        let mut m = chat("dev", None);
+        m.text = text.to_string();
+        storage.append_message(&m).unwrap();
+    }
+
+    let hits = storage.search_hits("needle").unwrap();
+    assert_eq!(hits.len(), 1, "one message carries the needle");
+
+    let cluster = storage.read_cluster(hits[0], 5).unwrap();
+    let texts: Vec<&str> = cluster.iter().map(|(_, m)| m.text.as_str()).collect();
+    assert_eq!(
+        texts,
+        vec!["opening remarks", "the needle sits here", "closing remarks"],
+        "the cluster carries the neighborhood in order"
+    );
+    let (center_ordinal, center) = cluster
+        .iter()
+        .find(|(o, _)| *o == hits[0])
+        .expect("the hit ordinal resolves inside its own cluster");
+    assert_eq!(center.text, "the needle sits here");
+    assert_eq!(*center_ordinal, hits[0]);
+}

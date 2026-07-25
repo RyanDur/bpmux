@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use message::Message;
 use serde::Serialize;
 
-const CONTEXT_WINDOW: usize = 5;
+pub const CONTEXT_WINDOW: usize = 5;
 
 #[derive(Debug, Serialize)]
 pub struct SearchResult {
@@ -21,6 +21,49 @@ pub struct SearchFilters {
     pub message_class: Option<MessageClass>,
     pub insight_only: bool,
     pub owner_name: String,
+}
+
+pub fn evaluate_candidate(
+    cluster: &[(u64, Message)],
+    center_ordinal: u64,
+    filters: &SearchFilters,
+) -> Option<SearchResult> {
+    let query_lower = filters.query.to_lowercase();
+    let (_, center) = cluster.iter().find(|(o, _)| *o == center_ordinal)?;
+    if !center.is_chat() {
+        return None;
+    }
+    if filters.insight_only && !center.message_type.is_insight() {
+        return None;
+    }
+    if !matches_filters(center, filters, &query_lower) {
+        return None;
+    }
+    let msg_class = classify(center, &filters.owner_name);
+    if let Some(required_class) = filters.message_class {
+        let matches = if required_class.is_experience() {
+            msg_class.is_experience()
+        } else {
+            msg_class == required_class
+        };
+        if !matches {
+            return None;
+        }
+    }
+    let chat_cluster: Vec<(u64, Message)> = cluster
+        .iter()
+        .filter(|(_, m)| m.is_chat())
+        .cloned()
+        .collect();
+    let match_index = chat_cluster
+        .iter()
+        .position(|(o, _)| *o == center_ordinal)
+        .unwrap_or(0);
+    Some(SearchResult {
+        match_index,
+        messages: chat_cluster.into_iter().map(|(_, m)| m).collect(),
+        message_class: msg_class,
+    })
 }
 
 pub fn search(messages: &[Message], filters: &SearchFilters) -> Vec<SearchResult> {

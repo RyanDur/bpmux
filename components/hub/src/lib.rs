@@ -154,6 +154,14 @@ impl Hub {
         self.storage.read_messages()
     }
 
+    pub fn search_hits(&self, needle_lower: &str) -> Result<Vec<u64>, LogError> {
+        self.storage.search_hits(needle_lower)
+    }
+
+    pub fn read_cluster(&self, center: u64, radius: u64) -> Result<Vec<(u64, Message)>, LogError> {
+        self.storage.read_cluster(center, radius)
+    }
+
     pub fn read_messages_since(
         &self,
         cutoff: chrono::DateTime<chrono::Utc>,

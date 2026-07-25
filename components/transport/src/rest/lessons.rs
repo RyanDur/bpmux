@@ -29,33 +29,34 @@ pub async fn get_lessons(
     State(hub): State<Arc<hub::Hub>>,
     Query(params): Query<LessonsQuery>,
 ) -> impl IntoResponse {
+    if let Some(limit) = params.limit {
+        let mut lessons = hub.storage.load_lessons().lessons;
+        lessons.sort_by(|a, b| {
+            b.reinforcement_count
+                .cmp(&a.reinforcement_count)
+                .then_with(|| b.established.cmp(&a.established))
+        });
+        lessons.truncate(limit);
+        let mut text = format!("{} top lessons\n", lessons.len());
+        let mut watch_topics = Vec::new();
+        for l in &lessons {
+            text.push_str(&format!(
+                "\n{} ({}): {}\n",
+                l.topic, l.author_role, l.lesson
+            ));
+            if !watch_topics.contains(&l.topic) {
+                watch_topics.push(l.topic.clone());
+            }
+        }
+        text.push_str(&format!("\nWatch topics: {}\n", watch_topics.join(", ")));
+        return (StatusCode::OK, text);
+    }
+
     match hub.read_messages() {
         Ok(messages) => {
             let mut index = memory::lessons::build_index(&messages, &hub.owner_name);
             let saved = hub.storage.load_lessons();
             index.lessons = saved.lessons;
-
-            if let Some(limit) = params.limit {
-                index.lessons.sort_by(|a, b| {
-                    b.reinforcement_count
-                        .cmp(&a.reinforcement_count)
-                        .then_with(|| b.established.cmp(&a.established))
-                });
-                index.lessons.truncate(limit);
-                let mut text = format!("{} top lessons\n", index.lessons.len());
-                let mut watch_topics = Vec::new();
-                for l in &index.lessons {
-                    text.push_str(&format!(
-                        "\n{} ({}): {}\n",
-                        l.topic, l.author_role, l.lesson
-                    ));
-                    if !watch_topics.contains(&l.topic) {
-                        watch_topics.push(l.topic.clone());
-                    }
-                }
-                text.push_str(&format!("\nWatch topics: {}\n", watch_topics.join(", ")));
-                return (StatusCode::OK, text);
-            }
 
             let groups = memory::lessons::group_by_topic(&index);
             let topic_filter = params.topic.as_deref().map(str::to_lowercase);
