@@ -6,6 +6,8 @@ mod state_snapshot;
 mod subscription;
 mod wire;
 
+pub const GITHUB_BASE_URL: &str = "https://github.com";
+
 pub use chat::{BROADCAST_ALL, Message, MessageType};
 pub use matching::{addressee_matches, from_matches, to_reaches};
 pub use multi_depth::{DeepDetail, MultiDepthPayload};

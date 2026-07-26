@@ -306,6 +306,9 @@ fn ci_router(seeded: &store_test_support::SeededStore) -> axum::Router {
     axum::Router::new()
         .route("/api/ci", axum::routing::get(transport::rest::get_ci))
         .layer(axum::Extension(seeded.select()))
+        .layer(axum::Extension(ci::ActionsUrl::for_repo(Some((
+            "acme", "bpmux",
+        )))))
 }
 
 fn dispatch_ci_snapshot(

@@ -69,11 +69,12 @@ fn reactions_to_wire(aggregated: &[AggregatedReaction]) -> Vec<ReactionAggregate
 
 pub struct CiHubBroadcaster {
     hub: Arc<hub::Hub>,
+    actions_url: ci::ActionsUrl,
 }
 
 impl CiHubBroadcaster {
-    pub fn new(hub: Arc<hub::Hub>) -> Self {
-        Self { hub }
+    pub fn new(hub: Arc<hub::Hub>, actions_url: ci::ActionsUrl) -> Self {
+        Self { hub, actions_url }
     }
 }
 
@@ -83,7 +84,7 @@ impl CiBroadcastListener for CiHubBroadcaster {
         broadcast_state_delta(
             &self.hub,
             StateDeltaPayload::Ci {
-                snapshot: ci_to_wire(snap),
+                snapshot: ci_to_wire(snap, &self.actions_url),
             },
             "ci_listener",
         );
@@ -109,13 +110,13 @@ impl CiBroadcastListener for CiHubBroadcaster {
     }
 }
 
-fn ci_to_wire(snap: &CiSnapshot) -> CiSnapshotWire {
+fn ci_to_wire(snap: &CiSnapshot, actions_url: &ci::ActionsUrl) -> CiSnapshotWire {
     CiSnapshotWire {
         state: snap.state.into(),
         run_id: snap.run_id,
         head_sha: snap.head_sha.clone(),
         display_title: snap.display_title.clone(),
         last_successful_poll_at: None,
-        url: Some(ci::github_actions_url()),
+        url: Some(actions_url.as_str().to_string()),
     }
 }

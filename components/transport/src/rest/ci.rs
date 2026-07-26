@@ -2,8 +2,11 @@ use super::shared::{TrackerHandle, err_body, json_headers};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 
-pub async fn get_ci(axum::Extension(select): axum::Extension<store::Select>) -> impl IntoResponse {
-    let report = select.select(|state| ci::slice::report_from_state(&state.ci));
+pub async fn get_ci(
+    axum::Extension(select): axum::Extension<store::Select>,
+    axum::Extension(actions_url): axum::Extension<ci::ActionsUrl>,
+) -> impl IntoResponse {
+    let report = select.select(|state| ci::slice::report_from_state(&state.ci, &actions_url));
     (
         StatusCode::OK,
         json_headers(),

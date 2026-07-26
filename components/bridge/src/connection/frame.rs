@@ -32,7 +32,7 @@ pub(super) async fn handle_message_frame(
     }
     if let Some((event, payload)) = state_delta
         .as_deref()
-        .and_then(|delta| delta.to_subscription_event(&ts, &ci::github_actions_url()))
+        .and_then(|delta| delta.to_subscription_event(&ts))
     {
         subscriptions.dispatch(event, payload).await;
         return;

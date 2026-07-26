@@ -1,26 +1,17 @@
-pub const GITHUB_BASE_URL: &str = "https://github.com";
+pub use message::GITHUB_BASE_URL;
 
-pub fn github_actions_url() -> String {
-    resolve_ci_actions_url(
-        std::env::var("BPMUX_CI_ACTIONS_URL").ok(),
-        std::env::var("BPMUX_REPO").ok(),
-    )
-}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ActionsUrl(String);
 
-pub(crate) fn resolve_ci_actions_url(configured: Option<String>, repo: Option<String>) -> String {
-    let clean = |value: String| {
-        let trimmed = value.trim().to_string();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed)
+impl ActionsUrl {
+    pub fn for_repo(repo: Option<(&str, &str)>) -> Self {
+        match repo {
+            Some((owner, name)) => Self(format!("{GITHUB_BASE_URL}/{owner}/{name}/actions")),
+            None => Self(GITHUB_BASE_URL.to_string()),
         }
-    };
-    if let Some(url) = configured.and_then(clean) {
-        return url;
     }
-    if let Some(repo) = repo.and_then(clean) {
-        return format!("{GITHUB_BASE_URL}/{repo}/actions");
+
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
-    GITHUB_BASE_URL.to_string()
 }

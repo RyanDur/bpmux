@@ -115,11 +115,11 @@ pub fn last_updated_at(state: &CiState) -> Option<String> {
     state.last_updated_at.clone()
 }
 
-pub fn report_from_state(state: &CiState) -> crate::CiStateReport {
+pub fn report_from_state(state: &CiState, actions_url: &crate::ActionsUrl) -> crate::CiStateReport {
     match &state.snapshot {
-        None => crate::unknown_ci_state_report(),
+        None => crate::unknown_ci_state_report(actions_url),
         Some(snap) => {
-            let mut report = crate::report_from_event(snap.to_ci_event());
+            let mut report = crate::report_from_event(snap.to_ci_event(), actions_url);
             report.last_successful_poll_at = state.last_successful_poll_at.clone();
             report.last_updated_at = state.last_updated_at.clone();
             report

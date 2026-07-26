@@ -104,6 +104,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         .layer(axum::Extension(lessons))
         .layer(axum::Extension(transitions))
         .layer(axum::Extension(ci_runs))
+        .layer(axum::Extension(store.actions_url().clone()))
         .layer(axum::Extension(store.selector()))
         .layer(axum::Extension(store))
         .layer(axum::Extension(dispatch))

@@ -23,7 +23,14 @@ pub fn build_store(
     tracker: Option<Arc<dyn CiPollFetch>>,
     parent_ct: CancellationToken,
 ) -> Store {
-    build_store_with_outbox(hub, data_gateways, tracker, parent_ct, Vec::new())
+    build_store_with_outbox(
+        hub,
+        data_gateways,
+        tracker,
+        parent_ct,
+        Vec::new(),
+        ci::ActionsUrl::for_repo(None),
+    )
 }
 
 pub(crate) fn build_store_with_outbox(
@@ -32,6 +39,7 @@ pub(crate) fn build_store_with_outbox(
     tracker: Option<Arc<dyn CiPollFetch>>,
     parent_ct: CancellationToken,
     initial_outbox: Vec<source_sync::QueuedWrite>,
+    actions_url: ci::ActionsUrl,
 ) -> Store {
     Store::from_parts(assemble(
         hub,
@@ -39,6 +47,7 @@ pub(crate) fn build_store_with_outbox(
         tracker,
         parent_ct,
         initial_outbox,
+        actions_url,
     ))
 }
 
@@ -53,6 +62,7 @@ pub(crate) fn build_store_with_refresh<A: sync::SourceAdapter + 'static>(
     codec: Arc<dyn product_management::label_codec::LabelCodec + Send + Sync>,
     ingest_interval: Duration,
     hydration_interval: Duration,
+    actions_url: ci::ActionsUrl,
 ) -> (Store, Arc<SyncOrchestrator>) {
     let outbox_sink = data_gateways.outbox.clone();
     let parts = assemble(
@@ -61,6 +71,7 @@ pub(crate) fn build_store_with_refresh<A: sync::SourceAdapter + 'static>(
         tracker,
         parent_ct.clone(),
         initial_outbox,
+        actions_url,
     );
     let store_select = store::Select::new(std::sync::Arc::downgrade(&parts.app_store));
     let refresh = Arc::new(SyncOrchestrator::new(
@@ -132,6 +143,7 @@ fn assemble(
     tracker: Option<Arc<dyn CiPollFetch>>,
     parent_ct: CancellationToken,
     initial_outbox: Vec<source_sync::QueuedWrite>,
+    actions_url: ci::ActionsUrl,
 ) -> StoreParts {
     let rate_limit_observer = tracker
         .as_ref()
@@ -161,6 +173,7 @@ fn assemble(
     )]));
     let ci_listeners: CiListeners = Arc::new(Mutex::new(vec![Arc::new(CiHubBroadcaster::new(
         hub.clone(),
+        actions_url.clone(),
     ))]));
     app_store.add_listener(Arc::new(RosterBroadcast::new(roster_listeners.clone())));
     app_store.add_listener(Arc::new(ReactionsBroadcast::new(
@@ -172,7 +185,9 @@ fn assemble(
         hub.clone(),
         parent_ct,
         rate_limit_observer.clone(),
-        Arc::new(transport::ci_watcher::CiWatcherDriver),
+        Arc::new(transport::ci_watcher::CiWatcherDriver {
+            actions_url: actions_url.clone(),
+        }),
     ));
     app_store.add_listener(ci_poll);
     app_store.add_listener(Arc::new(RoutingPersister::new(data_gateways.users.clone())));
@@ -186,6 +201,7 @@ fn assemble(
         hub,
         rate_limit_observer,
         app_store,
+        actions_url,
         ci_listeners,
         roster_listeners,
         reactions_listeners,

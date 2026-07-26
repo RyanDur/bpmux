@@ -1,11 +1,7 @@
 use super::state_delta::StateDeltaPayload;
 
 impl StateDeltaPayload {
-    pub fn to_subscription_event(
-        &self,
-        ts: &str,
-        ci_url: &str,
-    ) -> Option<(&'static str, serde_json::Value)> {
+    pub fn to_subscription_event(&self, ts: &str) -> Option<(&'static str, serde_json::Value)> {
         match self {
             StateDeltaPayload::BoardInvalidated { reason } => {
                 Some(("board_invalidated", serde_json::json!({ "reason": reason })))
@@ -18,7 +14,10 @@ impl StateDeltaPayload {
                     "run_id": snapshot.run_id,
                     "head_sha": snapshot.head_sha,
                     "display_title": snapshot.display_title,
-                    "url": ci_url,
+                    "url": snapshot
+                        .url
+                        .clone()
+                        .unwrap_or_else(|| crate::GITHUB_BASE_URL.to_string()),
                 }),
             )),
             StateDeltaPayload::StoryTransition { transition } => Some((

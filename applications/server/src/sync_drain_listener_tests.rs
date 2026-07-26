@@ -64,6 +64,7 @@ async fn write_queued_burst_single_flights_one_drain_that_pushes_each_write_once
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         Duration::from_secs(60),
         Duration::from_secs(15),
+        ci::ActionsUrl::for_repo(Some(("acme", "bpmux"))),
     );
     let store: Arc<Store> = Arc::new(store_inner);
     orch.mutate(tag_added(5001, "one")).unwrap();
@@ -113,6 +114,7 @@ async fn polling_liveness_facts_never_drain_a_seeded_outbox() {
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         Duration::from_secs(60),
         Duration::from_secs(15),
+        ci::ActionsUrl::for_repo(Some(("acme", "bpmux"))),
     );
     let store: Arc<Store> = Arc::new(store_inner);
     store
@@ -169,6 +171,7 @@ async fn a_mutated_write_is_selectable_the_moment_mutate_returns() {
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         Duration::from_secs(60),
         Duration::from_secs(15),
+        ci::ActionsUrl::for_repo(Some(("acme", "bpmux"))),
     );
     let store: Arc<Store> = Arc::new(store_inner);
     orch.mutate(tag_added(7001, "awaiting team")).unwrap();
@@ -208,6 +211,7 @@ async fn an_ingested_upsert_is_selectable_the_moment_refresh_returns() {
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         Duration::from_secs(60),
         Duration::from_secs(15),
+        ci::ActionsUrl::for_repo(Some(("acme", "bpmux"))),
     );
     let store: Arc<Store> = Arc::new(store_inner);
     orch.refresh_all().await.unwrap();

@@ -189,7 +189,7 @@ async fn polling_liveness_facts_never_refire_the_ci_fan_out() {
 #[tokio::test]
 async fn ci_listener_emits_typed_state_delta() {
     let (hub, mut rx, _dir) = fresh_hub();
-    let listener = CiHubBroadcaster::new(hub);
+    let listener = CiHubBroadcaster::new(hub, ci::ActionsUrl::for_repo(Some(("acme", "bpmux"))));
     let snap = CiSnapshot {
         state: CiState::Green,
         run_id: Some(7),

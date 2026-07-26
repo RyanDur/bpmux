@@ -17,7 +17,7 @@ mod log_store_tests;
 mod runs;
 mod state_report;
 
-pub use actions_url::{GITHUB_BASE_URL, github_actions_url};
+pub use actions_url::{ActionsUrl, GITHUB_BASE_URL};
 pub use broadcast::{
     build_dev_ci_signal, build_multi_depth_for_transition, compute_broadcast_text,
 };

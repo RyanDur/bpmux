@@ -550,14 +550,15 @@ fn persisted_roster_delta_with_pascalcase_survives_and_keeps_typed_values() {
 }
 
 #[test]
-fn ci_state_changed_subscription_event_pins_conclusion_and_emits_the_caller_supplied_url() {
+fn ci_state_changed_subscription_event_carries_the_snapshot_url() {
     let payload: StateDeltaPayload = serde_json::from_value(serde_json::json!({
         "domain": "ci",
-        "snapshot": {"state": "green", "run_id": 99, "head_sha": "sha1", "display_title": "build"}
+        "snapshot": {"state": "green", "run_id": 99, "head_sha": "sha1", "display_title": "build",
+                     "url": "https://github.com/acme/bpmux/actions"}
     }))
     .expect("ci delta parses");
     let (event_class, body) = payload
-        .to_subscription_event("2026-07-03T00:00:00Z", "https://ci.example.test/actions")
+        .to_subscription_event("2026-07-03T00:00:00Z")
         .expect("a ci delta maps to a subscription event");
     assert_eq!(event_class, "ci_state_changed");
     assert_eq!(body["conclusion"], "green");
@@ -566,8 +567,25 @@ fn ci_state_changed_subscription_event_pins_conclusion_and_emits_the_caller_supp
     assert_eq!(body["display_title"], "build");
     assert_eq!(
         body["url"],
-        serde_json::Value::String("https://ci.example.test/actions".to_string()),
-        "the subscription event's payload url is the caller-supplied ci_url — never the persisted snapshot.url, so live and replayed deltas emit whatever url the caller resolves"
+        serde_json::Value::String("https://github.com/acme/bpmux/actions".to_string()),
+        "the wire snapshot is the one source of the actions url — the server stamps it at birth from the stored connection, and every reader (renderer, bridge, wait-api) relays it"
+    );
+}
+
+#[test]
+fn ci_state_changed_subscription_event_without_a_url_falls_back_to_the_github_base() {
+    let payload: StateDeltaPayload = serde_json::from_value(serde_json::json!({
+        "domain": "ci",
+        "snapshot": {"state": "green", "run_id": 99, "head_sha": "sha1", "display_title": "build"}
+    }))
+    .expect("ci delta parses");
+    let (_, body) = payload
+        .to_subscription_event("2026-07-03T00:00:00Z")
+        .expect("a ci delta maps to a subscription event");
+    assert_eq!(
+        body["url"],
+        serde_json::Value::String(crate::GITHUB_BASE_URL.to_string()),
+        "a delta from a sender that predates url-stamping still yields a usable link"
     );
 }
 

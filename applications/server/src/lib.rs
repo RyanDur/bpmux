@@ -4,16 +4,15 @@ use tokio_util::sync::CancellationToken;
 
 use sync::OrchestratorHandle;
 
-fn resolve_tracker(data_gateways: &storage::DataGateways) -> transport::rest::TrackerHandle {
+fn stored_github_connection(
+    data_gateways: &storage::DataGateways,
+) -> Option<integrations::github::connection::GithubConnection> {
     let connections = integrations::data_gateway::GithubConnectionDataGateway::new(
         data_gateways.gateway.clone(),
         Arc::new(integrations::github::keychain::KeychainSecretStore),
     );
     match connections.resolve() {
-        Ok(Some(connection)) => {
-            integrations::github::GitHubSourceAdapter::from_connection(&connection).map(Arc::new)
-        }
-        Ok(None) => None,
+        Ok(connection) => connection,
         Err(e) => {
             diag::log_diag(&format!(
                 "github-connection: resolve failed at boot — running unconnected: {e}"
@@ -39,12 +38,26 @@ pub async fn run_server(
 ) -> anyhow::Result<()> {
     let auth_state = build_auth_state()?;
 
-    let tracker: transport::rest::TrackerHandle = resolve_tracker(&data_gateways);
+    let connection = stored_github_connection(&data_gateways);
+    let actions_url = ci::ActionsUrl::for_repo(
+        connection
+            .as_ref()
+            .map(integrations::github::connection::GithubConnection::owner_repo),
+    );
+    let tracker: transport::rest::TrackerHandle = connection
+        .as_ref()
+        .and_then(integrations::github::GitHubSourceAdapter::from_connection)
+        .map(std::sync::Arc::new);
 
     let race_window = race_window_barrier_from_env();
 
-    let (store_inner, orchestrator) =
-        compose::compose_store(hub.clone(), data_gateways.clone(), &tracker, ct.clone());
+    let (store_inner, orchestrator) = compose::compose_store(
+        hub.clone(),
+        data_gateways.clone(),
+        &tracker,
+        ct.clone(),
+        actions_url,
+    );
     let store = std::sync::Arc::new(store_inner);
 
     let ci_log_store = ci::CiLogStore::new();

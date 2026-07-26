@@ -13,7 +13,9 @@ use store::{AppAction, CiAction, CiPollFetch, CiSnapshot};
 
 pub const WATCHER_UNHEALTHY_THRESHOLD: Duration = Duration::from_secs(120);
 
-pub struct CiWatcherDriver;
+pub struct CiWatcherDriver {
+    pub actions_url: ci::ActionsUrl,
+}
 
 impl CiWatchDriver for CiWatcherDriver {
     fn spawn_watch(
@@ -24,7 +26,14 @@ impl CiWatchDriver for CiWatcherDriver {
         observer: RateLimitObserver,
         ct: CancellationToken,
     ) {
-        spawn(dispatch, tracker, hub, observer, ct);
+        spawn(
+            dispatch,
+            tracker,
+            hub,
+            observer,
+            ct,
+            self.actions_url.clone(),
+        );
     }
 }
 
@@ -52,6 +61,7 @@ pub fn spawn<A>(
     hub: Arc<Hub>,
     observer: RateLimitObserver,
     ct: CancellationToken,
+    actions_url: ci::ActionsUrl,
 ) where
     A: 'static,
     CiAction: Into<A>,
@@ -78,7 +88,12 @@ pub fn spawn<A>(
                     let at = chrono::Utc::now().to_rfc3339();
                     last_poll_at = Some(at.clone());
                     dispatch(CiAction::PollSucceeded { at, updated: false }.into());
-                    broadcast_ci_poll(&hub, last_snapshot.as_ref(), last_poll_at.clone());
+                    broadcast_ci_poll(
+                        &hub,
+                        last_snapshot.as_ref(),
+                        last_poll_at.clone(),
+                        &actions_url,
+                    );
                     continue;
                 }
                 Ok(ci::ConditionalRunEntry::Modified { entries, etag }) => {
@@ -91,11 +106,21 @@ pub fn spawn<A>(
                     let at = chrono::Utc::now().to_rfc3339();
                     last_poll_at = Some(at.clone());
                     dispatch(CiAction::PollSucceeded { at, updated: false }.into());
-                    broadcast_ci_poll(&hub, last_snapshot.as_ref(), last_poll_at.clone());
+                    broadcast_ci_poll(
+                        &hub,
+                        last_snapshot.as_ref(),
+                        last_poll_at.clone(),
+                        &actions_url,
+                    );
                     continue;
                 }
                 Err(e) => {
-                    broadcast_ci_poll(&hub, last_snapshot.as_ref(), last_poll_at.clone());
+                    broadcast_ci_poll(
+                        &hub,
+                        last_snapshot.as_ref(),
+                        last_poll_at.clone(),
+                        &actions_url,
+                    );
                     if let Some(decision) = rate_limit::classify_and_decide(
                         &e,
                         observer.snapshot(),
@@ -151,7 +176,12 @@ pub fn spawn<A>(
             let at = chrono::Utc::now().to_rfc3339();
             last_poll_at = Some(at.clone());
             dispatch(CiAction::PollSucceeded { at, updated: true }.into());
-            broadcast_ci_poll(&hub, last_snapshot.as_ref(), last_poll_at.clone());
+            broadcast_ci_poll(
+                &hub,
+                last_snapshot.as_ref(),
+                last_poll_at.clone(),
+                &actions_url,
+            );
         }
     });
 }
@@ -160,6 +190,7 @@ fn broadcast_ci_poll(
     hub: &Hub,
     snapshot: Option<&CiSnapshot>,
     last_successful_poll_at: Option<String>,
+    actions_url: &ci::ActionsUrl,
 ) {
     let wire = CiSnapshotWire {
         state: snapshot.map(|s| s.state.into()).unwrap_or_default(),
@@ -167,7 +198,7 @@ fn broadcast_ci_poll(
         head_sha: snapshot.and_then(|s| s.head_sha.clone()),
         display_title: snapshot.and_then(|s| s.display_title.clone()),
         last_successful_poll_at,
-        url: Some(ci::github_actions_url()),
+        url: Some(actions_url.as_str().to_string()),
     };
     let msg = Message {
         from: "bpmux".to_string(),

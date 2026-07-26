@@ -25,3 +25,12 @@ pub trait SecretStore: Send + Sync {
 }
 
 pub const GITHUB_TOKEN_KEY: &str = "github-token";
+
+impl GithubConnection {
+    pub fn owner_repo(&self) -> (&str, &str) {
+        match self {
+            GithubConnection::Hosted { owner, repo, .. }
+            | GithubConnection::WithBaseUrl { owner, repo, .. } => (owner, repo),
+        }
+    }
+}

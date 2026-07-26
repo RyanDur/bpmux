@@ -31,7 +31,10 @@ fn populated_state_reports_the_snapshot_verdict_and_the_rehomed_poll_timing() {
     )
     .expect("a successful poll records the liveness timestamp");
 
-    let report = report_from_state(&polled);
+    let report = report_from_state(
+        &polled,
+        &crate::ActionsUrl::for_repo(Some(("acme", "bpmux"))),
+    );
 
     assert_eq!(
         report.conclusion, "success",
@@ -53,10 +56,13 @@ fn populated_state_reports_the_snapshot_verdict_and_the_rehomed_poll_timing() {
 
 #[test]
 fn empty_state_reports_unknown_matching_the_shadows_prior_fallback() {
-    let report = report_from_state(&CiState::default());
+    let report = report_from_state(
+        &CiState::default(),
+        &crate::ActionsUrl::for_repo(Some(("acme", "bpmux"))),
+    );
     assert_eq!(
         report,
-        crate::unknown_ci_state_report(),
+        crate::unknown_ci_state_report(&crate::ActionsUrl::for_repo(Some(("acme", "bpmux")))),
         "a never-polled state.ci must project the same unknown report the shadow returned"
     );
 }

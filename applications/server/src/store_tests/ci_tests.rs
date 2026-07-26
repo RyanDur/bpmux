@@ -577,6 +577,7 @@ async fn start_ingest_polling_spawns_loop_with_refresh() {
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         Duration::from_secs(60),
         Duration::from_secs(15),
+        ci::ActionsUrl::for_repo(Some(("acme", "bpmux"))),
     );
     let orch: Arc<Store> = Arc::new(store_inner);
     orch.dispatch(AppAction::Sync(SyncAction::StartIngestPolling))
@@ -611,6 +612,7 @@ async fn start_hydration_polling_spawns_loop_with_refresh() {
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         Duration::from_secs(60),
         Duration::from_secs(15),
+        ci::ActionsUrl::for_repo(Some(("acme", "bpmux"))),
     );
     let orch: Arc<Store> = Arc::new(store_inner);
     orch.dispatch(AppAction::Sync(SyncAction::StartHydrationPolling))
@@ -645,6 +647,7 @@ async fn start_ingest_idempotent_no_op_when_already_running() {
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         Duration::from_secs(60),
         Duration::from_secs(15),
+        ci::ActionsUrl::for_repo(Some(("acme", "bpmux"))),
     );
     let orch: Arc<Store> = Arc::new(store_inner);
     orch.dispatch(AppAction::Sync(SyncAction::StartIngestPolling))
@@ -678,6 +681,7 @@ async fn start_hydration_idempotent_no_op_when_already_running() {
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         Duration::from_secs(60),
         Duration::from_secs(15),
+        ci::ActionsUrl::for_repo(Some(("acme", "bpmux"))),
     );
     let orch: Arc<Store> = Arc::new(store_inner);
     orch.dispatch(AppAction::Sync(SyncAction::StartHydrationPolling))

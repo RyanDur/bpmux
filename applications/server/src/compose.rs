@@ -10,6 +10,7 @@ pub(crate) fn compose_store(
     data_gateways: storage::DataGateways,
     tracker: &transport::rest::TrackerHandle,
     ct: CancellationToken,
+    actions_url: ci::ActionsUrl,
 ) -> (Store, Option<Arc<SyncOrchestrator>>) {
     let hydrated_outbox = super::setup::hydrate_outbox(&data_gateways.outbox);
     let ci_tracker = tracker.as_ref().cloned().map(|t| t as Arc<dyn CiPollFetch>);
@@ -31,6 +32,7 @@ pub(crate) fn compose_store(
             codec,
             bridge::poll_interval_from_env(),
             bridge::hydration_interval_from_env(),
+            actions_url,
         );
         (store, Some(refresh))
     } else if let Some(tracker_arc) = tracker.as_ref().cloned() {
@@ -48,10 +50,18 @@ pub(crate) fn compose_store(
             codec,
             bridge::poll_interval_from_env(),
             bridge::hydration_interval_from_env(),
+            actions_url,
         );
         (store, Some(refresh))
     } else {
-        let store = build_store_with_outbox(hub, data_gateways, ci_tracker, ct, hydrated_outbox);
+        let store = build_store_with_outbox(
+            hub,
+            data_gateways,
+            ci_tracker,
+            ct,
+            hydrated_outbox,
+            actions_url,
+        );
         (store, None)
     }
 }
