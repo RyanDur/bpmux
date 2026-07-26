@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use rusqlite::Connection;
 
-use super::sqlite_engine as engine;
+use database_support as engine;
 use persist::PersistError;
 use source_sync::QueuedEvent;
 

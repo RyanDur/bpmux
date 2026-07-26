@@ -1,6 +1,6 @@
 use rusqlite::Connection;
 
-use super::sqlite_engine as engine;
+use database_support as engine;
 
 pub fn get(conn: &Connection, key: &str) -> rusqlite::Result<Option<String>> {
     engine::query_opt(

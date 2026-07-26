@@ -98,7 +98,7 @@ foreseeable point — it's a single coordination substrate, not a
 service mesh. The Continuum's bar is progress-on-friction; no
 friction presses past v5.
 
-## Storage layer: per-feature ports over swappable engines
+## Storage layer: per-feature ports over the database gateway
 
 Persistence lives at `components/storage/` — the INSTANCE
 data store (`data.db` + sibling json/jsonl files under the data dir;
@@ -115,25 +115,25 @@ append-only `V<n>__*.sql`, never an edit to an applied version.
 `docs/design/storage-repo-ports.md`): `SurfacedTopicsRepo`
 (awareness), `MessageLog` (log), `LessonRepo` (memory), `OutboxRepo`
 (sync), `UserRepo` (routing). Each feature states WHAT it needs in
-domain terms; storage's engines implement the ports behind a composite
+domain terms; the sqlite store implements the ports behind a composite
 super-trait. `GlobalStore` was deleted outright (it had zero
 production wiring).
 
-- `FileStorage` — disk-backed jsonl/json; atomic-rename + fsync
-  semantics stay inside; retained for the legacy-jsonl read the
-  `migrate-storage` cutover path needs.
-- `SqliteStorage` — SQLite-backed (`data.db`); schema defined by
-  **refinery versioned migrations** (`migrations/V{N}__*.sql`,
-  embedded + run idempotently on connection-open), never inline DDL —
-  forward-only, guarded by `migrations_are_forward_only_versioned`.
-- Backend **injected, not env-read in the data path**:
-  `StorageBackend::resolve()` reads `BPMUX_STORAGE_BACKEND` exactly
-  once at the composition root; tests construct with an explicit
-  backend and per-test tempdirs (`--data-base` / `BPMUX_DATA_BASE`).
-- FileStorage ↔ SqliteStorage behavior parity is pinned by the
-  behavior suites in `src/storage/` + `src/storage_tests/`; the
-  storage boundary lock keeps SQL mechanism (rusqlite, refinery) out
-  of port-owning feature modules.
+- `components/database-support` — the Continuum's gateway (dam5s
+  shape, owner ruling 2026-07-25): `DatabaseGateway` owns the
+  connection, applies the embedded migrations on open (idempotent,
+  forward-only, guarded by `migrations_are_forward_only_versioned`),
+  and offers the common query helpers. Domains get the gateway
+  injected; each domain talks to its own tables.
+- `SqliteStorage` — the store over the injected gateway (`data.db`);
+  schema defined only by the versioned migrations, never inline DDL.
+  The file backend retired 2026-07-25 (sqlite is the only store); the
+  jsonl tail survives solely as the plugin-hook feed, written by the
+  sqlite path and rotated at 8MB.
+- `storage::open(dir)` is the one door: makes the store's home,
+  opens sqlite, inherits jsonl history once, and is process-fatal if
+  the store cannot open — store-is-the-engine. Tests construct
+  per-test tempdirs (`--data-base` / `BPMUX_DATA_BASE`).
 
 Store-adjacent persistence (board placements, shared/placement
 history, the outbox) rides write-behind persister listeners off the

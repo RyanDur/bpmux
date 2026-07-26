@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use rusqlite::Connection;
 
-use super::sqlite_engine as engine;
+use database_support as engine;
 
 pub fn load(conn: &Connection) -> HashSet<String> {
     engine::query(conn, "SELECT topic FROM surfaced_topics", [], |row| {

@@ -1,11 +1,12 @@
 use std::collections::{HashSet, VecDeque};
 use std::path::PathBuf;
-use std::sync::Mutex;
 
 use rusqlite::Connection;
 
+use database_support as engine;
+use database_support::DatabaseGateway;
+
 use super::Storage;
-use super::sqlite_engine as engine;
 use super::sqlite_meta as meta;
 use super::sqlite_outbox as outbox;
 use super::sqlite_surfaced_topics as surfaced_topics;
@@ -18,21 +19,18 @@ use user_routing::{UserRecord, UserRepo};
 
 pub struct SqliteStorage {
     pub(super) dir: PathBuf,
-    conn: Mutex<Connection>,
+    gateway: DatabaseGateway,
 }
 
 impl SqliteStorage {
     pub fn new(dir: PathBuf) -> rusqlite::Result<Self> {
-        let conn = engine::open(&dir)?;
-        users::seed_system(&conn)?;
-        Ok(Self {
-            dir,
-            conn: Mutex::new(conn),
-        })
+        let gateway = DatabaseGateway::open(&dir)?;
+        users::seed_system(&gateway.lock())?;
+        Ok(Self { dir, gateway })
     }
 
     pub(super) fn lock(&self) -> std::sync::MutexGuard<'_, Connection> {
-        self.conn.lock().unwrap_or_else(|e| e.into_inner())
+        self.gateway.lock()
     }
 
     pub(super) fn resolve_sender(&self, conn: &Connection, msg: &Message) -> Option<String> {

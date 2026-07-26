@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 
 use rusqlite::{Connection, OptionalExtension, Params, Row};
@@ -12,15 +13,28 @@ mod embedded {
     refinery::embed_migrations!("../../databases/conversation-db/migrations");
 }
 
-pub fn io_err(e: rusqlite::Error) -> std::io::Error {
-    std::io::Error::other(e)
+#[cfg(test)]
+mod gateway_behavior;
+#[cfg(test)]
+mod migrations_behavior;
+
+pub struct DatabaseGateway {
+    conn: Mutex<Connection>,
 }
 
-pub fn persist_err(e: rusqlite::Error) -> PersistError {
-    PersistError::Io(io_err(e))
+impl DatabaseGateway {
+    pub fn open(dir: &Path) -> rusqlite::Result<Self> {
+        Ok(Self {
+            conn: Mutex::new(open_connection(dir)?),
+        })
+    }
+
+    pub fn lock(&self) -> MutexGuard<'_, Connection> {
+        self.conn.lock().unwrap_or_else(|e| e.into_inner())
+    }
 }
 
-pub fn open(dir: &Path) -> rusqlite::Result<Connection> {
+fn open_connection(dir: &Path) -> rusqlite::Result<Connection> {
     std::fs::create_dir_all(dir)
         .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
     let mut conn = Connection::open(dir.join(DB_FILE))?;
@@ -34,6 +48,14 @@ pub fn open(dir: &Path) -> rusqlite::Result<Connection> {
         )
     })?;
     Ok(conn)
+}
+
+pub fn io_err(e: rusqlite::Error) -> std::io::Error {
+    std::io::Error::other(e)
+}
+
+pub fn persist_err(e: rusqlite::Error) -> PersistError {
+    PersistError::Io(io_err(e))
 }
 
 pub fn execute<P: Params>(conn: &Connection, sql: &str, params: P) -> rusqlite::Result<usize> {

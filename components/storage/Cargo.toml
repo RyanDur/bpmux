@@ -3,7 +3,7 @@ name = "storage"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "The persistence edge: SQLite and file backends implementing the feature-owned repo ports"
+description = "The persistence edge: the sqlite store implementing the feature-owned repo ports over the injected database gateway"
 
 [dependencies]
 awareness = { path = "../awareness" }
@@ -11,6 +11,7 @@ diag = { path = "../diag" }
 memory = { path = "../memory" }
 message = { path = "../message" }
 message_log = { path = "../message_log" }
+database-support = { path = "../database-support" }
 persist = { path = "../persist" }
 product_management = { path = "../product_management" }
 source_sync = { path = "../source_sync" }
@@ -21,7 +22,6 @@ chrono = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 thiserror = { workspace = true }
 rusqlite = { version = "0.32", features = ["bundled"] }
-refinery = { version = "0.8", features = ["rusqlite"] }
 
 [dev-dependencies]
 tempfile = { workspace = true }

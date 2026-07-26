@@ -6,6 +6,7 @@ members = [
     "applications/mcp",
     "applications/server",
     "components/auth",
+    "components/database-support",
     "components/awareness",
     "components/board",
     "components/bridge",

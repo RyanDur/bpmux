@@ -1,7 +1,6 @@
 use super::Storage;
 
 mod sqlite;
-mod sqlite_engine;
 mod sqlite_message_log;
 mod sqlite_messages;
 mod sqlite_meta;
@@ -22,7 +21,5 @@ mod migrate_tests;
 mod outbox_capture_tests;
 #[cfg(test)]
 mod outbox_format_tests;
-#[cfg(test)]
-mod sqlite_engine_behavior;
 #[cfg(test)]
 mod sqlite_store_behavior;

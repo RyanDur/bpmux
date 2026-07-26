@@ -1,6 +1,6 @@
 use super::SqliteStorage;
-use super::sqlite_engine as engine;
 use super::sqlite_messages as messages;
+use database_support as engine;
 use message::Message;
 use message_log::LogError;
 
