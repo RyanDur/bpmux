@@ -7,12 +7,27 @@ use message_log::LogError;
 const RECENT_DESC_SQL: &str = "SELECT payload FROM messages ORDER BY seq DESC";
 const SINCE_ASC_SQL: &str = "SELECT payload FROM messages WHERE created_at >= ?1 ORDER BY seq ASC";
 
-pub fn search_hit_seqs(conn: &Connection, needle_lower: &str) -> rusqlite::Result<Vec<u64>> {
-    let mut stmt = conn.prepare(
-        "SELECT seq FROM messages WHERE LOWER(payload) LIKE '%' || ?1 || '%' ORDER BY seq ASC",
-    )?;
-    let rows = stmt.query_map([needle_lower], |row| row.get::<_, i64>(0))?;
-    rows.map(|r| r.map(|s| s as u64)).collect()
+pub fn search_hit_seqs(
+    conn: &Connection,
+    needle_lower: &str,
+    addressee: Option<&str>,
+) -> rusqlite::Result<Vec<u64>> {
+    match addressee {
+        Some(addressee) => {
+            let mut stmt = conn.prepare(
+                "SELECT seq FROM messages                  WHERE LOWER(payload) LIKE '%' || ?1 || '%'                  AND id IN (SELECT message_id FROM message_recipients WHERE value = ?2)                  ORDER BY seq ASC",
+            )?;
+            let rows = stmt.query_map([needle_lower, addressee], |row| row.get::<_, i64>(0))?;
+            rows.map(|r| r.map(|s| s as u64)).collect()
+        }
+        None => {
+            let mut stmt = conn.prepare(
+                "SELECT seq FROM messages WHERE LOWER(payload) LIKE '%' || ?1 || '%' ORDER BY seq ASC",
+            )?;
+            let rows = stmt.query_map([needle_lower], |row| row.get::<_, i64>(0))?;
+            rows.map(|r| r.map(|s| s as u64)).collect()
+        }
+    }
 }
 
 pub fn payloads_in_seq_range(

@@ -145,6 +145,7 @@ fn classifier_tags_search_result() {
         after: None,
         before: None,
         channel: None,
+        addressee: None,
         message_class: Some(MessageClass::Experience(ExperienceKind::Teaching)),
         insight_only: false,
         owner_name: "owner".to_string(),

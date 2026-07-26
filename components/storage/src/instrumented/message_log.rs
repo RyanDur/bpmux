@@ -19,11 +19,12 @@ impl<S: Storage> message_log::MessageLog for InstrumentedStorage<S> {
     fn search_conversations(
         &self,
         needle_lower: &str,
+        addressee: Option<&str>,
         radius: u64,
         accept: &mut dyn FnMut(&[Message], usize) -> bool,
     ) -> Result<(), LogError> {
         self.inner
-            .search_conversations(needle_lower, radius, accept)
+            .search_conversations(needle_lower, addressee, radius, accept)
     }
 
     fn read_messages_since(

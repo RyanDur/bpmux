@@ -121,7 +121,7 @@ fn search_hits_and_clusters_reconstruct_the_conversation_neighborhood() {
 
     let mut clusters: Vec<(Vec<String>, usize)> = Vec::new();
     storage
-        .search_conversations("needle", 5, &mut |cluster, center| {
+        .search_conversations("needle", None, 5, &mut |cluster, center| {
             let texts = cluster.iter().map(|m| m.text.clone()).collect();
             clusters.push((texts, center));
             true
@@ -185,4 +185,33 @@ fn addressing_lands_in_the_recipients_table_and_dies_with_its_message() {
         .query_row("SELECT COUNT(*) FROM message_recipients", [], |r| r.get(0))
         .unwrap();
     assert_eq!(remaining, 0, "recipients cascade away with their messages");
+}
+
+#[test]
+fn addressee_search_narrows_candidates_through_the_recipients_table() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+
+    let mut addressed = chat("dev", None);
+    addressed.text = "the needle, for the pm".to_string();
+    addressed.to = Some(vec!["pm".to_string()]);
+    storage.append_message(&addressed).unwrap();
+
+    let mut broadcast = chat("dev", None);
+    broadcast.text = "the needle, for everyone".to_string();
+    storage.append_message(&broadcast).unwrap();
+
+    let mut centers = Vec::new();
+    storage
+        .search_conversations("needle", Some("pm"), 5, &mut |cluster, center| {
+            centers.push(cluster[center].text.clone());
+            true
+        })
+        .unwrap();
+
+    assert_eq!(
+        centers,
+        vec!["the needle, for the pm"],
+        "only the addressed message is a candidate; the broadcast never reaches the evaluator"
+    );
 }

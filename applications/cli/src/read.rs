@@ -169,10 +169,17 @@ pub fn run_sync_status() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn run_search(query: &str, sender: &Option<String>) -> anyhow::Result<()> {
+pub fn run_search(
+    query: &str,
+    sender: &Option<String>,
+    addressee: &Option<String>,
+) -> anyhow::Result<()> {
     let mut params: Vec<(&str, &str)> = vec![("query", query)];
     if let Some(s) = sender {
         params.push(("sender", s));
+    }
+    if let Some(a) = addressee {
+        params.push(("addressee", a));
     }
     let (status, body) = http_get_with_query("/api/search", &params)?;
     if !status.is_success() {

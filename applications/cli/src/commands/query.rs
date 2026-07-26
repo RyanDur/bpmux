@@ -85,6 +85,8 @@ pub enum QueryCommands {
         query: String,
         #[arg(long, help = "Filter to a sender role")]
         sender: Option<String>,
+        #[arg(long, help = "Only messages addressed to this role or user id")]
+        addressee: Option<String>,
     },
 }
 
@@ -104,6 +106,10 @@ pub fn dispatch_query(command: &QueryCommands) -> anyhow::Result<()> {
             limit,
         } => run_roadmap(*outcome, state.clone(), order.clone(), *limit),
         QueryCommands::SyncStatus => run_sync_status(),
-        QueryCommands::Search { query, sender } => run_search(query, sender),
+        QueryCommands::Search {
+            query,
+            sender,
+            addressee,
+        } => run_search(query, sender, addressee),
     }
 }

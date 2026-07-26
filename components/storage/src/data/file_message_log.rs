@@ -14,6 +14,7 @@ impl message_log::MessageLog for FileStorage {
     fn search_conversations(
         &self,
         needle_lower: &str,
+        _addressee: Option<&str>,
         radius: u64,
         accept: &mut dyn FnMut(&[Message], usize) -> bool,
     ) -> Result<(), LogError> {

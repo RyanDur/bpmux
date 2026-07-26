@@ -11,6 +11,10 @@ pub fn search_log_tool(description: &'static str) -> Tool {
             "sender": {
                 "type": "string",
                 "description": "Filter by sender name (e.g. 'owner')"
+            },
+            "addressee": {
+                "type": "string",
+                "description": "Only messages addressed to this role or user id (broadcasts excluded)"
             }
         },
         "required": ["query"]

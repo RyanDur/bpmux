@@ -14,6 +14,7 @@ pub struct SearchParams {
     pub after: Option<String>,
     pub before: Option<String>,
     pub channel: Option<String>,
+    pub addressee: Option<String>,
     pub message_type: Option<String>,
 }
 
@@ -36,6 +37,7 @@ pub async fn search_messages(
         after: params.after.as_ref().and_then(|s| s.parse().ok()),
         before: params.before.as_ref().and_then(|s| s.parse().ok()),
         channel: params.channel.clone(),
+        addressee: params.addressee.clone(),
         message_class,
         insight_only: params.message_type.as_deref() == Some("insight"),
         owner_name: hub.owner_name.clone(),
@@ -43,19 +45,21 @@ pub async fn search_messages(
     let query_lower = filters.query.to_lowercase();
     let radius = comprehension::CONTEXT_WINDOW as u64;
     let mut accepted = Vec::new();
-    let messages_part =
-        match hub.search_conversations(&query_lower, radius, &mut |cluster, center| {
-            match comprehension::evaluate_candidate(cluster, center, &filters) {
-                Some(result) => {
-                    accepted.push(result);
-                    true
-                }
-                None => false,
+    let messages_part = match hub.search_conversations(
+        &query_lower,
+        filters.addressee.as_deref(),
+        radius,
+        &mut |cluster, center| match comprehension::evaluate_candidate(cluster, center, &filters) {
+            Some(result) => {
+                accepted.push(result);
+                true
             }
-        }) {
-            Ok(()) => accepted,
-            Err(_) => Vec::new(),
-        };
+            None => false,
+        },
+    ) {
+        Ok(()) => accepted,
+        Err(_) => Vec::new(),
+    };
 
     let (stories_part, comments_part) = search_stories_and_comments(&tracker, &params.query).await;
 

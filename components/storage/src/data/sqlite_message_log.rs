@@ -49,10 +49,11 @@ impl message_log::MessageLog for SqliteStorage {
     fn search_conversations(
         &self,
         needle_lower: &str,
+        addressee: Option<&str>,
         radius: u64,
         accept: &mut dyn FnMut(&[Message], usize) -> bool,
     ) -> Result<(), LogError> {
-        let hits = messages::search_hit_seqs(&self.lock(), needle_lower)
+        let hits = messages::search_hit_seqs(&self.lock(), needle_lower, addressee)
             .map_err(engine::io_err)
             .map_err(LogError::from)?;
         message_log::drive_search(

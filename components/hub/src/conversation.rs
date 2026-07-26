@@ -23,11 +23,12 @@ impl Hub {
     pub fn search_conversations(
         &self,
         needle_lower: &str,
+        addressee: Option<&str>,
         radius: u64,
         accept: &mut dyn FnMut(&[Message], usize) -> bool,
     ) -> Result<(), LogError> {
         self.storage
-            .search_conversations(needle_lower, radius, accept)
+            .search_conversations(needle_lower, addressee, radius, accept)
     }
 
     pub fn read_messages_since(

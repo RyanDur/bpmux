@@ -12,6 +12,9 @@ pub async fn handle_search_log(
     if let Some(sender) = args.get("sender").and_then(|v| v.as_str()) {
         url.push_str(&format!("&sender={}", urlencoding(sender)));
     }
+    if let Some(addressee) = args.get("addressee").and_then(|v| v.as_str()) {
+        url.push_str(&format!("&addressee={}", urlencoding(addressee)));
+    }
     let body = reqwest::get(&url)
         .await
         .map_err(|e| format!("failed to search: {e}"))?

@@ -18,6 +18,7 @@ pub struct SearchFilters {
     pub after: Option<DateTime<Utc>>,
     pub before: Option<DateTime<Utc>>,
     pub channel: Option<String>,
+    pub addressee: Option<String>,
     pub message_class: Option<MessageClass>,
     pub insight_only: bool,
     pub owner_name: String,
@@ -125,6 +126,19 @@ fn matches_filters(msg: &Message, filters: &SearchFilters, query_lower: &str) ->
         && msg.ts > before
     {
         return false;
+    }
+    if let Some(addressee) = &filters.addressee {
+        let named_as_role = msg
+            .to
+            .as_deref()
+            .is_some_and(|roles| roles.iter().any(|r| r == addressee));
+        let named_as_user = msg
+            .to_ids
+            .as_deref()
+            .is_some_and(|ids| ids.iter().any(|id| id == addressee));
+        if !named_as_role && !named_as_user {
+            return false;
+        }
     }
     true
 }

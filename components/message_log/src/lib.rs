@@ -37,6 +37,7 @@ pub trait MessageLog: Send + Sync {
     fn search_conversations(
         &self,
         needle_lower: &str,
+        addressee: Option<&str>,
         radius: u64,
         accept: &mut dyn FnMut(&[message::Message], usize) -> bool,
     ) -> Result<(), LogError>;
