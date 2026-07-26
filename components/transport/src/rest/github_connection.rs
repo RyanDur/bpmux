@@ -49,9 +49,6 @@ pub async fn get_github_connection(
     match connections.resolve() {
         Ok(None) => ok_body(serde_json::json!({"state": "disconnected"})),
         Ok(Some(connection)) => ok_body(connection_body(&connection)),
-        Err(ConnectionError::TokenMissing) => {
-            ok_body(serde_json::json!({"state": "token-missing"}))
-        }
         Err(e) => storage_failure("github-connection status failed", &e),
     }
 }
@@ -111,17 +108,6 @@ pub async fn put_github_connection(
         Ok(candidate) => candidate,
         Err(refusal) => return refusal,
     };
-    let Some(adapter) = integrations::github::GitHubSourceAdapter::from_connection(&candidate)
-    else {
-        return bad_request("the connection settings do not build a github client");
-    };
-    if let Err(reason) = adapter.probe().await {
-        return (
-            StatusCode::UNPROCESSABLE_ENTITY,
-            json_headers(),
-            err_body(&format!("github refused the connection: {reason}")),
-        );
-    }
     if let Err(e) = connections
         .disconnect()
         .and_then(|()| connections.save(&candidate))

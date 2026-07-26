@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use crate::data_gateway::{ConnectionError, GithubConnectionDataGateway};
+use crate::data_gateway::GithubConnectionDataGateway;
 use crate::github::connection::{GITHUB_TOKEN_KEY, GithubConnection, SecretStore};
 use crate::in_memory::InMemorySecretStore;
 use database_support::DatabaseGateway;
@@ -109,15 +109,16 @@ fn disconnect_on_a_fresh_database_is_a_no_op() {
 }
 
 #[test]
-fn a_hosted_row_whose_token_vanished_resolves_to_a_loud_error() {
+fn a_hosted_row_whose_token_vanished_resolves_as_unconnected() {
     let h = harness();
     h.connections
         .save(&hosted("RyanDur", "bpmux", "ghp_secret"))
         .expect("save");
     h.secrets.delete(GITHUB_TOKEN_KEY).expect("delete");
-    assert!(
-        matches!(h.connections.resolve(), Err(ConnectionError::TokenMissing)),
-        "a half-present connection fails loud, never silently unconnected"
+    assert_eq!(
+        h.connections.resolve().expect("resolve"),
+        None,
+        "graceful: a half-present connection is simply not a connection — reconnect from the UI"
     );
 }
 

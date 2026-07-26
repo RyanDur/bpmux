@@ -5,7 +5,6 @@ mod conditional;
 mod errors;
 mod fetch;
 mod json_shape;
-mod probe;
 mod rest_helpers;
 mod sub_issues;
 mod trait_impl;

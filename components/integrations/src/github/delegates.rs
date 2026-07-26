@@ -12,10 +12,6 @@ impl GitHubSourceAdapter {
         OctocrabStoryTracker::from_connection(connection).map(Self::new)
     }
 
-    pub async fn probe(&self) -> Result<(), String> {
-        self.inner.probe().await
-    }
-
     pub async fn accept_story(&self, number: u64) -> Result<(), String> {
         self.inner.accept_story(number).await
     }

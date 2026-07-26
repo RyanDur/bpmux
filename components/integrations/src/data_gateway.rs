@@ -12,8 +12,6 @@ pub enum ConnectionError {
     Database(#[from] rusqlite::Error),
     #[error(transparent)]
     Secret(#[from] SecretError),
-    #[error("github-connection: hosted row present but no token in the secret store")]
-    TokenMissing,
 }
 
 pub struct GithubConnectionDataGateway {
@@ -60,17 +58,19 @@ impl GithubConnectionDataGateway {
                 repo: row.repo,
                 base_url,
             })),
-            None => {
-                let token = self
-                    .secrets
-                    .load(GITHUB_TOKEN_KEY)?
-                    .ok_or(ConnectionError::TokenMissing)?;
-                Ok(Some(GithubConnection::Hosted {
+            None => match self.secrets.load(GITHUB_TOKEN_KEY)? {
+                Some(token) => Ok(Some(GithubConnection::Hosted {
                     owner: row.owner,
                     repo: row.repo,
                     token,
-                }))
-            }
+                })),
+                None => {
+                    diag::log_diag(
+                        "github-connection: row present but no token in the secret store — treating as unconnected",
+                    );
+                    Ok(None)
+                }
+            },
         }
     }
 
