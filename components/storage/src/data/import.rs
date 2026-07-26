@@ -70,6 +70,7 @@ pub fn import_conversation(
                 &message_type,
                 &payload,
             )?;
+            messages::append_recipients(&conn, &msg.id, &msg)?;
             report.imported += 1;
         }
         Ok(())

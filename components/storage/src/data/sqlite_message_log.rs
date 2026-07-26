@@ -18,6 +18,7 @@ impl message_log::MessageLog for SqliteStorage {
         let sender = self.resolve_sender(&conn, msg);
         messages::append(&conn, &msg.id, created_at, sender, &message_type, &payload)
             .map_err(engine::io_err)?;
+        messages::append_recipients(&conn, &msg.id, msg).map_err(engine::io_err)?;
         drop(conn);
         message_log::append_message(&self.dir, msg)?;
         if let Err(e) = message_log::rotate_if_larger_than(&self.dir, TAIL_MAX_BYTES) {

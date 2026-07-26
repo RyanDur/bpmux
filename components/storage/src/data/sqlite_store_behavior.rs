@@ -140,3 +140,49 @@ fn search_hits_and_clusters_reconstruct_the_conversation_neighborhood() {
         "the match marks its own message"
     );
 }
+
+#[test]
+fn addressing_lands_in_the_recipients_table_and_dies_with_its_message() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+
+    let mut m = chat("dev", None);
+    m.text = "for the pms and one individual".to_string();
+    m.to = Some(vec!["pm".to_string(), "designer".to_string()]);
+    m.to_ids = Some(vec!["6b3054e9-a6b4-4e5b-84db-f788ebdec25b".to_string()]);
+    storage.append_message(&m).unwrap();
+
+    let mut broadcast = chat("dev", None);
+    broadcast.text = "to everyone".to_string();
+    storage.append_message(&broadcast).unwrap();
+
+    let recipients: Vec<(String, String)> = {
+        let conn = storage.lock();
+        let mut stmt = conn
+            .prepare("SELECT kind, value FROM message_recipients ORDER BY kind, value")
+            .unwrap();
+        let rows = stmt
+            .query_map([], |row| Ok((row.get(0).unwrap(), row.get(1).unwrap())))
+            .unwrap();
+        rows.map(Result::unwrap).collect()
+    };
+    assert_eq!(
+        recipients,
+        vec![
+            ("role".to_string(), "designer".to_string()),
+            ("role".to_string(), "pm".to_string()),
+            (
+                "user".to_string(),
+                "6b3054e9-a6b4-4e5b-84db-f788ebdec25b".to_string()
+            ),
+        ],
+        "addressed roles and ids each get a row; the broadcast gets none"
+    );
+
+    storage.clear_messages().unwrap();
+    let remaining: i64 = storage
+        .lock()
+        .query_row("SELECT COUNT(*) FROM message_recipients", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(remaining, 0, "recipients cascade away with their messages");
+}

@@ -104,3 +104,22 @@ pub fn restore_conversation_order(conn: &Connection) -> rusqlite::Result<()> {
          COMMIT;",
     )
 }
+
+pub fn append_recipients(
+    conn: &Connection,
+    message_id: &str,
+    msg: &Message,
+) -> rusqlite::Result<()> {
+    let insert = |kind: &str, values: &Option<Vec<String>>| -> rusqlite::Result<()> {
+        for value in values.iter().flatten() {
+            engine::execute(
+                conn,
+                "INSERT INTO message_recipients (message_id, kind, value) VALUES (?1, ?2, ?3)",
+                (message_id, kind, value),
+            )?;
+        }
+        Ok(())
+    };
+    insert("role", &msg.to)?;
+    insert("user", &msg.to_ids)
+}
