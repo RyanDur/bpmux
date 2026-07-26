@@ -489,6 +489,7 @@ dependencies = [
  "local_url",
  "location",
  "memory",
+ "message_log",
  "product_management",
  "reqwest",
  "room",
@@ -539,6 +540,7 @@ dependencies = [
  "ci",
  "clap",
  "cli",
+ "database-support",
  "diag",
  "electron_capture",
  "futures",
@@ -1206,10 +1208,8 @@ dependencies = [
 name = "hub"
 version = "0.1.0"
 dependencies = [
- "awareness",
  "chrono",
  "comprehension",
- "memory",
  "message",
  "message_log",
  "serde_json",
@@ -1735,11 +1735,13 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "database-support",
+ "diag",
  "message",
  "rusqlite",
  "serde_json",
  "tempfile",
  "thiserror 2.0.18",
+ "user_routing",
 ]
 
 [[package]]
@@ -2791,6 +2793,8 @@ dependencies = [
  "bridge",
  "chrono",
  "ci",
+ "comprehension",
+ "database-support",
  "diag",
  "httpmock",
  "hub",
@@ -2996,6 +3000,7 @@ dependencies = [
  "board",
  "chrono",
  "ci",
+ "database-support",
  "diag",
  "hub",
  "kernel",
@@ -3072,6 +3077,7 @@ version = "0.1.0"
 dependencies = [
  "board",
  "chrono",
+ "database-support",
  "diag",
  "hub",
  "integrations",
@@ -3079,7 +3085,6 @@ dependencies = [
  "product_management",
  "source_codec",
  "source_sync",
- "storage",
  "store",
  "store_test_support",
  "tempfile",

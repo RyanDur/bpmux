@@ -6,6 +6,7 @@ license.workspace = true
 description = "The terminal door: bpmux verbs as REST/WS clients of the daemon, bootstrap arg resolution, room spawn ops"
 
 [dependencies]
+message_log = { path = "../../components/message_log" }
 room = { path = "../../components/room" }
 location = { path = "../../components/location" }
 local_url = { path = "../../components/local_url" }

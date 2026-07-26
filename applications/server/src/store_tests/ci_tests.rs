@@ -159,7 +159,12 @@ async fn the_ci_test_seed_is_hydrated_at_construction_and_never_broadcast() {
     let _seed = CiSeedGuard::set();
     let (hub, _dir) = fresh_hub();
     let mut frames = hub.subscribe();
-    let store: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
+    let store: Arc<Store> = Arc::new(build_store(
+        hub.clone(),
+        storage::open(&hub.dir),
+        None,
+        CancellationToken::new(),
+    ));
     tokio::task::yield_now().await;
 
     assert_eq!(
@@ -181,7 +186,12 @@ async fn the_ci_test_seed_is_hydrated_at_construction_and_never_broadcast() {
 #[tokio::test]
 async fn ci_updated_action_drives_reducer_and_fires_listener() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
+    let orch: Arc<Store> = Arc::new(build_store(
+        hub.clone(),
+        storage::open(&hub.dir),
+        None,
+        CancellationToken::new(),
+    ));
     let recorder = Arc::new(RecordingListener::default());
     orch.add_ci_listener(recorder.clone());
 
@@ -200,7 +210,12 @@ async fn ci_updated_action_drives_reducer_and_fires_listener() {
 #[tokio::test]
 async fn ci_updated_dedup_same_run_and_conclusion_no_listener_fire() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
+    let orch: Arc<Store> = Arc::new(build_store(
+        hub.clone(),
+        storage::open(&hub.dir),
+        None,
+        CancellationToken::new(),
+    ));
     let recorder = Arc::new(RecordingListener::default());
     orch.add_ci_listener(recorder.clone());
 
@@ -223,7 +238,12 @@ async fn ci_updated_dedup_same_run_and_conclusion_no_listener_fire() {
 #[tokio::test]
 async fn ci_updated_run_change_or_conclusion_change_fires_listener() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
+    let orch: Arc<Store> = Arc::new(build_store(
+        hub.clone(),
+        storage::open(&hub.dir),
+        None,
+        CancellationToken::new(),
+    ));
     let recorder = Arc::new(RecordingListener::default());
     orch.add_ci_listener(recorder.clone());
 
@@ -244,7 +264,12 @@ async fn ci_updated_run_change_or_conclusion_change_fires_listener() {
 #[tokio::test]
 async fn start_ci_polling_no_op_without_tracker() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
+    let orch: Arc<Store> = Arc::new(build_store(
+        hub.clone(),
+        storage::open(&hub.dir),
+        None,
+        CancellationToken::new(),
+    ));
     orch.dispatch(AppAction::Ci(CiAction::StartPolling)).await;
     assert!(!orch.is_running(PollKind::Ci).await);
 }
@@ -252,7 +277,12 @@ async fn start_ci_polling_no_op_without_tracker() {
 #[tokio::test]
 async fn stop_ci_polling_without_start_no_op() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
+    let orch: Arc<Store> = Arc::new(build_store(
+        hub.clone(),
+        storage::open(&hub.dir),
+        None,
+        CancellationToken::new(),
+    ));
     orch.dispatch(AppAction::Ci(CiAction::StopPolling)).await;
     assert!(!orch.is_running(PollKind::Ci).await);
 }
@@ -261,7 +291,12 @@ async fn stop_ci_polling_without_start_no_op() {
 async fn parent_cancel_propagates_when_running_no_tracker() {
     let parent = CancellationToken::new();
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(hub, None, parent.clone()));
+    let orch: Arc<Store> = Arc::new(build_store(
+        hub.clone(),
+        storage::open(&hub.dir),
+        None,
+        parent.clone(),
+    ));
     orch.dispatch(AppAction::Ci(CiAction::StartPolling)).await;
     parent.cancel();
     tokio::time::sleep(Duration::from_millis(50)).await;
@@ -272,7 +307,12 @@ async fn parent_cancel_propagates_when_running_no_tracker() {
 #[tokio::test]
 async fn rate_limit_observer_exposed_at_orchestrator_layer() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
+    let orch: Arc<Store> = Arc::new(build_store(
+        hub.clone(),
+        storage::open(&hub.dir),
+        None,
+        CancellationToken::new(),
+    ));
     let snapshot = orch.rate_limit_observer().snapshot();
     assert_eq!(snapshot.retry_after_wake_epoch, 0);
     assert_eq!(snapshot.ratelimit_reset_epoch, 0);
@@ -284,7 +324,8 @@ async fn live_loop_dispatches_ci_updated_through_action_chain() {
     let tracker = Arc::new(FakeCiTracker::new());
     let parent = CancellationToken::new();
     let orch: Arc<Store> = Arc::new(build_store(
-        hub,
+        hub.clone(),
+        storage::open(&hub.dir),
         Some(tracker.clone() as Arc<dyn CiPollFetch>),
         parent.clone(),
     ));
@@ -344,7 +385,8 @@ async fn live_loop_marks_poll_succeeded_on_all_three_branches() {
     ]));
     let parent = CancellationToken::new();
     let orch: Arc<Store> = Arc::new(build_store(
-        hub,
+        hub.clone(),
+        storage::open(&hub.dir),
         Some(tracker.clone() as Arc<dyn CiPollFetch>),
         parent.clone(),
     ));
@@ -409,7 +451,8 @@ async fn live_loop_broadcasts_frozen_poll_time_on_failure() {
     ));
     let parent = CancellationToken::new();
     let orch: Arc<Store> = Arc::new(build_store(
-        hub,
+        hub.clone(),
+        storage::open(&hub.dir),
         Some(tracker.clone() as Arc<dyn CiPollFetch>),
         parent.clone(),
     ));
@@ -468,7 +511,12 @@ fn adapter_for_tests() -> Arc<integrations::in_memory::InMemorySourceAdapter> {
 #[tokio::test]
 async fn start_ingest_polling_no_op_without_refresh() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
+    let orch: Arc<Store> = Arc::new(build_store(
+        hub.clone(),
+        storage::open(&hub.dir),
+        None,
+        CancellationToken::new(),
+    ));
     orch.dispatch(AppAction::Sync(SyncAction::StartIngestPolling))
         .await;
     assert!(!orch.is_running(PollKind::Ingest).await);
@@ -477,7 +525,12 @@ async fn start_ingest_polling_no_op_without_refresh() {
 #[tokio::test]
 async fn start_hydration_polling_no_op_without_refresh() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
+    let orch: Arc<Store> = Arc::new(build_store(
+        hub.clone(),
+        storage::open(&hub.dir),
+        None,
+        CancellationToken::new(),
+    ));
     orch.dispatch(AppAction::Sync(SyncAction::StartHydrationPolling))
         .await;
     assert!(!orch.is_running(PollKind::Hydration).await);
@@ -486,7 +539,12 @@ async fn start_hydration_polling_no_op_without_refresh() {
 #[tokio::test]
 async fn stop_ingest_without_start_no_op() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
+    let orch: Arc<Store> = Arc::new(build_store(
+        hub.clone(),
+        storage::open(&hub.dir),
+        None,
+        CancellationToken::new(),
+    ));
     orch.dispatch(AppAction::Sync(SyncAction::StopIngestPolling))
         .await;
     assert!(!orch.is_running(PollKind::Ingest).await);
@@ -495,7 +553,12 @@ async fn stop_ingest_without_start_no_op() {
 #[tokio::test]
 async fn stop_hydration_without_start_no_op() {
     let (hub, _dir) = fresh_hub();
-    let orch: Arc<Store> = Arc::new(build_store(hub, None, CancellationToken::new()));
+    let orch: Arc<Store> = Arc::new(build_store(
+        hub.clone(),
+        storage::open(&hub.dir),
+        None,
+        CancellationToken::new(),
+    ));
     orch.dispatch(AppAction::Sync(SyncAction::StopHydrationPolling))
         .await;
     assert!(!orch.is_running(PollKind::Hydration).await);
@@ -505,7 +568,8 @@ async fn stop_hydration_without_start_no_op() {
 async fn start_ingest_polling_spawns_loop_with_refresh() {
     let (hub, _dir) = fresh_hub();
     let (store_inner, _refresh) = build_store_with_refresh(
-        hub,
+        hub.clone(),
+        storage::open(&hub.dir),
         None,
         CancellationToken::new(),
         Vec::new(),
@@ -538,7 +602,8 @@ async fn start_ingest_polling_spawns_loop_with_refresh() {
 async fn start_hydration_polling_spawns_loop_with_refresh() {
     let (hub, _dir) = fresh_hub();
     let (store_inner, _refresh) = build_store_with_refresh(
-        hub,
+        hub.clone(),
+        storage::open(&hub.dir),
         None,
         CancellationToken::new(),
         Vec::new(),
@@ -571,7 +636,8 @@ async fn start_hydration_polling_spawns_loop_with_refresh() {
 async fn start_ingest_idempotent_no_op_when_already_running() {
     let (hub, _dir) = fresh_hub();
     let (store_inner, _refresh) = build_store_with_refresh(
-        hub,
+        hub.clone(),
+        storage::open(&hub.dir),
         None,
         CancellationToken::new(),
         Vec::new(),
@@ -603,7 +669,8 @@ async fn start_ingest_idempotent_no_op_when_already_running() {
 async fn start_hydration_idempotent_no_op_when_already_running() {
     let (hub, _dir) = fresh_hub();
     let (store_inner, _refresh) = build_store_with_refresh(
-        hub,
+        hub.clone(),
+        storage::open(&hub.dir),
         None,
         CancellationToken::new(),
         Vec::new(),

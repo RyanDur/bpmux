@@ -43,6 +43,9 @@ axum = { version = "0.8", features = ["ws"] }
 tower-http = { version = "0.6", features = ["cors"] }
 
 [dev-dependencies]
+database-support = { path = "../../components/database-support" }
+tokio = { workspace = true, features = ["test-util"] }
+comprehension = { path = "../../components/comprehension" }
 store_test_support = { path = "../../components/store_test_support" }
 transport = { path = "../../components/transport", features = ["test-support"] }
 tempfile = { workspace = true }

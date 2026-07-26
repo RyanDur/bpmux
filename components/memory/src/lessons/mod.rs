@@ -132,3 +132,41 @@ pub fn group_by_topic(index: &LessonIndex) -> Vec<TopicGroup> {
 
 mod store;
 pub use store::*;
+
+pub struct LessonStore {
+    dir: std::path::PathBuf,
+}
+
+impl LessonStore {
+    pub fn new(dir: std::path::PathBuf) -> Self {
+        Self { dir }
+    }
+}
+
+impl LessonRepo for LessonStore {
+    fn load_lessons(&self) -> LessonIndex {
+        load_index(&self.dir)
+    }
+
+    fn add_lesson(
+        &self,
+        topic: &str,
+        lesson: &str,
+        author_role: &str,
+        evidence: Vec<String>,
+    ) -> Result<(), std::io::Error> {
+        add_lesson(&self.dir, topic, lesson, author_role, evidence)
+    }
+
+    fn load_peer_lessons(&self, peer: &str) -> LessonIndex {
+        load_peer_index(&self.dir, peer)
+    }
+
+    fn save_peer_lessons(&self, peer: &str, index: &LessonIndex) -> Result<(), std::io::Error> {
+        save_peer_index(&self.dir, peer, index)
+    }
+
+    fn list_peers(&self) -> Vec<String> {
+        list_peer_names(&self.dir)
+    }
+}

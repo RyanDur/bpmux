@@ -1,12 +1,13 @@
 use std::collections::HashSet;
 use std::io::BufRead;
 use std::path::Path;
+use std::sync::Arc;
 
-use super::SqliteStorage;
-use super::migrate::MigrationError;
+use crate::db as messages;
+use crate::store::ConversationStore;
+use crate::{LogError, MessageLog};
+use database_support::{DatabaseGateway, io_err};
 use message::Message;
-use message_log::MessageLog;
-use message_log::db as messages;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportReport {
@@ -16,11 +17,10 @@ pub struct ImportReport {
     pub unparseable_lines: usize,
 }
 
-pub fn import_conversation(
-    data_dir: &Path,
-    source_jsonl: &Path,
-) -> Result<ImportReport, MigrationError> {
-    let target = SqliteStorage::new(data_dir.to_path_buf())?;
+pub fn import_conversation(data_dir: &Path, source_jsonl: &Path) -> Result<ImportReport, LogError> {
+    let gateway = Arc::new(DatabaseGateway::open(data_dir).map_err(io_err)?);
+    user_routing::db::seed_system(&gateway.lock()).map_err(io_err)?;
+    let target = ConversationStore::new(gateway.clone(), data_dir.to_path_buf());
     let mut seen = known_identities(&target)?;
     let mut report = ImportReport {
         imported: 0,
@@ -29,13 +29,12 @@ pub fn import_conversation(
         unparseable_lines: 0,
     };
 
-    let file = std::fs::File::open(source_jsonl)
-        .map_err(|e| MigrationError::Store(message_log::LogError::from(e)))?;
-    let conn = target.lock();
-    conn.execute_batch("BEGIN IMMEDIATE")?;
-    let inserted = (|| -> Result<(), MigrationError> {
+    let file = std::fs::File::open(source_jsonl)?;
+    let conn = gateway.lock();
+    conn.execute_batch("BEGIN IMMEDIATE").map_err(io_err)?;
+    let inserted = (|| -> Result<(), LogError> {
         for line in std::io::BufReader::new(file).lines() {
-            let line = line.map_err(|e| MigrationError::Store(message_log::LogError::from(e)))?;
+            let line = line?;
             if line.trim().is_empty() {
                 continue;
             }
@@ -56,7 +55,7 @@ pub fn import_conversation(
             msg.ensure_id();
             seen.insert(id_key(&msg));
             seen.insert(content_key(&msg));
-            let payload = serde_json::to_string(&msg).map_err(message_log::LogError::from)?;
+            let payload = serde_json::to_string(&msg)?;
             let message_type = msg
                 .message_type
                 .to_wire()
@@ -69,8 +68,9 @@ pub fn import_conversation(
                 sender,
                 &message_type,
                 &payload,
-            )?;
-            messages::append_recipients(&conn, &msg.id, &msg)?;
+            )
+            .map_err(io_err)?;
+            messages::append_recipients(&conn, &msg.id, &msg).map_err(io_err)?;
             report.imported += 1;
         }
         Ok(())
@@ -79,12 +79,12 @@ pub fn import_conversation(
         let _ = conn.execute_batch("ROLLBACK");
         return Err(e);
     }
-    conn.execute_batch("COMMIT")?;
-    messages::restore_conversation_order(&conn).map_err(MigrationError::OpenTarget)?;
+    conn.execute_batch("COMMIT").map_err(io_err)?;
+    messages::restore_conversation_order(&conn).map_err(io_err)?;
     Ok(report)
 }
 
-fn known_identities(target: &SqliteStorage) -> Result<HashSet<String>, MigrationError> {
+fn known_identities(target: &ConversationStore) -> Result<HashSet<String>, LogError> {
     let mut seen = HashSet::new();
     for msg in target.read_messages()? {
         if !msg.id.is_empty() {

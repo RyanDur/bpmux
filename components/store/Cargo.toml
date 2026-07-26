@@ -24,6 +24,7 @@ tokio-util = { workspace = true }
 tokio = { workspace = true, optional = true }
 
 [dev-dependencies]
+database-support = { path = "../database-support" }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 chrono = { workspace = true }

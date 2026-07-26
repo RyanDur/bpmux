@@ -1,4 +1,5 @@
 pub mod db;
+pub mod store;
 use std::collections::VecDeque;
 
 pub mod health;

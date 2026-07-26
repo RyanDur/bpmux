@@ -55,6 +55,7 @@ async fn edit_story_replaces_body_at_canonical_store() {
     ));
     let app_store = Arc::new(server::store_wiring::build_store(
         hub.clone(),
+        storage::open(&hub.dir),
         None,
         CancellationToken::new(),
     ));

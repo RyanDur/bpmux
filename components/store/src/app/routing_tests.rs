@@ -7,16 +7,19 @@ use tempfile::TempDir;
 use super::routing::RoutingPersister;
 use crate::routing::{RoutingAction, from_users};
 use crate::{AppAction, AppState, app_reduce};
+use database_support::DatabaseGateway;
 use kernel::{Dispatch, Listener, Reaction};
-use storage::SqliteStorage;
 use user_routing::UserRepo;
+use user_routing::store::UserStore;
 
 fn no_op_dispatch() -> Dispatch<AppAction> {
     Arc::new(|_action: AppAction| {})
 }
 
 fn repo(dir: &TempDir) -> Arc<dyn UserRepo> {
-    Arc::new(SqliteStorage::new(dir.path().to_path_buf()).expect("sqlite test storage"))
+    Arc::new(UserStore::new(Arc::new(
+        DatabaseGateway::open(dir.path()).expect("sqlite test storage"),
+    )))
 }
 
 async fn drive(

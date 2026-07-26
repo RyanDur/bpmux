@@ -559,10 +559,11 @@ async fn message_routing_runs_end_to_end_on_the_sqlite_backend_the_cutover_user_
         "SELF-ECHO on sqlite: dev's own broadcast is never reflected back into dev's terminal"
     );
 
-    use storage::SqliteStorage;
     use user_routing::UserRepo;
-    let storage = SqliteStorage::new(bpmux.data_base_path())
-        .expect("open the server's flat sqlite data store");
+    let storage = user_routing::store::UserStore::new(std::sync::Arc::new(
+        database_support::DatabaseGateway::open(&bpmux.data_base_path())
+            .expect("open the server's flat sqlite data store"),
+    ));
     let mut roles: Vec<String> = storage
         .load_users()
         .expect("load the users table")

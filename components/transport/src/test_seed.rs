@@ -26,7 +26,7 @@ pub async fn post_seed_messages(
     for msg in &body.messages {
         let mut msg = msg.clone();
         msg.ensure_id();
-        if let Err(e) = hub.storage.append_message(&msg) {
+        if let Err(e) = hub.conversation.append_message(&msg) {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("seed_messages append failed: {e}"),
@@ -67,7 +67,7 @@ pub async fn post_seed_reactions(
 }
 
 pub async fn post_reset_messages(State(hub): State<Arc<hub::Hub>>) -> impl IntoResponse {
-    if let Err(e) = hub.storage.clear_messages() {
+    if let Err(e) = hub.conversation.clear_messages() {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("reset_messages failed: {e}"),

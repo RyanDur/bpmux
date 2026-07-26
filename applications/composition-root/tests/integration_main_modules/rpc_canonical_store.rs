@@ -74,6 +74,7 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
     ));
     let app_store = Arc::new(server::store_wiring::build_store(
         hub.clone(),
+        storage::open(&hub.dir),
         None,
         CancellationToken::new(),
     ));

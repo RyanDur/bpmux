@@ -5,9 +5,10 @@ use std::sync::Arc;
 use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
+use database_support::DatabaseGateway;
 use integrations::in_memory::InMemorySourceAdapter;
+use source_sync::store::OutboxStore;
 use source_sync::{OutboxRepo, PendingWrite, QueuedWrite};
-use storage::{SqliteStorage, Storage};
 use store::AppAction;
 use store_test_support::SeededStore;
 use store_test_support::eventually;
@@ -20,8 +21,10 @@ use sync::{OutboxSink, SyncOrchestrator};
 mod outbox_persistence {
     use super::*;
 
-    fn sqlite_store(dir: &tempfile::TempDir) -> Arc<dyn Storage> {
-        Arc::new(SqliteStorage::new(dir.path().to_path_buf()).unwrap())
+    fn sqlite_store(dir: &tempfile::TempDir) -> Arc<dyn OutboxRepo> {
+        Arc::new(OutboxStore::new(Arc::new(
+            DatabaseGateway::open(dir.path()).unwrap(),
+        )))
     }
 
     fn wire(
@@ -52,7 +55,7 @@ mod outbox_persistence {
         )
     }
 
-    async fn eventually_store_len(storage: &Arc<dyn Storage>, expected: usize) {
+    async fn eventually_store_len(storage: &Arc<dyn OutboxRepo>, expected: usize) {
         eventually(
             "the write-behind persister lands the queued snapshot in the store",
             || {

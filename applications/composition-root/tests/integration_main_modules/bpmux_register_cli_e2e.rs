@@ -80,6 +80,7 @@ async fn register_cli_holds_a_stable_id_in_the_dirs_own_marker_and_makes_it_reso
 
     let storage = storage::open(&bpmux.data_base_path());
     let users = storage
+        .users
         .load_users()
         .expect("the server persists the routing-identity store after register");
     let user = users

@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use source_sync::{PendingWrite, QueuedWrite};
 
-pub(super) fn hydrate_outbox(storage: &Arc<dyn storage::Storage>) -> Vec<QueuedWrite> {
+pub(super) fn hydrate_outbox(outbox: &Arc<dyn source_sync::OutboxRepo>) -> Vec<QueuedWrite> {
     let codec = source_codec::gh_label_codec::GhLabelCodec;
-    match storage.load_outbox() {
+    match outbox.load_outbox() {
         Ok(rows) => rows
             .into_iter()
             .map(|row| QueuedWrite::minted(row.id, PendingWrite::from_event(&codec, row.event)))

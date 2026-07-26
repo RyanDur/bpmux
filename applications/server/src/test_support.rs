@@ -9,7 +9,8 @@ pub(crate) fn wired_store(
     tracker: Option<Arc<dyn store::CiPollFetch>>,
     parent_ct: CancellationToken,
 ) -> store::Store {
-    crate::store_wiring::build_store(hub, tracker, parent_ct)
+    let stores = storage::open(&hub.dir);
+    crate::store_wiring::build_store(hub, stores, tracker, parent_ct)
 }
 
 pub(crate) use store_test_support::eventually;

@@ -32,7 +32,8 @@ async fn start_story_deliver_story_universal_reap_emits_8_strips_each() {
         wake_tx,
     ));
     let app_store = Arc::new(server::store_wiring::build_store(
-        hub,
+        hub.clone(),
+        storage::open(&hub.dir),
         None,
         CancellationToken::new(),
     ));

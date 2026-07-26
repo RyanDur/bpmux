@@ -14,6 +14,7 @@ fn startup_routing_id(select: &store::Select, identity: &str) -> String {
 
 pub async fn run_server(
     hub: Arc<hub::Hub>,
+    stores: storage::Stores,
     port: u16,
     ct: CancellationToken,
 ) -> anyhow::Result<()> {
@@ -24,7 +25,7 @@ pub async fn run_server(
 
     let race_window = race_window_barrier_from_env();
 
-    let hydrated_outbox = hydrate_outbox(&hub.storage);
+    let hydrated_outbox = hydrate_outbox(&stores.outbox);
     let ci_tracker = tracker
         .as_ref()
         .cloned()
@@ -40,6 +41,7 @@ pub async fn run_server(
             let adapter = Arc::new(integrations::in_memory::InMemorySourceAdapter::new());
             let (store, refresh) = store_wiring::build_store_with_refresh(
                 hub.clone(),
+                stores.clone(),
                 ci_tracker,
                 ct.clone(),
                 hydrated_outbox,
@@ -56,6 +58,7 @@ pub async fn run_server(
             ));
             let (store, refresh) = store_wiring::build_store_with_refresh(
                 hub.clone(),
+                stores.clone(),
                 ci_tracker,
                 ct.clone(),
                 hydrated_outbox,
@@ -68,6 +71,7 @@ pub async fn run_server(
         } else {
             let store = store_wiring::build_store_with_outbox(
                 hub.clone(),
+                stores.clone(),
                 ci_tracker,
                 ct.clone(),
                 hydrated_outbox,
@@ -121,6 +125,7 @@ pub async fn run_server(
         dispatch: store.dispatcher(),
         store,
         pty_registry,
+        lessons: stores.lessons.clone(),
         port,
     });
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;
@@ -141,6 +146,9 @@ pub async fn run_server(
     Ok(())
 }
 
+pub mod awareness_host;
+#[cfg(test)]
+mod awareness_host_tests;
 mod routes;
 mod setup;
 mod startup_sequence;

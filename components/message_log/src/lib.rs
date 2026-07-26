@@ -1,6 +1,8 @@
 pub mod db;
 mod file_log;
+pub mod import;
 mod reverse_line_reader;
+pub mod store;
 
 pub const DEFAULT_MESSAGE_LIMIT: usize = 20;
 
@@ -58,5 +60,7 @@ pub trait MessageLog: Send + Sync {
 #[cfg(test)]
 mod file_log_format;
 
+#[cfg(test)]
+mod import_tests;
 #[cfg(test)]
 mod log_tests;

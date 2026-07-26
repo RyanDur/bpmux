@@ -55,7 +55,8 @@ async fn write_queued_burst_single_flights_one_drain_that_pushes_each_write_once
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let (store_inner, orch) = build_store_with_refresh(
-        hub,
+        hub.clone(),
+        storage::open(&hub.dir),
         None,
         CancellationToken::new(),
         Vec::new(),
@@ -103,7 +104,8 @@ async fn polling_liveness_facts_never_drain_a_seeded_outbox() {
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let (store_inner, _orch) = build_store_with_refresh(
-        hub,
+        hub.clone(),
+        storage::open(&hub.dir),
         None,
         CancellationToken::new(),
         vec![seeded_write(9101, "one", 1), seeded_write(9102, "two", 2)],
@@ -158,7 +160,8 @@ async fn a_mutated_write_is_selectable_the_moment_mutate_returns() {
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
     let (store_inner, orch) = build_store_with_refresh(
-        hub,
+        hub.clone(),
+        storage::open(&hub.dir),
         None,
         CancellationToken::new(),
         Vec::new(),
@@ -196,7 +199,8 @@ async fn an_ingested_upsert_is_selectable_the_moment_refresh_returns() {
     )]);
     adapter.seed_labels(8001, vec!["outcome".to_string()]);
     let (store_inner, orch) = build_store_with_refresh(
-        hub,
+        hub.clone(),
+        storage::open(&hub.dir),
         None,
         CancellationToken::new(),
         Vec::new(),

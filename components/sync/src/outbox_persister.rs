@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
 use kernel::{DeliveryMode, Listener, ListenerFuture, Reaction};
-use source_sync::QueuedEvent;
+use source_sync::{OutboxRepo, QueuedEvent};
 use store::sync::queue_snapshot;
 use store::{AppAction, AppState};
 
 #[derive(Clone)]
 pub enum OutboxSink {
-    Storage(Arc<dyn storage::Storage>),
+    Storage(Arc<dyn OutboxRepo>),
     #[cfg(test)]
     Recording(Arc<std::sync::Mutex<Vec<Vec<QueuedEvent>>>>),
 }

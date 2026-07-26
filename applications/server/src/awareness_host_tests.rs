@@ -11,7 +11,7 @@ use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::sync::broadcast;
 
-use super::Hub;
+use hub::Hub;
 
 fn system_join(name: &str) -> Message {
     Message {
@@ -37,6 +37,15 @@ fn make_hub() -> (Arc<Hub>, broadcast::Receiver<Message>, TempDir) {
     let (tx, rx) = broadcast::channel(64);
     let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "owner".to_string(), tx));
     (hub, rx, dir)
+}
+
+fn host_over(hub: &Arc<Hub>) -> crate::awareness_host::HubAwarenessHost {
+    let stores = storage::open(&hub.dir);
+    crate::awareness_host::HubAwarenessHost {
+        hub: hub.clone(),
+        topics: stores.topics,
+        lessons: stores.lessons,
+    }
 }
 
 fn drain_broadcasts(rx: &mut broadcast::Receiver<Message>) -> Vec<Message> {
@@ -77,7 +86,7 @@ fn flush_excludes_recipient_own_messages() {
         "precondition: detector should have pending experiences after feeding corrections"
     );
 
-    detector.flush(&*hub, &agents);
+    detector.flush(&host_over(&hub), &agents);
 
     let nudges = drain_broadcasts(&mut rx);
     assert!(!nudges.is_empty(), "expected at least one nudge");
@@ -133,7 +142,7 @@ fn flush_skips_recipients_with_only_own_experiences() {
         ),
         "pm",
     );
-    detector.flush(&*hub, &agents);
+    detector.flush(&host_over(&hub), &agents);
 
     let nudges = drain_broadcasts(&mut rx);
     let pm_nudge = nudges
@@ -237,7 +246,7 @@ fn handoff_nudge_suppressed_when_recipient_already_responded() {
 
     let _ = drain_broadcasts(&mut rx);
 
-    tracker.timeout_nudge(&*hub);
+    tracker.timeout_nudge(&host_over(&hub));
 
     let broadcasts_after = drain_broadcasts(&mut rx);
     let suppressed = !broadcasts_after
@@ -267,7 +276,7 @@ fn handoff_nudge_fires_when_recipient_silent() {
     assert!(tracker.is_pending());
 
     let _ = drain_broadcasts(&mut rx);
-    tracker.timeout_nudge(&*hub);
+    tracker.timeout_nudge(&host_over(&hub));
 
     let broadcasts_after = drain_broadcasts(&mut rx);
     let fired = broadcasts_after

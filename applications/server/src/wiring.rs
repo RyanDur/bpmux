@@ -19,6 +19,7 @@ pub(super) struct RouterDeps {
     pub store: Arc<Store>,
     pub dispatch: store::Dispatch,
     pub pty_registry: Arc<LivePtyRegistry>,
+    pub lessons: Arc<dyn memory::lessons::LessonRepo>,
     pub port: u16,
 }
 
@@ -35,6 +36,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         store,
         dispatch,
         pty_registry,
+        lessons,
         port,
     } = deps;
     let has_refresh = orchestrator.is_some();
@@ -95,6 +97,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         .layer(axum::Extension(electron_capture_lock))
         .layer(axum::Extension(orchestrator))
         .layer(axum::Extension(race_window))
+        .layer(axum::Extension(lessons))
         .layer(axum::Extension(store.selector()))
         .layer(axum::Extension(store))
         .layer(axum::Extension(dispatch))

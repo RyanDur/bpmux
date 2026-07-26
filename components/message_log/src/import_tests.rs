@@ -3,10 +3,13 @@
 use chrono::{TimeZone, Utc};
 use tempfile::TempDir;
 
-use super::SqliteStorage;
-use super::import::import_conversation;
+use std::sync::Arc;
+
+use crate::MessageLog;
+use crate::import::import_conversation;
+use crate::store::ConversationStore;
+use database_support::DatabaseGateway;
 use message::{Message, MessageType};
-use message_log::MessageLog;
 
 fn chat_at(text: &str, rfc3339: &str) -> Message {
     let mut msg = Message {
@@ -33,7 +36,7 @@ fn write_jsonl(dir: &TempDir, name: &str, messages: &[Message]) -> std::path::Pa
     path
 }
 
-fn texts(storage: &SqliteStorage) -> Vec<String> {
+fn texts(storage: &ConversationStore) -> Vec<String> {
     storage
         .read_messages()
         .unwrap()
@@ -45,7 +48,10 @@ fn texts(storage: &SqliteStorage) -> Vec<String> {
 #[test]
 fn importing_older_history_interleaves_it_into_conversation_order() {
     let dir = TempDir::new().unwrap();
-    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+    let storage = ConversationStore::new(
+        Arc::new(DatabaseGateway::open(dir.path()).unwrap()),
+        dir.path().to_path_buf(),
+    );
     storage
         .append_message(&chat_at("local-tuesday", "2026-07-14T09:00:00Z"))
         .unwrap();
@@ -80,7 +86,10 @@ fn importing_older_history_interleaves_it_into_conversation_order() {
 #[test]
 fn importing_the_same_history_twice_changes_nothing() {
     let dir = TempDir::new().unwrap();
-    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+    let storage = ConversationStore::new(
+        Arc::new(DatabaseGateway::open(dir.path()).unwrap()),
+        dir.path().to_path_buf(),
+    );
     storage
         .append_message(&chat_at("already-here", "2026-07-14T09:00:00Z"))
         .unwrap();
@@ -109,7 +118,10 @@ fn importing_the_same_history_twice_changes_nothing() {
 #[test]
 fn id_less_legacy_lines_import_once_and_dedupe_by_content() {
     let dir = TempDir::new().unwrap();
-    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+    let storage = ConversationStore::new(
+        Arc::new(DatabaseGateway::open(dir.path()).unwrap()),
+        dir.path().to_path_buf(),
+    );
 
     let mut legacy = chat_at("from the id-less era", "2026-04-03T09:00:00Z");
     legacy.id = String::new();
@@ -131,7 +143,10 @@ fn id_less_legacy_lines_import_once_and_dedupe_by_content() {
 #[test]
 fn no_state_projection_imports_regardless_of_domain() {
     let dir = TempDir::new().unwrap();
-    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+    let storage = ConversationStore::new(
+        Arc::new(DatabaseGateway::open(dir.path()).unwrap()),
+        dir.path().to_path_buf(),
+    );
 
     let mut ci = chat_at("", "2026-07-13T09:00:00Z");
     ci.message_type = MessageType::StateDelta;
@@ -160,7 +175,10 @@ fn no_state_projection_imports_regardless_of_domain() {
 #[test]
 fn ephemeral_board_deltas_are_filtered_not_imported() {
     let dir = TempDir::new().unwrap();
-    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+    let storage = ConversationStore::new(
+        Arc::new(DatabaseGateway::open(dir.path()).unwrap()),
+        dir.path().to_path_buf(),
+    );
 
     let mut delta = chat_at("", "2026-07-13T09:00:00Z");
     delta.message_type = MessageType::StateDelta;

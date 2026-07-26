@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::Json;
-use axum::extract::{Query, State};
+use axum::extract::{Extension, Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
@@ -27,10 +27,11 @@ pub struct PeerLessonsQuery {
 
 pub async fn get_lessons(
     State(hub): State<Arc<hub::Hub>>,
+    Extension(lessons_repo): Extension<Arc<dyn memory::lessons::LessonRepo>>,
     Query(params): Query<LessonsQuery>,
 ) -> impl IntoResponse {
     if let Some(limit) = params.limit {
-        let mut lessons = hub.storage.load_lessons().lessons;
+        let mut lessons = lessons_repo.load_lessons().lessons;
         lessons.sort_by(|a, b| {
             b.reinforcement_count
                 .cmp(&a.reinforcement_count)
@@ -55,7 +56,7 @@ pub async fn get_lessons(
     match hub.read_messages() {
         Ok(messages) => {
             let mut index = memory::lessons::build_index(&messages, &hub.owner_name);
-            let saved = hub.storage.load_lessons();
+            let saved = lessons_repo.load_lessons();
             index.lessons = saved.lessons;
 
             let groups = memory::lessons::group_by_topic(&index);
@@ -93,18 +94,18 @@ pub async fn get_lessons(
 }
 
 pub async fn get_peer_lessons(
-    State(hub): State<Arc<hub::Hub>>,
+    Extension(lessons_repo): Extension<Arc<dyn memory::lessons::LessonRepo>>,
     Query(params): Query<PeerLessonsQuery>,
 ) -> impl IntoResponse {
     let Some(peer_name) = params.peer else {
-        let peers = hub.storage.list_peers();
+        let peers = lessons_repo.list_peers();
         return (
             StatusCode::OK,
             format!("available peers: {}", peers.join(", ")),
         );
     };
 
-    let index = hub.storage.load_peer_lessons(&peer_name);
+    let index = lessons_repo.load_peer_lessons(&peer_name);
     let groups = memory::lessons::group_by_topic(&index);
     if groups.is_empty() {
         return (
@@ -129,10 +130,10 @@ pub async fn get_peer_lessons(
 }
 
 pub async fn post_lesson(
-    State(hub): State<Arc<hub::Hub>>,
+    Extension(lessons_repo): Extension<Arc<dyn memory::lessons::LessonRepo>>,
     Json(payload): Json<SaveLessonPayload>,
 ) -> impl IntoResponse {
-    match hub.storage.add_lesson(
+    match lessons_repo.add_lesson(
         &payload.topic,
         &payload.lesson,
         &payload.author_role,

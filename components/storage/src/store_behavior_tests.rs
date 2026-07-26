@@ -1,13 +1,11 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::sqlite::SqliteStorage;
+use crate::Stores;
 use message::{Message, MessageType};
-use message_log::MessageLog;
-use user_routing::UserRepo;
 
-fn store() -> (tempfile::TempDir, SqliteStorage) {
+fn store() -> (tempfile::TempDir, Stores) {
     let dir = tempfile::TempDir::new().unwrap();
-    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+    let storage = crate::open(dir.path());
     (dir, storage)
 }
 
@@ -28,7 +26,7 @@ fn chat(from: &str, sender_id: Option<&str>) -> Message {
 fn the_seeded_system_user_is_excluded_from_the_participant_roster() {
     let (_dir, storage) = store();
     assert!(
-        storage.load_users().unwrap().is_empty(),
+        storage.users.load_users().unwrap().is_empty(),
         "the system user is infrastructure, not a routable participant — load_users (which rebuilds routing identities) excludes it, so the backends stay at parity"
     );
 }
@@ -36,8 +34,11 @@ fn the_seeded_system_user_is_excluded_from_the_participant_roster() {
 #[test]
 fn an_unresolvable_author_is_kept_never_dropped() {
     let (_dir, storage) = store();
-    storage.append_message(&chat("rando", None)).unwrap();
-    let stored = storage.read_messages().unwrap();
+    storage
+        .conversation
+        .append_message(&chat("rando", None))
+        .unwrap();
+    let stored = storage.conversation.read_messages().unwrap();
     assert_eq!(
         stored.len(),
         1,
@@ -53,9 +54,8 @@ const FIX_QUEUED_VERDICT_ROW: &str = r#"{"id":0,"event":{"VerdictCast":{"meta":{
 
 #[test]
 fn an_outbox_row_round_trips_byte_identically_through_the_real_store() {
-    use source_sync::OutboxRepo;
     let dir = tempfile::TempDir::new().unwrap();
-    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+    let storage = crate::open(dir.path());
     let raw = rusqlite::Connection::open(dir.path().join("data.db")).unwrap();
     raw.execute(
         "INSERT INTO outbox (event) VALUES (?1)",
@@ -63,10 +63,10 @@ fn an_outbox_row_round_trips_byte_identically_through_the_real_store() {
     )
     .unwrap();
 
-    let loaded = storage.load_outbox().unwrap();
+    let loaded = storage.outbox.load_outbox().unwrap();
     assert_eq!(loaded.len(), 1);
     let entries: Vec<source_sync::QueuedEvent> = loaded.into_iter().collect();
-    storage.save_outbox(&entries).unwrap();
+    storage.outbox.save_outbox(&entries).unwrap();
 
     let stored: String = raw
         .query_row("SELECT event FROM outbox", [], |row| row.get(0))
@@ -80,7 +80,7 @@ fn an_outbox_row_round_trips_byte_identically_through_the_real_store() {
 #[test]
 fn reading_since_a_cutoff_serves_the_window_from_the_indexed_column() {
     let dir = tempfile::TempDir::new().unwrap();
-    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+    let storage = crate::open(dir.path());
 
     let mut old = chat("dev", None);
     old.text = "#1 started long ago".to_string();
@@ -97,12 +97,15 @@ fn reading_since_a_cutoff_serves_the_window_from_the_indexed_column() {
     };
     recent_activity.ensure_id();
 
-    storage.append_message(&old).unwrap();
-    storage.append_message(&recent).unwrap();
-    storage.append_message(&recent_activity).unwrap();
+    storage.conversation.append_message(&old).unwrap();
+    storage.conversation.append_message(&recent).unwrap();
+    storage
+        .conversation
+        .append_message(&recent_activity)
+        .unwrap();
 
     let cutoff = chrono::Utc::now() - chrono::Duration::days(14);
-    let window = storage.read_messages_since(cutoff).unwrap();
+    let window = storage.conversation.read_messages_since(cutoff).unwrap();
 
     let texts: Vec<&str> = window.iter().map(|m| m.text.as_str()).collect();
     assert_eq!(texts, vec!["#2 started", "#2 delivered"]);
@@ -111,16 +114,17 @@ fn reading_since_a_cutoff_serves_the_window_from_the_indexed_column() {
 #[test]
 fn search_hits_and_clusters_reconstruct_the_conversation_neighborhood() {
     let dir = tempfile::TempDir::new().unwrap();
-    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+    let storage = crate::open(dir.path());
 
     for text in ["opening remarks", "the needle sits here", "closing remarks"] {
         let mut m = chat("dev", None);
         m.text = text.to_string();
-        storage.append_message(&m).unwrap();
+        storage.conversation.append_message(&m).unwrap();
     }
 
     let mut clusters: Vec<(Vec<String>, usize)> = Vec::new();
     storage
+        .conversation
         .search_conversations("needle", None, 5, &mut |cluster, center| {
             let texts = cluster.iter().map(|m| m.text.clone()).collect();
             clusters.push((texts, center));
@@ -144,20 +148,20 @@ fn search_hits_and_clusters_reconstruct_the_conversation_neighborhood() {
 #[test]
 fn addressing_lands_in_the_recipients_table_and_dies_with_its_message() {
     let dir = tempfile::TempDir::new().unwrap();
-    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+    let storage = crate::open(dir.path());
 
     let mut m = chat("dev", None);
     m.text = "for the pms and one individual".to_string();
     m.to = Some(vec!["pm".to_string(), "designer".to_string()]);
     m.to_ids = Some(vec!["6b3054e9-a6b4-4e5b-84db-f788ebdec25b".to_string()]);
-    storage.append_message(&m).unwrap();
+    storage.conversation.append_message(&m).unwrap();
 
     let mut broadcast = chat("dev", None);
     broadcast.text = "to everyone".to_string();
-    storage.append_message(&broadcast).unwrap();
+    storage.conversation.append_message(&broadcast).unwrap();
 
     let recipients: Vec<(String, String)> = {
-        let conn = storage.lock();
+        let conn = storage.gateway.lock();
         let mut stmt = conn
             .prepare("SELECT kind, value FROM message_recipients ORDER BY kind, value")
             .unwrap();
@@ -179,8 +183,9 @@ fn addressing_lands_in_the_recipients_table_and_dies_with_its_message() {
         "addressed roles and ids each get a row; the broadcast gets none"
     );
 
-    storage.clear_messages().unwrap();
+    storage.conversation.clear_messages().unwrap();
     let remaining: i64 = storage
+        .gateway
         .lock()
         .query_row("SELECT COUNT(*) FROM message_recipients", [], |r| r.get(0))
         .unwrap();
@@ -190,19 +195,20 @@ fn addressing_lands_in_the_recipients_table_and_dies_with_its_message() {
 #[test]
 fn addressee_search_narrows_candidates_through_the_recipients_table() {
     let dir = tempfile::TempDir::new().unwrap();
-    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+    let storage = crate::open(dir.path());
 
     let mut addressed = chat("dev", None);
     addressed.text = "the needle, for the pm".to_string();
     addressed.to = Some(vec!["pm".to_string()]);
-    storage.append_message(&addressed).unwrap();
+    storage.conversation.append_message(&addressed).unwrap();
 
     let mut broadcast = chat("dev", None);
     broadcast.text = "the needle, for everyone".to_string();
-    storage.append_message(&broadcast).unwrap();
+    storage.conversation.append_message(&broadcast).unwrap();
 
     let mut centers = Vec::new();
     storage
+        .conversation
         .search_conversations("needle", Some("pm"), 5, &mut |cluster, center| {
             centers.push(cluster[center].text.clone());
             true
@@ -219,19 +225,20 @@ fn addressee_search_narrows_candidates_through_the_recipients_table() {
 #[test]
 fn only_chat_messages_are_search_candidates() {
     let dir = tempfile::TempDir::new().unwrap();
-    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+    let storage = crate::open(dir.path());
 
     let mut noise = chat("bpmux", None);
     noise.text = "activity event carrying the needle".to_string();
     noise.message_type = message::MessageType::Activity;
-    storage.append_message(&noise).unwrap();
+    storage.conversation.append_message(&noise).unwrap();
 
     let mut spoken = chat("dev", None);
     spoken.text = "someone said the needle".to_string();
-    storage.append_message(&spoken).unwrap();
+    storage.conversation.append_message(&spoken).unwrap();
 
     let mut centers = Vec::new();
     storage
+        .conversation
         .search_conversations("needle", None, 5, &mut |cluster, center| {
             centers.push(cluster[center].text.clone());
             true

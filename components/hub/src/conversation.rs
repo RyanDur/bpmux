@@ -7,7 +7,7 @@ impl Hub {
     pub fn broadcast(&self, msg: &Message) -> Result<(), LogError> {
         let mut msg = msg.clone();
         msg.ensure_id();
-        self.storage.append_message(&msg)?;
+        self.conversation.append_message(&msg)?;
         let _ = self.wake_tx.send(msg);
         Ok(())
     }
@@ -17,7 +17,7 @@ impl Hub {
     }
 
     pub fn read_messages(&self) -> Result<Vec<Message>, LogError> {
-        self.storage.read_messages()
+        self.conversation.read_messages()
     }
 
     pub fn search_conversations(
@@ -27,7 +27,7 @@ impl Hub {
         radius: u64,
         accept: &mut dyn FnMut(&[Message], usize) -> bool,
     ) -> Result<(), LogError> {
-        self.storage
+        self.conversation
             .search_conversations(needle_lower, addressee, radius, accept)
     }
 
@@ -35,7 +35,7 @@ impl Hub {
         &self,
         cutoff: chrono::DateTime<chrono::Utc>,
     ) -> Result<Vec<Message>, LogError> {
-        self.storage.read_messages_since(cutoff)
+        self.conversation.read_messages_since(cutoff)
     }
 
     pub fn read_recent(
@@ -44,6 +44,6 @@ impl Hub {
         offset: usize,
         matches: &dyn Fn(&Message) -> bool,
     ) -> Result<Vec<Message>, LogError> {
-        self.storage.read_recent(limit, offset, matches)
+        self.conversation.read_recent(limit, offset, matches)
     }
 }

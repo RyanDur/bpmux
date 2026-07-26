@@ -1,8 +1,12 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use super::{SqliteStorage, Storage};
+use std::sync::Arc;
+
+use crate::meta;
+use database_support::{DatabaseGateway, io_err};
 use message::{Message, StateDeltaPayload};
+use message_log::store::ConversationStore;
 use message_log::{LogError, MessageLog};
 use persist::PersistError;
 use user_routing::{UserRepo, short_name};
@@ -54,14 +58,28 @@ fn is_ephemeral_stories(msg: &Message) -> bool {
 }
 
 pub fn migrate_file_log_to_sqlite(dir: &Path) -> Result<MigrationReport, MigrationError> {
-    let target = SqliteStorage::new(dir.to_path_buf())?;
-    if target.load_state(MIGRATION_FLAG_KEY).as_deref() == Some(MIGRATION_DONE) {
+    let gateway = Arc::new(DatabaseGateway::open(dir)?);
+    user_routing::db::seed_system(&gateway.lock())?;
+    migrate_file_log_with(dir, &gateway)
+}
+
+pub(crate) fn migrate_file_log_with(
+    dir: &Path,
+    gateway: &Arc<DatabaseGateway>,
+) -> Result<MigrationReport, MigrationError> {
+    if meta::get(&gateway.lock(), MIGRATION_FLAG_KEY)
+        .map_err(io_err)
+        .map_err(message_log::LogError::from)?
+        .as_deref()
+        == Some(MIGRATION_DONE)
+    {
         return Ok(MigrationReport {
             migrated: 0,
             filtered: 0,
             already_complete: true,
         });
     }
+    let target = ConversationStore::new(gateway.clone(), dir.to_path_buf());
     let messages = message_log::read_messages(dir)?;
     target.clear_messages().map_err(MigrationError::Clear)?;
     let mut migrated = 0;
@@ -76,7 +94,7 @@ pub fn migrate_file_log_to_sqlite(dir: &Path) -> Result<MigrationReport, Migrati
         target.append_message(&msg)?;
         migrated += 1;
     }
-    target.save_state(MIGRATION_FLAG_KEY, MIGRATION_DONE);
+    let _ = meta::put(&gateway.lock(), MIGRATION_FLAG_KEY, MIGRATION_DONE);
     Ok(MigrationReport {
         migrated,
         filtered,
@@ -87,8 +105,21 @@ pub fn migrate_file_log_to_sqlite(dir: &Path) -> Result<MigrationReport, Migrati
 pub fn migrate_routing_identity_to_agents(
     data_dir: &Path,
 ) -> Result<RoutingMigrationReport, MigrationError> {
-    let target = SqliteStorage::new(data_dir.to_path_buf())?;
-    if target.load_state(ROUTING_FLAG_KEY).as_deref() == Some(MIGRATION_DONE) {
+    let gateway = Arc::new(DatabaseGateway::open(data_dir)?);
+    migrate_routing_identity_with(data_dir, &gateway)
+}
+
+pub(crate) fn migrate_routing_identity_with(
+    data_dir: &Path,
+    gateway: &Arc<DatabaseGateway>,
+) -> Result<RoutingMigrationReport, MigrationError> {
+    let target = user_routing::store::UserStore::new(gateway.clone());
+    if meta::get(&gateway.lock(), ROUTING_FLAG_KEY)
+        .map_err(io_err)
+        .map_err(message_log::LogError::from)?
+        .as_deref()
+        == Some(MIGRATION_DONE)
+    {
         return Ok(RoutingMigrationReport {
             migrated: 0,
             already_complete: true,
@@ -113,7 +144,7 @@ pub fn migrate_routing_identity_to_agents(
         }
         migrated += 1;
     }
-    target.save_state(ROUTING_FLAG_KEY, MIGRATION_DONE);
+    let _ = meta::put(&gateway.lock(), ROUTING_FLAG_KEY, MIGRATION_DONE);
     Ok(RoutingMigrationReport {
         migrated,
         already_complete: false,

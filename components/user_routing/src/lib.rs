@@ -3,6 +3,7 @@ pub mod db;
 mod identity;
 mod naming;
 pub mod slice;
+pub mod store;
 mod user;
 
 pub use identity::*;

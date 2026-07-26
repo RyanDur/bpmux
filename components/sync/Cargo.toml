@@ -11,7 +11,6 @@ store = { path = "../store" }
 product_management = { path = "../product_management" }
 source_codec = { path = "../source_codec" }
 source_sync = { path = "../source_sync" }
-storage = { path = "../storage" }
 board = { path = "../board" }
 diag = { path = "../diag" }
 workflow = { path = "../workflow" }
@@ -20,6 +19,7 @@ tokio = { workspace = true, features = ["sync", "rt", "time", "macros"] }
 tokio-util = { workspace = true }
 
 [dev-dependencies]
+database-support = { path = "../database-support" }
 integrations = { path = "../integrations" }
 store_test_support = { path = "../store_test_support" }
 hub = { path = "../hub" }

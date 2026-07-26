@@ -7,7 +7,7 @@ fn current_data_dir() -> anyhow::Result<std::path::PathBuf> {
 
 pub fn run_import_conversation(source: &Path) -> anyhow::Result<()> {
     let data_dir = current_data_dir()?;
-    let report = storage::import_conversation(&data_dir, source)?;
+    let report = message_log::import::import_conversation(&data_dir, source)?;
     println!(
         "imported {} message(s) into the conversation; skipped {} already present; \
          dropped {} ephemeral board delta(s); {} unparseable line(s); \

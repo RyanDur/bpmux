@@ -6,6 +6,8 @@ license.workspace = true
 description = "Durable message log: the MessageLog port and its file-backed format"
 
 [dependencies]
+diag = { path = "../diag" }
+user_routing = { path = "../user_routing" }
 database-support = { path = "../database-support" }
 rusqlite = { version = "0.32", features = ["bundled"] }
 chrono = { workspace = true }

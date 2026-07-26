@@ -6,50 +6,6 @@ fn src_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src")
 }
 
-const COMPOSED_FEATURE_PATHS: &[&str] = &[
-    "awareness::",
-    "message_log",
-    "memory::",
-    "source_sync",
-    "user_routing::",
-];
-
-#[test]
-fn storage_composes_feature_ports_only_in_the_super_trait_bound() {
-    let mod_rs = src_root().join("lib.rs");
-    let text = std::fs::read_to_string(&mod_rs).expect("read storage/lib.rs");
-
-    let trait_start = text
-        .find("pub trait Storage")
-        .expect("storage/mod.rs must declare `pub trait Storage`");
-    let super_trait_bound_ends_at_body_open = trait_start
-        + text[trait_start..]
-            .find('{')
-            .expect("the Storage trait must open a body");
-    let outside_the_super_trait_bound = format!(
-        "{}{}",
-        &text[..trait_start],
-        &text[super_trait_bound_ends_at_body_open..]
-    );
-
-    let leaked: Vec<&str> = COMPOSED_FEATURE_PATHS
-        .iter()
-        .copied()
-        .filter(|path| outside_the_super_trait_bound.contains(path))
-        .collect();
-
-    assert!(
-        leaked.is_empty(),
-        "storage is the persistence EDGE: features declare the repo ports they need and \
-         storage IMPLEMENTS them. The `Storage` super-trait composes those ports in its \
-         bound list ONLY; its own body declares nothing but neutral key/value state \
-         (load_state/save_state). A composed-feature path outside the bound means a domain \
-         persistence method leaked back onto the edge trait — move it behind the owning \
-         feature's port (e.g. user_routing::UserRepo). Leaked paths: {}",
-        leaked.join(", ")
-    );
-}
-
 const PORT_OWNING_FEATURE_MODULES: &[&str] = &[
     "../../awareness/src",
     "../../message_log/src",
@@ -89,9 +45,14 @@ fn domain_sql_lives_only_in_each_crate_db_module() {
                 file.display()
             ));
         }
-        let is_db_module = file.file_name().is_some_and(|n| n == "db.rs");
-        if !is_db_module && contents.contains("rusqlite") {
-            violations.push(format!("{}: rusqlite outside db.rs", file.display()));
+        let is_mechanism_module = file
+            .file_name()
+            .is_some_and(|n| n == "db.rs" || n == "store.rs" || n == "import.rs");
+        if !is_mechanism_module && contents.contains("rusqlite") {
+            violations.push(format!(
+                "{}: rusqlite outside the db/store/import mechanism modules",
+                file.display()
+            ));
         }
     }
 

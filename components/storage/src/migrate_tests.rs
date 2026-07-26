@@ -5,10 +5,13 @@ use std::path::Path;
 use chrono::Utc;
 use tempfile::TempDir;
 
-use super::SqliteStorage;
+use std::sync::Arc;
+
 use super::migrate::{migrate_file_log_to_sqlite, migrate_routing_identity_to_agents};
+use database_support::DatabaseGateway;
 use message::{Message, MessageType, StateDeltaPayload};
 use message_log::MessageLog;
+use message_log::store::ConversationStore;
 use user_routing::UserRepo;
 
 fn ms(rfc3339: &str) -> i64 {
@@ -60,8 +63,8 @@ fn seed_jsonl(dir: &Path, msgs: &[Message]) {
 }
 
 fn read_target(dir: &Path) -> Vec<Message> {
-    SqliteStorage::new(dir.to_path_buf())
-        .unwrap()
+    let gateway = Arc::new(DatabaseGateway::open(dir).unwrap());
+    ConversationStore::new(gateway, dir.to_path_buf())
         .read_messages()
         .unwrap()
 }
@@ -158,7 +161,10 @@ fn recovers_from_a_partial_interrupted_run() {
     let dir = TempDir::new().unwrap();
     seed_jsonl(dir.path(), &[chat("a"), stories_delta(), chat("b")]);
 
-    let partial = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+    let partial = ConversationStore::new(
+        Arc::new(DatabaseGateway::open(dir.path()).unwrap()),
+        dir.path().to_path_buf(),
+    );
     partial
         .append_message(&chat("leftover-partial-row"))
         .unwrap();
@@ -212,10 +218,10 @@ fn migrates_legacy_routing_json_display_and_durable_cursor_into_the_users_table(
     assert_eq!(report.migrated, 2);
     assert!(!report.already_complete);
 
-    let users = SqliteStorage::new(data_dir.clone())
-        .unwrap()
-        .load_users()
-        .unwrap();
+    let users =
+        user_routing::store::UserStore::new(Arc::new(DatabaseGateway::open(&data_dir).unwrap()))
+            .load_users()
+            .unwrap();
     let dev = users.iter().find(|u| u.user_id == "sess-dev").unwrap();
     assert_eq!(
         dev.name, "dev",
@@ -245,8 +251,7 @@ fn routing_migration_is_idempotent_and_never_reverts_a_post_flip_advanced_cursor
     assert_eq!(first.migrated, 1);
     assert!(!first.already_complete);
 
-    let storage = SqliteStorage::new(data_dir.clone()).unwrap();
-    storage
+    user_routing::store::UserStore::new(Arc::new(DatabaseGateway::open(&data_dir).unwrap()))
         .set_user_last_delivered("sess-dev", ms("2026-06-25T00:00:00Z"))
         .unwrap();
 
@@ -257,12 +262,13 @@ fn routing_migration_is_idempotent_and_never_reverts_a_post_flip_advanced_cursor
     );
     assert_eq!(second.migrated, 0);
 
-    let dev = storage
-        .load_users()
-        .unwrap()
-        .into_iter()
-        .find(|u| u.user_id == "sess-dev")
-        .unwrap();
+    let dev =
+        user_routing::store::UserStore::new(Arc::new(DatabaseGateway::open(&data_dir).unwrap()))
+            .load_users()
+            .unwrap()
+            .into_iter()
+            .find(|u| u.user_id == "sess-dev")
+            .unwrap();
     assert_eq!(
         dev.last_delivered_at,
         Some(ms("2026-06-25T00:00:00Z")),
@@ -282,8 +288,7 @@ fn routing_migration_with_no_legacy_json_is_a_clean_noop() {
     );
     assert!(!report.already_complete);
     assert!(
-        SqliteStorage::new(data_dir)
-            .unwrap()
+        user_routing::store::UserStore::new(Arc::new(DatabaseGateway::open(&data_dir).unwrap()))
             .load_users()
             .unwrap()
             .is_empty(),

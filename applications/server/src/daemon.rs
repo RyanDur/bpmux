@@ -10,7 +10,13 @@ pub fn run(name: String, base: std::path::PathBuf, port: u16) -> anyhow::Result<
     let data_dir = location::durable_data_dir(&base)?;
     let (wake_tx, _wake_rx) =
         broadcast::channel::<message::Message>(hub::BROADCAST_CHANNEL_CAPACITY);
-    let hub = Arc::new(hub::Hub::new(data_dir, name, wake_tx));
+    let stores = storage::open(&data_dir);
+    let hub = Arc::new(hub::Hub::with_conversation(
+        data_dir,
+        name,
+        wake_tx,
+        stores.conversation.clone(),
+    ));
     let ct = CancellationToken::new();
     let restart_signal = self_update::RestartSignal::new();
     let rt = tokio::runtime::Runtime::new()?;
@@ -18,10 +24,17 @@ pub fn run(name: String, base: std::path::PathBuf, port: u16) -> anyhow::Result<
         let ct = ct.clone();
         let restart_signal = restart_signal.clone();
         async move {
-            awareness::spawn(hub.clone(), hub.owner_name.clone());
+            awareness::spawn(
+                Arc::new(crate::awareness_host::HubAwarenessHost {
+                    hub: hub.clone(),
+                    topics: stores.topics.clone(),
+                    lessons: stores.lessons.clone(),
+                }),
+                hub.owner_name.clone(),
+            );
             self_update::spawn_binary_watcher(ct.clone(), restart_signal);
             spawn_shutdown_signal_listener(ct.clone());
-            crate::run_server(hub, port, ct)
+            crate::run_server(hub, stores, port, ct)
                 .await
                 .map_err(|e| anyhow::anyhow!("{e}"))
         }
