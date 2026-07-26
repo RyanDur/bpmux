@@ -21,6 +21,9 @@ impl OutboxRepo for OutboxDataGateway {
     }
 
     fn save_outbox(&self, events: &[QueuedEvent]) -> Result<(), PersistError> {
-        db::replace(&self.gateway.lock(), events)
+        let raws = db::serialize_events(events)?;
+        self.gateway
+            .with_transaction(|conn| db::replace_rows(conn, &raws))
+            .map_err(database_support::persist_err)
     }
 }

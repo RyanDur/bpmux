@@ -4,6 +4,12 @@ use crate::LogError;
 use database_support as engine;
 use message::Message;
 
+impl From<rusqlite::Error> for crate::LogError {
+    fn from(e: rusqlite::Error) -> Self {
+        Self::Io(engine::io_err(e))
+    }
+}
+
 const RECENT_DESC_SQL: &str = "SELECT payload FROM messages ORDER BY seq DESC";
 const SINCE_ASC_SQL: &str = "SELECT payload FROM messages WHERE created_at >= ?1 ORDER BY seq ASC";
 
@@ -113,8 +119,7 @@ pub fn clear(conn: &Connection) -> rusqlite::Result<usize> {
 
 pub fn restore_conversation_order(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
-        "BEGIN;
-         CREATE TEMP TABLE conversation_order AS
+        "CREATE TEMP TABLE conversation_order AS
            SELECT seq AS arrival_seq,
                   ROW_NUMBER() OVER (ORDER BY created_at, seq) AS conversation_seq
            FROM messages;
@@ -122,8 +127,7 @@ pub fn restore_conversation_order(conn: &Connection) -> rusqlite::Result<()> {
            SET seq = -(SELECT conversation_seq FROM conversation_order
                        WHERE arrival_seq = messages.seq);
          UPDATE messages SET seq = -seq;
-         DROP TABLE conversation_order;
-         COMMIT;",
+         DROP TABLE conversation_order;",
     )
 }
 

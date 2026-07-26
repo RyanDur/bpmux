@@ -30,9 +30,7 @@ pub fn import_conversation(data_dir: &Path, source_jsonl: &Path) -> Result<Impor
     };
 
     let file = std::fs::File::open(source_jsonl)?;
-    let conn = gateway.lock();
-    conn.execute_batch("BEGIN IMMEDIATE").map_err(io_err)?;
-    let inserted = (|| -> Result<(), LogError> {
+    gateway.with_transaction(|conn| -> Result<(), LogError> {
         for line in std::io::BufReader::new(file).lines() {
             let line = line?;
             if line.trim().is_empty() {
@@ -60,27 +58,21 @@ pub fn import_conversation(data_dir: &Path, source_jsonl: &Path) -> Result<Impor
                 .message_type
                 .to_wire()
                 .unwrap_or_else(|| "chat".to_string());
-            let sender = target.resolve_sender(&conn, &msg);
+            let sender = target.resolve_sender(conn, &msg);
             messages::append(
-                &conn,
+                conn,
                 &msg.id,
                 msg.ts.timestamp(),
                 sender,
                 &message_type,
                 &payload,
-            )
-            .map_err(io_err)?;
-            messages::append_recipients(&conn, &msg.id, &msg).map_err(io_err)?;
+            )?;
+            messages::append_recipients(conn, &msg.id, &msg)?;
             report.imported += 1;
         }
+        messages::restore_conversation_order(conn)?;
         Ok(())
-    })();
-    if let Err(e) = inserted {
-        let _ = conn.execute_batch("ROLLBACK");
-        return Err(e);
-    }
-    conn.execute_batch("COMMIT").map_err(io_err)?;
-    messages::restore_conversation_order(&conn).map_err(io_err)?;
+    })?;
     Ok(report)
 }
 

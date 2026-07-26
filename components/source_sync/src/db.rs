@@ -21,18 +21,17 @@ pub fn load(conn: &Connection) -> Result<VecDeque<QueuedEvent>, PersistError> {
     .collect())
 }
 
-pub fn replace(conn: &Connection, events: &[QueuedEvent]) -> Result<(), PersistError> {
-    let raws = events
-        .iter()
-        .map(serde_json::to_string)
-        .collect::<Result<Vec<_>, _>>()?;
-    let tx = conn.unchecked_transaction().map_err(engine::persist_err)?;
-    tx.execute("DELETE FROM outbox", [])
-        .map_err(engine::persist_err)?;
-    for raw in &raws {
-        tx.execute("INSERT INTO outbox (event) VALUES (?1)", [raw])
-            .map_err(engine::persist_err)?;
+pub fn replace_rows(conn: &Connection, raws: &[String]) -> rusqlite::Result<()> {
+    conn.execute("DELETE FROM outbox", [])?;
+    for raw in raws {
+        conn.execute("INSERT INTO outbox (event) VALUES (?1)", [raw])?;
     }
-    tx.commit().map_err(engine::persist_err)?;
     Ok(())
+}
+
+pub fn serialize_events(events: &[QueuedEvent]) -> Result<Vec<String>, PersistError> {
+    events
+        .iter()
+        .map(|e| serde_json::to_string(e).map_err(PersistError::from))
+        .collect()
 }

@@ -32,6 +32,27 @@ impl DatabaseGateway {
     pub fn lock(&self) -> MutexGuard<'_, Connection> {
         self.conn.lock().unwrap_or_else(|e| e.into_inner())
     }
+
+    pub fn with_transaction<T, E>(
+        &self,
+        work: impl FnOnce(&Connection) -> Result<T, E>,
+    ) -> Result<T, E>
+    where
+        E: From<rusqlite::Error>,
+    {
+        let conn = self.lock();
+        conn.execute_batch("BEGIN IMMEDIATE").map_err(E::from)?;
+        match work(&conn) {
+            Ok(value) => {
+                conn.execute_batch("COMMIT").map_err(E::from)?;
+                Ok(value)
+            }
+            Err(e) => {
+                let _ = conn.execute_batch("ROLLBACK");
+                Err(e)
+            }
+        }
+    }
 }
 
 fn open_connection(dir: &Path) -> rusqlite::Result<Connection> {
