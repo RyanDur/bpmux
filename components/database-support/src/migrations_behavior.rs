@@ -25,3 +25,27 @@ fn migrations_are_forward_only_versioned() {
     }
     assert!(count > 0, "expected at least the V1 migration in {dir:?}");
 }
+
+#[test]
+fn migrations_hold_schema_only_never_data() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../databases/conversation-db/migrations");
+    for entry in std::fs::read_dir(&dir).expect("migrations dir must exist") {
+        let path = entry.unwrap().path();
+        if path.extension().and_then(|e| e.to_str()) != Some("sql") {
+            continue;
+        }
+        let sql = std::fs::read_to_string(&path).unwrap().to_uppercase();
+        for line in sql.lines() {
+            let first_word = line.split_whitespace().next().unwrap_or("");
+            for dml in ["INSERT", "UPDATE", "DELETE", "REPLACE"] {
+                assert!(
+                    first_word != dml,
+                    "{path:?} starts a {dml} statement — migrations hold schema only (owner \
+                     ruling 2026-07-26); data transforms are boot-time maintenance code, \
+                     flag-guarded through meta, like the jsonl inheritance"
+                );
+            }
+        }
+    }
+}

@@ -128,7 +128,10 @@ The composite `Storage` super-trait dissolved with the god-object
   connection, applies the embedded migrations on open (idempotent,
   forward-only, guarded by `migrations_are_forward_only_versioned`),
   and offers the common query helpers. Domains get the gateway
-  injected; each domain talks to its own tables.
+  injected; each domain talks to its own tables. Migrations hold
+  SCHEMA only — never data (owner ruling 2026-07-26, pinned): data
+  transforms run as boot-time maintenance code, flag-guarded through
+  meta, the way jsonl inheritance does.
 - Domain stores over the injected gateway (`data.db`); schema
   defined only by the versioned migrations, never inline DDL.
   The file backend retired 2026-07-25 (sqlite is the only store); the
