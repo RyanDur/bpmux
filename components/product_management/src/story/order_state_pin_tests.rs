@@ -40,7 +40,7 @@ fn fully_populated_story() -> Story {
     let mut story = Story::new_minimal(
         StoryId::new(1),
         "[Feature] a story that owns no order".to_string(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );

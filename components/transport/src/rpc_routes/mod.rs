@@ -81,7 +81,7 @@ pub async fn post_rpc_tool(
                     "icebox" => Some(ProjectedState::Icebox.as_str()),
                     "ready" => Some(ProjectedState::Ready.as_str()),
                     other => product_management::story::Work::parse(other)
-                        .filter(|s| *s != product_management::story::Work::NotStarted)
+                        .filter(|s| *s != product_management::story::Work::Ready)
                         .map(|s| s.as_str()),
                 }
             })

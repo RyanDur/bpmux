@@ -40,7 +40,7 @@ fn iteration(id: u64) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         "Iteration Vela".to_string(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -60,7 +60,7 @@ fn member(id: u64, iteration_id: u64, position: u32) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("member #{id}"),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -88,7 +88,7 @@ fn outcome(id: u64, iterations: Vec<u64>) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         "An outcome".to_string(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -130,7 +130,7 @@ fn plain_member(id: u64) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         format!("member-{id}"),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 7, 7, 0, 0, 0).unwrap(),
         "pm".into(),
     )

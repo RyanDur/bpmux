@@ -28,7 +28,7 @@ fn acceptor_assigned_lands_typed_without_any_label_projection() {
 #[test]
 fn tag_added_unknown_label_is_dropped() {
     let store = seeded();
-    created(&store, 1, "t", Work::NotStarted);
+    created(&store, 1, "t", Work::Ready);
     apply(
         &store,
         StoryEvent::new(
@@ -48,7 +48,7 @@ fn tag_added_unknown_label_is_dropped() {
 #[test]
 fn generic_label_churn_does_not_clobber_the_typed_tags_field() {
     let store = seeded();
-    created(&store, 1, "t", Work::NotStarted);
+    created(&store, 1, "t", Work::Ready);
     apply(
         &store,
         StoryEvent::new(
@@ -97,7 +97,7 @@ fn story_created_event_carries_story_type() {
             StoryEventKind::StoryCreated {
                 title: "t".to_string(),
                 body: "b".to_string(),
-                initial_state: Work::NotStarted,
+                initial_state: Work::Ready,
                 story_type: StoryKind::Bug,
             },
         ),

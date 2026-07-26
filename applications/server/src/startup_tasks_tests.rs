@@ -14,7 +14,7 @@ async fn ingest_runs_in_background_not_inline() {
     adapter.seed_stories(vec![Story::new_minimal(
         StoryId::new(7),
         "seven".to_string(),
-        Work::NotStarted,
+        Work::Ready,
         chrono::Utc::now(),
         "test".to_string(),
     )]);

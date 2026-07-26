@@ -119,7 +119,7 @@ async fn start_story_stamps_actor_id_from_the_threaded_identify_user_id() {
     let seeded = Story::new_minimal(
         StoryId::new(886),
         "[Chore] actor_id threads through pickup".into(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 7, 10, 0, 0, 0).unwrap(),
         "dev".into(),
     );

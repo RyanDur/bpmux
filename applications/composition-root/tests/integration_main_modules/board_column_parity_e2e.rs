@@ -74,8 +74,8 @@ fn every_reachable_wire_state_derives_from_the_projection_and_agrees_with_the_re
     let non_member: Vec<Iteration> = Vec::new();
     let member = current_iteration_of(&[1]);
     let projection_input_to_wire: [(Work, Option<Stage>, &[Iteration], &str); 7] = [
-        (Work::NotStarted, None, &non_member, "icebox"),
-        (Work::NotStarted, None, &member, "ready"),
+        (Work::Ready, None, &non_member, "icebox"),
+        (Work::Ready, None, &member, "ready"),
         (
             Work::InProgress,
             Some(Stage::Dev),
@@ -125,16 +125,9 @@ fn renderer_legacy_wire_states_still_bucket_into_live_columns() {
 
 #[test]
 fn open_workflow_states_bucket_one_to_one_to_their_columns() {
+    assert_eq!(column_of(&story_in(Work::Ready), None, &[]), Column::Icebox);
     assert_eq!(
-        column_of(&story_in(Work::NotStarted), None, &[]),
-        Column::Icebox
-    );
-    assert_eq!(
-        column_of(
-            &story_in(Work::NotStarted),
-            None,
-            &current_iteration_of(&[1])
-        ),
+        column_of(&story_in(Work::Ready), None, &current_iteration_of(&[1])),
         Column::Ready
     );
     assert_eq!(
@@ -148,18 +141,14 @@ fn open_workflow_states_bucket_one_to_one_to_their_columns() {
 }
 
 #[test]
-fn a_not_started_non_member_buckets_to_icebox() {
+fn a_ready_state_non_member_buckets_to_icebox() {
     assert_eq!(
-        column_of(
-            &story_in(Work::NotStarted),
-            None,
-            &current_iteration_of(&[])
-        ),
+        column_of(&story_in(Work::Ready), None, &current_iteration_of(&[])),
         Column::Icebox,
-        "ready-ness derives from current-iteration membership — a not-started non-member is icebox on the board"
+        "ready-ness derives from current-iteration membership — a ready-state non-member is icebox on the board"
     );
     assert_eq!(
-        column_of(&story_in(Work::NotStarted), None, &[]),
+        column_of(&story_in(Work::Ready), None, &[]),
         Column::Icebox,
         "with no iteration at all, nothing is ready"
     );

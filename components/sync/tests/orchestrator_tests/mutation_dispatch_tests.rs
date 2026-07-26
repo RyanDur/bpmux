@@ -26,8 +26,8 @@ mod mutation_id_dispatch {
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         );
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
-            seed_story(101, Work::NotStarted),
-            seed_story(102, Work::NotStarted),
+            seed_story(101, Work::Ready),
+            seed_story(102, Work::Ready),
         ])));
 
         orch.mutate(StoryEvent::new(
@@ -60,7 +60,7 @@ mod mutation_id_dispatch {
     #[tokio::test]
     async fn mutate_without_board_dispatch_bound_does_not_panic() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        adapter.seed_stories(vec![seed_story(201, Work::NotStarted)]);
+        adapter.seed_stories(vec![seed_story(201, Work::Ready)]);
         let (orch, _select) = build_seeded_orch(
             adapter,
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
@@ -90,7 +90,7 @@ mod mutation_id_dispatch {
         );
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             301,
-            Work::NotStarted,
+            Work::Ready,
         )])));
         orch.mutate(StoryEvent::new(
             meta(),
@@ -124,7 +124,7 @@ mod drain_pass {
         );
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             401,
-            Work::NotStarted,
+            Work::Ready,
         )])));
         orch.mutate(StoryEvent::new(
             meta(),
@@ -152,7 +152,7 @@ mod drain_pass {
         );
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             601,
-            Work::NotStarted,
+            Work::Ready,
         )])));
         orch.mutate(StoryEvent::new(
             meta(),
@@ -196,7 +196,7 @@ mod drain_pass_edge_cases {
         );
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             801,
-            Work::NotStarted,
+            Work::Ready,
         )])));
         orch.mutate(StoryEvent::new(
             meta(),
@@ -224,8 +224,8 @@ mod drain_pass_edge_cases {
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         );
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
-            seed_story(901, Work::NotStarted),
-            seed_story(902, Work::NotStarted),
+            seed_story(901, Work::Ready),
+            seed_story(902, Work::Ready),
         ])));
         orch.mutate(StoryEvent::new(
             meta(),
@@ -267,7 +267,7 @@ mod drain_pass_edge_cases {
         );
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             1001,
-            Work::NotStarted,
+            Work::Ready,
         )])));
         orch.mutate(StoryEvent::new(
             meta(),

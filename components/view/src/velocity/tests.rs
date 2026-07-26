@@ -147,7 +147,7 @@ fn out_of_order_input_still_pairs_by_story_id() {
 fn states_outside_the_lifecycle_are_ignored() {
     let transitions = vec![
         tr(99, "retired", now() - ChronoDuration::hours(1)),
-        tr(98, "not-started", now() - ChronoDuration::hours(2)),
+        tr(98, "ready", now() - ChronoDuration::hours(2)),
     ];
     let m = compute(&transitions, now(), |_| true);
     assert_eq!(m.delivered_in_window, 0);

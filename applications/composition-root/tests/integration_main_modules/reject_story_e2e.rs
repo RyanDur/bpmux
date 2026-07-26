@@ -4,7 +4,7 @@ use crate::harness;
 
 use harness::bridge::TestBridge;
 use harness::pty::TestBpmux;
-use harness::story_helpers::create_target_story;
+use harness::story_helpers::{create_target_story, drive_to_delivered};
 use std::time::Duration;
 
 #[test]
@@ -13,12 +13,20 @@ fn reject_story_pm_with_reason_succeeds() {
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let pm = TestBridge::connect(&bpmux, "pm").await;
+        let dev = TestBridge::connect(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let target_id = create_target_story(
             &pm,
             "[Feature] reject-target",
             "reject if reject_story doesn't fire signal + state transition",
+        )
+        .await;
+        drive_to_delivered(
+            &pm,
+            &dev,
+            target_id,
+            "applications/composition-root/tests/integration_main_modules/reject_story_e2e.rs",
         )
         .await;
 
@@ -48,6 +56,7 @@ fn reject_story_pm_with_reason_succeeds() {
         );
 
         pm.close().await;
+        dev.close().await;
     });
 }
 

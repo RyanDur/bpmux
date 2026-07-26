@@ -6,7 +6,7 @@ use super::stage::Stage;
 #[test]
 fn story_state_parse_round_trips_via_as_str() {
     for state in [
-        Work::NotStarted,
+        Work::Ready,
         Work::InProgress,
         Work::Acceptance,
         Work::Accepted,
@@ -18,10 +18,10 @@ fn story_state_parse_round_trips_via_as_str() {
 }
 
 #[test]
-fn story_state_parse_accepts_the_legacy_icebox_and_ready_strings_as_not_started() {
-    assert_eq!(Work::parse("icebox"), Some(Work::NotStarted));
-    assert_eq!(Work::parse("ready"), Some(Work::NotStarted));
-    assert_eq!(Work::parse("not-started"), Some(Work::NotStarted));
+fn story_state_parse_accepts_the_legacy_not_started_and_icebox_strings_as_ready() {
+    assert_eq!(Work::parse("not-started"), Some(Work::Ready));
+    assert_eq!(Work::parse("icebox"), Some(Work::Ready));
+    assert_eq!(Work::parse("ready"), Some(Work::Ready));
 }
 
 #[test]
@@ -34,13 +34,13 @@ fn story_state_parse_accepts_underscore_variants() {
 fn story_state_parse_returns_none_for_unknown() {
     assert_eq!(Work::parse("not-a-state"), None);
     assert_eq!(Work::parse(""), None);
-    assert_eq!(Work::parse("Ready"), None);
+    assert_eq!(Work::parse("Ready"), None, "parse is case-sensitive kebab");
 }
 
 #[test]
 fn story_state_serde_round_trips_via_canonical_string() {
     for state in [
-        Work::NotStarted,
+        Work::Ready,
         Work::InProgress,
         Work::Acceptance,
         Work::Accepted,
@@ -54,13 +54,13 @@ fn story_state_serde_round_trips_via_canonical_string() {
 }
 
 #[test]
-fn story_state_deserializes_persisted_legacy_icebox_and_ready_rows() {
-    for legacy in ["\"icebox\"", "\"ready\""] {
+fn story_state_deserializes_persisted_legacy_icebox_and_not_started_rows() {
+    for legacy in ["\"icebox\"", "\"not-started\""] {
         let back: Work = serde_json::from_str(legacy).unwrap();
         assert_eq!(
             back,
-            Work::NotStarted,
-            "persisted StoryCreated/StateTransitioned rows carrying {legacy} must keep deserializing after the collapse"
+            Work::Ready,
+            "persisted StoryCreated/StateTransitioned rows carrying {legacy} must keep deserializing after the rename"
         );
     }
 }
@@ -84,9 +84,9 @@ fn story_state_acceptance_wire_vocab_parses_and_keeps_legacy_delivered_alias() {
 #[test]
 fn story_state_github_label_canonical_form_per_variant() {
     assert_eq!(
-        Work::NotStarted.github_label(),
+        Work::Ready.github_label(),
         None,
-        "not-started has NO GitHub label at the type level — the outbound mirror derives ready-vs-absence from membership, and an empty-label push is unrepresentable"
+        "ready has NO GitHub label at the type level — the outbound mirror derives ready-vs-absence from membership, and an empty-label push is unrepresentable"
     );
     assert_eq!(Work::InProgress.github_label(), Some("in progress"));
     assert_eq!(Work::Acceptance.github_label(), Some("delivered"));

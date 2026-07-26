@@ -56,7 +56,7 @@ pub(super) fn resolve_state_and_placement(
         return (Work::Accepted, None);
     }
     if has("rejected") {
-        return (Work::NotStarted, None);
+        return (Work::Ready, None);
     }
     if has("needs fixes") {
         return (Work::InProgress, None);
@@ -73,7 +73,7 @@ pub(super) fn resolve_state_and_placement(
     if has(stage_github_label(Stage::Dev)) {
         return (Work::InProgress, None);
     }
-    (Work::NotStarted, None)
+    (Work::Ready, None)
 }
 
 pub fn outbound_state_label(
@@ -81,9 +81,7 @@ pub fn outbound_state_label(
     member_of_current_iteration: bool,
 ) -> Option<&'static str> {
     match state {
-        Work::NotStarted if member_of_current_iteration => {
-            Some(ProjectedState::Ready.github_label())
-        }
+        Work::Ready if member_of_current_iteration => Some(ProjectedState::Ready.github_label()),
         other => other.github_label(),
     }
 }

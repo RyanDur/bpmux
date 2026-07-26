@@ -20,7 +20,7 @@ fn seed_story(id: u64, title: &str) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         title.to_string(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".to_string(),
     )
@@ -220,7 +220,7 @@ async fn push_event_accepts_story_created_variant() {
         StoryEventKind::StoryCreated {
             title: "t".to_string(),
             body: "b".to_string(),
-            initial_state: Work::NotStarted,
+            initial_state: Work::Ready,
             story_type: product_management::story::StoryKind::Feature,
         },
     );

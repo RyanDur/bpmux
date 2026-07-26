@@ -12,7 +12,7 @@ pub(super) fn issue_to_board_json(issue: &octocrab::models::issues::Issue) -> se
     let labels: Vec<String> = issue.labels.iter().map(|l| l.name.clone()).collect();
     let is_closed = matches!(issue.state, octocrab::models::IssueState::Closed);
     let state = match source_codec::mapper::state_from_labels(&labels, is_closed) {
-        Work::NotStarted => ProjectedState::Icebox.as_str(),
+        Work::Ready => ProjectedState::Icebox.as_str(),
         other => other.as_str(),
     };
     let gh_state = gh_state_label(&issue.state);

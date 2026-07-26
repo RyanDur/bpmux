@@ -15,7 +15,7 @@ fn membered_member(id: u64) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         "reorder fixture".to_string(),
-        Work::NotStarted,
+        Work::Ready,
         chrono::Utc::now(),
         "tester".to_string(),
     )

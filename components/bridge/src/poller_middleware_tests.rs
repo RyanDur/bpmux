@@ -51,7 +51,7 @@ async fn get_story_canonical_only_returns_placeholder_when_body_missing() {
     );
     seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
         8001,
-        Work::NotStarted,
+        Work::Ready,
     )])));
     let select = seed.select();
     let mut args = serde_json::Map::new();
@@ -77,7 +77,7 @@ async fn get_story_canonical_only_returns_placeholder_when_body_missing() {
 #[tokio::test]
 async fn get_story_serves_cached_body_from_canonical_store() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let mut story = seed_minimal(8002, Work::NotStarted);
+    let mut story = seed_minimal(8002, Work::Ready);
     story.body = Some("# real body\n\ncached body content from prior hydrate".to_string());
     let seed = SeededStore::new(vec![], vec![], vec![]);
     let refresh: Arc<SyncOrchestrator> = seed.build_orch(
@@ -127,13 +127,13 @@ async fn get_story_does_not_call_adapter_fetch_body_when_body_missing() {
 #[tokio::test]
 async fn select_stories_to_hydrate_picks_active_states_with_missing_body() {
     use crate::select_stories_to_hydrate;
-    let mut active = seed_minimal(100, Work::NotStarted);
+    let mut active = seed_minimal(100, Work::Ready);
     active.body = None;
     let mut hydrated = seed_minimal(101, Work::InProgress);
     hydrated.body = Some("already-cached".to_string());
     let mut accepted = seed_minimal(102, Work::Accepted);
     accepted.body = None;
-    let mut icebox = seed_minimal(103, Work::NotStarted);
+    let mut icebox = seed_minimal(103, Work::Ready);
     icebox.body = None;
     let mut delivered = seed_minimal(104, Work::Acceptance);
     delivered.body = None;
@@ -157,7 +157,7 @@ async fn select_stories_to_hydrate_caps_at_limit() {
     use crate::select_stories_to_hydrate;
     let stories: Vec<Story> = (0..10)
         .map(|i| {
-            let mut s = seed_minimal(200 + i, Work::NotStarted);
+            let mut s = seed_minimal(200 + i, Work::Ready);
             s.body = None;
             s
         })
@@ -170,7 +170,7 @@ async fn select_stories_to_hydrate_caps_at_limit() {
 #[tokio::test]
 async fn select_stories_to_hydrate_returns_empty_when_all_hydrated() {
     use crate::select_stories_to_hydrate;
-    let mut s = seed_minimal(300, Work::NotStarted);
+    let mut s = seed_minimal(300, Work::Ready);
     s.body = Some("already".to_string());
     let picks = select_stories_to_hydrate(&[s], 5, &current_iteration_of(&[300]));
     assert!(picks.is_empty(), "no missing-body stories = empty picks");
@@ -187,7 +187,7 @@ async fn body_fetched_event_with_etag_stores_etag_on_canonical_story() {
     );
     seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
         9000,
-        Work::NotStarted,
+        Work::Ready,
     )])));
     seed.dispatch(AppAction::Story(StoryAction::Event(StoryEvent::new(
         sync::cache_fill_meta(),
@@ -215,7 +215,7 @@ async fn local_body_mutate_invalidates_prior_etag() {
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     );
     let select = handle.select();
-    let mut seed = seed_minimal(9100, Work::NotStarted);
+    let mut seed = seed_minimal(9100, Work::Ready);
     seed.body = Some("v1".to_string());
     seed.body_etag = Some("W/\"etag-v1\"".to_string());
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed.clone()])));
@@ -281,7 +281,7 @@ async fn labels_refreshed_adopts_adapter_decoded_fields_so_selectors_read_fresh(
 async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
     use sync::ConditionalBody;
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_minimal(9001, Work::NotStarted)]);
+    adapter.seed_stories(vec![seed_minimal(9001, Work::Ready)]);
     adapter.seed_body(9001, "real body".into());
     let (orch, select) = store_test_support::build_seeded_orch(
         adapter,
@@ -312,14 +312,14 @@ async fn fetch_body_conditional_dispatches_event_with_etag_on_modified() {
 #[tokio::test]
 async fn select_stories_to_revalidate_picks_already_hydrated_active_stories() {
     use crate::select_stories_to_revalidate;
-    let mut active_with_body = seed_minimal(700, Work::NotStarted);
+    let mut active_with_body = seed_minimal(700, Work::Ready);
     active_with_body.body = Some("body".to_string());
     active_with_body.body_etag = Some("etag-700".to_string());
     let mut active_no_body = seed_minimal(701, Work::InProgress);
     active_no_body.body = None;
     let mut accepted_with_body = seed_minimal(702, Work::Accepted);
     accepted_with_body.body = Some("body".to_string());
-    let mut icebox_with_body = seed_minimal(703, Work::NotStarted);
+    let mut icebox_with_body = seed_minimal(703, Work::Ready);
     icebox_with_body.body = Some("body".to_string());
     let stories = vec![
         active_with_body,
@@ -353,7 +353,7 @@ async fn select_stories_to_revalidate_caps_at_limit() {
     use crate::select_stories_to_revalidate;
     let stories: Vec<Story> = (0..10)
         .map(|i| {
-            let mut s = seed_minimal(800 + i, Work::NotStarted);
+            let mut s = seed_minimal(800 + i, Work::Ready);
             s.body = Some("body".to_string());
             s
         })
@@ -373,7 +373,7 @@ async fn get_story_returns_hydrated_flag_in_response() {
     );
     seed.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_minimal(
         8004,
-        Work::NotStarted,
+        Work::Ready,
     )])));
     let select = seed.select();
     let mut args = serde_json::Map::new();

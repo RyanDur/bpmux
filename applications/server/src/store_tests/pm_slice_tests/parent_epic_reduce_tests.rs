@@ -6,7 +6,7 @@ use product_management::story::{StoryId, Work};
 #[test]
 fn parent_epic_set_event_decodes_into_the_stored_parent_epic_field() {
     let store = seeded();
-    created(&store, 12, "child story", Work::NotStarted);
+    created(&store, 12, "child story", Work::Ready);
     assert_eq!(
         story_at(&store, 12).unwrap().parent_epic(),
         None,
@@ -32,7 +32,7 @@ fn parent_epic_set_event_decodes_into_the_stored_parent_epic_field() {
 #[test]
 fn parent_epic_set_event_makes_story_read_its_parent_epic() {
     let store = seeded();
-    created(&store, 100, "child", Work::NotStarted);
+    created(&store, 100, "child", Work::Ready);
     apply(
         &store,
         StoryEvent::new(
@@ -52,7 +52,7 @@ fn parent_epic_set_event_makes_story_read_its_parent_epic() {
 #[test]
 fn parent_epic_unset_event_makes_story_read_no_parent_epic() {
     let store = seeded();
-    created(&store, 101, "child", Work::NotStarted);
+    created(&store, 101, "child", Work::Ready);
     apply(
         &store,
         StoryEvent::new(

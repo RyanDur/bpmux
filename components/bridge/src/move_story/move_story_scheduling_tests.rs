@@ -25,7 +25,7 @@ fn icebox_story(id: u64) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("story-{id}"),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 7, 7, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
@@ -36,7 +36,7 @@ fn current_iteration_story(id: u64) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration #{id}"),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 7, 7, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
@@ -184,7 +184,7 @@ async fn a_move_to_ready_without_a_current_iteration_is_refused_before_mutating(
             ))
             .expect("story stays visible")
             .state(),
-        Work::NotStarted,
+        Work::Ready,
         "the refusal happens in the validation phase — no state mutation leaked"
     );
 }
@@ -217,7 +217,7 @@ fn epic_story(id: u64) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("[Epic] grouping-{id}"),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 7, 7, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
@@ -283,7 +283,7 @@ async fn a_move_to_icebox_removes_the_story_from_its_iteration() {
             ))
             .expect("story stays visible")
             .state(),
-        Work::NotStarted,
+        Work::Ready,
         "the story itself returns to icebox"
     );
 }

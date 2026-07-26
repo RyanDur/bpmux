@@ -56,7 +56,7 @@ mod canonical_via_gh {
         let s = Story::new_minimal(
             StoryId::new(id),
             format!("Iteration {name}"),
-            Work::NotStarted,
+            Work::Ready,
             Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
             "pm".to_string(),
         );
@@ -72,7 +72,7 @@ mod canonical_via_gh {
         let mut s = Story::new_minimal(
             StoryId::new(id),
             format!("Iteration {name}"),
-            Work::NotStarted,
+            Work::Ready,
             Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
             "pm".to_string(),
         );
@@ -122,7 +122,7 @@ mod canonical_via_gh {
         let canonical_member = Story::new_minimal(
             StoryId::new(200),
             "[Feature] canonical-member".to_string(),
-            Work::NotStarted,
+            Work::Ready,
             Utc.with_ymd_and_hms(2026, 5, 12, 0, 0, 0).unwrap(),
             "pm".to_string(),
         );
@@ -152,7 +152,7 @@ mod canonical_via_gh {
             .expect("member 200 exists");
         assert_eq!(
             member.state,
-            Work::NotStarted,
+            Work::Ready,
             "#1556: close promotes NOTHING — the member stays in its state, not moved to ready"
         );
     }
@@ -189,30 +189,30 @@ mod canonical_via_gh {
     async fn ready_queue_empty_guard_blocks_close_when_a_current_iteration_member_is_ready() {
         let (_refresh, _adapter, select) = build_refresh(vec![
             seed_current_iteration_issue_with_members(1400, "Pegasus", &[900]),
-            seed_member(900, Work::NotStarted, None),
+            seed_member(900, Work::Ready, None),
         ])
         .await;
         let blockers = collect_ready_queue_blockers(&select);
         assert_eq!(
             blockers.len(),
             1,
-            "a not-started current-iteration member projects Ready and surfaces as a blocker"
+            "a ready-state current-iteration member projects Ready and surfaces as a blocker"
         );
         assert_eq!(blockers[0].id, 900);
         assert_eq!(blockers[0].state, "ready");
     }
 
     #[tokio::test]
-    async fn ready_queue_empty_guard_excludes_a_not_started_non_member() {
+    async fn ready_queue_empty_guard_excludes_a_ready_state_non_member() {
         let (_refresh, _adapter, select) = build_refresh(vec![
             seed_current_iteration_issue_with_members(1400, "Pegasus", &[]),
-            seed_member(900, Work::NotStarted, None),
+            seed_member(900, Work::Ready, None),
         ])
         .await;
         let blockers = collect_ready_queue_blockers(&select);
         assert!(
             blockers.is_empty(),
-            "a not-started story outside the current iteration derives Icebox and never blocks close: {blockers:?}"
+            "a ready-state story outside the current iteration derives Icebox and never blocks close: {blockers:?}"
         );
     }
 
@@ -220,7 +220,7 @@ mod canonical_via_gh {
     async fn ready_queue_empty_guard_passes_when_no_ready_stories() {
         let (_refresh, _adapter, select) = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
-            seed_member(200, Work::NotStarted, Some(("Pegasus", 100))),
+            seed_member(200, Work::Ready, Some(("Pegasus", 100))),
         ])
         .await;
         let blockers = collect_ready_queue_blockers(&select);
@@ -234,7 +234,7 @@ mod canonical_via_gh {
     async fn closed_iteration_issue_remains_queryable_for_history_preservation() {
         let (refresh, _adapter, select) = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
-            seed_member(200, Work::NotStarted, Some(("Pegasus", 100))),
+            seed_member(200, Work::Ready, Some(("Pegasus", 100))),
         ])
         .await;
         let (dispatch, mut rx) = dispatch_channel();
@@ -267,7 +267,7 @@ mod canonical_via_gh {
     async fn close_fires_storyclosed_without_member_promotion_mutations() {
         let (refresh, adapter, select) = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
-            seed_member(200, Work::NotStarted, Some(("Pegasus", 100))),
+            seed_member(200, Work::Ready, Some(("Pegasus", 100))),
         ])
         .await;
         let (dispatch, mut rx) = dispatch_channel();
@@ -315,7 +315,7 @@ mod canonical_via_gh {
     async fn closing_an_id_that_is_a_story_rather_than_an_iteration_names_it_as_such() {
         let (refresh, _adapter, select) = build_refresh(vec![
             seed_iteration_issue(1400, "Pegasus"),
-            seed_member(200, Work::NotStarted, None),
+            seed_member(200, Work::Ready, None),
         ])
         .await;
         let (dispatch, _rx) = dispatch_channel();

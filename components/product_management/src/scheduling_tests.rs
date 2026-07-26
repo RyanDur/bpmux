@@ -33,19 +33,19 @@ fn iteration(id: u64, is_current: bool, complete: bool, story_ids: &[u64]) -> It
 }
 
 #[test]
-fn a_not_started_member_of_the_current_iteration_projects_ready() {
+fn a_ready_state_member_of_the_current_iteration_projects_ready() {
     let iterations = [iteration(1, true, false, &[10])];
     assert_eq!(
-        projected_state(&story(10, Work::NotStarted), &iterations),
+        projected_state(&story(10, Work::Ready), &iterations),
         ProjectedState::Ready
     );
 }
 
 #[test]
-fn a_not_started_story_outside_the_current_iteration_projects_icebox() {
+fn a_ready_state_story_outside_the_current_iteration_projects_icebox() {
     let iterations = [iteration(1, true, false, &[10])];
     assert_eq!(
-        projected_state(&story(99, Work::NotStarted), &iterations),
+        projected_state(&story(99, Work::Ready), &iterations),
         ProjectedState::Icebox
     );
 }
@@ -57,13 +57,13 @@ fn a_story_in_a_future_iteration_projects_icebox() {
         iteration(2, false, false, &[20]),
     ];
     assert_eq!(
-        projected_state(&story(20, Work::NotStarted), &iterations),
+        projected_state(&story(20, Work::Ready), &iterations),
         ProjectedState::Icebox
     );
 }
 
 #[test]
-fn a_non_not_started_state_passes_through_untouched() {
+fn a_non_ready_state_passes_through_untouched() {
     let iterations = [iteration(1, true, false, &[10])];
     for (state, projected) in [
         (Work::InProgress, ProjectedState::InProgress),
@@ -82,7 +82,7 @@ fn a_non_not_started_state_passes_through_untouched() {
 fn with_no_current_iteration_designated_nothing_projects_ready() {
     let iterations = [iteration(2, false, false, &[10])];
     assert_eq!(
-        projected_state(&story(10, Work::NotStarted), &iterations),
+        projected_state(&story(10, Work::Ready), &iterations),
         ProjectedState::Icebox
     );
 }
@@ -91,7 +91,7 @@ fn with_no_current_iteration_designated_nothing_projects_ready() {
 fn a_complete_but_still_current_iteration_does_not_count_as_current() {
     let iterations = [iteration(1, true, true, &[10])];
     assert_eq!(
-        projected_state(&story(10, Work::NotStarted), &iterations),
+        projected_state(&story(10, Work::Ready), &iterations),
         ProjectedState::Icebox
     );
 }

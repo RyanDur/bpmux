@@ -66,7 +66,7 @@ fn iteration_seed(id: u64, name: &str) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration {name}"),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -77,7 +77,7 @@ fn member_seed(id: u64, title: &str) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         title.into(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

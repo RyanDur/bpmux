@@ -16,7 +16,9 @@ use source_sync::QueuedEvent;
 const FIX_QUEUED_TAG_ADDED: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"label":"ready"}}}"#;
 const FIX_QUEUED_TRANSITIONED: &str = r#"{"id":0,"event":{"StateTransitioned":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"new_state":"in-progress","placement":"desk-check"}}}"#;
 const FIX_QUEUED_VERDICT: &str = r#"{"id":0,"event":{"VerdictCast":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"verdict":{"Fail":{"step":"acceptance"}},"payload":"narrow viewport"}}}"#;
-const FIX_QUEUED_REFRESHED: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[],"remote_updated_at":null,"state_written_at":null}}}}"#;
+const FIX_QUEUED_REFRESHED: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"story":{"id":700,"title":"fixture","state":"ready","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[],"remote_updated_at":null,"state_written_at":null}}}}"#;
+
+const FIX_LEGACY_REFRESHED_NOT_STARTED: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[],"remote_updated_at":null,"state_written_at":null}}}}"#;
 
 const FIX_LEGACY_REFRESHED_WITHOUT_FRESHNESS: &str = r#"{"id":0,"event":{"StoryRefreshed":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"story":{"id":700,"title":"fixture","state":"not-started","filed_at":"2026-07-01T00:00:00Z","filed_by":"pm","body":null,"free_comments":null,"verdicts":null,"body_etag":null,"story_type":"Feature","acceptor":null,"parent_epic":null,"tags":[]}}}}"#;
 const FIX_STORY_EVENT: &str = r#"{"TagAdded":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"label":"ready"}}"#;
@@ -41,7 +43,7 @@ fn fixture_story() -> Story {
     Story::new_minimal(
         StoryId::new(700),
         "fixture".to_string(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap(),
         "pm".to_string(),
     )
@@ -84,6 +86,17 @@ fn queued_verdict_cast_row_round_trips_byte_identically() {
 #[test]
 fn queued_story_refreshed_row_round_trips_byte_identically() {
     assert_byte_round_trip(FIX_QUEUED_REFRESHED);
+}
+
+#[test]
+fn a_legacy_row_carrying_not_started_normalizes_to_ready_on_rewrite() {
+    let parsed: QueuedEvent = serde_json::from_str(FIX_LEGACY_REFRESHED_NOT_STARTED)
+        .expect("legacy not-started row deserializes");
+    assert_eq!(
+        serde_json::to_string(&parsed).unwrap(),
+        FIX_QUEUED_REFRESHED,
+        "rewriting a legacy not-started row lands the renamed ready state explicitly — the documented normalization, not byte-preservation"
+    );
 }
 
 #[test]
@@ -229,7 +242,7 @@ fn every_variant() -> Vec<StoryEvent> {
             StoryEventKind::StoryCreated {
                 title: "t".to_string(),
                 body: "b".to_string(),
-                initial_state: Work::NotStarted,
+                initial_state: Work::Ready,
                 story_type: StoryKind::Feature,
             },
         ),

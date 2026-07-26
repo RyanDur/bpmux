@@ -13,14 +13,14 @@ fn story_created_event_populates_the_central_store() {
             StoryEventKind::StoryCreated {
                 title: "new story".to_string(),
                 body: "body text".to_string(),
-                initial_state: Work::NotStarted,
+                initial_state: Work::Ready,
                 story_type: StoryKind::Feature,
             },
         ),
     );
     let story = story_at(&store, 500).expect("story exists");
     assert_eq!(story.title, "new story");
-    assert_eq!(story.state, Work::NotStarted);
+    assert_eq!(story.state, Work::Ready);
     assert_eq!(story.body.as_deref(), Some("body text"));
     assert_eq!(story.filed_by, "pm");
 }
@@ -28,7 +28,7 @@ fn story_created_event_populates_the_central_store() {
 #[test]
 fn state_transitioned_event_updates_existing_story() {
     let store = seeded();
-    created(&store, 1, "t", Work::NotStarted);
+    created(&store, 1, "t", Work::Ready);
     apply(
         &store,
         StoryEvent::new(

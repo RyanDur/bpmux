@@ -21,7 +21,7 @@ fn from_story_decodes_horizon_and_order_for_an_active_outcome() {
         GhLabelCodec.encode_horizon(Horizon::Next),
         GhLabelCodec.encode_horizon_order(3),
     ];
-    let outcome = decode_outcome_from_story(&outcome_story(Work::NotStarted), &labels);
+    let outcome = decode_outcome_from_story(&outcome_story(Work::Ready), &labels);
     assert_eq!(outcome.horizon(), Some(Horizon::Next));
     assert_eq!(outcome.horizon_order(), Some(3));
     assert!(!outcome.is_retired());

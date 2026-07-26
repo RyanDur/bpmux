@@ -212,7 +212,7 @@ fn seeded_story(id: u64) -> Story {
     Story::new_minimal(
         StoryId::new(id),
         "fixture".to_string(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap(),
         "pm".to_string(),
     )

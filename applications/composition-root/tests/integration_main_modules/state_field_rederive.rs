@@ -34,7 +34,7 @@ fn current_iteration_of(members: &[u64]) -> Vec<Iteration> {
 }
 
 #[test]
-fn stacked_rejected_needs_fixes_ready_for_accept_decodes_to_not_started_rework() {
+fn stacked_rejected_needs_fixes_ready_for_accept_decodes_to_ready_state_rework() {
     let stacked = vec![
         "ready for accept".to_string(),
         "needs fixes".to_string(),
@@ -42,8 +42,8 @@ fn stacked_rejected_needs_fixes_ready_for_accept_decodes_to_not_started_rework()
     ];
     assert_eq!(
         state_from_labels(&stacked, false),
-        Work::NotStarted,
-        "the rejected rework-signal wins the stacked-label priority and lands not-started; the projection supplies scheduling from membership"
+        Work::Ready,
+        "the rejected rework-signal wins the stacked-label priority and lands ready-state; the projection supplies scheduling from membership"
     );
 }
 
@@ -76,13 +76,9 @@ fn stacked_delivered_ready_for_accept_decodes_to_acceptance() {
 }
 
 #[test]
-fn a_not_started_member_of_the_current_iteration_buckets_to_the_ready_column() {
+fn a_ready_state_member_of_the_current_iteration_buckets_to_the_ready_column() {
     assert_eq!(
-        column_of(
-            &story_in(Work::NotStarted),
-            None,
-            &current_iteration_of(&[1])
-        ),
+        column_of(&story_in(Work::Ready), None, &current_iteration_of(&[1])),
         Column::Ready
     );
 }
@@ -105,8 +101,8 @@ fn retired_state_buckets_to_retired_column() {
 }
 
 #[test]
-fn empty_labels_open_decodes_not_started() {
-    assert_eq!(state_from_labels(&[], false), Work::NotStarted);
+fn empty_labels_open_decodes_ready_state() {
+    assert_eq!(state_from_labels(&[], false), Work::Ready);
 }
 
 #[test]
@@ -117,5 +113,5 @@ fn empty_labels_closed_decodes_accepted() {
 #[test]
 fn case_insensitive_label_matching() {
     let stacked = vec!["REJECTED".to_string(), "Ready For Accept".to_string()];
-    assert_eq!(state_from_labels(&stacked, false), Work::NotStarted);
+    assert_eq!(state_from_labels(&stacked, false), Work::Ready);
 }

@@ -2,7 +2,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Work {
-    NotStarted,
+    Ready,
     InProgress,
     Acceptance,
     Accepted,
@@ -25,7 +25,7 @@ impl<'de> Deserialize<'de> for Work {
 impl Work {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Work::NotStarted => "not-started",
+            Work::Ready => "ready",
             Work::InProgress => "in-progress",
             Work::Acceptance => "acceptance",
             Work::Accepted => "accepted",
@@ -35,7 +35,7 @@ impl Work {
 
     pub fn github_label(&self) -> Option<&'static str> {
         match self {
-            Work::NotStarted => None,
+            Work::Ready => None,
             Work::InProgress => Some("in progress"),
             Work::Acceptance => Some("delivered"),
             Work::Accepted => Some("accepted"),
@@ -45,7 +45,7 @@ impl Work {
 
     pub fn parse(s: &str) -> Option<Self> {
         match s {
-            "not-started" | "icebox" | "ready" => Some(Work::NotStarted),
+            "ready" | "not-started" | "icebox" => Some(Work::Ready),
             "in-progress" | "in_progress" | "desk-check" | "desk_check" => Some(Work::InProgress),
             "acceptance" | "delivered" => Some(Work::Acceptance),
             "accepted" => Some(Work::Accepted),

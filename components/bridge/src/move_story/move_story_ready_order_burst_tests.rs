@@ -24,7 +24,7 @@ fn ready_story(id: u64) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("story-{id}"),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 5, 29, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
@@ -35,7 +35,7 @@ fn current_iteration_story(id: u64) -> (Story, Vec<String>) {
     let s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration #{id}"),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 5, 29, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );
@@ -127,7 +127,7 @@ async fn burst_reorder_lands_each_story_at_its_own_position() {
 }
 
 #[tokio::test]
-async fn positioned_members_return_in_membership_order_and_a_not_started_non_member_is_absent() {
+async fn positioned_members_return_in_membership_order_and_a_ready_state_non_member_is_absent() {
     let (orch, seed) = build_orchestrator(vec![
         current_iteration_story(7000),
         ready_story(5001),
@@ -143,7 +143,7 @@ async fn positioned_members_return_in_membership_order_and_a_not_started_non_mem
     assert_eq!(
         queue,
         vec![5003, 5002],
-        "the queue is exactly the current-iteration members in membership order; a not-started \
+        "the queue is exactly the current-iteration members in membership order; a ready-state \
          non-member (5001) derives Icebox and never appears in the ready queue; got {queue:?}"
     );
 }

@@ -8,10 +8,10 @@ use source_codec::mapper::decode_epic_from_story;
 #[test]
 fn epic_own_state_label_change_is_not_an_epic_change() {
     let filed_at = Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap();
-    let story_not_started = Story::new_minimal(
+    let story_ready_state = Story::new_minimal(
         StoryId::new(500),
         "epic-500".to_string(),
-        Work::NotStarted,
+        Work::Ready,
         filed_at,
         "pm".to_string(),
     );
@@ -22,7 +22,7 @@ fn epic_own_state_label_change_is_not_an_epic_change() {
         filed_at,
         "pm".to_string(),
     );
-    let epic_before = decode_epic_from_story(&story_not_started, false);
+    let epic_before = decode_epic_from_story(&story_ready_state, false);
     let epic_after = decode_epic_from_story(&story_accepted, false);
     let seeded = reduce(
         &EpicState::default(),

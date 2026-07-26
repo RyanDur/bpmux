@@ -56,8 +56,8 @@ fn member(routing_id: &str, identity: &str, presence: Presence) -> RosterMember 
 }
 
 #[test]
-fn with_no_current_iteration_a_not_started_story_does_not_block_the_owner_park() {
-    let stories = vec![owner_parked_delivery(100), story(200, Work::NotStarted)];
+fn with_no_current_iteration_a_ready_state_story_does_not_block_the_owner_park() {
+    let stories = vec![owner_parked_delivery(100), story(200, Work::Ready)];
     let delivering = Delivering::ByDisplay("dev".to_string());
     let changes = owner_park_presence(
         &stories,
@@ -74,7 +74,7 @@ fn with_no_current_iteration_a_not_started_story_does_not_block_the_owner_park()
 
 #[test]
 fn a_projected_ready_member_keeps_the_ready_queue_non_empty_and_lifts_the_park() {
-    let stories = vec![owner_parked_delivery(100), story(200, Work::NotStarted)];
+    let stories = vec![owner_parked_delivery(100), story(200, Work::Ready)];
     let delivering = Delivering::ByDisplay("dev".to_string());
     let changes = owner_park_presence(
         &stories,
@@ -85,7 +85,7 @@ fn a_projected_ready_member_keeps_the_ready_queue_non_empty_and_lifts_the_park()
     assert_eq!(
         changes,
         vec![("dev-routing".to_string(), Presence::Online)],
-        "a not-started current-iteration member projects Ready, so the queue is non-empty, the park lifts, and the blocked member comes back online"
+        "a ready-state current-iteration member projects Ready, so the queue is non-empty, the park lifts, and the blocked member comes back online"
     );
 }
 

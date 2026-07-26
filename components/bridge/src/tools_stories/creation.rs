@@ -162,7 +162,7 @@ async fn create_and_broadcast_story_events(
             product_management::story::events::StoryEventKind::StoryCreated {
                 title: title.to_string(),
                 body: composed_body,
-                initial_state: product_management::story::Work::NotStarted,
+                initial_state: product_management::story::Work::Ready,
                 story_type,
             },
         ))

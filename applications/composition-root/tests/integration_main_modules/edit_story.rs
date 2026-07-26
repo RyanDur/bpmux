@@ -21,7 +21,7 @@ fn seed_story(adapter: &InMemorySourceAdapter, id: u64) {
         id: StoryId::new(id),
         title: "fixture story".to_string(),
         body: Some("## What\n\noriginal body\n".to_string()),
-        state: Work::NotStarted,
+        state: Work::Ready,
         verdicts: None,
         free_comments: None,
         filed_by: "test".to_string(),

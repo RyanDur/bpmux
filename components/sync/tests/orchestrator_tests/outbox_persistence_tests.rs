@@ -96,7 +96,7 @@ mod outbox_persistence {
             &adapter,
             OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
-            vec![seed_story(10, Work::NotStarted)],
+            vec![seed_story(10, Work::Ready)],
         );
         orch.mutate(state_write(10, Work::InProgress)).unwrap();
         eventually_store_len(&storage, 1).await;
@@ -111,7 +111,7 @@ mod outbox_persistence {
             &adapter,
             OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
-            vec![seed_story(20, Work::NotStarted)],
+            vec![seed_story(20, Work::Ready)],
         );
         orch.mutate(state_write(20, Work::Acceptance)).unwrap();
         eventually_store_len(&storage, 1).await;
@@ -129,7 +129,7 @@ mod outbox_persistence {
             &adapter,
             OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
-            vec![seed_story(30, Work::NotStarted)],
+            vec![seed_story(30, Work::Ready)],
         );
         orch.mutate(state_write(30, Work::Acceptance)).unwrap();
         eventually_store_len(&storage, 1).await;
@@ -151,7 +151,7 @@ mod outbox_persistence {
             &adapter_a,
             OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
-            vec![seed_story(40, Work::NotStarted)],
+            vec![seed_story(40, Work::Ready)],
         );
         orch_a.mutate(state_write(40, Work::Acceptance)).unwrap();
         eventually_store_len(&storage, 1).await;
@@ -201,7 +201,7 @@ mod outbox_persistence {
             &adapter,
             OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
-            vec![seed_story(60, Work::NotStarted)],
+            vec![seed_story(60, Work::Ready)],
         );
         orch.mutate(state_write(60, Work::Acceptance)).unwrap();
         eventually_store_len(&storage, 1).await;
@@ -220,7 +220,7 @@ mod outbox_persistence {
             &adapter,
             OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
-            vec![seed_story(65, Work::NotStarted)],
+            vec![seed_story(65, Work::Ready)],
         );
         orch.mutate(state_write(65, Work::Acceptance)).unwrap();
         eventually_store_len(&storage, 1).await;
@@ -240,7 +240,7 @@ mod outbox_persistence {
             &adapter,
             OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
-            vec![seed_story(66, Work::NotStarted)],
+            vec![seed_story(66, Work::Ready)],
         );
         orch.mutate(state_write(66, Work::Acceptance)).unwrap();
         eventually_store_len(&storage, 1).await;
@@ -261,10 +261,7 @@ mod outbox_persistence {
             &adapter,
             OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
-            vec![
-                seed_story(70, Work::NotStarted),
-                seed_story(71, Work::NotStarted),
-            ],
+            vec![seed_story(70, Work::Ready), seed_story(71, Work::Ready)],
         );
         orch.mutate(state_write(70, Work::Acceptance)).unwrap();
         orch.mutate(state_write(71, Work::Acceptance)).unwrap();
@@ -283,7 +280,7 @@ mod outbox_persistence {
             &adapter,
             OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
-            vec![seed_story(80, Work::NotStarted)],
+            vec![seed_story(80, Work::Ready)],
         );
         orch.mutate(state_write(80, Work::Acceptance)).unwrap();
         eventually_store_len(&storage, 1).await;
@@ -309,9 +306,9 @@ mod outbox_persistence {
             OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
             vec![
-                seed_story(50, Work::NotStarted),
-                seed_story(51, Work::NotStarted),
-                seed_story(52, Work::NotStarted),
+                seed_story(50, Work::Ready),
+                seed_story(51, Work::Ready),
+                seed_story(52, Work::Ready),
             ],
         );
         for n in [50u64, 51, 52] {
@@ -378,7 +375,7 @@ mod outbox_persistence {
     #[tokio::test]
     async fn refresh_story_populates_store_so_subsequent_mutate_lands() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        adapter.seed_stories(vec![seed_story(777, Work::NotStarted)]);
+        adapter.seed_stories(vec![seed_story(777, Work::Ready)]);
         let handle = SeededStore::new(vec![], vec![], vec![]);
         let orch = handle.build_orch(
             adapter,

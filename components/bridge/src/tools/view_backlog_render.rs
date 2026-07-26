@@ -50,30 +50,30 @@ async fn backlog_summary_via_dispatch(
 }
 
 #[tokio::test]
-async fn a_not_started_non_member_reports_in_icebox_not_ready() {
+async fn a_ready_state_non_member_reports_in_icebox_not_ready() {
     let summary = backlog_summary_via_dispatch(
-        vec![story(300, "unscheduled work", Work::NotStarted)],
+        vec![story(300, "unscheduled work", Work::Ready)],
         current_iteration_of(&[]),
     )
     .await;
     assert_eq!(
         summary["icebox_count"], 1,
-        "a not-started non-member derives Icebox in the backlog summary, agreeing with board/list_ready/close-blockers; got {summary}"
+        "a ready-state non-member derives Icebox in the backlog summary, agreeing with board/list_ready/close-blockers; got {summary}"
     );
     assert_eq!(
         summary["ready_count"], 0,
-        "a not-started non-member never counts ready; got {summary}"
+        "a ready-state non-member never counts ready; got {summary}"
     );
     assert!(
         summary["ready_samples"].as_array().unwrap().is_empty(),
-        "a not-started non-member never appears in ready_samples; got {summary}"
+        "a ready-state non-member never appears in ready_samples; got {summary}"
     );
 }
 
 #[tokio::test]
-async fn a_not_started_current_iteration_member_reports_in_ready() {
+async fn a_ready_state_current_iteration_member_reports_in_ready() {
     let summary = backlog_summary_via_dispatch(
-        vec![story(301, "scheduled member", Work::NotStarted)],
+        vec![story(301, "scheduled member", Work::Ready)],
         current_iteration_of(&[301]),
     )
     .await;
@@ -109,7 +109,7 @@ fn accepted_state_counted_as_accepted() {
 
 #[test]
 fn ready_state_populates_samples() {
-    let stories = vec![story(101, "ready story", Work::NotStarted)];
+    let stories = vec![story(101, "ready story", Work::Ready)];
     let summary = build_backlog_summary(&stories, &current_iteration_of(&[101]));
     assert_eq!(summary["ready_count"], 1);
     assert_eq!(summary["ready_samples"][0], "#101 ready story");
@@ -137,7 +137,7 @@ fn in_work_middle_stages_count_as_in_progress_acceptance_is_the_rail_only() {
 
 #[test]
 fn icebox_state_counted_as_icebox() {
-    let stories = vec![story(107, "icy", Work::NotStarted)];
+    let stories = vec![story(107, "icy", Work::Ready)];
     assert_eq!(build_backlog_summary(&stories, &[])["icebox_count"], 1);
 }
 
@@ -153,7 +153,7 @@ fn retired_story_lands_in_retired_count() {
 #[test]
 fn samples_cap_at_sample_limit() {
     let stories: Vec<Story> = (0..8)
-        .map(|i| story(200 + i, &format!("ready {i}"), Work::NotStarted))
+        .map(|i| story(200 + i, &format!("ready {i}"), Work::Ready))
         .collect();
     let members: Vec<u64> = (0..8).map(|i| 200 + i).collect();
     let summary = build_backlog_summary(&stories, &current_iteration_of(&members));

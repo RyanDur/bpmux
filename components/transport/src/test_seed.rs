@@ -158,11 +158,11 @@ pub async fn post_seed_stories(
     };
     for s in &body.stories {
         let initial_state = match s.initial_state.as_str() {
-            "icebox" | "ready" => product_management::story::Work::NotStarted,
+            "icebox" | "ready" => product_management::story::Work::Ready,
             "in-progress" | "desk-check" => product_management::story::Work::InProgress,
             "delivered" | "acceptance" => product_management::story::Work::Acceptance,
             "accepted" => product_management::story::Work::Accepted,
-            _ => product_management::story::Work::NotStarted,
+            _ => product_management::story::Work::Ready,
         };
         let is_iteration_seed = s.story_type.as_str() == "iteration";
         let is_epic_seed = s.story_type.as_str() == "epic";

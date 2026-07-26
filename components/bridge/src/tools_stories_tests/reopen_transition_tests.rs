@@ -80,7 +80,7 @@ mod reopen_on_state_transition_tests {
 
     #[tokio::test]
     async fn start_story_does_not_reopen_when_prior_is_active() {
-        let (story, labels) = seeded_chore(7111, Work::NotStarted);
+        let (story, labels) = seeded_chore(7111, Work::Ready);
         let (_store, orch, adapter, select) = build_orchestrator((story, labels)).await;
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7111));
@@ -156,7 +156,7 @@ mod reopen_on_state_transition_tests {
         let seeded_story = Story::new_minimal(
             StoryId::new(7200),
             "t".into(),
-            Work::NotStarted,
+            Work::Ready,
             Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
             "dev".into(),
         );
@@ -305,7 +305,7 @@ mod reopen_on_state_transition_tests {
                 product_management::story::slice::get(&state.stories, StoryId::new(7200))
             })
             .unwrap();
-        assert_eq!(story.state, Work::NotStarted);
+        assert_eq!(story.state, Work::Ready);
 
         let mut args = serde_json::Map::new();
         args.insert("id".into(), serde_json::json!(7200));

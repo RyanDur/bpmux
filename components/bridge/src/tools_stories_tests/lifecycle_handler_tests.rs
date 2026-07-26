@@ -21,7 +21,7 @@ async fn start_story_emits_pickup_gate_and_state_events() {
     let seeded = Story::new_minimal(
         StoryId::new(203),
         "t".into(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -425,7 +425,7 @@ async fn reject_story_emits_gate_with_reason_and_state_events() {
     let story = select
         .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(206)))
         .unwrap();
-    assert_eq!(story.state, Work::NotStarted);
+    assert_eq!(story.state, Work::Ready);
     let gates = story.verdicts.as_ref().expect("verdicts seeded");
     assert!(
         gates.iter().any(|g| g.verdict
@@ -454,7 +454,7 @@ async fn reject_story_emits_gate_with_reason_and_state_events() {
     assert!(matches!(
         &pushed[1].kind,
         StoryEventKind::StateTransitioned {
-            new_state: Work::NotStarted,
+            new_state: Work::Ready,
             ..
         } if pushed[1].id == StoryId::new(206)
     ));
@@ -478,7 +478,7 @@ async fn create_story_assigns_id_and_emits_story_created_event() {
     adapter.seed_stories(vec![Story::new_minimal(
         StoryId::new(50),
         "seed".into(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     )]);
@@ -528,7 +528,7 @@ async fn create_story_assigns_id_and_emits_story_created_event() {
         .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(51)))
         .expect("StoryCreated event applied to store");
     assert_eq!(story.title, "[Bug] live-verify failure");
-    assert_eq!(story.state, Work::NotStarted);
+    assert_eq!(story.state, Work::Ready);
     assert_eq!(
         story.story_type,
         StoryKind::Bug,
@@ -545,7 +545,7 @@ async fn create_story_assigns_id_and_emits_story_created_event() {
     assert!(matches!(
         &pushed[0].kind,
         StoryEventKind::StoryCreated {
-            initial_state: Work::NotStarted,
+            initial_state: Work::Ready,
             story_type: StoryKind::Bug,
             ..
         } if pushed[0].id == StoryId::new(51)
@@ -637,7 +637,7 @@ async fn start_story_leads_with_verbatim_reject_for_a_rejected_story() {
     let seeded = Story::new_minimal(
         StoryId::new(1524),
         "ready-queue drag".into(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 6, 6, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -708,7 +708,7 @@ async fn start_story_leads_with_the_latest_reject_not_an_older_one() {
     let seeded = Story::new_minimal(
         StoryId::new(1525),
         "twice-rejected".into(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 6, 6, 0, 0, 0).unwrap(),
         "pm".into(),
     );

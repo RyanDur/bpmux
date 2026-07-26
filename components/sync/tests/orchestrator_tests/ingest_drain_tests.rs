@@ -17,7 +17,7 @@ use sync::SyncOrchestrator;
 async fn ingest_once_populates_store_from_adapter() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
     adapter.seed_stories(vec![
-        seed_story(1, Work::NotStarted),
+        seed_story(1, Work::Ready),
         seed_story(2, Work::Acceptance),
     ]);
     let handle = SeededStore::new(vec![], vec![], vec![]);
@@ -106,7 +106,7 @@ async fn mutate_applies_event_locally_and_enqueues_for_push() {
             StoryEventKind::StoryCreated {
                 title: "test".to_string(),
                 body: "b".to_string(),
-                initial_state: Work::NotStarted,
+                initial_state: Work::Ready,
                 story_type: StoryKind::Feature,
             },
         ))
@@ -145,7 +145,7 @@ async fn drain_pass_pushes_pending_events_to_adapter() {
     );
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
         1,
-        Work::NotStarted,
+        Work::Ready,
     )])));
     orchestrator
         .mutate(StoryEvent::new(
@@ -174,7 +174,7 @@ async fn drain_pass_requeues_event_on_adapter_failure() {
     );
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
         1,
-        Work::NotStarted,
+        Work::Ready,
     )])));
     orchestrator
         .mutate(StoryEvent::new(
@@ -212,8 +212,8 @@ async fn drain_pass_handles_multiple_events_in_order() {
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),
     );
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
-        seed_story(1, Work::NotStarted),
-        seed_story(2, Work::NotStarted),
+        seed_story(1, Work::Ready),
+        seed_story(2, Work::Ready),
     ])));
     orchestrator
         .mutate(StoryEvent::new(
@@ -249,7 +249,7 @@ async fn ingest_preserves_an_in_flight_label_mutation_against_a_pre_drain_refres
     use product_management::story::Tag;
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    let seeded = seed_story(1687, Work::NotStarted);
+    let seeded = seed_story(1687, Work::Ready);
     adapter.seed_stories(vec![seeded]);
     let handle = SeededStore::new(vec![], vec![], vec![]);
     let orchestrator = handle.build_orch(
@@ -318,7 +318,7 @@ async fn drain_echo_defers_while_a_later_write_for_the_same_story_is_still_queue
     let select = handle.select();
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
         42,
-        Work::NotStarted,
+        Work::Ready,
     )])));
 
     orchestrator
@@ -373,7 +373,7 @@ async fn drain_echo_applies_full_remote_authority_once_the_queue_for_the_story_i
     let select = handle.select();
     handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
         43,
-        Work::NotStarted,
+        Work::Ready,
     )])));
 
     orchestrator
@@ -417,7 +417,7 @@ async fn drain_echo_applies_full_remote_authority_once_the_queue_for_the_story_i
 #[tokio::test]
 async fn ingest_defers_a_stale_state_snapshot_while_a_local_write_is_queued() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(44, Work::NotStarted)]);
+    adapter.seed_stories(vec![seed_story(44, Work::Ready)]);
     let handle = SeededStore::new(vec![], vec![], vec![]);
     let orchestrator = handle.build_orch(
         Arc::clone(&adapter),
@@ -452,7 +452,7 @@ async fn ingest_defers_a_stale_state_snapshot_while_a_local_write_is_queued() {
 #[tokio::test]
 async fn refresh_story_defers_seed_while_a_local_write_is_queued_for_a_present_story() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(416, Work::NotStarted)]);
+    adapter.seed_stories(vec![seed_story(416, Work::Ready)]);
     let handle = SeededStore::new(vec![], vec![], vec![]);
     let orchestrator = handle.build_orch(
         Arc::clone(&adapter),
@@ -490,7 +490,7 @@ async fn refresh_story_defers_seed_while_a_local_write_is_queued_for_a_present_s
 #[tokio::test]
 async fn refresh_story_seeds_an_absent_story_even_while_tag_writes_are_queued_for_it() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(88, Work::NotStarted)]);
+    adapter.seed_stories(vec![seed_story(88, Work::Ready)]);
     let handle = SeededStore::new(vec![], vec![], vec![]);
     let orchestrator = handle.build_orch(
         Arc::clone(&adapter),
@@ -530,7 +530,7 @@ async fn refresh_story_seeds_an_absent_story_even_while_tag_writes_are_queued_fo
             .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(88)))
             .unwrap()
             .state,
-        Work::NotStarted,
+        Work::Ready,
         "an absent story carries no optimistic state to protect, so refresh hydrates it even with queued tag writes"
     );
 }
@@ -604,7 +604,7 @@ async fn a_stale_ingest_after_the_accept_write_drains_does_not_revert_the_accept
 #[tokio::test]
 async fn ingest_reconciles_fully_once_the_queue_for_the_story_has_drained() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(44, Work::NotStarted)]);
+    adapter.seed_stories(vec![seed_story(44, Work::Ready)]);
     let handle = SeededStore::new(vec![], vec![], vec![]);
     let orchestrator = handle.build_orch(
         Arc::clone(&adapter),

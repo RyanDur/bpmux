@@ -163,7 +163,7 @@ impl SourceAdapter for InMemorySourceAdapter {
             let story = Story::new_minimal(
                 StoryId::new(number),
                 title.to_string(),
-                product_management::story::Work::NotStarted,
+                product_management::story::Work::Ready,
                 chrono::Utc::now(),
                 "in-memory".to_string(),
             );

@@ -116,9 +116,9 @@ fn state_from_labels_retired_label_open_issue_returns_retired() {
 }
 
 #[test]
-fn state_from_labels_rejected_label_decodes_to_not_started_rework() {
+fn state_from_labels_rejected_label_decodes_to_ready_state_rework() {
     let labels = vec!["delivered".to_string(), "rejected".to_string()];
-    assert_eq!(state_from_labels(&labels, false), Work::NotStarted);
+    assert_eq!(state_from_labels(&labels, false), Work::Ready);
 }
 
 #[test]
@@ -146,19 +146,19 @@ fn state_from_labels_in_progress_resolves_alongside_a_stale_ready_label() {
 }
 
 #[test]
-fn state_from_labels_ready_label_is_not_a_scheduling_input_open_story_decodes_not_started() {
+fn state_from_labels_ready_label_is_not_a_scheduling_input_open_story_decodes_ready_state() {
     let labels = vec!["ready".to_string()];
     assert_eq!(
         state_from_labels(&labels, false),
-        Work::NotStarted,
+        Work::Ready,
         "the ready label stops resolving scheduling — a ready-labeled open story decodes to the stored fallback; current-iteration membership is the scheduling truth"
     );
 }
 
 #[test]
-fn state_from_labels_not_started_is_the_open_default() {
+fn state_from_labels_ready_state_is_the_open_default() {
     let labels = vec!["Feature".to_string()];
-    assert_eq!(state_from_labels(&labels, false), Work::NotStarted);
+    assert_eq!(state_from_labels(&labels, false), Work::Ready);
 }
 
 #[test]
@@ -169,11 +169,11 @@ fn state_from_labels_is_case_insensitive() {
 
 #[test]
 fn the_derived_ready_label_is_outbound_only_the_decoder_ignores_it() {
-    let ready_label = outbound_state_label(&Work::NotStarted, true)
-        .expect("a not-started current-iteration member derives the ready mirror label");
+    let ready_label = outbound_state_label(&Work::Ready, true)
+        .expect("a ready-state current-iteration member derives the ready mirror label");
     assert_eq!(
         state_from_labels(&[ready_label.to_string()], false),
-        Work::NotStarted,
+        Work::Ready,
         "the outbound ready label is a human-readable mirror, never a decode input — scheduling decodes from iteration membership"
     );
 }
@@ -304,7 +304,7 @@ fn decode_story_metadata_forces_terminal_state_from_gh_state() {
     });
     assert_eq!(
         decode_story_metadata(&open).unwrap().state,
-        Work::NotStarted,
+        Work::Ready,
         "an open issue with no state labels decodes to a non-terminal state"
     );
     assert_eq!(

@@ -127,7 +127,7 @@ pub async fn handle_remove_iteration_member(
     rewrite_members(driver, dispatch, &iteration, stories).await?;
 
     let state_flag = match story.state {
-        Work::NotStarted => String::new(),
+        Work::Ready => String::new(),
         other => format!(" (was: {})", other.as_str()),
     };
     Ok(format!(

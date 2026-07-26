@@ -24,7 +24,7 @@ fn seed_story(adapter: &InMemorySourceAdapter, id: u64, title: &str) {
             "## What\n\nfixture\n\n## Acceptance test path\n\ntests/integration_main_modules/rpc_canonical_store.rs\n"
                 .to_string(),
         ),
-        state: Work::NotStarted,
+        state: Work::Ready,
         verdicts: None,
         free_comments: None,
         filed_by: "test".to_string(),

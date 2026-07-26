@@ -50,19 +50,19 @@ fn a_member_of_a_complete_but_still_current_iteration_is_not_current_work() {
 }
 
 #[test]
-fn a_not_started_member_of_the_current_iteration_derives_ready_and_is_current() {
+fn a_ready_state_member_of_the_current_iteration_derives_ready_and_is_current() {
     let iterations = [iteration(1, true, &[10])];
     assert_eq!(
-        backlog_column(&story(10, Work::NotStarted), &iterations),
+        backlog_column(&story(10, Work::Ready), &iterations),
         Some(BacklogColumn::Current),
-        "membership in the current iteration IS the scheduling truth — a not-started member projects Ready and belongs to the current board"
+        "membership in the current iteration IS the scheduling truth — a ready-state member projects Ready and belongs to the current board"
     );
 }
 
 #[test]
 fn a_board_position_story_in_the_current_iteration_is_current_work() {
     let iterations = [iteration(1, true, &[10, 11, 12])];
-    for state in [Work::NotStarted, Work::InProgress, Work::Acceptance] {
+    for state in [Work::Ready, Work::InProgress, Work::Acceptance] {
         assert_eq!(
             backlog_column(&story(10, state.clone()), &iterations),
             Some(BacklogColumn::Current),
@@ -75,7 +75,7 @@ fn a_board_position_story_in_the_current_iteration_is_current_work() {
 fn a_planned_story_in_a_non_current_iteration_is_ready_for_work() {
     let iterations = [iteration(1, true, &[10]), iteration(2, false, &[20])];
     assert_eq!(
-        backlog_column(&story(20, Work::NotStarted), &iterations),
+        backlog_column(&story(20, Work::Ready), &iterations),
         Some(BacklogColumn::ReadyForDevelopment),
         "planned work — in an iteration on the roadmap, but not the current one"
     );
@@ -85,7 +85,7 @@ fn a_planned_story_in_a_non_current_iteration_is_ready_for_work() {
 fn an_unplanned_story_is_icebox() {
     let iterations = [iteration(1, true, &[10])];
     assert_eq!(
-        backlog_column(&story(99, Work::NotStarted), &iterations),
+        backlog_column(&story(99, Work::Ready), &iterations),
         Some(BacklogColumn::Icebox),
         "unplanned work — referenced by no iteration"
     );
@@ -136,10 +136,10 @@ fn an_accepted_story_stays_in_the_accepted_column() {
 fn grouping_places_every_non_archived_story_in_exactly_one_column() {
     let iterations = [iteration(1, true, &[1, 2]), iteration(2, false, &[3])];
     let stories = vec![
-        story(1, Work::NotStarted),
+        story(1, Work::Ready),
         story(2, Work::Accepted),
-        story(3, Work::NotStarted),
-        story(4, Work::NotStarted),
+        story(3, Work::Ready),
+        story(4, Work::Ready),
         story(5, Work::Retired),
     ];
     let grouped = group_by_backlog_column(&stories, &iterations);

@@ -48,7 +48,7 @@ fn outcome(id: u64, iterations: Vec<u64>) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Outcome #{id}"),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -66,7 +66,7 @@ fn iteration_for(id: u64, outcome_id: u64) -> (Story, Vec<String>) {
     let mut s = Story::new_minimal(
         StoryId::new(id),
         format!("Iteration #{id}"),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -279,7 +279,7 @@ async fn unmap_aimed_at_a_non_outcome_teaches_the_boundary() {
     let feature = Story::new_minimal(
         StoryId::new(700),
         "[Feature] plain".into(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

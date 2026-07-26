@@ -28,7 +28,7 @@ impl TargetState {
             return Ok(Self::Retired);
         }
         if let Some(state) = Work::parse(&normalized)
-            && state != Work::NotStarted
+            && state != Work::Ready
         {
             return Ok(Self::Workflow(state));
         }
@@ -45,7 +45,7 @@ impl TargetState {
 
     pub(super) fn workflow_state(&self) -> Option<Work> {
         match self {
-            Self::Icebox | Self::Ready => Some(Work::NotStarted),
+            Self::Icebox | Self::Ready => Some(Work::Ready),
             Self::Workflow(state) => Some(state.clone()),
             Self::Retired => None,
         }
@@ -117,7 +117,7 @@ pub(super) fn current_state_display(
     match story {
         Some(s) if s.is_concluded() => "retired-or-accepted",
         Some(s) => match &s.state {
-            Work::NotStarted => projected_state(s, iterations).as_str(),
+            Work::Ready => projected_state(s, iterations).as_str(),
             Work::InProgress => match fine {
                 Some(Stage::DeskCheck) => "desk-check",
                 _ => "in-progress",

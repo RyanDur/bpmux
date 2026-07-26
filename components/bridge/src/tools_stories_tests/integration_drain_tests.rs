@@ -16,7 +16,7 @@ async fn start_story_blocks_when_acceptance_test_path_does_not_exist() {
     let seeded = Story::new_minimal(
         StoryId::new(882),
         "[Feature] missing-test-file".into(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -56,7 +56,7 @@ async fn start_story_passes_chore_without_acceptance_test_path() {
     let seeded = Story::new_minimal(
         StoryId::new(883),
         "[Chore] no test required".into(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -91,7 +91,7 @@ async fn start_story_keeps_the_stores_optimistic_reject_when_the_adapter_verdict
     let mut seeded = Story::new_minimal(
         StoryId::new(884),
         "[Chore] rework-lead survives undrained mirror".into(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -148,7 +148,7 @@ async fn start_story_fetches_the_rework_lead_when_the_store_has_no_cached_verdic
     let seeded = Story::new_minimal(
         StoryId::new(885),
         "[Chore] rework-lead read-through survives".into(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "dev".into(),
     );
@@ -359,7 +359,7 @@ async fn reject_after_accept_strips_the_accepted_label_and_reopens() {
     let story = select
         .select(|state| product_management::story::slice::get(&state.stories, StoryId::new(469)))
         .unwrap();
-    assert_eq!(story.state, Work::NotStarted);
+    assert_eq!(story.state, Work::Ready);
 }
 
 #[tokio::test]
@@ -441,7 +441,7 @@ async fn a_transition_out_of_the_board_pushes_no_state_label_and_strips_the_stal
     let seeded = Story::new_minimal(
         StoryId::new(471),
         "[Bug] unschedule-label-mirror".into(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -460,7 +460,7 @@ async fn a_transition_out_of_the_board_pushes_no_state_label_and_strips_the_stal
         sync::cache_fill_meta(),
         StoryId::new(471),
         StoryEventKind::StateTransitioned {
-            new_state: Work::NotStarted,
+            new_state: Work::Ready,
             placement: None,
         },
     ))
@@ -501,7 +501,7 @@ async fn a_transition_to_ready_for_a_current_iteration_member_pushes_the_ready_l
     let seeded = Story::new_minimal(
         StoryId::new(472),
         "[Feature] schedule-label-mirror".into(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -520,7 +520,7 @@ async fn a_transition_to_ready_for_a_current_iteration_member_pushes_the_ready_l
         sync::cache_fill_meta(),
         StoryId::new(472),
         StoryEventKind::StateTransitioned {
-            new_state: Work::NotStarted,
+            new_state: Work::Ready,
             placement: None,
         },
     ))

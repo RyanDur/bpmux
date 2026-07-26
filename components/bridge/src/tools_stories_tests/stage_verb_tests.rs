@@ -207,7 +207,7 @@ mod stage_verb_behavior {
 
     #[tokio::test]
     async fn stage_verbs_require_the_story_in_the_middle() {
-        let (_store, orch, select) = seeded(8106, Work::NotStarted, &["chore"]).await;
+        let (_store, orch, select) = seeded(8106, Work::Ready, &["chore"]).await;
         let err = handle_pass_stage(
             &pass_args(8106),
             "dev:claude-code",

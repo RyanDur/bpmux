@@ -29,7 +29,7 @@ fn sample_story(state: Work, story_type: StoryKind) -> Story {
 
 #[test]
 fn story_to_board_json_emits_renderer_wire_format_field_list() {
-    let s = sample_story(Work::NotStarted, StoryKind::Feature);
+    let s = sample_story(Work::Ready, StoryKind::Feature);
     let json = story_to_board_json(&GhLabelCodec, &s, s.state.as_str());
 
     let obj = json.as_object().expect("object");
@@ -87,7 +87,7 @@ fn story_to_board_json_acceptor_emits_class_string() {
 
 #[test]
 fn story_to_board_json_rework_comment_null_when_no_backward_edge() {
-    let s = sample_story(Work::NotStarted, StoryKind::Feature);
+    let s = sample_story(Work::Ready, StoryKind::Feature);
     let json = story_to_board_json(&GhLabelCodec, &s, s.state.as_str());
     assert!(json["rework_comment"].is_null());
 }
@@ -95,7 +95,7 @@ fn story_to_board_json_rework_comment_null_when_no_backward_edge() {
 #[test]
 fn story_to_board_json_rework_comment_carries_backward_edge_payload() {
     use product_management::story::{CastVerdict, Verdict};
-    let mut s = sample_story(Work::NotStarted, StoryKind::Feature);
+    let mut s = sample_story(Work::Ready, StoryKind::Feature);
     s.verdicts = Some(vec![
         CastVerdict {
             verdict: Verdict::Succeed {
@@ -194,8 +194,8 @@ fn story_to_board_json_rework_comment_clears_after_forward_edge() {
 #[test]
 fn story_to_board_json_emits_canonical_6_state_vocabulary() {
     for (state, projected) in &[
-        (Work::NotStarted, "icebox"),
-        (Work::NotStarted, "ready"),
+        (Work::Ready, "icebox"),
+        (Work::Ready, "ready"),
         (Work::InProgress, "in-progress"),
         (Work::Acceptance, "acceptance"),
         (Work::Accepted, "accepted"),
@@ -212,7 +212,7 @@ fn story_to_board_json_emits_canonical_6_state_vocabulary() {
 
 #[test]
 fn story_to_board_json_state_stays_canonical_regardless_of_conclusion() {
-    let s = sample_story(Work::NotStarted, StoryKind::Feature);
+    let s = sample_story(Work::Ready, StoryKind::Feature);
     assert_eq!(
         json_str(&story_to_board_json(&GhLabelCodec, &s, "icebox"), "state"),
         "icebox",
@@ -227,7 +227,7 @@ fn story_to_board_json_labels_include_story_type() {
         (StoryKind::Bug, "bug"),
         (StoryKind::Chore, "chore"),
     ] {
-        let s = sample_story(Work::NotStarted, *story_type);
+        let s = sample_story(Work::Ready, *story_type);
         let json = story_to_board_json(&GhLabelCodec, &s, s.state.as_str());
         let labels = json["labels"].as_array().expect("labels array");
         assert!(
@@ -239,7 +239,7 @@ fn story_to_board_json_labels_include_story_type() {
 
 #[test]
 fn story_to_board_json_labels_include_desk_check_fail_tag() {
-    let mut s = sample_story(Work::NotStarted, StoryKind::Feature);
+    let mut s = sample_story(Work::Ready, StoryKind::Feature);
     s.tags = vec![product_management::story::Tag::DeskCheckFail];
     let json = story_to_board_json(&GhLabelCodec, &s, s.state.as_str());
     let labels = json["labels"].as_array().expect("labels array");
@@ -277,7 +277,7 @@ fn a_legacy_ready_order_label_ingested_does_not_resurface_on_the_board_wire() {
 
 #[test]
 fn story_to_board_json_parent_epic_emits_field_and_label() {
-    let mut s = sample_story(Work::NotStarted, StoryKind::Feature);
+    let mut s = sample_story(Work::Ready, StoryKind::Feature);
     s.parent_epic = Some(EpicId::new(7));
     let json = story_to_board_json(&GhLabelCodec, &s, s.state.as_str());
     assert_eq!(json["parent_epic"].as_u64(), Some(7));
@@ -290,7 +290,7 @@ fn story_to_board_json_parent_epic_emits_field_and_label() {
 
 #[test]
 fn story_to_board_json_no_parent_epic_emits_null() {
-    let s = sample_story(Work::NotStarted, StoryKind::Feature);
+    let s = sample_story(Work::Ready, StoryKind::Feature);
     let json = story_to_board_json(&GhLabelCodec, &s, s.state.as_str());
     assert!(
         json["parent_epic"].is_null(),
@@ -301,7 +301,7 @@ fn story_to_board_json_no_parent_epic_emits_null() {
 
 #[test]
 fn story_to_board_json_body_unwraps_to_empty_string_when_none() {
-    let mut s = sample_story(Work::NotStarted, StoryKind::Feature);
+    let mut s = sample_story(Work::Ready, StoryKind::Feature);
     s.body = None;
     let json = story_to_board_json(&GhLabelCodec, &s, s.state.as_str());
     assert_eq!(json["body"].as_str(), Some(""));
@@ -309,7 +309,7 @@ fn story_to_board_json_body_unwraps_to_empty_string_when_none() {
 
 #[test]
 fn story_to_board_json_assignees_empty_array() {
-    let s = sample_story(Work::NotStarted, StoryKind::Feature);
+    let s = sample_story(Work::Ready, StoryKind::Feature);
     let json = story_to_board_json(&GhLabelCodec, &s, s.state.as_str());
     let assignees = json["assignees"].as_array().expect("assignees array");
     assert!(assignees.is_empty());
@@ -317,7 +317,7 @@ fn story_to_board_json_assignees_empty_array() {
 
 #[test]
 fn story_to_board_json_created_at_is_rfc3339() {
-    let s = sample_story(Work::NotStarted, StoryKind::Feature);
+    let s = sample_story(Work::Ready, StoryKind::Feature);
     let json = story_to_board_json(&GhLabelCodec, &s, s.state.as_str());
     let created = json["created_at"].as_str().expect("created_at string");
     chrono::DateTime::parse_from_rfc3339(created).expect("created_at parses as RFC3339");
@@ -379,7 +379,7 @@ impl product_management::label_codec::LabelCodec for StubLabelCodec {
 
 #[test]
 fn substrate_test_story_to_board_json_works_with_arbitrary_codec_syntax() {
-    let mut s = sample_story(Work::NotStarted, StoryKind::Feature);
+    let mut s = sample_story(Work::Ready, StoryKind::Feature);
     s.parent_epic = Some(EpicId::new(42));
     let json = story_to_board_json(&StubLabelCodec, &s, s.state.as_str());
     let labels: Vec<&str> = json["labels"]

@@ -90,7 +90,7 @@ fn fail_from_acceptance_derives_return_to_ready() {
     assert_eq!(
         advance(&fail("acceptance"), &wf),
         Some(Decision {
-            coarse: Work::NotStarted,
+            coarse: Work::Ready,
             placement: None
         })
     );
@@ -183,7 +183,7 @@ fn configured_fail_to_wins_over_the_default_ladder() {
     assert_eq!(
         advance(&fail("review"), &wf),
         Some(Decision {
-            coarse: Work::NotStarted,
+            coarse: Work::Ready,
             placement: None
         }),
         "fail_to is the team's explicit call and beats every default"

@@ -9,7 +9,7 @@ use store_test_support::build_seeded_orch;
 #[tokio::test]
 async fn drain_pending_via_refresh_driver_drains_the_pending_queue() {
     let adapter = Arc::new(InMemorySourceAdapter::new());
-    adapter.seed_stories(vec![seed_story(1, Work::NotStarted)]);
+    adapter.seed_stories(vec![seed_story(1, Work::Ready)]);
     let (orchestrator, _select) = build_seeded_orch(
         Arc::clone(&adapter),
         Arc::new(source_codec::gh_label_codec::GhLabelCodec),

@@ -51,7 +51,7 @@ pub fn in_any_iteration(id: StoryId, iterations: &[Iteration]) -> bool {
 
 pub fn projected_state(story: &Story, iterations: &[Iteration]) -> ProjectedState {
     match &story.state {
-        Work::NotStarted => {
+        Work::Ready => {
             if in_current_iteration(story.id, iterations) {
                 ProjectedState::Ready
             } else {

@@ -255,7 +255,7 @@ fn ready_story(id: u64) -> product_management::story::Story {
     product_management::story::Story::new_minimal(
         StoryId::new(id),
         format!("ready {id}"),
-        Work::NotStarted,
+        Work::Ready,
         chrono::Utc::now(),
         "pm".to_string(),
     )
@@ -482,7 +482,7 @@ async fn owner_park_recomputes_to_online_when_ready_queue_refills() {
     store.dispatch(AppAction::Story(StoryAction::Event(state_transitioned(
         901,
         "pm",
-        Work::NotStarted,
+        Work::Ready,
     ))));
 
     let members = drain_roster_presence(&mut rx).await;

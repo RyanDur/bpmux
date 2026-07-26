@@ -136,14 +136,14 @@ async fn view_board_buckets_stories_by_story_state() {
         Story::new_minimal(
             StoryId::new(101),
             "icebox-story".into(),
-            Work::NotStarted,
+            Work::Ready,
             ts,
             "pm".into(),
         ),
         Story::new_minimal(
             StoryId::new(102),
             "ready-story".into(),
-            Work::NotStarted,
+            Work::Ready,
             ts,
             "pm".into(),
         ),

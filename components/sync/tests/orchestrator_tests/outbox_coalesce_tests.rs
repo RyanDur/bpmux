@@ -35,7 +35,7 @@ mod outbox_coalesce_step_2e {
     #[tokio::test]
     async fn rapid_drag_sequence_coalesces_to_first_remove_plus_last_add_per_class() {
         let adapter = Arc::new(InMemorySourceAdapter::new());
-        let seed = seed_story(7011, Work::NotStarted);
+        let seed = seed_story(7011, Work::Ready);
         let handle = SeededStore::new(vec![], vec![], vec![]);
         let orch = handle.build_orch(
             adapter,
@@ -113,7 +113,7 @@ mod outbox_coalesce_step_2e {
         );
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             7012,
-            Work::NotStarted,
+            Work::Ready,
         )])));
 
         orch.mutate(StoryEvent::new(
@@ -161,8 +161,8 @@ mod outbox_coalesce_step_2e {
             Arc::new(source_codec::gh_label_codec::GhLabelCodec),
         );
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![
-            seed_story(7013, Work::NotStarted),
-            seed_story(7014, Work::NotStarted),
+            seed_story(7013, Work::Ready),
+            seed_story(7014, Work::Ready),
         ])));
 
         orch.mutate(StoryEvent::new(
@@ -218,7 +218,7 @@ mod outbox_coalesce_step_2e {
         );
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             7015,
-            Work::NotStarted,
+            Work::Ready,
         )])));
 
         orch.mutate(StoryEvent::new(
@@ -264,7 +264,7 @@ mod outbox_coalesce_step_2e {
         );
         handle.dispatch(AppAction::Story(StoryAction::Seeded(vec![seed_story(
             7016,
-            Work::NotStarted,
+            Work::Ready,
         )])));
 
         orch.mutate(StoryEvent::new(

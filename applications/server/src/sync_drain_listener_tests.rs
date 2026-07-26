@@ -193,7 +193,7 @@ async fn an_ingested_upsert_is_selectable_the_moment_refresh_returns() {
     adapter.seed_stories(vec![Story::new_minimal(
         StoryId::new(8001),
         "an outcome".to_string(),
-        Work::NotStarted,
+        Work::Ready,
         Utc::now(),
         "pm".to_string(),
     )]);

@@ -7,7 +7,7 @@ use product_management::story::{FreeComment, StoryId, Verdict, Work};
 #[test]
 fn verdict_cast_event_accumulates() {
     let store = seeded();
-    created(&store, 1, "t", Work::NotStarted);
+    created(&store, 1, "t", Work::Ready);
     apply(
         &store,
         StoryEvent::new(
@@ -54,7 +54,7 @@ fn verdict_cast_event_accumulates() {
 #[test]
 fn free_comment_appended_event_accumulates() {
     let store = seeded();
-    created(&store, 1, "t", Work::NotStarted);
+    created(&store, 1, "t", Work::Ready);
     apply(
         &store,
         StoryEvent::new(
@@ -75,7 +75,7 @@ fn free_comment_appended_event_accumulates() {
 #[test]
 fn body_fetched_event_populates_lazy_body() {
     let store = seeded();
-    seed(&store, vec![minimal(1, "t", Work::NotStarted)]);
+    seed(&store, vec![minimal(1, "t", Work::Ready)]);
     assert_eq!(story_at(&store, 1).unwrap().body, None);
     apply(
         &store,
@@ -97,7 +97,7 @@ fn body_fetched_event_populates_lazy_body() {
 #[test]
 fn a_metadata_reseed_preserves_the_store_only_optimistic_verdict() {
     let store = seeded();
-    created(&store, 700, "reopened", Work::NotStarted);
+    created(&store, 700, "reopened", Work::Ready);
     apply(
         &store,
         StoryEvent::new(
@@ -111,7 +111,7 @@ fn a_metadata_reseed_preserves_the_store_only_optimistic_verdict() {
             },
         ),
     );
-    seed(&store, vec![minimal(700, "reopened", Work::NotStarted)]);
+    seed(&store, vec![minimal(700, "reopened", Work::Ready)]);
     let gates = story_at(&store, 700)
         .unwrap()
         .verdicts
@@ -143,10 +143,10 @@ fn locally_transition(store: &store_test_support::SeededStore, id: u64, new_stat
 #[test]
 fn a_reseed_with_absent_remote_freshness_preserves_the_locally_written_state() {
     let store = seeded();
-    created(&store, 800, "reopened", Work::NotStarted);
+    created(&store, 800, "reopened", Work::Ready);
     locally_transition(&store, 800, Work::Accepted);
 
-    seed(&store, vec![minimal(800, "reopened", Work::NotStarted)]);
+    seed(&store, vec![minimal(800, "reopened", Work::Ready)]);
 
     assert_eq!(
         story_at(&store, 800).unwrap().state,
@@ -158,10 +158,10 @@ fn a_reseed_with_absent_remote_freshness_preserves_the_locally_written_state() {
 #[test]
 fn a_reseed_with_older_remote_freshness_preserves_the_locally_written_state() {
     let store = seeded();
-    created(&store, 801, "reopened", Work::NotStarted);
+    created(&store, 801, "reopened", Work::Ready);
     locally_transition(&store, 801, Work::Accepted);
 
-    let mut stale = minimal(801, "reopened", Work::NotStarted);
+    let mut stale = minimal(801, "reopened", Work::Ready);
     stale.remote_updated_at = Some(Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap());
     seed(&store, vec![stale]);
 
@@ -175,7 +175,7 @@ fn a_reseed_with_older_remote_freshness_preserves_the_locally_written_state() {
 #[test]
 fn a_reseed_with_newer_remote_freshness_applies_the_remote_state() {
     let store = seeded();
-    created(&store, 802, "reopened", Work::NotStarted);
+    created(&store, 802, "reopened", Work::Ready);
     locally_transition(&store, 802, Work::Accepted);
 
     let mut fresh = minimal(802, "reopened", Work::InProgress);
@@ -197,7 +197,7 @@ fn a_reseed_with_newer_remote_freshness_applies_the_remote_state() {
 #[test]
 fn free_comments_fetched_event_replaces_lazy_field() {
     let store = seeded();
-    seed(&store, vec![minimal(1, "t", Work::NotStarted)]);
+    seed(&store, vec![minimal(1, "t", Work::Ready)]);
     let comments = vec![FreeComment {
         body: "c1".to_string(),
         author: "pm".to_string(),

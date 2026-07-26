@@ -28,7 +28,7 @@ fn store_with(stories: Vec<Story>) -> SeededStore {
 #[tokio::test]
 async fn returns_false_when_no_story_in_flight() {
     let store = store_with(vec![
-        seed(Work::NotStarted, 1),
+        seed(Work::Ready, 1),
         seed(Work::Acceptance, 2),
         seed(Work::Accepted, 3),
     ]);
@@ -39,7 +39,7 @@ async fn returns_false_when_no_story_in_flight() {
 #[tokio::test]
 async fn returns_true_when_a_story_is_in_progress() {
     let store = store_with(vec![
-        seed(Work::NotStarted, 1),
+        seed(Work::Ready, 1),
         seed(Work::InProgress, 2),
         seed(Work::Acceptance, 3),
     ]);

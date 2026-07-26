@@ -6,7 +6,7 @@ fn story_of(id: u64, kind: StoryKind) -> Story {
     let mut story = Story::new_minimal(
         StoryId::new(id),
         format!("story-{id}"),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 7, 7, 0, 0, 0).unwrap(),
         "pm".to_string(),
     );

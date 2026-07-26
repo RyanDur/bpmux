@@ -16,7 +16,7 @@ async fn build_orchestrator() -> (
     let story = Story::new_minimal(
         StoryId::new(200),
         "t".into(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 5, 20, 0, 0, 0).unwrap(),
         "pm".into(),
     );

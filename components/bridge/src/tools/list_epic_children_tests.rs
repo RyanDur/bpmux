@@ -101,10 +101,7 @@ async fn returns_zero_children_for_empty_epic() {
 #[tokio::test]
 async fn returns_single_child_with_parent_epic_match() {
     let store = store_with_current_members(
-        vec![
-            epic(100),
-            child(101, 100, StoryKind::Feature, Work::NotStarted),
-        ],
+        vec![epic(100), child(101, 100, StoryKind::Feature, Work::Ready)],
         &[101],
     );
     let result = handle_list_epic_children(&args(100), &store.select())
@@ -123,8 +120,8 @@ async fn returns_single_child_with_parent_epic_match() {
 async fn returns_multiple_children_sorted_by_number() {
     let store = store_with(vec![
         epic(100),
-        child(105, 100, StoryKind::Feature, Work::NotStarted),
-        child(102, 100, StoryKind::Bug, Work::NotStarted),
+        child(105, 100, StoryKind::Feature, Work::Ready),
+        child(102, 100, StoryKind::Bug, Work::Ready),
         child(108, 100, StoryKind::Chore, Work::Accepted),
     ]);
     let result = handle_list_epic_children(&args(100), &store.select())
@@ -143,8 +140,8 @@ async fn excludes_stories_with_different_parent() {
     let store = store_with(vec![
         epic(100),
         epic(200),
-        child(101, 100, StoryKind::Feature, Work::NotStarted),
-        child(201, 200, StoryKind::Feature, Work::NotStarted),
+        child(101, 100, StoryKind::Feature, Work::Ready),
+        child(201, 200, StoryKind::Feature, Work::Ready),
     ]);
     let result = handle_list_epic_children(&args(100), &store.select())
         .await
@@ -159,7 +156,7 @@ async fn excludes_stories_with_different_parent() {
 async fn excludes_stories_without_parent_epic() {
     let store = store_with(vec![
         epic(100),
-        child(101, 100, StoryKind::Feature, Work::NotStarted),
+        child(101, 100, StoryKind::Feature, Work::Ready),
         child_without_parent(202),
     ]);
     let result = handle_list_epic_children(&args(100), &store.select())
@@ -202,7 +199,7 @@ async fn rejects_missing_epic_number_arg() {
 async fn handles_large_epic_with_ten_children() {
     let mut stories = vec![epic(100)];
     for n in 1..=10 {
-        stories.push(child(100 + n, 100, StoryKind::Feature, Work::NotStarted));
+        stories.push(child(100 + n, 100, StoryKind::Feature, Work::Ready));
     }
     let store = store_with(stories);
     let result = handle_list_epic_children(&args(100), &store.select())

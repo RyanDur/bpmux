@@ -59,7 +59,7 @@ mod gate_retire {
         let (_store, orch, select) = seeded_orchestrator(
             9101,
             "[Feature] gherkin-only body",
-            Work::NotStarted,
+            Work::Ready,
             StoryKind::Feature,
             body,
         )
@@ -115,7 +115,7 @@ mod gate_retire {
         let (_store, orch, select) = seeded_orchestrator(
             9103,
             "[Bug] gherkin-only body",
-            Work::NotStarted,
+            Work::Ready,
             StoryKind::Bug,
             body,
         )
@@ -138,7 +138,7 @@ mod gate_retire {
         let (_store, orch, select) = seeded_orchestrator(
             9104,
             "[Feature] backward-compat ATP path",
-            Work::NotStarted,
+            Work::Ready,
             StoryKind::Feature,
             &body,
         )

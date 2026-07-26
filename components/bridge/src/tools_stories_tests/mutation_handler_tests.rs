@@ -17,7 +17,7 @@ async fn comment_on_story_enqueues_event_via_orchestrator() {
     let seeded = Story::new_minimal(
         StoryId::new(123),
         "t".into(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -71,7 +71,7 @@ async fn label_story_enqueues_tag_added_event() {
     let seeded = Story::new_minimal(
         StoryId::new(200),
         "t".into(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );
@@ -140,7 +140,7 @@ async fn label_story_enqueues_tag_removed_event() {
     let seeded = Story::new_minimal(
         StoryId::new(200),
         "t".into(),
-        Work::NotStarted,
+        Work::Ready,
         Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap(),
         "pm".into(),
     );

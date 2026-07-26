@@ -3,7 +3,7 @@
 use product_management::story::Work;
 
 #[test]
-fn story_state_github_labels_round_trip_except_not_started_which_is_membership_derived() {
+fn story_state_github_labels_round_trip_except_ready_which_is_membership_derived() {
     for state in [
         Work::InProgress,
         Work::Acceptance,
@@ -16,7 +16,7 @@ fn story_state_github_labels_round_trip_except_not_started_which_is_membership_d
     }
     assert_eq!(
         source_codec::mapper::state_from_labels(&["ready".to_string()], false),
-        Work::NotStarted,
-        "the ready label is outbound-only — scheduling decodes from iteration membership, so the label alone falls through to the not-started fallback"
+        Work::Ready,
+        "the ready label is outbound-only — scheduling decodes from iteration membership, so the label alone falls through to the ready-state fallback"
     );
 }
