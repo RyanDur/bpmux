@@ -17,7 +17,6 @@ pub struct SearchFilters {
     pub sender: Option<String>,
     pub after: Option<DateTime<Utc>>,
     pub before: Option<DateTime<Utc>>,
-    pub channel: Option<String>,
     pub addressee: Option<String>,
     pub message_class: Option<MessageClass>,
     pub insight_only: bool,

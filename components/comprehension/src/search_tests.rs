@@ -22,7 +22,6 @@ fn addressed_filter(addressee: &str) -> SearchFilters {
         sender: None,
         after: None,
         before: None,
-        channel: None,
         addressee: Some(addressee.to_string()),
         message_class: None,
         insight_only: false,

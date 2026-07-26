@@ -13,7 +13,6 @@ pub struct SearchParams {
     pub sender: Option<String>,
     pub after: Option<String>,
     pub before: Option<String>,
-    pub channel: Option<String>,
     pub addressee: Option<String>,
     pub message_type: Option<String>,
 }
@@ -36,7 +35,6 @@ pub async fn search_messages(
         sender: params.sender.clone(),
         after: params.after.as_ref().and_then(|s| s.parse().ok()),
         before: params.before.as_ref().and_then(|s| s.parse().ok()),
-        channel: params.channel.clone(),
         addressee: params.addressee.clone(),
         message_class,
         insight_only: params.message_type.as_deref() == Some("insight"),

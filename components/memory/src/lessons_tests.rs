@@ -144,7 +144,6 @@ fn classifier_tags_search_result() {
         sender: None,
         after: None,
         before: None,
-        channel: None,
         addressee: None,
         message_class: Some(MessageClass::Experience(ExperienceKind::Teaching)),
         insight_only: false,
