@@ -14,7 +14,6 @@ use hub::Hub;
 use integrations::in_memory::InMemorySourceAdapter;
 use source_codec::gh_label_codec::GhLabelCodec;
 use source_sync::{MutationId, PendingWrite, QueuedWrite};
-use storage::StorageBackend;
 use store::AppAction;
 use store::{Store, SyncHealthAction};
 
@@ -51,12 +50,7 @@ fn seeded_write(story: u64, label: &str, id: u64) -> QueuedWrite {
 async fn write_queued_burst_single_flights_one_drain_that_pushes_each_write_once() {
     let dir = TempDir::new().expect("tempdir");
     let (tx, _rx) = broadcast::channel::<Message>(64);
-    let hub = Arc::new(Hub::with_backend(
-        dir.path().to_path_buf(),
-        "local".to_string(),
-        tx,
-        StorageBackend::Sqlite,
-    ));
+    let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "local".to_string(), tx));
     std::mem::forget(dir);
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -104,12 +98,7 @@ async fn write_queued_burst_single_flights_one_drain_that_pushes_each_write_once
 async fn polling_liveness_facts_never_drain_a_seeded_outbox() {
     let dir = TempDir::new().expect("tempdir");
     let (tx, _rx) = broadcast::channel::<Message>(64);
-    let hub = Arc::new(Hub::with_backend(
-        dir.path().to_path_buf(),
-        "local".to_string(),
-        tx,
-        StorageBackend::Sqlite,
-    ));
+    let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "local".to_string(), tx));
     std::mem::forget(dir);
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -164,12 +153,7 @@ async fn polling_liveness_facts_never_drain_a_seeded_outbox() {
 async fn a_mutated_write_is_selectable_the_moment_mutate_returns() {
     let dir = TempDir::new().expect("tempdir");
     let (tx, _rx) = broadcast::channel::<Message>(64);
-    let hub = Arc::new(Hub::with_backend(
-        dir.path().to_path_buf(),
-        "local".to_string(),
-        tx,
-        StorageBackend::Sqlite,
-    ));
+    let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "local".to_string(), tx));
     std::mem::forget(dir);
 
     let adapter = Arc::new(InMemorySourceAdapter::new());
@@ -199,12 +183,7 @@ async fn a_mutated_write_is_selectable_the_moment_mutate_returns() {
 async fn an_ingested_upsert_is_selectable_the_moment_refresh_returns() {
     let dir = TempDir::new().expect("tempdir");
     let (tx, _rx) = broadcast::channel::<Message>(64);
-    let hub = Arc::new(Hub::with_backend(
-        dir.path().to_path_buf(),
-        "local".to_string(),
-        tx,
-        StorageBackend::Sqlite,
-    ));
+    let hub = Arc::new(Hub::new(dir.path().to_path_buf(), "local".to_string(), tx));
     std::mem::forget(dir);
 
     let adapter = Arc::new(InMemorySourceAdapter::new());

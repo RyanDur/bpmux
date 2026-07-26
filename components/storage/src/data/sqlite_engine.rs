@@ -21,6 +21,8 @@ pub fn persist_err(e: rusqlite::Error) -> PersistError {
 }
 
 pub fn open(dir: &Path) -> rusqlite::Result<Connection> {
+    std::fs::create_dir_all(dir)
+        .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
     let mut conn = Connection::open(dir.join(DB_FILE))?;
     let _journal_mode: String = conn.query_row("PRAGMA journal_mode=WAL", [], |row| row.get(0))?;
     conn.busy_timeout(BUSY_TIMEOUT)?;

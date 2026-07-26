@@ -3,8 +3,7 @@ use memory::lessons::LessonIndex;
 use message::Message;
 use message_log::MessageLog;
 use std::sync::Arc;
-use storage::StorageBackend;
-use storage::{FileStorage, SqliteStorage, Storage};
+use storage::{SqliteStorage, Storage};
 
 fn fresh_message(text: &str) -> Message {
     let mut msg = Message {
@@ -23,14 +22,6 @@ fn ms(rfc3339: &str) -> i64 {
         .timestamp_millis()
 }
 
-fn file_storage() -> (Arc<dyn Storage>, tempfile::TempDir) {
-    let dir = tempfile::tempdir().unwrap();
-    let outbox_path = dir.path().join("board-outbox.json");
-    let storage: Arc<dyn Storage> =
-        Arc::new(FileStorage::new(dir.path().to_path_buf()).with_outbox_path(outbox_path));
-    (storage, dir)
-}
-
 fn sqlite_storage() -> (Arc<dyn Storage>, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
     let storage: Arc<dyn Storage> = Arc::new(SqliteStorage::new(dir.path().to_path_buf()).unwrap());
@@ -41,12 +32,6 @@ macro_rules! contract {
     ($name:ident, $check:expr) => {
         mod $name {
             use super::*;
-
-            #[test]
-            fn file_storage() {
-                let (storage, _dir) = super::file_storage();
-                $check(storage.as_ref());
-            }
 
             #[test]
             fn sqlite_storage() {
@@ -383,54 +368,10 @@ contract!(
 );
 
 #[test]
-fn storage_backend_resolves_from_env_value_purely() {
-    assert_eq!(StorageBackend::from_env_value(None), StorageBackend::Sqlite);
-    assert_eq!(
-        StorageBackend::from_env_value(Some("unrecognized")),
-        StorageBackend::Sqlite
-    );
-    assert_eq!(
-        StorageBackend::from_env_value(Some("file")),
-        StorageBackend::File
-    );
-    assert_eq!(
-        StorageBackend::from_env_value(Some("sqlite")),
-        StorageBackend::Sqlite
-    );
-}
-
-#[test]
-fn file_backend_writes_the_jsonl_log_to_disk() {
-    let dir = tempfile::tempdir().unwrap();
-    let (tx, _rx) = tokio::sync::broadcast::channel::<Message>(hub::BROADCAST_CHANNEL_CAPACITY);
-    let hub = hub::Hub::with_backend(
-        dir.path().to_path_buf(),
-        "test-dev".to_string(),
-        tx,
-        StorageBackend::File,
-    );
-
-    hub.storage
-        .append_message(&fresh_message("file-mode-test"))
-        .unwrap();
-
-    let log_path = message_log::log_path(dir.path());
-    assert!(
-        log_path.exists(),
-        "the file backend must write the jsonl log to disk at {log_path:?}"
-    );
-}
-
-#[test]
 fn sqlite_backend_writes_the_db_and_the_hook_readable_tail() {
     let dir = tempfile::tempdir().unwrap();
     let (tx, _rx) = tokio::sync::broadcast::channel::<Message>(hub::BROADCAST_CHANNEL_CAPACITY);
-    let hub = hub::Hub::with_backend(
-        dir.path().to_path_buf(),
-        "test-dev".to_string(),
-        tx,
-        StorageBackend::Sqlite,
-    );
+    let hub = hub::Hub::new(dir.path().to_path_buf(), "test-dev".to_string(), tx);
 
     hub.storage
         .append_message(&fresh_message("sqlite-mode-test"))

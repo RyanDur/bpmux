@@ -20,13 +20,7 @@ async fn fetch_messages(port: u16) -> Vec<serde_json::Value> {
 
 #[test]
 fn seed_messages_preserves_caller_ts_through_sqlite_backend() {
-    let bpmux = TestBpmux::start_with_envs(
-        "human",
-        &[
-            ("BPMUX_TEST_SEED_API", "1"),
-            ("BPMUX_STORAGE_BACKEND", "sqlite"),
-        ],
-    );
+    let bpmux = TestBpmux::start_with_envs("human", &[("BPMUX_TEST_SEED_API", "1")]);
     let port = bpmux.port();
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {

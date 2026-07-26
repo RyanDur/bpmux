@@ -2,47 +2,16 @@ use std::path::Path;
 use std::sync::Arc;
 
 use super::instrumented::InstrumentedStorage;
-use super::{FileStorage, SqliteStorage, Storage};
+use super::{SqliteStorage, Storage};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StorageBackend {
-    File,
-    Sqlite,
-}
-
-impl StorageBackend {
-    pub fn from_env_value(value: Option<&str>) -> Self {
-        match value {
-            Some("file") => Self::File,
-            _ => Self::Sqlite,
-        }
-    }
-
-    pub fn resolve() -> Self {
-        Self::from_env_value(std::env::var("BPMUX_STORAGE_BACKEND").ok().as_deref())
-    }
-
-    pub fn build(self, dir: &Path) -> Arc<dyn Storage> {
-        match self {
-            Self::Sqlite => match SqliteStorage::new(dir.to_path_buf()) {
-                Ok(store) => {
-                    inherit_file_history(dir);
-                    Arc::new(InstrumentedStorage::new(store))
-                }
-                Err(e) => {
-                    diag::log_diag(&format!(
-                        "sqlite storage backend failed to open ({e}); falling back to file backend"
-                    ));
-                    Arc::new(InstrumentedStorage::new(FileStorage::new(
-                        dir.to_path_buf(),
-                    )))
-                }
-            },
-            Self::File => Arc::new(InstrumentedStorage::new(FileStorage::new(
-                dir.to_path_buf(),
-            ))),
-        }
-    }
+pub fn open(dir: &Path) -> Arc<dyn Storage> {
+    let store = SqliteStorage::new(dir.to_path_buf()).unwrap_or_else(|e| {
+        diag::log_diag(&format!("sqlite store failed to open at {dir:?}: {e}"));
+        eprintln!("bpmux: the store is the engine — cannot run without its database ({e})");
+        std::process::exit(1);
+    });
+    inherit_file_history(dir);
+    Arc::new(InstrumentedStorage::new(store))
 }
 
 fn inherit_file_history(dir: &Path) {

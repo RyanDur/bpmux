@@ -3,7 +3,6 @@ import { resolve } from 'path'
 
 // #1303 Epic #1247 slice 1: RTL+real-backend infrastructure.
 // globalSetup spawns ONE bpmux backend subprocess for the test-run
-// (MemoryStorage via BPMUX_STORAGE_BACKEND=memory + BPMUX_TEST_MODE=1);
 // setupFiles polyfills WebSocket in jsdom so renderer code can connect.
 // Pure renderer unit tests (the 227 existing ones) tolerate the spawn
 // cost (~1-2s amortized across the full run). Opt-in pattern: tests

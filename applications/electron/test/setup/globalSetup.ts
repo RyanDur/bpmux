@@ -96,12 +96,10 @@ export default async function setup({
         BPMUX_TEST_MODE: '1',
         BPMUX_TEST_SEED_API: '1',
         BPMUX_TEST_SEED_CI_GREEN: '1',
-        BPMUX_STORAGE_BACKEND: 'sqlite',
         BPMUX_PRIORITY_PATH: join(tempDataDir, 'priority.json'),
         BPMUX_USAGE_PATH: join(tempDataDir, 'usage.json'),
         BPMUX_AUTH_TOKEN_PATH: authTokenPath,
         BPMUX_BOARD_STORE_PATH: join(tempDataDir, 'board-store.json'),
-        BPMUX_BOARD_OUTBOX_PATH: join(tempDataDir, 'board-outbox.json'),
         BPMUX_DATA_BASE: tempDataDir,
         BPMUX_BINARY_WATCH_INTERVAL_SECS: '3600'
       },

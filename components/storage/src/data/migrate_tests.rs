@@ -5,8 +5,8 @@ use std::path::Path;
 use chrono::Utc;
 use tempfile::TempDir;
 
+use super::SqliteStorage;
 use super::migrate::{migrate_file_log_to_sqlite, migrate_routing_identity_to_agents};
-use super::{FileStorage, SqliteStorage};
 use message::{Message, MessageType, StateDeltaPayload};
 use message_log::MessageLog;
 use user_routing::UserRepo;
@@ -54,9 +54,8 @@ fn is_stories_delta(msg: &Message) -> bool {
 }
 
 fn seed_jsonl(dir: &Path, msgs: &[Message]) {
-    let source = FileStorage::new(dir.to_path_buf());
     for m in msgs {
-        source.append_message(m).unwrap();
+        message_log::append_message(dir, m).unwrap();
     }
 }
 

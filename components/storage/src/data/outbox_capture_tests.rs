@@ -2,9 +2,10 @@
 
 use chrono::{TimeZone, Utc};
 
-use super::load_outbox_from_disk;
+use super::SqliteStorage;
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::{StoryId, Work};
+use source_sync::OutboxRepo;
 use source_sync::QueuedEvent;
 
 fn meta() -> EventMeta {
@@ -15,10 +16,10 @@ fn meta() -> EventMeta {
     }
 }
 
-#[tokio::test]
-async fn outbox_round_trips_the_only_shape_through_disk() {
+#[test]
+fn outbox_round_trips_the_only_shape_through_the_store() {
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("new-outbox.json");
+    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
     let queued = QueuedEvent::new(StoryEvent::new(
         meta(),
         StoryId::new(7),
@@ -27,10 +28,9 @@ async fn outbox_round_trips_the_only_shape_through_disk() {
             placement: None,
         },
     ));
-    let payload = serde_json::to_vec(&vec![queued]).unwrap();
-    std::fs::write(&path, payload).unwrap();
+    storage.save_outbox(&[queued]).unwrap();
 
-    let entries = load_outbox_from_disk(&path).unwrap();
+    let entries = storage.load_outbox().unwrap();
     assert_eq!(entries.len(), 1);
     let entry = entries.front().unwrap();
     assert_eq!(entry.event.story_id(), StoryId::new(7));

@@ -18,7 +18,6 @@ user_routing = { path = "../user_routing" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 chrono = { workspace = true }
-dirs = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 thiserror = { workspace = true }
 rusqlite = { version = "0.32", features = ["bundled"] }

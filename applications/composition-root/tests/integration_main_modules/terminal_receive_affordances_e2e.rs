@@ -507,10 +507,7 @@ async fn message_routing_runs_end_to_end_on_the_sqlite_backend_the_cutover_user_
     let agent = farm.write_agent_script();
     let bpmux = TestBpmux::start_with_envs(
         "owner",
-        &[
-            ("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8")),
-            ("BPMUX_STORAGE_BACKEND", "sqlite"),
-        ],
+        &[("BPMUX_ROOM_AGENT", agent.to_str().expect("agent path utf8"))],
     );
 
     for role in ["dev", "pm", "designer"] {

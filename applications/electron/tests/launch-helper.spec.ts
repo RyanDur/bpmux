@@ -94,11 +94,10 @@ test.describe('#1204 launchIsolatedElectron isolates BPMUX_LOG to per-test tempd
     expect(src).toMatch(/BPMUX_LOG:\s*defaultLogPath/)
   })
 
-  test('isolation enumeration covers all four shared defaults together (auth-token, store, outbox, log)', () => {
+  test('isolation enumeration covers all three shared defaults together (auth-token, store, log)', () => {
     const src = launchHelperSource()
     expect(src).toMatch(/BPMUX_AUTH_TOKEN_PATH:\s*defaultAuthTokenPath/)
     expect(src).toMatch(/BPMUX_BOARD_STORE_PATH:\s*defaultBoardStorePath/)
-    expect(src).toMatch(/BPMUX_BOARD_OUTBOX_PATH:\s*defaultBoardOutboxPath/)
     expect(src).toMatch(/BPMUX_LOG:\s*defaultLogPath/)
   })
 })

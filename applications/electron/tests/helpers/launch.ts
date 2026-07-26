@@ -177,9 +177,6 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
   const storeDir = mkdtempSync(join(tmpdir(), 'bpmux-playwright-store-'))
   ownedTempPaths.push(storeDir)
   const defaultBoardStorePath = join(storeDir, 'board-store.json')
-  const outboxDir = mkdtempSync(join(tmpdir(), 'bpmux-playwright-outbox-'))
-  ownedTempPaths.push(outboxDir)
-  const defaultBoardOutboxPath = join(outboxDir, 'board-outbox.json')
   const logDir = mkdtempSync(join(tmpdir(), 'bpmux-playwright-log-'))
   ownedTempPaths.push(logDir)
   const defaultLogPath = join(logDir, 'bpmux-test-diag.log')
@@ -205,7 +202,6 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       BPMUX_BACKEND_PORT: String(backendPort),
       BPMUX_AUTH_TOKEN_PATH: defaultAuthTokenPath,
       BPMUX_BOARD_STORE_PATH: defaultBoardStorePath,
-      BPMUX_BOARD_OUTBOX_PATH: defaultBoardOutboxPath,
       BPMUX_LOG: defaultLogPath,
       BPMUX_BINARY_WATCH_PATH: defaultInstalledBinaryPath,
       BPMUX_ROOM_AGENT: '/bin/echo',
@@ -224,7 +220,6 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       // so seeds become observable identically to the FileStorage
       // path. Tests that need FileStorage explicitly (e.g., asserting
       // on-disk artifacts) can override via opts.extraEnv.
-      BPMUX_STORAGE_BACKEND: 'sqlite',
       BPMUX_E2E: '1',
       ...ghEnvOverrides,
       ...(opts.extraEnv ?? {})

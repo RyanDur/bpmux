@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { mkdtempSync, readFileSync, writeFileSync } from 'fs'
+import { execFileSync } from 'child_process'
+import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { launchIsolatedWithWindow } from '../helpers/launch'
@@ -50,19 +51,20 @@ test.describe('#1158 — offline-first board', () => {
   })
 
   test('F3 causal-sync — outbox FIFO order preserved (seeded outbox replays)', async () => {
-    const outboxPath = join(
-      mkdtempSync(join(tmpdir(), 'bpmux-offline-outbox-')),
-      'board-outbox.json'
-    )
-    const seedEvents = [
+    const dataBase = mkdtempSync(join(tmpdir(), 'bpmux-offline-outbox-'))
+
+    const first = await launchIsolatedWithWindow({
+      dataBase,
+      extraEnv: { BPMUX_TEST_MODE: '1', BPMUX_POLL_INTERVAL_SECS: '600' }
+    })
+    await first.app.close()
+
+    const rows = [
       {
         id: 0,
         event: {
           StateTransitioned: {
-            meta: {
-              actor: 'dev',
-              ts: '2026-05-03T20:00:00Z'
-            },
+            meta: { actor: 'dev', ts: '2026-05-03T20:00:00Z' },
             id: 100,
             new_state: 'in-progress'
           }
@@ -72,27 +74,23 @@ test.describe('#1158 — offline-first board', () => {
         id: 1,
         event: {
           StateTransitioned: {
-            meta: {
-              actor: 'dev',
-              ts: '2026-05-03T20:00:01Z'
-            },
+            meta: { actor: 'dev', ts: '2026-05-03T20:00:01Z' },
             id: 101,
             new_state: 'in-progress'
           }
         }
       }
     ]
-    writeFileSync(outboxPath, JSON.stringify(seedEvents))
+    for (const row of rows) {
+      execFileSync('sqlite3', [
+        join(dataBase, 'data.db'),
+        `INSERT INTO outbox (event) VALUES ('${JSON.stringify(row).replaceAll("'", "''")}')`
+      ])
+    }
 
     const { app, win, backendPort } = await launchIsolatedWithWindow({
-      extraEnv: {
-        BPMUX_BOARD_OUTBOX_PATH: outboxPath,
-        BPMUX_TEST_MODE: '1',
-        // #1290 Part B: opt out of the default MemoryStorage — this
-        // test seeds the outbox via filesystem write + asserts the
-        // backend loads it. MemoryStorage doesn't read on-disk seeds.
-        BPMUX_STORAGE_BACKEND: 'file'
-      }
+      dataBase,
+      extraEnv: { BPMUX_TEST_MODE: '1', BPMUX_POLL_INTERVAL_SECS: '600' }
     })
     try {
       const token = await win.evaluate(
@@ -148,34 +146,31 @@ test.describe('#1158 — offline-first board', () => {
     }
   })
 
-  test('F5 restart-survival — outbox file persists across electron restart', async () => {
-    const outboxPath = join(
-      mkdtempSync(join(tmpdir(), 'bpmux-restart-outbox-')),
-      'board-outbox.json'
-    )
-    const event = {
+  test('F5 restart-survival — pending outbox rows persist across electron restart', async () => {
+    const dataBase = mkdtempSync(join(tmpdir(), 'bpmux-restart-outbox-'))
+    const seeded = await launchIsolatedWithWindow({
+      dataBase,
+      extraEnv: { BPMUX_TEST_MODE: '1', BPMUX_POLL_INTERVAL_SECS: '600' }
+    })
+    await seeded.app.close()
+    const row = {
       id: 0,
       event: {
         StateTransitioned: {
-          meta: {
-            actor: 'dev',
-            ts: '2026-05-03T20:00:00Z'
-          },
+          meta: { actor: 'dev', ts: '2026-05-03T20:00:00Z' },
           id: 200,
           new_state: 'acceptance'
         }
       }
     }
-    writeFileSync(outboxPath, JSON.stringify([event]))
+    execFileSync('sqlite3', [
+      join(dataBase, 'data.db'),
+      `INSERT INTO outbox (event) VALUES ('${JSON.stringify(row).replaceAll("'", "''")}')`
+    ])
 
     const first = await launchIsolatedWithWindow({
-      extraEnv: {
-        BPMUX_BOARD_OUTBOX_PATH: outboxPath,
-        BPMUX_TEST_MODE: '1',
-        // #1290 Part B: F5 restart-survival asserts outbox file persists
-        // across electron restart — MemoryStorage doesn't persist.
-        BPMUX_STORAGE_BACKEND: 'file'
-      }
+      dataBase,
+      extraEnv: { BPMUX_TEST_MODE: '1', BPMUX_POLL_INTERVAL_SECS: '600' }
     })
     try {
       const token1 = await first.win.evaluate(
@@ -189,15 +184,17 @@ test.describe('#1158 — offline-first board', () => {
       await first.app.close()
     }
 
-    const persisted = JSON.parse(readFileSync(outboxPath, 'utf-8')) as unknown[]
-    expect(persisted.length).toBe(1)
+    const persisted = execFileSync('sqlite3', [
+      join(dataBase, 'data.db'),
+      'SELECT COUNT(*) FROM outbox'
+    ])
+      .toString()
+      .trim()
+    expect(persisted).toBe('1')
 
     const second = await launchIsolatedWithWindow({
-      extraEnv: {
-        BPMUX_BOARD_OUTBOX_PATH: outboxPath,
-        BPMUX_TEST_MODE: '1',
-        BPMUX_STORAGE_BACKEND: 'file'
-      }
+      dataBase,
+      extraEnv: { BPMUX_TEST_MODE: '1', BPMUX_POLL_INTERVAL_SECS: '600' }
     })
     try {
       const token2 = await second.win.evaluate(

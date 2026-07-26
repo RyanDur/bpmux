@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use crate::StorageBackend;
+use crate::open;
 use chrono::Utc;
 use message::Message;
 
@@ -16,24 +16,11 @@ fn msg(text: &str) -> Message {
 }
 
 #[test]
-fn sqlite_is_the_default_backend_and_file_remains_the_opt_out() {
-    assert_eq!(StorageBackend::from_env_value(None), StorageBackend::Sqlite);
-    assert_eq!(
-        StorageBackend::from_env_value(Some("file")),
-        StorageBackend::File
-    );
-    assert_eq!(
-        StorageBackend::from_env_value(Some("sqlite")),
-        StorageBackend::Sqlite
-    );
-}
-
-#[test]
 fn first_sqlite_boot_inherits_the_jsonl_history_and_stays_idempotent() {
     let dir = tempfile::TempDir::new().unwrap();
     message_log::append_message(dir.path(), &msg("from the file era")).unwrap();
 
-    let storage = StorageBackend::Sqlite.build(dir.path());
+    let storage = open(dir.path());
     let texts: Vec<String> = storage
         .read_messages()
         .unwrap()
@@ -43,7 +30,7 @@ fn first_sqlite_boot_inherits_the_jsonl_history_and_stays_idempotent() {
     assert_eq!(texts, vec!["from the file era".to_string()]);
     drop(storage);
 
-    let again = StorageBackend::Sqlite.build(dir.path());
+    let again = open(dir.path());
     assert_eq!(
         again.read_messages().unwrap().len(),
         1,
@@ -54,7 +41,7 @@ fn first_sqlite_boot_inherits_the_jsonl_history_and_stays_idempotent() {
 #[test]
 fn sqlite_appends_write_through_to_the_tail_the_plugin_hook_reads() {
     let dir = tempfile::TempDir::new().unwrap();
-    let storage = StorageBackend::Sqlite.build(dir.path());
+    let storage = open(dir.path());
 
     storage.append_message(&msg("visible to the hook")).unwrap();
 

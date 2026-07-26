@@ -1,14 +1,13 @@
 #![allow(unused_imports)]
 
-use std::path::Path;
 use std::sync::Arc;
 
 use chrono::{TimeZone, Utc};
 
 use super::{meta, seed_story};
 use integrations::in_memory::InMemorySourceAdapter;
-use source_sync::{PendingWrite, QueuedWrite};
-use storage::{FileStorage, load_outbox_from_disk};
+use source_sync::{OutboxRepo, PendingWrite, QueuedWrite};
+use storage::{SqliteStorage, Storage};
 use store::AppAction;
 use store_test_support::SeededStore;
 use store_test_support::eventually;
@@ -21,8 +20,8 @@ use sync::{OutboxSink, SyncOrchestrator};
 mod outbox_persistence {
     use super::*;
 
-    fn outbox_path(dir: &tempfile::TempDir) -> std::path::PathBuf {
-        dir.path().join("board-outbox.json")
+    fn sqlite_store(dir: &tempfile::TempDir) -> Arc<dyn Storage> {
+        Arc::new(SqliteStorage::new(dir.path().to_path_buf()).unwrap())
     }
 
     fn wire(
@@ -53,11 +52,12 @@ mod outbox_persistence {
         )
     }
 
-    async fn eventually_disk_len(path: &Path, expected: usize) {
+    async fn eventually_store_len(storage: &Arc<dyn Storage>, expected: usize) {
         eventually(
-            "the write-behind persister lands the queued snapshot on disk",
+            "the write-behind persister lands the queued snapshot in the store",
             || {
-                load_outbox_from_disk(path)
+                storage
+                    .load_outbox()
                     .map(|events| events.len())
                     .unwrap_or(usize::MAX)
                     == expected
@@ -67,17 +67,17 @@ mod outbox_persistence {
     }
 
     #[tokio::test]
-    async fn hydrating_a_missing_outbox_starts_empty() {
+    async fn hydrating_a_fresh_store_starts_empty() {
         let dir = tempfile::tempdir().unwrap();
-        let path = outbox_path(&dir);
-        let loaded = load_outbox_from_disk(&path).unwrap();
-        assert!(loaded.is_empty(), "a missing outbox file hydrates empty");
+        let storage = sqlite_store(&dir);
+        assert!(
+            storage.load_outbox().unwrap().is_empty(),
+            "a fresh store hydrates empty"
+        );
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (orch, _handle) = wire(
             &adapter,
-            OutboxSink::Storage(Arc::new(
-                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path),
-            )),
+            OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
             Vec::new(),
         );
@@ -85,117 +85,83 @@ mod outbox_persistence {
     }
 
     #[tokio::test]
-    async fn mutate_persists_event_to_disk_outbox() {
+    async fn mutate_persists_event_to_the_store_outbox() {
         let dir = tempfile::tempdir().unwrap();
-        let path = outbox_path(&dir);
-        let adapter = Arc::new(InMemorySourceAdapter::new());
-        let (orch, _handle) = wire(
-            &adapter,
-            OutboxSink::Storage(Arc::new(
-                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
-            )),
-            Vec::new(),
-            vec![seed_story(10, Work::NotStarted)],
-        );
-        orch.mutate(state_write(10, Work::InProgress)).unwrap();
-        eventually_disk_len(&path, 1).await;
-        assert!(path.exists(), "outbox file must exist after mutate");
-    }
-
-    #[tokio::test]
-    async fn drain_pass_removes_pushed_event_from_disk_outbox() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = outbox_path(&dir);
-        let adapter = Arc::new(InMemorySourceAdapter::new());
-        let (orch, _handle) = wire(
-            &adapter,
-            OutboxSink::Storage(Arc::new(
-                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
-            )),
-            Vec::new(),
-            vec![seed_story(20, Work::NotStarted)],
-        );
-        orch.mutate(state_write(20, Work::Acceptance)).unwrap();
-        eventually_disk_len(&path, 1).await;
-        let drained = orch.drain_pass().await.unwrap();
-        assert_eq!(drained, 1);
-        eventually_disk_len(&path, 0).await;
-    }
-
-    #[tokio::test]
-    async fn drain_drops_pushed_event_from_storage_outbox() {
-        use source_sync::OutboxRepo;
-        use storage::{SqliteStorage, Storage};
-        let dir = tempfile::tempdir().unwrap();
-        let storage: Arc<dyn Storage> =
-            Arc::new(SqliteStorage::new(dir.path().to_path_buf()).unwrap());
+        let storage = sqlite_store(&dir);
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (orch, _handle) = wire(
             &adapter,
             OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
-            vec![seed_story(90, Work::NotStarted)],
+            vec![seed_story(10, Work::NotStarted)],
         );
-        orch.mutate(state_write(90, Work::Acceptance)).unwrap();
-        eventually(
-            "mutate persists the pending write to the storage outbox",
-            || storage.load_outbox().map(|e| e.len()).unwrap_or(usize::MAX) == 1,
-        )
-        .await;
-
-        let drained = orch.drain_pass().await.unwrap();
-        assert_eq!(drained, 1);
-        eventually(
-            "a successfully-pushed record is dropped from the persisted storage outbox",
-            || storage.load_outbox().map(|e| e.is_empty()).unwrap_or(false),
-        )
-        .await;
+        orch.mutate(state_write(10, Work::InProgress)).unwrap();
+        eventually_store_len(&storage, 1).await;
     }
 
     #[tokio::test]
-    async fn drain_pass_keeps_event_on_disk_when_push_fails() {
+    async fn drain_pass_removes_pushed_event_from_the_store_outbox() {
         let dir = tempfile::tempdir().unwrap();
-        let path = outbox_path(&dir);
+        let storage = sqlite_store(&dir);
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (orch, _handle) = wire(
             &adapter,
-            OutboxSink::Storage(Arc::new(
-                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
-            )),
+            OutboxSink::Storage(Arc::clone(&storage)),
+            Vec::new(),
+            vec![seed_story(20, Work::NotStarted)],
+        );
+        orch.mutate(state_write(20, Work::Acceptance)).unwrap();
+        eventually_store_len(&storage, 1).await;
+        let drained = orch.drain_pass().await.unwrap();
+        assert_eq!(drained, 1);
+        eventually_store_len(&storage, 0).await;
+    }
+
+    #[tokio::test]
+    async fn drain_pass_keeps_event_in_the_store_when_push_fails() {
+        let dir = tempfile::tempdir().unwrap();
+        let storage = sqlite_store(&dir);
+        let adapter = Arc::new(InMemorySourceAdapter::new());
+        let (orch, _handle) = wire(
+            &adapter,
+            OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
             vec![seed_story(30, Work::NotStarted)],
         );
         orch.mutate(state_write(30, Work::Acceptance)).unwrap();
-        eventually_disk_len(&path, 1).await;
+        eventually_store_len(&storage, 1).await;
         adapter.set_push_failures(true);
         let _ = orch.drain_pass().await;
-        let events = load_outbox_from_disk(&path).unwrap();
-        assert_eq!(events.len(), 1, "failed event stays in outbox");
+        assert_eq!(
+            storage.load_outbox().unwrap().len(),
+            1,
+            "failed event stays in outbox"
+        );
     }
 
     #[tokio::test]
     async fn outbox_survives_restart_simulated_via_fresh_orchestrator() {
         let dir = tempfile::tempdir().unwrap();
-        let path = outbox_path(&dir);
+        let storage = sqlite_store(&dir);
         let adapter_a = Arc::new(InMemorySourceAdapter::new());
         let (orch_a, handle_a) = wire(
             &adapter_a,
-            OutboxSink::Storage(Arc::new(
-                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
-            )),
+            OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
             vec![seed_story(40, Work::NotStarted)],
         );
         orch_a.mutate(state_write(40, Work::Acceptance)).unwrap();
-        eventually_disk_len(&path, 1).await;
+        eventually_store_len(&storage, 1).await;
         drop(orch_a);
         drop(handle_a);
+        drop(storage);
 
-        let loaded = load_outbox_from_disk(&path).unwrap();
+        let reopened = sqlite_store(&dir);
+        let loaded = reopened.load_outbox().unwrap();
         assert_eq!(
             loaded.len(),
             1,
-            "the row survives on disk across the restart"
+            "the row survives in the store across the restart"
         );
         let hydrated: Vec<QueuedWrite> = loaded
             .into_iter()
@@ -213,9 +179,7 @@ mod outbox_persistence {
         let adapter_b = Arc::new(InMemorySourceAdapter::new());
         let (orch_b, _handle_b) = wire(
             &adapter_b,
-            OutboxSink::Storage(Arc::new(
-                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
-            )),
+            OutboxSink::Storage(Arc::clone(&reopened)),
             hydrated,
             Vec::new(),
         );
@@ -228,39 +192,35 @@ mod outbox_persistence {
     #[tokio::test]
     async fn drain_drops_event_on_permanent_push_failure() {
         let dir = tempfile::tempdir().unwrap();
-        let path = outbox_path(&dir);
+        let storage = sqlite_store(&dir);
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (orch, _handle) = wire(
             &adapter,
-            OutboxSink::Storage(Arc::new(
-                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
-            )),
+            OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
             vec![seed_story(60, Work::NotStarted)],
         );
         orch.mutate(state_write(60, Work::Acceptance)).unwrap();
-        eventually_disk_len(&path, 1).await;
+        eventually_store_len(&storage, 1).await;
         adapter.set_permanent_push_failures(true);
         let _ = orch.drain_pass().await;
-        eventually_disk_len(&path, 0).await;
+        eventually_store_len(&storage, 0).await;
         assert_eq!(orch.snapshot_status().pending_events, 0);
     }
 
     #[tokio::test]
     async fn permanent_failure_records_dropped_event_in_status() {
         let dir = tempfile::tempdir().unwrap();
-        let path = outbox_path(&dir);
+        let storage = sqlite_store(&dir);
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (orch, _handle) = wire(
             &adapter,
-            OutboxSink::Storage(Arc::new(
-                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
-            )),
+            OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
             vec![seed_story(65, Work::NotStarted)],
         );
         orch.mutate(state_write(65, Work::Acceptance)).unwrap();
-        eventually_disk_len(&path, 1).await;
+        eventually_store_len(&storage, 1).await;
         adapter.set_permanent_push_failures(true);
         let _ = orch.drain_pass().await;
         let status = orch.snapshot_status();
@@ -271,18 +231,16 @@ mod outbox_persistence {
     #[tokio::test]
     async fn acknowledge_dropped_clears_dropped_events() {
         let dir = tempfile::tempdir().unwrap();
-        let path = outbox_path(&dir);
+        let storage = sqlite_store(&dir);
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (orch, _handle) = wire(
             &adapter,
-            OutboxSink::Storage(Arc::new(
-                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
-            )),
+            OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
             vec![seed_story(66, Work::NotStarted)],
         );
         orch.mutate(state_write(66, Work::Acceptance)).unwrap();
-        eventually_disk_len(&path, 1).await;
+        eventually_store_len(&storage, 1).await;
         adapter.set_permanent_push_failures(true);
         let _ = orch.drain_pass().await;
         assert_eq!(orch.snapshot_status().dropped_events.len(), 1);
@@ -294,13 +252,11 @@ mod outbox_persistence {
     #[tokio::test]
     async fn drain_continues_past_permanent_failure_to_next_event() {
         let dir = tempfile::tempdir().unwrap();
-        let path = outbox_path(&dir);
+        let storage = sqlite_store(&dir);
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (orch, _handle) = wire(
             &adapter,
-            OutboxSink::Storage(Arc::new(
-                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
-            )),
+            OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
             vec![
                 seed_story(70, Work::NotStarted),
@@ -309,46 +265,45 @@ mod outbox_persistence {
         );
         orch.mutate(state_write(70, Work::Acceptance)).unwrap();
         orch.mutate(state_write(71, Work::Acceptance)).unwrap();
-        eventually_disk_len(&path, 2).await;
+        eventually_store_len(&storage, 2).await;
         adapter.set_permanent_push_failures(true);
         let _ = orch.drain_pass().await;
-        eventually_disk_len(&path, 0).await;
+        eventually_store_len(&storage, 0).await;
     }
 
     #[tokio::test]
     async fn drain_keeps_event_on_transient_failure() {
         let dir = tempfile::tempdir().unwrap();
-        let path = outbox_path(&dir);
+        let storage = sqlite_store(&dir);
         let adapter = Arc::new(InMemorySourceAdapter::new());
         let (orch, _handle) = wire(
             &adapter,
-            OutboxSink::Storage(Arc::new(
-                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
-            )),
+            OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
             vec![seed_story(80, Work::NotStarted)],
         );
         orch.mutate(state_write(80, Work::Acceptance)).unwrap();
-        eventually_disk_len(&path, 1).await;
+        eventually_store_len(&storage, 1).await;
         adapter.set_push_failures(true);
         let _ = orch.drain_pass().await;
-        let events = load_outbox_from_disk(&path).unwrap();
-        assert_eq!(events.len(), 1, "transient failure keeps event for retry");
+        assert_eq!(
+            storage.load_outbox().unwrap().len(),
+            1,
+            "transient failure keeps event for retry"
+        );
         adapter.set_push_failures(false);
         orch.drain_pass().await.unwrap();
-        eventually_disk_len(&path, 0).await;
+        eventually_store_len(&storage, 0).await;
     }
 
     #[tokio::test]
     async fn outbox_preserves_fifo_order_across_restart() {
         let dir = tempfile::tempdir().unwrap();
-        let path = outbox_path(&dir);
+        let storage = sqlite_store(&dir);
         let adapter_a = Arc::new(InMemorySourceAdapter::new());
         let (orch_a, handle_a) = wire(
             &adapter_a,
-            OutboxSink::Storage(Arc::new(
-                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
-            )),
+            OutboxSink::Storage(Arc::clone(&storage)),
             Vec::new(),
             vec![
                 seed_story(50, Work::NotStarted),
@@ -359,11 +314,14 @@ mod outbox_persistence {
         for n in [50u64, 51, 52] {
             orch_a.mutate(state_write(n, Work::InProgress)).unwrap();
         }
-        eventually_disk_len(&path, 3).await;
+        eventually_store_len(&storage, 3).await;
         drop(orch_a);
         drop(handle_a);
+        drop(storage);
 
-        let hydrated: Vec<QueuedWrite> = load_outbox_from_disk(&path)
+        let reopened = sqlite_store(&dir);
+        let hydrated: Vec<QueuedWrite> = reopened
+            .load_outbox()
             .unwrap()
             .into_iter()
             .map(|row| {
@@ -380,9 +338,7 @@ mod outbox_persistence {
         let adapter_b = Arc::new(InMemorySourceAdapter::new());
         let (orch_b, _handle_b) = wire(
             &adapter_b,
-            OutboxSink::Storage(Arc::new(
-                FileStorage::new(dir.path().to_path_buf()).with_outbox_path(path.clone()),
-            )),
+            OutboxSink::Storage(Arc::clone(&reopened)),
             hydrated,
             Vec::new(),
         );

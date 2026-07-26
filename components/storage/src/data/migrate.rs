@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use super::{FileStorage, SqliteStorage, Storage};
+use super::{SqliteStorage, Storage};
 use message::{Message, StateDeltaPayload};
 use message_log::{LogError, MessageLog};
 use persist::PersistError;
@@ -62,8 +62,7 @@ pub fn migrate_file_log_to_sqlite(dir: &Path) -> Result<MigrationReport, Migrati
             already_complete: true,
         });
     }
-    let source = FileStorage::new(dir.to_path_buf());
-    let messages = source.read_messages()?;
+    let messages = message_log::read_messages(dir)?;
     target.clear_messages().map_err(MigrationError::Clear)?;
     let mut migrated = 0;
     let mut filtered = 0;

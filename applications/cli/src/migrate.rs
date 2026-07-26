@@ -12,7 +12,7 @@ pub fn run_migrate_storage() -> anyhow::Result<()> {
         );
     } else {
         println!(
-            "migrated {} message(s) into the sqlite store; dropped {} ephemeral board_snapshot delta(s); the jsonl stays source-of-truth until you verify and flip BPMUX_STORAGE_BACKEND=sqlite",
+            "migrated {} message(s) into the sqlite store; dropped {} ephemeral board_snapshot delta(s)",
             report.migrated, report.filtered
         );
     }

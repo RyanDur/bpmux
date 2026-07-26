@@ -2,7 +2,7 @@
 
 use chrono::{TimeZone, Utc};
 
-use super::load_outbox_from_disk;
+use super::SqliteStorage;
 use product_management::epic::EpicId;
 use product_management::story::events::{
     EventMeta, LabelDerivedFields, StoryEvent, StoryEventKind,
@@ -10,6 +10,7 @@ use product_management::story::events::{
 use product_management::story::{
     Acceptor, CastVerdict, FreeComment, Stage, Story, StoryId, StoryKind, Tag, Verdict, Work,
 };
+use source_sync::OutboxRepo;
 use source_sync::QueuedEvent;
 
 const FIX_QUEUED_TAG_ADDED: &str = r#"{"id":0,"event":{"TagAdded":{"meta":{"actor":"dev","actor_id":null,"ts":"2026-07-07T12:00:00Z"},"id":700,"label":"ready"}}}"#;
@@ -166,17 +167,28 @@ fn a_row_missing_the_actor_id_key_defaults_and_normalizes_on_rewrite() {
 }
 
 #[test]
-fn a_current_shape_outbox_file_loads_and_rewrites_byte_identically() {
+fn current_shape_rows_load_and_rewrite_byte_identically_through_the_store() {
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("board-outbox.json");
-    let file_body = format!("[{FIX_QUEUED_TAG_ADDED},{FIX_QUEUED_TRANSITIONED}]");
-    std::fs::write(&path, &file_body).unwrap();
-    let loaded = load_outbox_from_disk(&path).expect("current file loads");
-    let rewritten =
-        serde_json::to_string(&loaded.iter().cloned().collect::<Vec<_>>()).expect("reserializes");
+    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+    {
+        let conn = storage.lock();
+        for row in [FIX_QUEUED_TAG_ADDED, FIX_QUEUED_TRANSITIONED] {
+            conn.execute("INSERT INTO outbox (event) VALUES (?1)", [row])
+                .unwrap();
+        }
+    }
+    let loaded = storage.load_outbox().unwrap();
+    let rewritten: Vec<String> = loaded
+        .iter()
+        .map(|e| serde_json::to_string(e).expect("reserializes"))
+        .collect();
     assert_eq!(
-        rewritten, file_body,
-        "the whole JSON-file outbox round-trips byte-identically through load + persist serialization"
+        rewritten,
+        vec![
+            FIX_QUEUED_TAG_ADDED.to_string(),
+            FIX_QUEUED_TRANSITIONED.to_string()
+        ],
+        "stored outbox rows round-trip byte-identically through load + persist serialization"
     );
 }
 

@@ -78,8 +78,7 @@ async fn register_cli_holds_a_stable_id_in_the_dirs_own_marker_and_makes_it_reso
         "registering twice in the same dir RECLAIMS the same id — id stability is the observable behavior, not any storage filename"
     );
 
-    use storage::StorageBackend;
-    let storage = StorageBackend::resolve().build(&bpmux.data_base_path());
+    let storage = storage::open(&bpmux.data_base_path());
     let users = storage
         .load_users()
         .expect("the server persists the routing-identity store after register");

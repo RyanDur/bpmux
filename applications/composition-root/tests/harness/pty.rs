@@ -146,10 +146,6 @@ impl TestBpmux {
             data_base_dir.path().join("board-store.json"),
         );
         cmd.env(
-            "BPMUX_BOARD_OUTBOX_PATH",
-            data_base_dir.path().join("board-outbox.json"),
-        );
-        cmd.env(
             "BPMUX_PRIORITY_PATH",
             data_base_dir.path().join("priority.json"),
         );

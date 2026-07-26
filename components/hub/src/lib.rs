@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::broadcast;
 
 use message::Message;
-use storage::{Storage, StorageBackend};
+use storage::Storage;
 
 mod awareness_host;
 #[cfg(test)]
@@ -53,21 +53,12 @@ impl std::fmt::Debug for Hub {
 
 impl Hub {
     pub fn new(dir: PathBuf, owner_name: String, wake_tx: broadcast::Sender<Message>) -> Self {
-        Self::with_backend(dir, owner_name, wake_tx, StorageBackend::resolve())
-    }
-
-    pub fn with_backend(
-        dir: PathBuf,
-        owner_name: String,
-        wake_tx: broadcast::Sender<Message>,
-        backend: StorageBackend,
-    ) -> Self {
         let id = dir
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("unknown")
             .to_string();
-        let storage = backend.build(&dir);
+        let storage = storage::open(&dir);
         let roster = load_seed_roster(&dir);
         Self {
             dir,

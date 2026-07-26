@@ -76,7 +76,7 @@ pub enum Command {
         action: RoomAction,
     },
     #[command(
-        about = "Migrate the existing jsonl message log into the SQLite store before cutover (#1799). Idempotent; drops the ephemeral board_snapshot deltas (#1642); leaves the jsonl as source-of-truth until you verify and flip BPMUX_STORAGE_BACKEND=sqlite."
+        about = "Migrate the existing jsonl message log into the SQLite store (#1799). Idempotent; drops the ephemeral board_snapshot deltas (#1642). The daemon runs this itself at boot; the verb exists for running it manually ahead of a start."
     )]
     MigrateStorage,
     #[command(

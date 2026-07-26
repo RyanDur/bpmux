@@ -2,7 +2,7 @@ mod backend;
 mod data;
 mod instrumented;
 
-pub use backend::StorageBackend;
+pub use backend::open;
 pub use data::*;
 
 pub trait Storage:

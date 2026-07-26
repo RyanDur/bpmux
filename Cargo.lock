@@ -2956,7 +2956,6 @@ dependencies = [
  "awareness",
  "chrono",
  "diag",
- "dirs",
  "memory",
  "message",
  "message_log",
