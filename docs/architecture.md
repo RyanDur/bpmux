@@ -115,9 +115,12 @@ append-only `V<n>__*.sql`, never an edit to an applied version.
 `docs/design/storage-repo-ports.md`): `SurfacedTopicsRepo`
 (awareness), `MessageLog` (log), `LessonRepo` (memory), `OutboxRepo`
 (sync), `UserRepo` (routing). Each feature states WHAT it needs in
-domain terms; the sqlite store implements the ports behind a composite
-super-trait. `GlobalStore` was deleted outright (it had zero
-production wiring).
+domain terms and owns its gateway-backed store (ConversationStore,
+UserStore, OutboxStore, TopicStore, LessonStore); `storage::open`
+composes them into `Stores` at the composition root and the daemon
+injects each where it is used — the hub holds only the conversation.
+The composite `Storage` super-trait dissolved with the god-object
+(2026-07-25); `GlobalStore` before it (zero production wiring).
 
 - `components/database-support` — the Continuum's gateway (dam5s
   shape, owner ruling 2026-07-25): `DatabaseGateway` owns the
@@ -125,8 +128,8 @@ production wiring).
   forward-only, guarded by `migrations_are_forward_only_versioned`),
   and offers the common query helpers. Domains get the gateway
   injected; each domain talks to its own tables.
-- `SqliteStorage` — the store over the injected gateway (`data.db`);
-  schema defined only by the versioned migrations, never inline DDL.
+- Domain stores over the injected gateway (`data.db`); schema
+  defined only by the versioned migrations, never inline DDL.
   The file backend retired 2026-07-25 (sqlite is the only store); the
   jsonl tail survives solely as the plugin-hook feed, written by the
   sqlite path and rotated at 8MB.
