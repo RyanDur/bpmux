@@ -117,6 +117,6 @@ fn ci_to_wire(snap: &CiSnapshot, actions_url: &ci::ActionsUrl) -> CiSnapshotWire
         head_sha: snap.head_sha.clone(),
         display_title: snap.display_title.clone(),
         last_successful_poll_at: None,
-        url: Some(actions_url.as_str().to_string()),
+        url: Some(actions_url.current()),
     }
 }

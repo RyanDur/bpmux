@@ -31,7 +31,7 @@ impl Store {
             head_sha: s.head_sha,
             display_title: s.display_title,
             last_successful_poll_at: None,
-            url: Some(self.actions_url.as_str().to_string()),
+            url: Some(self.actions_url.current()),
         });
         let selector = self.selector();
         let roster = roster::members_wire(&self.roster_members(), |routing_id| {

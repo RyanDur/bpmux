@@ -198,7 +198,7 @@ fn broadcast_ci_poll(
         head_sha: snapshot.and_then(|s| s.head_sha.clone()),
         display_title: snapshot.and_then(|s| s.display_title.clone()),
         last_successful_poll_at,
-        url: Some(actions_url.as_str().to_string()),
+        url: Some(actions_url.current()),
     };
     let msg = Message {
         from: "bpmux".to_string(),
