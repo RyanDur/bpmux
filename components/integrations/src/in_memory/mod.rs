@@ -7,9 +7,12 @@ use product_management::story::{CastVerdict, FreeComment, Story};
 
 mod ingest;
 mod mutation;
+mod secret_store;
 mod seed;
 mod source_adapter;
 mod typed_label_mirror;
+
+pub use secret_store::InMemorySecretStore;
 
 #[cfg(test)]
 mod tests;

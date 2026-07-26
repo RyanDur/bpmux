@@ -2,8 +2,10 @@ use crate::github::tracker::OctocrabStoryTracker;
 use ::ci::ConditionalRunEntry;
 use ::ci::slice::CiPollFetch;
 
+pub mod connection;
 mod delegates;
 mod ingest;
+pub mod keychain;
 mod mutation;
 mod mutation_events;
 mod source_adapter;

@@ -8,6 +8,7 @@ fn src_root() -> PathBuf {
 
 const PORT_OWNING_FEATURE_MODULES: &[&str] = &[
     "../../awareness/src",
+    "../../integrations/src",
     "../../message_log/src",
     "../../product_management/src",
     "../../memory/src",
