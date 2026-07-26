@@ -25,59 +25,8 @@ pub async fn run_server(
 
     let race_window = race_window_barrier_from_env();
 
-    let hydrated_outbox = hydrate_outbox(&stores.outbox);
-    let ci_tracker = tracker
-        .as_ref()
-        .cloned()
-        .map(|t| t as std::sync::Arc<dyn store::CiPollFetch>);
-    let codec: std::sync::Arc<dyn product_management::label_codec::LabelCodec + Send + Sync> =
-        std::sync::Arc::new(source_codec::gh_label_codec::GhLabelCodec);
-
-    let (store_inner, orchestrator): (store::Store, Option<Arc<sync::SyncOrchestrator>>) =
-        if test_mode_enabled() {
-            eprintln!(
-                "[bpmux server] BPMUX_TEST_MODE=1 — instantiating in-memory orchestrator for acceptance tests"
-            );
-            let adapter = Arc::new(integrations::in_memory::InMemorySourceAdapter::new());
-            let (store, refresh) = store_wiring::build_store_with_refresh(
-                hub.clone(),
-                stores.clone(),
-                ci_tracker,
-                ct.clone(),
-                hydrated_outbox,
-                adapter,
-                codec,
-                bridge::poll_interval_from_env(),
-                bridge::hydration_interval_from_env(),
-            );
-            (store, Some(refresh))
-        } else if let Some(tracker_arc) = tracker.as_ref().cloned() {
-            diag::log_diag(&format!(
-                "server: board-outbox hydrated via storage ({} pending events)",
-                hydrated_outbox.len()
-            ));
-            let (store, refresh) = store_wiring::build_store_with_refresh(
-                hub.clone(),
-                stores.clone(),
-                ci_tracker,
-                ct.clone(),
-                hydrated_outbox,
-                tracker_arc,
-                codec,
-                bridge::poll_interval_from_env(),
-                bridge::hydration_interval_from_env(),
-            );
-            (store, Some(refresh))
-        } else {
-            let store = store_wiring::build_store_with_outbox(
-                hub.clone(),
-                stores.clone(),
-                ci_tracker,
-                ct.clone(),
-                hydrated_outbox,
-            );
-            (store, None)
-        };
+    let (store_inner, orchestrator) =
+        compose::compose_store(hub.clone(), stores.clone(), &tracker, ct.clone());
     let store = std::sync::Arc::new(store_inner);
 
     let ci_log_store = ci::CiLogStore::new();
@@ -149,6 +98,7 @@ pub async fn run_server(
 pub mod awareness_host;
 #[cfg(test)]
 mod awareness_host_tests;
+mod compose;
 mod routes;
 mod setup;
 mod startup_sequence;
