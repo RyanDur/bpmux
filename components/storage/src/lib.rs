@@ -2,15 +2,15 @@ use std::path::Path;
 use std::sync::Arc;
 
 use awareness::SurfacedTopicsRepo;
-use awareness::store::TopicStore;
+use awareness::data_gateway::TopicsDataGateway;
 use database_support::DatabaseGateway;
-use memory::lessons::{LessonRepo, LessonStore};
+use memory::lessons::{LessonDataGateway, LessonRepo};
 use message_log::MessageLog;
-use message_log::store::ConversationStore;
+use message_log::data_gateway::ConversationDataGateway;
 use source_sync::OutboxRepo;
-use source_sync::store::OutboxStore;
+use source_sync::data_gateway::OutboxDataGateway;
 use user_routing::UserRepo;
-use user_routing::store::UserStore;
+use user_routing::data_gateway::UserDataGateway;
 
 mod instrumented;
 mod meta;
@@ -31,7 +31,7 @@ mod open_tests;
 mod store_behavior_tests;
 
 #[derive(Clone)]
-pub struct Stores {
+pub struct DataGateways {
     pub gateway: Arc<DatabaseGateway>,
     pub conversation: Arc<dyn MessageLog>,
     pub users: Arc<dyn UserRepo>,
@@ -40,7 +40,7 @@ pub struct Stores {
     pub lessons: Arc<dyn LessonRepo>,
 }
 
-pub fn open(dir: &Path) -> Stores {
+pub fn open(dir: &Path) -> DataGateways {
     let gateway = Arc::new(DatabaseGateway::open(dir).unwrap_or_else(|e| {
         diag::log_diag(&format!("sqlite store failed to open at {dir:?}: {e}"));
         eprintln!("bpmux: the store is the engine — cannot run without its database ({e})");
@@ -50,14 +50,14 @@ pub fn open(dir: &Path) -> Stores {
         diag::log_diag(&format!("system-user seed failed: {e}"));
     }
     inherit_file_history(dir, &gateway);
-    Stores {
+    DataGateways {
         conversation: Arc::new(instrumented::InstrumentedConversation::new(
-            ConversationStore::new(gateway.clone(), dir.to_path_buf()),
+            ConversationDataGateway::new(gateway.clone(), dir.to_path_buf()),
         )),
-        users: Arc::new(UserStore::new(gateway.clone())),
-        outbox: Arc::new(OutboxStore::new(gateway.clone())),
-        topics: Arc::new(TopicStore::new(gateway.clone())),
-        lessons: Arc::new(LessonStore::new(dir.to_path_buf())),
+        users: Arc::new(UserDataGateway::new(gateway.clone())),
+        outbox: Arc::new(OutboxDataGateway::new(gateway.clone())),
+        topics: Arc::new(TopicsDataGateway::new(gateway.clone())),
+        lessons: Arc::new(LessonDataGateway::new(dir.to_path_buf())),
         gateway,
     }
 }

@@ -10,12 +10,12 @@ use message::Message;
 
 const TAIL_MAX_BYTES: u64 = 8 * 1024 * 1024;
 
-pub struct ConversationStore {
+pub struct ConversationDataGateway {
     gateway: Arc<DatabaseGateway>,
     dir: PathBuf,
 }
 
-impl ConversationStore {
+impl ConversationDataGateway {
     pub fn new(gateway: Arc<DatabaseGateway>, dir: PathBuf) -> Self {
         Self { gateway, dir }
     }
@@ -30,7 +30,7 @@ impl ConversationStore {
     }
 }
 
-impl MessageLog for ConversationStore {
+impl MessageLog for ConversationDataGateway {
     fn append_message(&self, msg: &Message) -> Result<(), LogError> {
         let payload = serde_json::to_string(msg)?;
         let created_at = msg.ts.timestamp();

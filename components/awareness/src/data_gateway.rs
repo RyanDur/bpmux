@@ -4,17 +4,17 @@ use std::sync::Arc;
 use crate::{SurfacedTopicsRepo, db};
 use database_support::DatabaseGateway;
 
-pub struct TopicStore {
+pub struct TopicsDataGateway {
     gateway: Arc<DatabaseGateway>,
 }
 
-impl TopicStore {
+impl TopicsDataGateway {
     pub fn new(gateway: Arc<DatabaseGateway>) -> Self {
         Self { gateway }
     }
 }
 
-impl SurfacedTopicsRepo for TopicStore {
+impl SurfacedTopicsRepo for TopicsDataGateway {
     fn load_surfaced_topics(&self) -> HashSet<String> {
         db::load(&self.gateway.lock())
     }

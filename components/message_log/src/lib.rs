@@ -1,8 +1,8 @@
+pub mod data_gateway;
 pub mod db;
 mod file_log;
 pub mod import;
 mod reverse_line_reader;
-pub mod store;
 
 pub const DEFAULT_MESSAGE_LIMIT: usize = 20;
 

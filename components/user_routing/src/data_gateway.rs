@@ -4,17 +4,17 @@ use crate::{UserRecord, UserRepo, db};
 use database_support::{DatabaseGateway, persist_err};
 use persist::PersistError;
 
-pub struct UserStore {
+pub struct UserDataGateway {
     gateway: Arc<DatabaseGateway>,
 }
 
-impl UserStore {
+impl UserDataGateway {
     pub fn new(gateway: Arc<DatabaseGateway>) -> Self {
         Self { gateway }
     }
 }
 
-impl UserRepo for UserStore {
+impl UserRepo for UserDataGateway {
     fn load_users(&self) -> Result<Vec<UserRecord>, PersistError> {
         db::load_all(&self.gateway.lock()).map_err(persist_err)
     }

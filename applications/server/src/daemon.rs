@@ -10,12 +10,12 @@ pub fn run(name: String, base: std::path::PathBuf, port: u16) -> anyhow::Result<
     let data_dir = location::durable_data_dir(&base)?;
     let (wake_tx, _wake_rx) =
         broadcast::channel::<message::Message>(hub::BROADCAST_CHANNEL_CAPACITY);
-    let stores = storage::open(&data_dir);
+    let data_gateways = storage::open(&data_dir);
     let hub = Arc::new(hub::Hub::with_conversation(
         data_dir,
         name,
         wake_tx,
-        stores.conversation.clone(),
+        data_gateways.conversation.clone(),
     ));
     let ct = CancellationToken::new();
     let restart_signal = self_update::RestartSignal::new();
@@ -27,14 +27,14 @@ pub fn run(name: String, base: std::path::PathBuf, port: u16) -> anyhow::Result<
             awareness::spawn(
                 Arc::new(crate::awareness_host::HubAwarenessHost {
                     hub: hub.clone(),
-                    topics: stores.topics.clone(),
-                    lessons: stores.lessons.clone(),
+                    topics: data_gateways.topics.clone(),
+                    lessons: data_gateways.lessons.clone(),
                 }),
                 hub.owner_name.clone(),
             );
             self_update::spawn_binary_watcher(ct.clone(), restart_signal);
             spawn_shutdown_signal_listener(ct.clone());
-            crate::run_server(hub, stores, port, ct)
+            crate::run_server(hub, data_gateways, port, ct)
                 .await
                 .map_err(|e| anyhow::anyhow!("{e}"))
         }

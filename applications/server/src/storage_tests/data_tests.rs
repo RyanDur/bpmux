@@ -3,7 +3,7 @@ use memory::lessons::LessonIndex;
 use message::Message;
 use message_log::MessageLog;
 use std::sync::Arc;
-use storage::Stores;
+use storage::DataGateways;
 
 fn fresh_message(text: &str) -> Message {
     let mut msg = Message {
@@ -22,7 +22,7 @@ fn ms(rfc3339: &str) -> i64 {
         .timestamp_millis()
 }
 
-fn sqlite_storage() -> (Stores, tempfile::TempDir) {
+fn sqlite_storage() -> (DataGateways, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
     let storage = storage::open(dir.path());
     (storage, dir)
@@ -44,7 +44,7 @@ macro_rules! contract {
 
 contract!(
     append_then_read_returns_message_in_order,
-    |storage: &Stores| {
+    |storage: &DataGateways| {
         storage
             .conversation
             .append_message(&fresh_message("first"))
@@ -60,12 +60,15 @@ contract!(
     }
 );
 
-contract!(empty_storage_reads_empty_messages, |storage: &Stores| {
-    let msgs = storage.conversation.read_messages().unwrap();
-    assert!(msgs.is_empty());
-});
+contract!(
+    empty_storage_reads_empty_messages,
+    |storage: &DataGateways| {
+        let msgs = storage.conversation.read_messages().unwrap();
+        assert!(msgs.is_empty());
+    }
+);
 
-contract!(append_preserves_the_message_id, |storage: &Stores| {
+contract!(append_preserves_the_message_id, |storage: &DataGateways| {
     let mut msg = fresh_message("identified");
     msg.id = "11111111-1111-4111-8111-111111111111".to_string();
     storage.conversation.append_message(&msg).unwrap();
@@ -120,7 +123,7 @@ fn sqlite_rejects_a_duplicate_message_id() {
 
 contract!(
     read_recent_returns_newest_first_after_offset,
-    |storage: &Stores| {
+    |storage: &DataGateways| {
         for i in 0..5 {
             storage
                 .conversation
@@ -146,44 +149,50 @@ contract!(
     }
 );
 
-contract!(read_recent_applies_the_predicate, |storage: &Stores| {
-    storage
-        .conversation
-        .append_message(&fresh_message("keep-1"))
-        .unwrap();
-    storage
-        .conversation
-        .append_message(&fresh_message("drop"))
-        .unwrap();
-    storage
-        .conversation
-        .append_message(&fresh_message("keep-2"))
-        .unwrap();
-    let recent = storage
-        .conversation
-        .read_recent(10, 0, &|m: &Message| m.text.starts_with("keep"))
-        .unwrap();
-    assert_eq!(
-        recent.iter().map(|m| m.text.as_str()).collect::<Vec<_>>(),
-        vec!["keep-2", "keep-1"]
-    );
-});
+contract!(
+    read_recent_applies_the_predicate,
+    |storage: &DataGateways| {
+        storage
+            .conversation
+            .append_message(&fresh_message("keep-1"))
+            .unwrap();
+        storage
+            .conversation
+            .append_message(&fresh_message("drop"))
+            .unwrap();
+        storage
+            .conversation
+            .append_message(&fresh_message("keep-2"))
+            .unwrap();
+        let recent = storage
+            .conversation
+            .read_recent(10, 0, &|m: &Message| m.text.starts_with("keep"))
+            .unwrap();
+        assert_eq!(
+            recent.iter().map(|m| m.text.as_str()).collect::<Vec<_>>(),
+            vec!["keep-2", "keep-1"]
+        );
+    }
+);
 
-contract!(read_recent_is_empty_when_no_messages, |storage: &Stores| {
-    let recent = storage
-        .conversation
-        .read_recent(10, 0, &|_: &Message| true)
-        .unwrap();
-    assert!(recent.is_empty());
-});
+contract!(
+    read_recent_is_empty_when_no_messages,
+    |storage: &DataGateways| {
+        let recent = storage
+            .conversation
+            .read_recent(10, 0, &|_: &Message| true)
+            .unwrap();
+        assert!(recent.is_empty());
+    }
+);
 
-contract!(load_lessons_default_when_empty, |storage: &Stores| {
+contract!(load_lessons_default_when_empty, |storage: &DataGateways| {
     let idx = storage.lessons.load_lessons();
     assert!(idx.lessons.is_empty());
     assert!(idx.experiences.is_empty());
 });
 
-contract!(add_lesson_appends_to_index, |storage: &Stores| {
+contract!(add_lesson_appends_to_index, |storage: &DataGateways| {
     storage
         .lessons
         .add_lesson(
@@ -198,14 +207,17 @@ contract!(add_lesson_appends_to_index, |storage: &Stores| {
     assert_eq!(idx.lessons[0].topic, "topic-1");
 });
 
-contract!(load_peer_lessons_default_when_empty, |storage: &Stores| {
-    let idx = storage.lessons.load_peer_lessons("designer");
-    assert!(idx.lessons.is_empty());
-});
+contract!(
+    load_peer_lessons_default_when_empty,
+    |storage: &DataGateways| {
+        let idx = storage.lessons.load_peer_lessons("designer");
+        assert!(idx.lessons.is_empty());
+    }
+);
 
 contract!(
     save_then_load_peer_lessons_roundtrips,
-    |storage: &Stores| {
+    |storage: &DataGateways| {
         let mut idx = LessonIndex::default();
         idx.lessons.push(memory::lessons::AgentLesson {
             topic: "peer-topic".to_string(),
@@ -224,7 +236,7 @@ contract!(
     }
 );
 
-contract!(list_peers_reflects_saved_peers, |storage: &Stores| {
+contract!(list_peers_reflects_saved_peers, |storage: &DataGateways| {
     let idx = LessonIndex::default();
     storage.lessons.save_peer_lessons("designer", &idx).unwrap();
     storage.lessons.save_peer_lessons("pm", &idx).unwrap();
@@ -250,22 +262,25 @@ fn seed_outbox_event(number: u64, label: &str) -> source_sync::QueuedEvent {
     source_sync::QueuedEvent::new(event)
 }
 
-contract!(load_outbox_empty_when_unset, |storage: &Stores| {
+contract!(load_outbox_empty_when_unset, |storage: &DataGateways| {
     let queue = storage.outbox.load_outbox().unwrap();
     assert!(queue.is_empty());
 });
 
-contract!(save_then_load_outbox_roundtrips, |storage: &Stores| {
-    let events = vec![
-        seed_outbox_event(100, "ready"),
-        seed_outbox_event(200, "in-progress"),
-    ];
-    storage.outbox.save_outbox(&events).unwrap();
-    let loaded = storage.outbox.load_outbox().unwrap();
-    assert_eq!(loaded.len(), 2);
-});
+contract!(
+    save_then_load_outbox_roundtrips,
+    |storage: &DataGateways| {
+        let events = vec![
+            seed_outbox_event(100, "ready"),
+            seed_outbox_event(200, "in-progress"),
+        ];
+        storage.outbox.save_outbox(&events).unwrap();
+        let loaded = storage.outbox.load_outbox().unwrap();
+        assert_eq!(loaded.len(), 2);
+    }
+);
 
-contract!(save_outbox_overwrites_previous, |storage: &Stores| {
+contract!(save_outbox_overwrites_previous, |storage: &DataGateways| {
     storage
         .outbox
         .save_outbox(&[seed_outbox_event(100, "ready")])
@@ -281,35 +296,38 @@ contract!(save_outbox_overwrites_previous, |storage: &Stores| {
     assert_eq!(loaded.len(), 2);
 });
 
-contract!(load_users_empty_when_unset, |storage: &Stores| {
+contract!(load_users_empty_when_unset, |storage: &DataGateways| {
     assert!(storage.users.load_users().unwrap().is_empty());
 });
 
-contract!(upsert_then_load_users_roundtrips, |storage: &Stores| {
-    storage
-        .users
-        .upsert_user("sess-dev", "dev:claude-code", "dev")
-        .unwrap();
-    storage
-        .users
-        .upsert_user("sess-pm", "pm:claude-code", "pm")
-        .unwrap();
-    let mut loaded = storage.users.load_users().unwrap();
-    loaded.sort_by(|a, b| a.user_id.cmp(&b.user_id));
-    assert_eq!(loaded.len(), 2);
-    assert_eq!(loaded[0].user_id, "sess-dev");
-    assert_eq!(loaded[0].name, "dev:claude-code");
-    assert_eq!(loaded[0].role, "dev");
-    assert_eq!(
-        loaded[0].kind, "agent",
-        "a routing-registered identity defaults to kind=agent; owner/system are the only non-agent kinds, seeded separately"
-    );
-    assert_eq!(loaded[0].last_delivered_at, None);
-});
+contract!(
+    upsert_then_load_users_roundtrips,
+    |storage: &DataGateways| {
+        storage
+            .users
+            .upsert_user("sess-dev", "dev:claude-code", "dev")
+            .unwrap();
+        storage
+            .users
+            .upsert_user("sess-pm", "pm:claude-code", "pm")
+            .unwrap();
+        let mut loaded = storage.users.load_users().unwrap();
+        loaded.sort_by(|a, b| a.user_id.cmp(&b.user_id));
+        assert_eq!(loaded.len(), 2);
+        assert_eq!(loaded[0].user_id, "sess-dev");
+        assert_eq!(loaded[0].name, "dev:claude-code");
+        assert_eq!(loaded[0].role, "dev");
+        assert_eq!(
+            loaded[0].kind, "agent",
+            "a routing-registered identity defaults to kind=agent; owner/system are the only non-agent kinds, seeded separately"
+        );
+        assert_eq!(loaded[0].last_delivered_at, None);
+    }
+);
 
 contract!(
     upsert_user_updates_name_and_role_for_same_id,
-    |storage: &Stores| {
+    |storage: &DataGateways| {
         storage.users.upsert_user("sess-x", "dev", "dev").unwrap();
         storage
             .users
@@ -324,7 +342,7 @@ contract!(
 
 contract!(
     set_user_last_delivered_persists_the_floor,
-    |storage: &Stores| {
+    |storage: &DataGateways| {
         storage.users.upsert_user("sess-c", "dev", "dev").unwrap();
         let at = ms("2026-06-23T10:00:00Z");
         storage.users.set_user_last_delivered("sess-c", at).unwrap();
@@ -333,22 +351,28 @@ contract!(
     }
 );
 
-contract!(delete_users_removes_only_named_ids, |storage: &Stores| {
-    storage.users.upsert_user("sess-a", "a", "dev").unwrap();
-    storage.users.upsert_user("sess-b", "b", "pm").unwrap();
-    storage.users.delete_users(&["sess-a".to_string()]).unwrap();
-    let loaded = storage.users.load_users().unwrap();
-    assert_eq!(loaded.len(), 1);
-    assert_eq!(loaded[0].user_id, "sess-b");
-});
+contract!(
+    delete_users_removes_only_named_ids,
+    |storage: &DataGateways| {
+        storage.users.upsert_user("sess-a", "a", "dev").unwrap();
+        storage.users.upsert_user("sess-b", "b", "pm").unwrap();
+        storage.users.delete_users(&["sess-a".to_string()]).unwrap();
+        let loaded = storage.users.load_users().unwrap();
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].user_id, "sess-b");
+    }
+);
 
-contract!(load_surfaced_topics_empty_when_unset, |storage: &Stores| {
-    assert!(storage.topics.load_surfaced_topics().is_empty());
-});
+contract!(
+    load_surfaced_topics_empty_when_unset,
+    |storage: &DataGateways| {
+        assert!(storage.topics.load_surfaced_topics().is_empty());
+    }
+);
 
 contract!(
     save_then_load_surfaced_topics_roundtrips,
-    |storage: &Stores| {
+    |storage: &DataGateways| {
         let mut topics = std::collections::HashSet::new();
         topics.insert("railway-errors".to_string());
         topics.insert("vertical-slices".to_string());
@@ -389,14 +413,16 @@ fn sqlite_concurrent_writers_on_the_same_db_file_lose_no_appends() {
     let path = dir.path().to_path_buf();
     let per_writer: usize = 50;
 
-    let writer_a: Arc<dyn MessageLog> = Arc::new(message_log::store::ConversationStore::new(
-        Arc::new(database_support::DatabaseGateway::open(&path).unwrap()),
-        path.clone(),
-    ));
-    let writer_b: Arc<dyn MessageLog> = Arc::new(message_log::store::ConversationStore::new(
-        Arc::new(database_support::DatabaseGateway::open(&path).unwrap()),
-        path.clone(),
-    ));
+    let writer_a: Arc<dyn MessageLog> =
+        Arc::new(message_log::data_gateway::ConversationDataGateway::new(
+            Arc::new(database_support::DatabaseGateway::open(&path).unwrap()),
+            path.clone(),
+        ));
+    let writer_b: Arc<dyn MessageLog> =
+        Arc::new(message_log::data_gateway::ConversationDataGateway::new(
+            Arc::new(database_support::DatabaseGateway::open(&path).unwrap()),
+            path.clone(),
+        ));
 
     let handle_a = {
         let writer = Arc::clone(&writer_a);
@@ -421,7 +447,7 @@ fn sqlite_concurrent_writers_on_the_same_db_file_lose_no_appends() {
     handle_a.join().unwrap();
     handle_b.join().unwrap();
 
-    let reader = message_log::store::ConversationStore::new(
+    let reader = message_log::data_gateway::ConversationDataGateway::new(
         Arc::new(database_support::DatabaseGateway::open(&path).unwrap()),
         path.clone(),
     );

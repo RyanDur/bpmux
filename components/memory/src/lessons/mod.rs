@@ -133,17 +133,17 @@ pub fn group_by_topic(index: &LessonIndex) -> Vec<TopicGroup> {
 mod store;
 pub use store::*;
 
-pub struct LessonStore {
+pub struct LessonDataGateway {
     dir: std::path::PathBuf,
 }
 
-impl LessonStore {
+impl LessonDataGateway {
     pub fn new(dir: std::path::PathBuf) -> Self {
         Self { dir }
     }
 }
 
-impl LessonRepo for LessonStore {
+impl LessonRepo for LessonDataGateway {
     fn load_lessons(&self) -> LessonIndex {
         load_index(&self.dir)
     }

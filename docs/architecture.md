@@ -115,9 +115,10 @@ append-only `V<n>__*.sql`, never an edit to an applied version.
 `docs/design/storage-repo-ports.md`): `SurfacedTopicsRepo`
 (awareness), `MessageLog` (log), `LessonRepo` (memory), `OutboxRepo`
 (sync), `UserRepo` (routing). Each feature states WHAT it needs in
-domain terms and owns its gateway-backed store (ConversationStore,
-UserStore, OutboxStore, TopicStore, LessonStore); `storage::open`
-composes them into `Stores` at the composition root and the daemon
+domain terms and owns its gateway-backed store (ConversationDataGateway,
+UserDataGateway, OutboxDataGateway, TopicsDataGateway,
+LessonDataGateway — the dam5s naming); `storage::open` composes
+them into `DataGateways` at the composition root and the daemon
 injects each where it is used — the hub holds only the conversation.
 The composite `Storage` super-trait dissolved with the god-object
 (2026-07-25); `GlobalStore` before it (zero production wiring).

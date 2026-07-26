@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use crate::Stores;
+use crate::DataGateways;
 use message::{Message, MessageType};
 
-fn store() -> (tempfile::TempDir, Stores) {
+fn store() -> (tempfile::TempDir, DataGateways) {
     let dir = tempfile::TempDir::new().unwrap();
     let storage = crate::open(dir.path());
     (dir, storage)

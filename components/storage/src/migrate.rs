@@ -6,7 +6,7 @@ use std::sync::Arc;
 use crate::meta;
 use database_support::{DatabaseGateway, io_err};
 use message::{Message, StateDeltaPayload};
-use message_log::store::ConversationStore;
+use message_log::data_gateway::ConversationDataGateway;
 use message_log::{LogError, MessageLog};
 use persist::PersistError;
 use user_routing::{UserRepo, short_name};
@@ -79,7 +79,7 @@ pub(crate) fn migrate_file_log_with(
             already_complete: true,
         });
     }
-    let target = ConversationStore::new(gateway.clone(), dir.to_path_buf());
+    let target = ConversationDataGateway::new(gateway.clone(), dir.to_path_buf());
     let messages = message_log::read_messages(dir)?;
     target.clear_messages().map_err(MigrationError::Clear)?;
     let mut migrated = 0;
@@ -113,7 +113,7 @@ pub(crate) fn migrate_routing_identity_with(
     data_dir: &Path,
     gateway: &Arc<DatabaseGateway>,
 ) -> Result<RoutingMigrationReport, MigrationError> {
-    let target = user_routing::store::UserStore::new(gateway.clone());
+    let target = user_routing::data_gateway::UserDataGateway::new(gateway.clone());
     if meta::get(&gateway.lock(), ROUTING_FLAG_KEY)
         .map_err(io_err)
         .map_err(message_log::LogError::from)?

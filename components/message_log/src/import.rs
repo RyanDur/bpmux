@@ -3,8 +3,8 @@ use std::io::BufRead;
 use std::path::Path;
 use std::sync::Arc;
 
+use crate::data_gateway::ConversationDataGateway;
 use crate::db as messages;
-use crate::store::ConversationStore;
 use crate::{LogError, MessageLog};
 use database_support::{DatabaseGateway, io_err};
 use message::Message;
@@ -20,7 +20,7 @@ pub struct ImportReport {
 pub fn import_conversation(data_dir: &Path, source_jsonl: &Path) -> Result<ImportReport, LogError> {
     let gateway = Arc::new(DatabaseGateway::open(data_dir).map_err(io_err)?);
     user_routing::db::seed_system(&gateway.lock()).map_err(io_err)?;
-    let target = ConversationStore::new(gateway.clone(), data_dir.to_path_buf());
+    let target = ConversationDataGateway::new(gateway.clone(), data_dir.to_path_buf());
     let mut seen = known_identities(&target)?;
     let mut report = ImportReport {
         imported: 0,
@@ -84,7 +84,7 @@ pub fn import_conversation(data_dir: &Path, source_jsonl: &Path) -> Result<Impor
     Ok(report)
 }
 
-fn known_identities(target: &ConversationStore) -> Result<HashSet<String>, LogError> {
+fn known_identities(target: &ConversationDataGateway) -> Result<HashSet<String>, LogError> {
     let mut seen = HashSet::new();
     for msg in target.read_messages()? {
         if !msg.id.is_empty() {

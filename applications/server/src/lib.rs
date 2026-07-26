@@ -14,7 +14,7 @@ fn startup_routing_id(select: &store::Select, identity: &str) -> String {
 
 pub async fn run_server(
     hub: Arc<hub::Hub>,
-    stores: storage::Stores,
+    data_gateways: storage::DataGateways,
     port: u16,
     ct: CancellationToken,
 ) -> anyhow::Result<()> {
@@ -26,7 +26,7 @@ pub async fn run_server(
     let race_window = race_window_barrier_from_env();
 
     let (store_inner, orchestrator) =
-        compose::compose_store(hub.clone(), stores.clone(), &tracker, ct.clone());
+        compose::compose_store(hub.clone(), data_gateways.clone(), &tracker, ct.clone());
     let store = std::sync::Arc::new(store_inner);
 
     let ci_log_store = ci::CiLogStore::new();
@@ -74,7 +74,7 @@ pub async fn run_server(
         dispatch: store.dispatcher(),
         store,
         pty_registry,
-        lessons: stores.lessons.clone(),
+        lessons: data_gateways.lessons.clone(),
         port,
     });
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;

@@ -6,8 +6,8 @@ use tempfile::TempDir;
 use std::sync::Arc;
 
 use crate::MessageLog;
+use crate::data_gateway::ConversationDataGateway;
 use crate::import::import_conversation;
-use crate::store::ConversationStore;
 use database_support::DatabaseGateway;
 use message::{Message, MessageType};
 
@@ -36,7 +36,7 @@ fn write_jsonl(dir: &TempDir, name: &str, messages: &[Message]) -> std::path::Pa
     path
 }
 
-fn texts(storage: &ConversationStore) -> Vec<String> {
+fn texts(storage: &ConversationDataGateway) -> Vec<String> {
     storage
         .read_messages()
         .unwrap()
@@ -48,7 +48,7 @@ fn texts(storage: &ConversationStore) -> Vec<String> {
 #[test]
 fn importing_older_history_interleaves_it_into_conversation_order() {
     let dir = TempDir::new().unwrap();
-    let storage = ConversationStore::new(
+    let storage = ConversationDataGateway::new(
         Arc::new(DatabaseGateway::open(dir.path()).unwrap()),
         dir.path().to_path_buf(),
     );
@@ -86,7 +86,7 @@ fn importing_older_history_interleaves_it_into_conversation_order() {
 #[test]
 fn importing_the_same_history_twice_changes_nothing() {
     let dir = TempDir::new().unwrap();
-    let storage = ConversationStore::new(
+    let storage = ConversationDataGateway::new(
         Arc::new(DatabaseGateway::open(dir.path()).unwrap()),
         dir.path().to_path_buf(),
     );
@@ -118,7 +118,7 @@ fn importing_the_same_history_twice_changes_nothing() {
 #[test]
 fn id_less_legacy_lines_import_once_and_dedupe_by_content() {
     let dir = TempDir::new().unwrap();
-    let storage = ConversationStore::new(
+    let storage = ConversationDataGateway::new(
         Arc::new(DatabaseGateway::open(dir.path()).unwrap()),
         dir.path().to_path_buf(),
     );
@@ -143,7 +143,7 @@ fn id_less_legacy_lines_import_once_and_dedupe_by_content() {
 #[test]
 fn no_state_projection_imports_regardless_of_domain() {
     let dir = TempDir::new().unwrap();
-    let storage = ConversationStore::new(
+    let storage = ConversationDataGateway::new(
         Arc::new(DatabaseGateway::open(dir.path()).unwrap()),
         dir.path().to_path_buf(),
     );
@@ -175,7 +175,7 @@ fn no_state_projection_imports_regardless_of_domain() {
 #[test]
 fn ephemeral_board_deltas_are_filtered_not_imported() {
     let dir = TempDir::new().unwrap();
-    let storage = ConversationStore::new(
+    let storage = ConversationDataGateway::new(
         Arc::new(DatabaseGateway::open(dir.path()).unwrap()),
         dir.path().to_path_buf(),
     );

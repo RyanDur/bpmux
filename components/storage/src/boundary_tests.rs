@@ -47,10 +47,10 @@ fn domain_sql_lives_only_in_each_crate_db_module() {
         }
         let is_mechanism_module = file
             .file_name()
-            .is_some_and(|n| n == "db.rs" || n == "store.rs" || n == "import.rs");
+            .is_some_and(|n| n == "db.rs" || n == "data_gateway.rs" || n == "import.rs");
         if !is_mechanism_module && contents.contains("rusqlite") {
             violations.push(format!(
-                "{}: rusqlite outside the db/store/import mechanism modules",
+                "{}: rusqlite outside the db/data_gateway/import mechanism modules",
                 file.display()
             ));
         }

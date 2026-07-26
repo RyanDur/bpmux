@@ -40,11 +40,11 @@ fn make_hub() -> (Arc<Hub>, broadcast::Receiver<Message>, TempDir) {
 }
 
 fn host_over(hub: &Arc<Hub>) -> crate::awareness_host::HubAwarenessHost {
-    let stores = storage::open(&hub.dir);
+    let data_gateways = storage::open(&hub.dir);
     crate::awareness_host::HubAwarenessHost {
         hub: hub.clone(),
-        topics: stores.topics,
-        lessons: stores.lessons,
+        topics: data_gateways.topics,
+        lessons: data_gateways.lessons,
     }
 }
 

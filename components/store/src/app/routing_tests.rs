@@ -10,14 +10,14 @@ use crate::{AppAction, AppState, app_reduce};
 use database_support::DatabaseGateway;
 use kernel::{Dispatch, Listener, Reaction};
 use user_routing::UserRepo;
-use user_routing::store::UserStore;
+use user_routing::data_gateway::UserDataGateway;
 
 fn no_op_dispatch() -> Dispatch<AppAction> {
     Arc::new(|_action: AppAction| {})
 }
 
 fn repo(dir: &TempDir) -> Arc<dyn UserRepo> {
-    Arc::new(UserStore::new(Arc::new(
+    Arc::new(UserDataGateway::new(Arc::new(
         DatabaseGateway::open(dir.path()).expect("sqlite test storage"),
     )))
 }

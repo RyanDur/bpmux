@@ -19,27 +19,33 @@ use transport::state_delta_broadcasters::{
 
 pub fn build_store(
     hub: Arc<hub::Hub>,
-    stores: storage::Stores,
+    data_gateways: storage::DataGateways,
     tracker: Option<Arc<dyn CiPollFetch>>,
     parent_ct: CancellationToken,
 ) -> Store {
-    build_store_with_outbox(hub, stores, tracker, parent_ct, Vec::new())
+    build_store_with_outbox(hub, data_gateways, tracker, parent_ct, Vec::new())
 }
 
 pub(crate) fn build_store_with_outbox(
     hub: Arc<hub::Hub>,
-    stores: storage::Stores,
+    data_gateways: storage::DataGateways,
     tracker: Option<Arc<dyn CiPollFetch>>,
     parent_ct: CancellationToken,
     initial_outbox: Vec<source_sync::QueuedWrite>,
 ) -> Store {
-    Store::from_parts(assemble(hub, stores, tracker, parent_ct, initial_outbox))
+    Store::from_parts(assemble(
+        hub,
+        data_gateways,
+        tracker,
+        parent_ct,
+        initial_outbox,
+    ))
 }
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn build_store_with_refresh<A: sync::SourceAdapter + 'static>(
     hub: Arc<hub::Hub>,
-    stores: storage::Stores,
+    data_gateways: storage::DataGateways,
     tracker: Option<Arc<dyn CiPollFetch>>,
     parent_ct: CancellationToken,
     initial_outbox: Vec<source_sync::QueuedWrite>,
@@ -48,8 +54,14 @@ pub(crate) fn build_store_with_refresh<A: sync::SourceAdapter + 'static>(
     ingest_interval: Duration,
     hydration_interval: Duration,
 ) -> (Store, Arc<SyncOrchestrator>) {
-    let outbox_sink = stores.outbox.clone();
-    let parts = assemble(hub, stores, tracker, parent_ct.clone(), initial_outbox);
+    let outbox_sink = data_gateways.outbox.clone();
+    let parts = assemble(
+        hub,
+        data_gateways,
+        tracker,
+        parent_ct.clone(),
+        initial_outbox,
+    );
     let store_select = store::Select::new(std::sync::Arc::downgrade(&parts.app_store));
     let refresh = Arc::new(SyncOrchestrator::new(
         adapter,
@@ -116,7 +128,7 @@ pub(crate) fn build_store_with_refresh<A: sync::SourceAdapter + 'static>(
 
 fn assemble(
     hub: Arc<hub::Hub>,
-    stores: storage::Stores,
+    data_gateways: storage::DataGateways,
     tracker: Option<Arc<dyn CiPollFetch>>,
     parent_ct: CancellationToken,
     initial_outbox: Vec<source_sync::QueuedWrite>,
@@ -134,7 +146,7 @@ fn assemble(
             .with_shared_history(product_management::history_persistence::load(&hub.dir))
             .with_local_history(board::history_persistence::load(&hub.dir))
             .with_routing(store::routing::from_users(
-                &stores.users.load_users().unwrap_or_default(),
+                &data_gateways.users.load_users().unwrap_or_default(),
             ))
             .with_ci(super::setup::boot_ci_state())
             .with_outbox(initial_outbox),
@@ -163,7 +175,7 @@ fn assemble(
         Arc::new(transport::ci_watcher::CiWatcherDriver),
     ));
     app_store.add_listener(ci_poll);
-    app_store.add_listener(Arc::new(RoutingPersister::new(stores.users.clone())));
+    app_store.add_listener(Arc::new(RoutingPersister::new(data_gateways.users.clone())));
     StoreParts {
         hub,
         rate_limit_observer,

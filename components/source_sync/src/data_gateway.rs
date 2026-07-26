@@ -5,17 +5,17 @@ use crate::{OutboxRepo, QueuedEvent, db};
 use database_support::DatabaseGateway;
 use persist::PersistError;
 
-pub struct OutboxStore {
+pub struct OutboxDataGateway {
     gateway: Arc<DatabaseGateway>,
 }
 
-impl OutboxStore {
+impl OutboxDataGateway {
     pub fn new(gateway: Arc<DatabaseGateway>) -> Self {
         Self { gateway }
     }
 }
 
-impl OutboxRepo for OutboxStore {
+impl OutboxRepo for OutboxDataGateway {
     fn load_outbox(&self) -> Result<VecDeque<QueuedEvent>, PersistError> {
         db::load(&self.gateway.lock())
     }

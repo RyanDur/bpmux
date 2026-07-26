@@ -560,7 +560,7 @@ async fn message_routing_runs_end_to_end_on_the_sqlite_backend_the_cutover_user_
     );
 
     use user_routing::UserRepo;
-    let storage = user_routing::store::UserStore::new(std::sync::Arc::new(
+    let storage = user_routing::data_gateway::UserDataGateway::new(std::sync::Arc::new(
         database_support::DatabaseGateway::open(&bpmux.data_base_path())
             .expect("open the server's flat sqlite data store"),
     ));

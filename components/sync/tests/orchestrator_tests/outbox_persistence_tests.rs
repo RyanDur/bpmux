@@ -7,7 +7,7 @@ use chrono::{TimeZone, Utc};
 use super::{meta, seed_story};
 use database_support::DatabaseGateway;
 use integrations::in_memory::InMemorySourceAdapter;
-use source_sync::store::OutboxStore;
+use source_sync::data_gateway::OutboxDataGateway;
 use source_sync::{OutboxRepo, PendingWrite, QueuedWrite};
 use store::AppAction;
 use store_test_support::SeededStore;
@@ -22,7 +22,7 @@ mod outbox_persistence {
     use super::*;
 
     fn sqlite_store(dir: &tempfile::TempDir) -> Arc<dyn OutboxRepo> {
-        Arc::new(OutboxStore::new(Arc::new(
+        Arc::new(OutboxDataGateway::new(Arc::new(
             DatabaseGateway::open(dir.path()).unwrap(),
         )))
     }
