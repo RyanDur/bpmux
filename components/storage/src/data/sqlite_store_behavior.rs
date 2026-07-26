@@ -215,3 +215,32 @@ fn addressee_search_narrows_candidates_through_the_recipients_table() {
         "only the addressed message is a candidate; the broadcast never reaches the evaluator"
     );
 }
+
+#[test]
+fn only_chat_messages_are_search_candidates() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+
+    let mut noise = chat("bpmux", None);
+    noise.text = "activity event carrying the needle".to_string();
+    noise.message_type = message::MessageType::Activity;
+    storage.append_message(&noise).unwrap();
+
+    let mut spoken = chat("dev", None);
+    spoken.text = "someone said the needle".to_string();
+    storage.append_message(&spoken).unwrap();
+
+    let mut centers = Vec::new();
+    storage
+        .search_conversations("needle", None, 5, &mut |cluster, center| {
+            centers.push(cluster[center].text.clone());
+            true
+        })
+        .unwrap();
+
+    assert_eq!(
+        centers,
+        vec!["someone said the needle"],
+        "the conversation is searchable; the plumbing around it is not"
+    );
+}
