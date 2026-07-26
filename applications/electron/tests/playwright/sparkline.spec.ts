@@ -6,18 +6,26 @@ import { SparklinePage } from '../pages/sparklinePage'
 const daysAgo = (n: number): string => new Date(Date.now() - n * 86_400_000).toISOString()
 
 const fourActivityDaysClimbingThenEasing = [
-  { from: 'dev:claude-code', text: '#1 started', ts: daysAgo(4), message_type: 'chat' },
-  { from: 'dev:claude-code', text: '#2 started', ts: daysAgo(3), message_type: 'chat' },
-  { from: 'dev:claude-code', text: '#3 started', ts: daysAgo(2), message_type: 'chat' },
-  { from: 'dev:claude-code', text: '#1 delivered', ts: daysAgo(1), message_type: 'chat' }
+  { story_id: 1, new_state: 'in-progress', observed_at: daysAgo(4) },
+  { story_id: 2, new_state: 'in-progress', observed_at: daysAgo(3) },
+  { story_id: 3, new_state: 'in-progress', observed_at: daysAgo(2) },
+  { story_id: 1, new_state: 'acceptance', observed_at: daysAgo(1) }
 ]
 
 test.describe('#1237 WIP-count sparkline reflects real lifecycle history', () => {
-  test('renders a multi-point trend derived from the actual message log, with no console errors', async () => {
-    const { app } = await launchIsolatedElectron({
-      seedMessages: fourActivityDaysClimbingThenEasing
-    })
+  test('renders a multi-point trend derived from the story-transition ledger, with no console errors', async () => {
+    const { app, backendPort } = await launchIsolatedElectron({})
     const win = await app.firstWindow()
+
+    const token = await win.evaluate(
+      () => (window as unknown as { bpmux?: { authToken?: string } }).bpmux?.authToken ?? ''
+    )
+    const seeded = await fetch(`http://127.0.0.1:${backendPort}/api/test/seed_transitions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(fourActivityDaysClimbingThenEasing)
+    })
+    expect(seeded.ok).toBe(true)
 
     const consoleErrors: string[] = []
     const pageErrors: Error[] = []

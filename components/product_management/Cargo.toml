@@ -6,7 +6,9 @@ license.workspace = true
 description = "The product domain: stories, epics, iterations, outcomes, evidence, roadmap, scheduling, metrics"
 
 [dependencies]
+database-support = { path = "../database-support" }
 diag = { path = "../diag" }
+rusqlite = { version = "0.32", features = ["bundled"] }
 workflow = { path = "../workflow" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

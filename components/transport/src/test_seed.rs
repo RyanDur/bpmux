@@ -335,3 +335,28 @@ pub async fn post_seed_roster(
         format!("seeded {} roster identities", body.identities.len()),
     )
 }
+
+#[derive(serde::Deserialize)]
+pub struct SeedTransition {
+    pub story_id: u64,
+    pub new_state: String,
+    pub observed_at: String,
+}
+
+pub async fn post_seed_transitions(
+    axum::extract::Extension(transitions): axum::extract::Extension<
+        std::sync::Arc<product_management::data_gateway::TransitionsDataGateway>,
+    >,
+    axum::Json(rows): axum::Json<Vec<SeedTransition>>,
+) -> impl axum::response::IntoResponse {
+    for row in &rows {
+        let Ok(at) = chrono::DateTime::parse_from_rfc3339(&row.observed_at) else {
+            return (
+                axum::http::StatusCode::BAD_REQUEST,
+                format!("bad observed_at: {}", row.observed_at),
+            );
+        };
+        transitions.record(row.story_id, &row.new_state, at.timestamp());
+    }
+    (axum::http::StatusCode::OK, format!("seeded {}", rows.len()))
+}

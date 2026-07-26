@@ -18,6 +18,10 @@ pub(crate) fn test_seed_routes() -> HubRouter {
             axum::routing::post(transport::test_seed::post_reset_messages),
         )
         .route(
+            "/api/test/seed_transitions",
+            axum::routing::post(transport::test_seed::post_seed_transitions),
+        )
+        .route(
             "/api/test/seed_roster",
             axum::routing::post(transport::test_seed::post_seed_roster),
         )

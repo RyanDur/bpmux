@@ -251,3 +251,23 @@ fn only_chat_messages_are_search_candidates() {
         "the conversation is searchable; the plumbing around it is not"
     );
 }
+
+#[test]
+fn story_transitions_dedupe_repeat_observations_and_read_by_window() {
+    let (_dir, storage) = store();
+
+    storage.transitions.record(7, "in-progress", 1_000);
+    storage.transitions.record(7, "in-progress", 1_100);
+    storage.transitions.record(7, "acceptance", 1_200);
+    storage.transitions.record(8, "in-progress", 500);
+
+    let rows = storage.transitions.since(900);
+    assert_eq!(
+        rows,
+        vec![
+            (7, "in-progress".to_string(), 1_000),
+            (7, "acceptance".to_string(), 1_200),
+        ],
+        "repeat observation of the same state records once; the window filters the older story"
+    );
+}

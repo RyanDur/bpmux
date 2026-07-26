@@ -1,3 +1,5 @@
+pub mod data_gateway;
+pub mod db;
 macro_rules! entity_id {
     ($name:ident) => {
         #[derive(

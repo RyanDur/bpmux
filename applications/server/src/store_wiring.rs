@@ -176,6 +176,9 @@ fn assemble(
     ));
     app_store.add_listener(ci_poll);
     app_store.add_listener(Arc::new(RoutingPersister::new(data_gateways.users.clone())));
+    app_store.add_listener(Arc::new(store::TransitionPersister::new(
+        data_gateways.transitions.clone(),
+    )));
     StoreParts {
         hub,
         rate_limit_observer,

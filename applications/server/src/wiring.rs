@@ -20,6 +20,7 @@ pub(super) struct RouterDeps {
     pub dispatch: store::Dispatch,
     pub pty_registry: Arc<LivePtyRegistry>,
     pub lessons: Arc<dyn memory::lessons::LessonRepo>,
+    pub transitions: Arc<product_management::data_gateway::TransitionsDataGateway>,
     pub port: u16,
 }
 
@@ -37,6 +38,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         dispatch,
         pty_registry,
         lessons,
+        transitions,
         port,
     } = deps;
     let has_refresh = orchestrator.is_some();
@@ -98,6 +100,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         .layer(axum::Extension(orchestrator))
         .layer(axum::Extension(race_window))
         .layer(axum::Extension(lessons))
+        .layer(axum::Extension(transitions))
         .layer(axum::Extension(store.selector()))
         .layer(axum::Extension(store))
         .layer(axum::Extension(dispatch))

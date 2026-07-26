@@ -9,7 +9,6 @@ description = "Read-model projections: board wire views, roadmap render, velocit
 board = { path = "../board" }
 product_management = { path = "../product_management" }
 workflow = { path = "../workflow" }
-message = { path = "../message" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }

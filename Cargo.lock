@@ -2072,7 +2072,9 @@ name = "product_management"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "database-support",
  "diag",
+ "rusqlite",
  "serde",
  "serde_json",
  "tempfile",
@@ -3676,7 +3678,6 @@ version = "0.1.0"
 dependencies = [
  "board",
  "chrono",
- "message",
  "product_management",
  "serde",
  "serde_json",

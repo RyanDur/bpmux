@@ -1,5 +1,4 @@
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
-use message::{Message, MessageType};
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -7,25 +6,33 @@ pub const SPARSE_THRESHOLD: usize = 3;
 
 pub const WINDOW_DAYS: i64 = 14;
 
-fn parse_lifecycle(text: &str) -> Option<(u64, Lifecycle)> {
-    let hash_idx = text.find('#')?;
-    let rest = &text[hash_idx + 1..];
-    let (num_str, after) = rest
-        .find(|c: char| !c.is_ascii_digit())
-        .map(|i| rest.split_at(i))?;
-    let number: u64 = num_str.parse().ok()?;
-    let after = after.trim_start();
-    if after.starts_with("started") {
-        Some((number, Lifecycle::Started))
-    } else if after.contains("delivered") {
-        Some((number, Lifecycle::Delivered))
-    } else if after.starts_with("accepted") {
-        Some((number, Lifecycle::Accepted))
-    } else if after.starts_with("failed desk-check") {
-        Some((number, Lifecycle::FailedDeskCheck))
-    } else {
-        None
+#[derive(Debug, Clone, PartialEq)]
+pub struct Transition {
+    pub story_id: u64,
+    pub new_state: String,
+    pub at: DateTime<Utc>,
+}
+
+fn lifecycle_events(transitions: &[Transition]) -> Vec<(DateTime<Utc>, u64, Lifecycle)> {
+    let mut ordered: Vec<&Transition> = transitions.iter().collect();
+    ordered.sort_by_key(|t| t.at);
+    let mut last_state: HashMap<u64, &str> = HashMap::new();
+    let mut events = Vec::new();
+    for t in ordered {
+        match t.new_state.as_str() {
+            "in-progress" => {
+                if last_state.get(&t.story_id).copied() == Some("acceptance") {
+                    events.push((t.at, t.story_id, Lifecycle::FailedDeskCheck));
+                }
+                events.push((t.at, t.story_id, Lifecycle::Started));
+            }
+            "acceptance" => events.push((t.at, t.story_id, Lifecycle::Delivered)),
+            "accepted" => events.push((t.at, t.story_id, Lifecycle::Accepted)),
+            _ => {}
+        }
+        last_state.insert(t.story_id, t.new_state.as_str());
     }
+    events
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -56,26 +63,21 @@ pub struct VelocityMetrics {
 }
 
 pub fn compute(
-    messages: &[Message],
+    transitions: &[Transition],
     now: DateTime<Utc>,
     is_feature: impl Fn(u64) -> bool,
 ) -> VelocityMetrics {
     let window_start = now - ChronoDuration::days(WINDOW_DAYS);
 
     let mut events: HashMap<(u64, Lifecycle), Vec<DateTime<Utc>>> = HashMap::new();
-    for m in messages {
-        if m.message_type != MessageType::Chat {
+    for (at, number, lc) in lifecycle_events(transitions) {
+        if at < window_start || at > now {
             continue;
         }
-        if m.ts < window_start || m.ts > now {
+        if !is_feature(number) {
             continue;
         }
-        if let Some((number, lc)) = parse_lifecycle(&m.text) {
-            if !is_feature(number) {
-                continue;
-            }
-            events.entry((number, lc)).or_default().push(m.ts);
-        }
+        events.entry((number, lc)).or_default().push(at);
     }
 
     let unique_delivered: std::collections::HashSet<u64> = events
@@ -157,7 +159,7 @@ pub fn compute(
         rework_rate,
         sparse,
         note,
-        wip_history: wip_history::derive_wip_history(messages, now),
+        wip_history: wip_history::derive_wip_history(transitions, now),
     }
 }
 

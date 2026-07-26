@@ -28,6 +28,7 @@ pub use app::{
     BoardPlacementPersister, BoardPlacementReconciler, CiBroadcast, CiListeners, EvidencePersister,
     LocalHistoryPersister, OwnerParkListener, ReactionsBroadcast, ReactionsListeners,
     ReactionsPersister, RosterBroadcast, RosterListeners, RoutingPersister, SharedHistoryPersister,
+    TransitionPersister,
 };
 pub use ci::{BoxedFuture, CiAction, CiBroadcastListener, CiPollFetch, CiSnapshot};
 pub use commitments::CommitmentsAction;

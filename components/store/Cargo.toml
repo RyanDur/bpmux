@@ -6,6 +6,7 @@ license.workspace = true
 description = "The one redux-shaped store: AppState composition, Dispatch/Select, over kernel"
 
 [dependencies]
+chrono = { workspace = true }
 kernel = { path = "../kernel" }
 board = { path = "../board" }
 ci = { path = "../ci" }

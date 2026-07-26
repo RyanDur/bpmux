@@ -7,6 +7,7 @@ use database_support::DatabaseGateway;
 use memory::lessons::{LessonDataGateway, LessonRepo};
 use message_log::MessageLog;
 use message_log::data_gateway::ConversationDataGateway;
+use product_management::data_gateway::TransitionsDataGateway;
 use source_sync::OutboxRepo;
 use source_sync::data_gateway::OutboxDataGateway;
 use user_routing::UserRepo;
@@ -38,6 +39,7 @@ pub struct DataGateways {
     pub outbox: Arc<dyn OutboxRepo>,
     pub topics: Arc<dyn SurfacedTopicsRepo>,
     pub lessons: Arc<dyn LessonRepo>,
+    pub transitions: Arc<TransitionsDataGateway>,
 }
 
 pub fn open(dir: &Path) -> DataGateways {
@@ -58,6 +60,7 @@ pub fn open(dir: &Path) -> DataGateways {
         outbox: Arc::new(OutboxDataGateway::new(gateway.clone())),
         topics: Arc::new(TopicsDataGateway::new(gateway.clone())),
         lessons: Arc::new(LessonDataGateway::new(dir.to_path_buf())),
+        transitions: Arc::new(TransitionsDataGateway::new(gateway.clone())),
         gateway,
     }
 }

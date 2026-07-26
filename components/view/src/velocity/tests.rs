@@ -1,15 +1,13 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use super::{SPARSE_THRESHOLD, VelocityMetrics, WINDOW_DAYS, compute};
+use super::{SPARSE_THRESHOLD, Transition, VelocityMetrics, WINDOW_DAYS, compute};
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
-use message::{Message, MessageType};
 
-fn msg(text: &str, ts: DateTime<Utc>) -> Message {
-    Message {
-        from: "dev:claude-code".to_string(),
-        text: text.to_string(),
-        ts,
-        ..Message::default()
+fn tr(story_id: u64, new_state: &str, at: DateTime<Utc>) -> Transition {
+    Transition {
+        story_id,
+        new_state: new_state.to_string(),
+        at,
     }
 }
 
@@ -20,7 +18,7 @@ fn now() -> DateTime<Utc> {
 }
 
 #[test]
-fn empty_messages_returns_zero_metrics_and_sparse_flag() {
+fn empty_transitions_returns_zero_metrics_and_sparse_flag() {
     let m = compute(&[], now(), |_| true);
     assert_eq!(m.delivered_in_window, 0);
     assert_eq!(m.delivered_per_day, 0.0);
@@ -33,10 +31,7 @@ fn empty_messages_returns_zero_metrics_and_sparse_flag() {
 
 #[test]
 fn one_delivered_story_marked_sparse_below_threshold() {
-    let delivered = vec![msg(
-        "#199 (test) delivered — desk-check needed",
-        now() - ChronoDuration::hours(2),
-    )];
+    let delivered = vec![tr(199, "acceptance", now() - ChronoDuration::hours(2))];
     let m = compute(&delivered, now(), |_| true);
     assert_eq!(m.delivered_in_window, 1);
     assert!(m.sparse);
@@ -45,12 +40,12 @@ fn one_delivered_story_marked_sparse_below_threshold() {
 
 #[test]
 fn three_delivered_stories_crosses_sparse_threshold() {
-    let messages = vec![
-        msg("#1 delivered", now() - ChronoDuration::hours(1)),
-        msg("#2 delivered", now() - ChronoDuration::hours(2)),
-        msg("#3 delivered", now() - ChronoDuration::hours(3)),
+    let transitions = vec![
+        tr(1, "acceptance", now() - ChronoDuration::hours(1)),
+        tr(2, "acceptance", now() - ChronoDuration::hours(2)),
+        tr(3, "acceptance", now() - ChronoDuration::hours(3)),
     ];
-    let m = compute(&messages, now(), |_| true);
+    let m = compute(&transitions, now(), |_| true);
     assert_eq!(m.delivered_in_window, 3);
     assert!(!m.sparse, "3 deliveries should clear the sparse threshold");
     assert!(m.note.is_none());
@@ -58,86 +53,75 @@ fn three_delivered_stories_crosses_sparse_threshold() {
 
 #[test]
 fn deliveries_outside_14_day_window_are_excluded() {
-    let messages = vec![
-        msg("#1 delivered", now() - ChronoDuration::days(1)),
-        msg("#2 delivered", now() - ChronoDuration::days(7)),
-        msg("#3 delivered", now() - ChronoDuration::days(20)),
-        msg("#4 delivered", now() + ChronoDuration::hours(1)),
+    let transitions = vec![
+        tr(1, "acceptance", now() - ChronoDuration::days(1)),
+        tr(2, "acceptance", now() - ChronoDuration::days(7)),
+        tr(3, "acceptance", now() - ChronoDuration::days(20)),
+        tr(4, "acceptance", now() + ChronoDuration::hours(1)),
     ];
-    let m = compute(&messages, now(), |_| true);
+    let m = compute(&transitions, now(), |_| true);
     assert_eq!(m.delivered_in_window, 2);
 }
 
 #[test]
-fn pickup_to_deliver_median_pairs_start_and_deliver_by_issue() {
+fn pickup_to_deliver_median_pairs_start_and_deliver_by_story() {
     let base = now() - ChronoDuration::days(2);
-    let messages = vec![
-        msg("#10 started. ready queue shrunk", base),
-        msg("#10 (foo) delivered", base + ChronoDuration::hours(3)),
-        msg(
-            "#11 started. ready queue shrunk",
-            base + ChronoDuration::hours(1),
-        ),
-        msg("#11 (bar) delivered", base + ChronoDuration::hours(2)),
-        msg(
-            "#12 started. ready queue shrunk",
-            base + ChronoDuration::hours(4),
-        ),
-        msg("#12 (baz) delivered", base + ChronoDuration::hours(10)),
+    let transitions = vec![
+        tr(10, "in-progress", base),
+        tr(10, "acceptance", base + ChronoDuration::hours(3)),
+        tr(11, "in-progress", base + ChronoDuration::hours(1)),
+        tr(11, "acceptance", base + ChronoDuration::hours(2)),
+        tr(12, "in-progress", base + ChronoDuration::hours(4)),
+        tr(12, "acceptance", base + ChronoDuration::hours(10)),
     ];
-    let m = compute(&messages, now(), |_| true);
+    let m = compute(&transitions, now(), |_| true);
     assert_eq!(m.median_pickup_to_deliver_hours, Some(3.0));
 }
 
 #[test]
-fn deliver_to_accept_median_pairs_by_issue() {
+fn deliver_to_accept_median_pairs_by_story() {
     let base = now() - ChronoDuration::days(1);
-    let messages = vec![
-        msg("#20 delivered", base),
-        msg("#20 accepted. pick next", base + ChronoDuration::hours(2)),
-        msg("#21 delivered", base + ChronoDuration::minutes(30)),
-        msg("#21 accepted. pick next", base + ChronoDuration::hours(5)),
+    let transitions = vec![
+        tr(20, "acceptance", base),
+        tr(20, "accepted", base + ChronoDuration::hours(2)),
+        tr(21, "acceptance", base + ChronoDuration::minutes(30)),
+        tr(21, "accepted", base + ChronoDuration::hours(5)),
     ];
-    let m = compute(&messages, now(), |_| true);
+    let m = compute(&transitions, now(), |_| true);
     assert_eq!(m.median_deliver_to_accept_hours, Some(3.25));
 }
 
 #[test]
-fn rework_rate_counts_failed_desk_checks_per_unique_delivery() {
+fn rework_rate_counts_desk_check_send_backs_per_unique_delivery() {
     let base = now() - ChronoDuration::days(1);
-    let messages = vec![
-        msg("#30 delivered", base),
-        msg(
-            "#30 failed desk-check: needs negative test",
-            base + ChronoDuration::hours(1),
-        ),
-        msg("#30 delivered", base + ChronoDuration::hours(4)),
-        msg("#31 delivered", base + ChronoDuration::hours(2)),
-        msg("#32 delivered", base + ChronoDuration::hours(3)),
-        msg("#33 delivered", base + ChronoDuration::hours(6)),
+    let transitions = vec![
+        tr(30, "acceptance", base),
+        tr(30, "in-progress", base + ChronoDuration::hours(1)),
+        tr(30, "acceptance", base + ChronoDuration::hours(4)),
+        tr(31, "acceptance", base + ChronoDuration::hours(2)),
+        tr(32, "acceptance", base + ChronoDuration::hours(3)),
+        tr(33, "acceptance", base + ChronoDuration::hours(6)),
     ];
-    let m = compute(&messages, now(), |_| true);
+    let m = compute(&transitions, now(), |_| true);
     assert_eq!(m.delivered_in_window, 4);
-    assert_eq!(m.rework_rate, Some(0.25));
+    assert_eq!(
+        m.rework_rate,
+        Some(0.25),
+        "a story sent back from acceptance to in-progress is one rework"
+    );
 }
 
 #[test]
 fn re_delivered_story_counts_once_in_delivered_in_window() {
     let base = now() - ChronoDuration::days(1);
-    let messages = vec![
-        msg("#50 delivered", base),
-        msg(
-            "#50 failed desk-check: fix prefix",
-            base + ChronoDuration::hours(1),
-        ),
-        msg("#50 delivered", base + ChronoDuration::hours(2)),
-        msg(
-            "#50 failed desk-check: missing test",
-            base + ChronoDuration::hours(3),
-        ),
-        msg("#50 delivered", base + ChronoDuration::hours(4)),
+    let transitions = vec![
+        tr(50, "acceptance", base),
+        tr(50, "in-progress", base + ChronoDuration::hours(1)),
+        tr(50, "acceptance", base + ChronoDuration::hours(2)),
+        tr(50, "in-progress", base + ChronoDuration::hours(3)),
+        tr(50, "acceptance", base + ChronoDuration::hours(4)),
     ];
-    let m = compute(&messages, now(), |_| true);
+    let m = compute(&transitions, now(), |_| true);
     assert_eq!(
         m.delivered_in_window, 1,
         "re-delivered story counts as ONE unique delivery"
@@ -145,109 +129,92 @@ fn re_delivered_story_counts_once_in_delivered_in_window() {
 }
 
 #[test]
-fn out_of_order_events_still_pair_by_issue_number() {
+fn out_of_order_input_still_pairs_by_story_id() {
     let base = now() - ChronoDuration::hours(6);
-    let messages = vec![
-        msg("#40 (foo) delivered", base + ChronoDuration::hours(3)),
-        msg("#40 started. ready queue shrunk", base),
-        msg("#41 (bar) delivered", base + ChronoDuration::hours(1)),
-        msg(
-            "#41 started. ready queue shrunk",
-            base - ChronoDuration::hours(2),
-        ),
-        msg("#42 delivered", base + ChronoDuration::hours(4)),
+    let transitions = vec![
+        tr(40, "acceptance", base + ChronoDuration::hours(3)),
+        tr(40, "in-progress", base),
+        tr(41, "acceptance", base + ChronoDuration::hours(1)),
+        tr(41, "in-progress", base - ChronoDuration::hours(2)),
+        tr(42, "acceptance", base + ChronoDuration::hours(4)),
     ];
-    let m = compute(&messages, now(), |_| true);
+    let m = compute(&transitions, now(), |_| true);
     assert_eq!(m.delivered_in_window, 3);
     assert!(m.median_pickup_to_deliver_hours.is_some());
 }
 
 #[test]
-fn non_chat_messages_are_ignored() {
-    let activity = Message {
-        from: "dev:claude-code".to_string(),
-        text: "#99 delivered".to_string(),
-        ts: now() - ChronoDuration::hours(1),
-        message_type: MessageType::Activity,
-        ..Message::default()
-    };
-    let m = compute(&[activity], now(), |_| true);
+fn states_outside_the_lifecycle_are_ignored() {
+    let transitions = vec![
+        tr(99, "retired", now() - ChronoDuration::hours(1)),
+        tr(98, "not-started", now() - ChronoDuration::hours(2)),
+    ];
+    let m = compute(&transitions, now(), |_| true);
     assert_eq!(m.delivered_in_window, 0);
+    assert!(m.wip_history.is_empty());
 }
 
 #[test]
 fn delivered_per_day_divides_by_window() {
-    let mut messages = Vec::new();
+    let mut transitions = Vec::new();
     for i in 0..14 {
-        messages.push(msg(
-            &format!("#{} delivered", 100 + i),
-            now() - ChronoDuration::hours((i as i64) * 4),
+        transitions.push(tr(
+            100 + i,
+            "acceptance",
+            now() - ChronoDuration::hours(i as i64 * 4),
         ));
     }
-    let m: VelocityMetrics = compute(&messages, now(), |_| true);
+    let m: VelocityMetrics = compute(&transitions, now(), |_| true);
     assert_eq!(m.delivered_in_window, 14);
     assert_eq!(m.delivered_per_day, 14.0 / WINDOW_DAYS as f64);
 }
 
 #[test]
-fn text_without_number_is_not_parsed_as_lifecycle() {
-    let messages = vec![
-        msg(
-            "hello team, just some broadcast",
-            now() - ChronoDuration::hours(1),
-        ),
-        msg("delivered yesterday", now() - ChronoDuration::hours(2)),
-    ];
-    let m = compute(&messages, now(), |_| true);
-    assert_eq!(m.delivered_in_window, 0);
-}
-
-#[test]
 fn plumbing_stories_filtered_out_of_velocity() {
-    let messages = vec![
-        msg("#1 delivered", now() - ChronoDuration::hours(1)),
-        msg("#2 delivered", now() - ChronoDuration::hours(2)),
-        msg("#3 delivered", now() - ChronoDuration::hours(3)),
+    let transitions = vec![
+        tr(1, "acceptance", now() - ChronoDuration::hours(1)),
+        tr(2, "acceptance", now() - ChronoDuration::hours(2)),
+        tr(3, "acceptance", now() - ChronoDuration::hours(3)),
     ];
     let is_feature = |n: u64| n == 2;
-    let m = compute(&messages, now(), is_feature);
+    let m = compute(&transitions, now(), is_feature);
     assert_eq!(m.delivered_in_window, 1);
     assert!(m.sparse, "1 feature delivery is below the sparse threshold");
 }
 
 #[test]
 fn predicate_drives_what_gets_counted() {
-    let messages = vec![
-        msg("#1 delivered", now() - ChronoDuration::hours(1)),
-        msg("#2 delivered", now() - ChronoDuration::hours(2)),
-        msg("#3 delivered", now() - ChronoDuration::hours(3)),
+    let transitions = vec![
+        tr(1, "acceptance", now() - ChronoDuration::hours(1)),
+        tr(2, "acceptance", now() - ChronoDuration::hours(2)),
+        tr(3, "acceptance", now() - ChronoDuration::hours(3)),
     ];
-    let all = compute(&messages, now(), |_| true);
-    let without_one = compute(&messages, now(), |n| n != 1);
+    let all = compute(&transitions, now(), |_| true);
+    let without_one = compute(&transitions, now(), |n| n != 1);
     assert_eq!(all.delivered_in_window, 3);
     assert_eq!(without_one.delivered_in_window, 2);
 }
 
 #[test]
 fn no_features_produces_zero_velocity() {
-    let messages = vec![
-        msg("#1 delivered", now() - ChronoDuration::hours(1)),
-        msg("#2 delivered", now() - ChronoDuration::hours(2)),
+    let transitions = vec![
+        tr(1, "acceptance", now() - ChronoDuration::hours(1)),
+        tr(2, "acceptance", now() - ChronoDuration::hours(2)),
     ];
-    let m = compute(&messages, now(), |_| false);
+    let m = compute(&transitions, now(), |_| false);
     assert_eq!(m.delivered_in_window, 0);
     assert_eq!(m.delivered_per_day, 0.0);
 }
 
 #[test]
 fn wip_history_is_a_real_per_activity_day_in_progress_series() {
-    let messages = vec![
-        msg("#1 started", now() - ChronoDuration::days(4)),
-        msg("#2 started", now() - ChronoDuration::days(3)),
-        msg("#3 started", now() - ChronoDuration::days(2)),
-        msg("#1 delivered", now() - ChronoDuration::days(1)),
+    let transitions = vec![
+        tr(1, "in-progress", now() - ChronoDuration::days(4)),
+        tr(2, "in-progress", now() - ChronoDuration::days(3)),
+        tr(3, "in-progress", now() - ChronoDuration::days(2)),
+        tr(1, "acceptance", now() - ChronoDuration::days(1)),
     ];
-    let m = compute(&messages, now(), |_| true);
+    let m = compute(&transitions, now(), |_| true);
     let counts: Vec<usize> = m.wip_history.iter().map(|p| p.wip_count).collect();
     assert_eq!(
         counts,
@@ -259,12 +226,12 @@ fn wip_history_is_a_real_per_activity_day_in_progress_series() {
 
 #[test]
 fn wip_history_excludes_out_of_window_events_and_never_underflows() {
-    let messages = vec![
-        msg("#1 started", now() - ChronoDuration::days(20)),
-        msg("#2 started", now() - ChronoDuration::days(2)),
-        msg("#2 delivered", now() - ChronoDuration::days(1)),
+    let transitions = vec![
+        tr(1, "in-progress", now() - ChronoDuration::days(20)),
+        tr(2, "in-progress", now() - ChronoDuration::days(2)),
+        tr(2, "acceptance", now() - ChronoDuration::days(1)),
     ];
-    let m = compute(&messages, now(), |_| true);
+    let m = compute(&transitions, now(), |_| true);
     let counts: Vec<usize> = m.wip_history.iter().map(|p| p.wip_count).collect();
     assert_eq!(
         counts,

@@ -27,6 +27,7 @@ mod owner_park;
 mod reactions;
 mod reduce;
 mod routing;
+mod transitions;
 pub use board_placement::{BoardPlacementPersister, BoardPlacementReconciler};
 pub(super) use dispatch_log::validate_and_log;
 pub use evidence::EvidencePersister;
@@ -36,6 +37,7 @@ pub use owner_park::OwnerParkListener;
 pub use reactions::ReactionsPersister;
 pub use reduce::app_reduce;
 pub use routing::RoutingPersister;
+pub use transitions::TransitionPersister;
 
 #[cfg(test)]
 mod board_placement_tests;
