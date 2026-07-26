@@ -3539,6 +3539,7 @@ dependencies = [
  "chrono",
  "ci",
  "comprehension",
+ "database-support",
  "diag",
  "electron_capture",
  "futures",

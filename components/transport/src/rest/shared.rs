@@ -15,6 +15,34 @@ pub(super) fn err_body(message: &str) -> String {
     serde_json::json!({ "error": message }).to_string()
 }
 
+pub(crate) type JsonResponse = (
+    axum::http::StatusCode,
+    [(axum::http::HeaderName, &'static str); 1],
+    String,
+);
+
+pub(crate) fn owner_walk_or_forbidden(
+    select: &store::Select,
+    headers: &axum::http::HeaderMap,
+    action: &str,
+) -> Result<(), JsonResponse> {
+    let claimed = select.select(|state| owner_session::claimed_nonce(&state.owner_session));
+    let presented = headers
+        .get(OWNER_NONCE_HEADER)
+        .and_then(|value| value.to_str().ok());
+    if owner_session::owner_walk_authorized(claimed.as_deref(), presented) {
+        Ok(())
+    } else {
+        Err((
+            axum::http::StatusCode::FORBIDDEN,
+            json_headers(),
+            err_body(&format!(
+                "{action} requires the owner session — attach the current launch nonce"
+            )),
+        ))
+    }
+}
+
 pub fn json_headers() -> [(axum::http::HeaderName, &'static str); 1] {
     [(axum::http::header::CONTENT_TYPE, "application/json")]
 }

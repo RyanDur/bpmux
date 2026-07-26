@@ -9,35 +9,8 @@ use serde::Deserialize;
 use axum::http::HeaderMap;
 
 use super::shared::{
-    OWNER_NONCE_HEADER, broadcast_board_invalidate, broadcast_stories, err_body, json_headers,
+    broadcast_board_invalidate, broadcast_stories, err_body, json_headers, owner_walk_or_forbidden,
 };
-
-type JsonResponse = (
-    StatusCode,
-    [(axum::http::HeaderName, &'static str); 1],
-    String,
-);
-
-fn owner_walk_or_forbidden(
-    select: &store::Select,
-    headers: &HeaderMap,
-) -> Result<(), JsonResponse> {
-    let claimed = select.select(|state| owner_session::claimed_nonce(&state.owner_session));
-    let presented = headers
-        .get(OWNER_NONCE_HEADER)
-        .and_then(|value| value.to_str().ok());
-    if owner_session::owner_walk_authorized(claimed.as_deref(), presented) {
-        Ok(())
-    } else {
-        Err((
-            StatusCode::FORBIDDEN,
-            json_headers(),
-            err_body(
-                "board acceptance requires the owner session — attach the current launch nonce",
-            ),
-        ))
-    }
-}
 
 #[derive(Deserialize)]
 pub struct AcceptPayload {
@@ -56,7 +29,7 @@ pub async fn post_accept_story(
     axum::extract::Path(number): axum::extract::Path<u64>,
     Json(payload): Json<AcceptPayload>,
 ) -> impl IntoResponse {
-    if let Err(refusal) = owner_walk_or_forbidden(&select, &headers) {
+    if let Err(refusal) = owner_walk_or_forbidden(&select, &headers, "board acceptance") {
         return refusal;
     }
     let mut args = serde_json::Map::new();
@@ -127,7 +100,7 @@ pub async fn post_reject_story(
     axum::extract::Path(number): axum::extract::Path<u64>,
     Json(payload): Json<RejectPayload>,
 ) -> impl IntoResponse {
-    if let Err(refusal) = owner_walk_or_forbidden(&select, &headers) {
+    if let Err(refusal) = owner_walk_or_forbidden(&select, &headers, "board acceptance") {
         return refusal;
     }
     let note = payload.note.trim().to_string();

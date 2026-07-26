@@ -12,3 +12,4 @@ mod terminal_spawn_register_tests;
 mod wait_event_tests;
 
 pub use crate::test_support::*;
+mod github_connection_tests;

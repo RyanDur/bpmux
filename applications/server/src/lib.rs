@@ -4,13 +4,18 @@ use tokio_util::sync::CancellationToken;
 
 use sync::OrchestratorHandle;
 
+fn github_connections(data_gateways: &storage::DataGateways) -> transport::rest::ConnectionsHandle {
+    Arc::new(
+        integrations::data_gateway::GithubConnectionDataGateway::new(
+            data_gateways.gateway.clone(),
+            Arc::new(integrations::github::keychain::KeychainSecretStore),
+        ),
+    )
+}
+
 fn stored_github_connection(
-    data_gateways: &storage::DataGateways,
+    connections: &transport::rest::ConnectionsHandle,
 ) -> Option<integrations::github::connection::GithubConnection> {
-    let connections = integrations::data_gateway::GithubConnectionDataGateway::new(
-        data_gateways.gateway.clone(),
-        Arc::new(integrations::github::keychain::KeychainSecretStore),
-    );
     match connections.resolve() {
         Ok(connection) => connection,
         Err(e) => {
@@ -38,7 +43,8 @@ pub async fn run_server(
 ) -> anyhow::Result<()> {
     let auth_state = build_auth_state()?;
 
-    let connection = stored_github_connection(&data_gateways);
+    let connections = github_connections(&data_gateways);
+    let connection = stored_github_connection(&connections);
     let actions_url = ci::ActionsUrl::for_repo(
         connection
             .as_ref()
@@ -98,6 +104,7 @@ pub async fn run_server(
         unfurl_cache,
         hub,
         tracker,
+        connections,
         ci_log_store,
         electron_capture_lock,
         orchestrator: orchestrator_handle,

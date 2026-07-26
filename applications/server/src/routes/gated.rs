@@ -104,6 +104,12 @@ pub(crate) fn gated_routes(
             "/api/owner-session",
             axum::routing::post(transport::rest::post_owner_session),
         )
+        .route(
+            "/api/github-connection",
+            axum::routing::get(transport::rest::get_github_connection)
+                .put(transport::rest::put_github_connection)
+                .delete(transport::rest::delete_github_connection),
+        )
         .layer(axum::middleware::from_fn_with_state(
             auth_state,
             transport::auth::gate,

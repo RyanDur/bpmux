@@ -9,6 +9,7 @@ pub mod broadcast_listeners;
 mod capture;
 mod ci;
 mod classifier;
+pub mod github_connection;
 mod iteration_close;
 mod labels;
 mod lessons;
@@ -46,6 +47,9 @@ pub use board_story_detail::{get_story_comments, get_story_timeline, post_story_
 pub use capture::{ElectronCaptureQuery, get_electron_capture};
 pub use ci::{get_ci, get_ci_jobs, get_ci_log, post_ci_rerun};
 pub use classifier::{ClassifierMisfire, post_classifier_misfire};
+pub use github_connection::{
+    ConnectionsHandle, delete_github_connection, get_github_connection, put_github_connection,
+};
 pub use iteration_close::{CloseIterationRequest, post_close_iteration};
 pub use labels::{LabelMutationPayload, post_story_labels};
 pub use lessons::{
