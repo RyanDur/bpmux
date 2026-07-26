@@ -1,5 +1,8 @@
 mod board;
 mod board_acceptance;
+pub mod board_metrics;
+#[cfg(all(test, feature = "test-support"))]
+mod board_metrics_tests;
 mod board_read;
 mod board_story_detail;
 pub mod broadcast_listeners;
@@ -10,7 +13,7 @@ mod iteration_close;
 mod labels;
 mod lessons;
 mod messages;
-mod metrics;
+pub mod metrics;
 mod owner_session;
 pub mod presence;
 mod reactions;

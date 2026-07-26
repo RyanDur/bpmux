@@ -21,11 +21,13 @@ fn view_velocity_returns_metrics_json_for_empty_session() {
 
         assert!(
             result
-                .get("velocity_window_iterations")
+                .get("board")
+                .and_then(|b| b.get("velocity_window_iterations"))
                 .is_some_and(|v| v.is_number())
-                && result.get("iterations").is_some_and(|v| v.is_array())
-                && result.get("rework").is_some_and(|v| v.is_object()),
-            "view_velocity carries the window, per-iteration series, and rework rollup; got {result:?}"
+                && result["board"].get("iterations").is_some_and(|v| v.is_array())
+                && result["board"].get("rework").is_some_and(|v| v.is_object())
+                && result.get("window_days").is_some_and(|v| v.is_number()),
+            "view_velocity carries the unified payload: board half (window, series, rework) and flow half; got {result:?}"
         );
 
         pm.close().await;

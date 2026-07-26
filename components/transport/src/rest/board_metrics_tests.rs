@@ -3,7 +3,20 @@
 use chrono::{DateTime, TimeZone, Utc};
 use serde_json::Value;
 
-use super::view::dispatch_view_velocity;
+use crate::rest::board_metrics::build_velocity_view;
+
+fn dispatch_view_velocity(select: &store::Select) -> Result<String, String> {
+    let (shared, local, iterations, feature_ids) = select.select(|state| {
+        (
+            state.shared_history.clone(),
+            state.local_history.clone(),
+            product_management::iteration::all(&state.iterations),
+            product_management::story::slice::feature_ids(&state.stories),
+        )
+    });
+    let view = build_velocity_view(&shared, &local, &iterations, |id| feature_ids.contains(&id));
+    serde_json::to_string_pretty(&view).map_err(|e| format!("serialize view_velocity: {e}"))
+}
 use product_management::iteration::{Iteration, IterationId};
 use product_management::story::events::{EventMeta, StoryEvent, StoryEventKind};
 use product_management::story::slice::StoryAction;

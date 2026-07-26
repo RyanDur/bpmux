@@ -2,20 +2,6 @@ use std::sync::Arc;
 
 use super::super::{tools, tools_stories};
 
-pub fn dispatch_view_velocity(select: &store::Select) -> Result<String, String> {
-    let (shared, local, iterations, feature_ids) = select.select(|state| {
-        (
-            state.shared_history.clone(),
-            state.local_history.clone(),
-            product_management::iteration::all(&state.iterations),
-            product_management::story::slice::feature_ids(&state.stories),
-        )
-    });
-    let view =
-        tools::build_velocity_view(&shared, &local, &iterations, |id| feature_ids.contains(&id));
-    serde_json::to_string_pretty(&view).map_err(|e| format!("serialize view_velocity: {e}"))
-}
-
 pub async fn dispatch_view_story_commits(
     args: serde_json::Map<String, serde_json::Value>,
 ) -> Result<String, String> {

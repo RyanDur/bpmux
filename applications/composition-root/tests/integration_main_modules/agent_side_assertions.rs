@@ -573,25 +573,29 @@ fn view_velocity_routes_through_rpc_to_selector_fed_metrics_on_empty_session() {
             .expect("view_velocity should succeed");
 
         assert_eq!(
-            metrics["velocity_window_iterations"], 1,
-            "MCP view_velocity now routes to the server's selector-fed compute. got: {metrics}"
+            metrics["board"]["velocity_window_iterations"], 1,
+            "MCP view_velocity serves the unified metrics payload both surfaces read. got: {metrics}"
         );
         assert!(
-            metrics["velocity"].is_null(),
+            metrics["velocity"].is_null() || metrics["board"]["velocity"].is_null(),
             "an empty server store has no complete iteration — velocity is null, not a self-computed zero. got: {metrics}"
         );
         assert_eq!(
-            metrics["iterations"],
+            metrics["window_days"], 14,
+            "the flow half of the unified payload rides along. got: {metrics}"
+        );
+        assert_eq!(
+            metrics["board"]["iterations"],
             serde_json::json!([]),
             "no complete iterations yet. got: {metrics}"
         );
         assert_eq!(
-            metrics["rework"]["total"], 0,
+            metrics["board"]["rework"]["total"], 0,
             "no placements yet. got: {metrics}"
         );
-        assert!(
-            metrics.get("delivered_in_window").is_none(),
-            "the chat-parse VelocityMetricsView keys are gone — the self-compute path is retired. got: {metrics}"
+        assert_eq!(
+            metrics["delivered_in_window"], 0,
+            "the flow keys are ledger-fed now, not chat-parsed — same payload the human overlay reads. got: {metrics}"
         );
 
         dev.close().await;

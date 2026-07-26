@@ -6,9 +6,6 @@ mod story;
 mod transition;
 mod view;
 
-#[cfg(test)]
-mod view_velocity_tests;
-
 pub use acceptance::{
     dispatch_accept_story, dispatch_fail_desk_check, dispatch_pass_desk_check,
     dispatch_reject_story,
@@ -34,6 +31,5 @@ pub use transition::{
 pub use view::{
     dispatch_dev_in_flight, dispatch_get_story, dispatch_list_epic_children, dispatch_list_ready,
     dispatch_view_backlog, dispatch_view_board, dispatch_view_comments, dispatch_view_commit_diff,
-    dispatch_view_story_commits, dispatch_view_story_timeline, dispatch_view_velocity,
-    dispatch_view_verdicts,
+    dispatch_view_story_commits, dispatch_view_story_timeline, dispatch_view_verdicts,
 };

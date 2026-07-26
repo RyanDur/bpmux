@@ -32,6 +32,9 @@ pub async fn post_rpc_tool(
     axum::Extension(dispatcher): axum::Extension<store::Dispatch>,
     axum::Extension(select): axum::Extension<store::Select>,
     axum::Extension(race_window): axum::Extension<sync::RaceWindowHandle>,
+    axum::Extension(transitions): axum::Extension<
+        std::sync::Arc<product_management::data_gateway::TransitionsDataGateway>,
+    >,
     headers: HeaderMap,
     Path(tool): Path<String>,
     Json(body): Json<Value>,
@@ -102,6 +105,7 @@ pub async fn post_rpc_tool(
         &dispatcher,
         &select,
         &race_window,
+        &transitions,
     )
     .await
     {

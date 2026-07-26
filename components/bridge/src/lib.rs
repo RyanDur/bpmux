@@ -53,8 +53,7 @@ pub use dispatch::{
     dispatch_set_parent_epic, dispatch_start_story, dispatch_submit_verdict,
     dispatch_unmap_outcome_iteration, dispatch_unset_parent_epic, dispatch_view_backlog,
     dispatch_view_board, dispatch_view_comments, dispatch_view_commit_diff,
-    dispatch_view_story_commits, dispatch_view_story_timeline, dispatch_view_velocity,
-    dispatch_view_verdicts,
+    dispatch_view_story_commits, dispatch_view_story_timeline, dispatch_view_verdicts,
 };
 
 pub mod test_fixtures;

@@ -27,6 +27,8 @@ pub(in crate::rpc_routes) struct Ctx<'a> {
     pub(in crate::rpc_routes) dispatcher: &'a store::Dispatch,
     pub(in crate::rpc_routes) select: &'a store::Select,
     pub(in crate::rpc_routes) race_window: &'a sync::RaceWindowHandle,
+    pub(in crate::rpc_routes) transitions:
+        &'a std::sync::Arc<product_management::data_gateway::TransitionsDataGateway>,
 }
 
 pub(in crate::rpc_routes) enum Routed {
@@ -54,6 +56,7 @@ pub(super) async fn dispatch(
     dispatcher: &store::Dispatch,
     select: &store::Select,
     race_window: &sync::RaceWindowHandle,
+    transitions: &std::sync::Arc<product_management::data_gateway::TransitionsDataGateway>,
 ) -> Result<String, String> {
     let ToolCaller {
         agent,
@@ -70,6 +73,7 @@ pub(super) async fn dispatch(
         dispatcher,
         select,
         race_window,
+        transitions,
     };
     let args = match lifecycle::route(tool, args, &cx).await {
         Routed::Handled(result) => return result,

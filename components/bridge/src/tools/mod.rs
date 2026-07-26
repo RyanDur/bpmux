@@ -106,7 +106,6 @@ mod view_story_timeline;
 #[cfg(test)]
 mod view_story_timeline_tests;
 mod view_tokens;
-mod view_velocity;
 mod view_verdicts;
 #[cfg(test)]
 mod view_verdicts_render;
@@ -153,7 +152,6 @@ pub use view_roadmap::handle_view_roadmap;
 pub use view_story_commits::handle_view_story_commits;
 pub use view_story_timeline::handle_view_story_timeline;
 pub use view_tokens::handle_view_tokens;
-pub use view_velocity::build_velocity_view;
 pub use view_verdicts::handle_view_verdicts;
 pub use who::handle_who;
 

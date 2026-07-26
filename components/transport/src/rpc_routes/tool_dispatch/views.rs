@@ -31,7 +31,11 @@ pub(super) async fn route(
             .await
         }
         "view_verdicts" => bridge::dispatch_view_verdicts(args, cx.select).await,
-        "view_velocity" => bridge::dispatch_view_velocity(cx.select),
+        "view_velocity" => serde_json::to_string_pretty(&crate::rest::metrics::assemble_metrics(
+            cx.select,
+            cx.transitions,
+        ))
+        .map_err(|e| format!("serialize view_velocity: {e}")),
         "view_story_commits" => bridge::dispatch_view_story_commits(args).await,
         "view_commit_diff" => bridge::dispatch_view_commit_diff(args).await,
         _ => return Routed::Unhandled(args),
