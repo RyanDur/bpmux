@@ -50,8 +50,6 @@ fn storage_composes_feature_ports_only_in_the_super_trait_bound() {
     );
 }
 
-const STORAGE_MECHANISM_TOKENS: &[&str] = &["rusqlite", "refinery"];
-
 const PORT_OWNING_FEATURE_MODULES: &[&str] = &[
     "../../awareness/src",
     "../../message_log/src",
@@ -71,7 +69,7 @@ fn collect_rs_files(path: &Path, out: &mut Vec<PathBuf>) {
 }
 
 #[test]
-fn repo_port_modules_import_no_storage_mechanism() {
+fn domain_sql_lives_only_in_each_crate_db_module() {
     let root = src_root();
     let mut files = Vec::new();
     for module in PORT_OWNING_FEATURE_MODULES {
@@ -85,19 +83,23 @@ fn repo_port_modules_import_no_storage_mechanism() {
     let mut violations: Vec<String> = Vec::new();
     for file in &files {
         let contents = std::fs::read_to_string(file).expect("read port module file");
-        for token in STORAGE_MECHANISM_TOKENS {
-            if contents.contains(token) {
-                violations.push(format!("{}: {token}", file.display()));
-            }
+        if contents.contains("refinery") {
+            violations.push(format!(
+                "{}: refinery (migrations belong to database-support alone)",
+                file.display()
+            ));
+        }
+        let is_db_module = file.file_name().is_some_and(|n| n == "db.rs");
+        if !is_db_module && contents.contains("rusqlite") {
+            violations.push(format!("{}: rusqlite outside db.rs", file.display()));
         }
     }
 
     assert!(
         violations.is_empty(),
-        "a repo PORT is an abstract persistence interface: the feature states WHAT it needs \
-         (load/save its records) in domain terms, and storage's SQLite/File backends implement \
-         it. The SQL mechanism (rusqlite, refinery migrations) lives ONLY in the storage edge, \
-         never in a port-owning feature module. Move the offending code into storage/data/. \
+        "each domain talks to its own tables through the injected gateway (owner ruling \
+         2026-07-25): SQL mechanism is confined to the crate's db module, the port itself \
+         stays an abstract interface, and migrations are applied only by database-support. \
          Violations:\n{}",
         violations.join("\n")
     );

@@ -6,6 +6,9 @@ license.workspace = true
 description = "The sync-with-the-source domain: queued writes, sync health, the outbox port"
 
 [dependencies]
+serde_json = { workspace = true }
+database-support = { path = "../database-support" }
+rusqlite = { version = "0.32", features = ["bundled"] }
 persist = { path = "../persist" }
 product_management = { path = "../product_management" }
 workflow = { path = "../workflow" }

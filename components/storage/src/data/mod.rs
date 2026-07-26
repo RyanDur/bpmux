@@ -2,11 +2,7 @@ use super::Storage;
 
 mod sqlite;
 mod sqlite_message_log;
-mod sqlite_messages;
 mod sqlite_meta;
-mod sqlite_outbox;
-mod sqlite_surfaced_topics;
-mod sqlite_users;
 pub use sqlite::*;
 
 mod import;

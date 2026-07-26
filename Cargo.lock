@@ -166,10 +166,12 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "comprehension",
+ "database-support",
  "diag",
  "memory",
  "message",
  "message_log",
+ "rusqlite",
  "tokio",
 ]
 
@@ -1732,7 +1734,9 @@ name = "message_log"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "database-support",
  "message",
+ "rusqlite",
  "serde_json",
  "tempfile",
  "thiserror 2.0.18",
@@ -2947,9 +2951,12 @@ name = "source_sync"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "database-support",
  "persist",
  "product_management",
+ "rusqlite",
  "serde",
+ "serde_json",
  "workflow",
 ]
 
@@ -2980,7 +2987,6 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "user_routing",
- "uuid",
 ]
 
 [[package]]
@@ -3609,10 +3615,13 @@ name = "user_routing"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "database-support",
  "message",
  "persist",
+ "rusqlite",
  "serde",
  "serde_json",
+ "uuid",
 ]
 
 [[package]]

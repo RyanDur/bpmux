@@ -6,6 +6,9 @@ license.workspace = true
 description = "User identity and routing: ids, records, the UserRepo port, the routing slice"
 
 [dependencies]
+uuid = { workspace = true }
+database-support = { path = "../database-support" }
+rusqlite = { version = "0.32", features = ["bundled"] }
 message = { path = "../message" }
 persist = { path = "../persist" }
 serde = { workspace = true, features = ["derive"] }

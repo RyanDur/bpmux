@@ -6,6 +6,8 @@ license.workspace = true
 description = "Ambient awareness: experience, handoff, pileon, recall detectors over the message stream"
 
 [dependencies]
+database-support = { path = "../database-support" }
+rusqlite = { version = "0.32", features = ["bundled"] }
 comprehension = { path = "../comprehension" }
 diag = { path = "../diag" }
 memory = { path = "../memory" }

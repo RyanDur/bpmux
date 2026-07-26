@@ -2,9 +2,9 @@ use std::collections::VecDeque;
 
 use rusqlite::Connection;
 
+use crate::QueuedEvent;
 use database_support as engine;
 use persist::PersistError;
-use source_sync::QueuedEvent;
 
 pub fn load(conn: &Connection) -> Result<VecDeque<QueuedEvent>, PersistError> {
     Ok(engine::query(

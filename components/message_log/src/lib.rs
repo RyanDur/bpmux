@@ -1,3 +1,4 @@
+pub mod db;
 mod file_log;
 mod reverse_line_reader;
 

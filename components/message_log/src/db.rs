@@ -1,8 +1,8 @@
 use rusqlite::Connection;
 
+use crate::LogError;
 use database_support as engine;
 use message::Message;
-use message_log::LogError;
 
 const RECENT_DESC_SQL: &str = "SELECT payload FROM messages ORDER BY seq DESC";
 const SINCE_ASC_SQL: &str = "SELECT payload FROM messages WHERE created_at >= ?1 ORDER BY seq ASC";

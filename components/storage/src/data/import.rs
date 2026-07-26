@@ -4,9 +4,9 @@ use std::path::Path;
 
 use super::SqliteStorage;
 use super::migrate::MigrationError;
-use super::sqlite_messages as messages;
 use message::Message;
 use message_log::MessageLog;
+use message_log::db as messages;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportReport {

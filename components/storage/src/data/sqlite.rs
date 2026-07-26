@@ -8,13 +8,13 @@ use database_support::DatabaseGateway;
 
 use super::Storage;
 use super::sqlite_meta as meta;
-use super::sqlite_outbox as outbox;
-use super::sqlite_surfaced_topics as surfaced_topics;
-use super::sqlite_users as users;
+use awareness::db as surfaced_topics;
 use memory::lessons::LessonIndex;
 use message::Message;
 use persist::PersistError;
 use source_sync::QueuedEvent;
+use source_sync::db as outbox;
+use user_routing::db as users;
 use user_routing::{UserRecord, UserRepo};
 
 pub struct SqliteStorage {
