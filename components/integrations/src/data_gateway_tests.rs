@@ -88,6 +88,11 @@ fn saving_a_new_connection_replaces_the_old() {
         Some(hosted("RyanDur", "sand", "ghp_new")),
         "one active connection — reconnect replaces, never accumulates"
     );
+    assert_eq!(
+        h.secrets.load(GITHUB_TOKEN_KEY).expect("load"),
+        Some("ghp_new".to_string()),
+        "the stored credential is overwritten, not appended beside the old"
+    );
 }
 
 #[test]

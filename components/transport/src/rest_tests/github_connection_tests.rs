@@ -225,6 +225,50 @@ async fn put_switching_to_a_base_url_connection_clears_the_stale_token() {
 }
 
 #[tokio::test]
+async fn put_reconfigures_in_place_and_overwrites_the_stored_credential() {
+    let h = harness();
+    h.connections
+        .save(&GithubConnection::Hosted {
+            owner: "RyanDur".to_string(),
+            repo: "bpmux".to_string(),
+            token: "ghp_old".to_string(),
+        })
+        .expect("save first connection");
+    claim_owner_nonce(&h, "launch-1");
+    let response = send(
+        h.router,
+        "PUT",
+        Some(serde_json::json!({
+            "owner": "RyanDur",
+            "repo": "sand",
+            "token": "ghp_new"
+        })),
+        Some("launch-1"),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        h.secrets.load(GITHUB_TOKEN_KEY).expect("load"),
+        Some("ghp_new".to_string()),
+        "reconnecting overwrites the credential — the old token is gone, not shadowed"
+    );
+    assert_eq!(
+        h.connections.resolve().expect("resolve"),
+        Some(GithubConnection::Hosted {
+            owner: "RyanDur".to_string(),
+            repo: "sand".to_string(),
+            token: "ghp_new".to_string(),
+        }),
+        "new values replace the old wholesale — one connection, always the latest"
+    );
+    assert_eq!(
+        h.actions_url.current(),
+        "https://github.com/RyanDur/sand/actions",
+        "the live actions url follows the reconfiguration"
+    );
+}
+
+#[tokio::test]
 async fn put_with_neither_token_nor_base_url_is_refused() {
     let h = harness();
     claim_owner_nonce(&h, "launch-1");
