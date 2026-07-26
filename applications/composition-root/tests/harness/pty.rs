@@ -14,6 +14,33 @@ use super::mock_gh::{
 use super::port::free_port;
 use std::sync::Mutex as StdMutex;
 
+fn seeded_connections(
+    base: &std::path::Path,
+) -> integrations::data_gateway::GithubConnectionDataGateway {
+    let data_dir = location::durable_data_dir(base).expect("durable data dir for seed");
+    let db = Arc::new(database_support::DatabaseGateway::open(&data_dir).expect("open seed db"));
+    integrations::data_gateway::GithubConnectionDataGateway::new(
+        db,
+        Arc::new(integrations::in_memory::InMemorySecretStore::default()),
+    )
+}
+
+pub fn seed_github_connection(base: &std::path::Path, base_url: &str) {
+    seeded_connections(base)
+        .save(
+            &integrations::github::connection::GithubConnection::WithBaseUrl {
+                owner: "acme".to_string(),
+                repo: "bpmux".to_string(),
+                base_url: base_url.to_string(),
+            },
+        )
+        .expect("seed github connection");
+}
+
+fn connection_already_seeded(base: &std::path::Path) -> bool {
+    seeded_connections(base).resolve().ok().flatten().is_some()
+}
+
 pub struct TestBpmux {
     child: Box<dyn portable_pty::Child + Send + Sync>,
     _drainer: Option<std::thread::JoinHandle<()>>,
@@ -63,14 +90,11 @@ impl TestBpmux {
 
     pub fn start_with_mock_gh(mock_gh_base_url: &str) -> Self {
         let data_base_dir = tempfile::TempDir::new().expect("temp dir");
+        seed_github_connection(data_base_dir.path(), mock_gh_base_url);
         Self::start_with_session_and_env(
             "human",
             data_base_dir,
-            &[
-                ("BPMUX_GH_BASE_URL", mock_gh_base_url),
-                ("BPMUX_REPO", "acme/bpmux"),
-                ("BPMUX_POLL_INTERVAL_SECS", "1"),
-            ],
+            &[("BPMUX_POLL_INTERVAL_SECS", "1")],
         )
     }
 
@@ -126,9 +150,6 @@ impl TestBpmux {
         cmd.arg("--data-base");
         cmd.arg(&data_base);
         cmd.env("TERM", "xterm-256color");
-        if let Ok(repo) = std::env::var("BPMUX_REPO") {
-            cmd.env("BPMUX_REPO", repo);
-        }
         let workspace_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .ancestors()
             .nth(2)
@@ -160,7 +181,7 @@ impl TestBpmux {
             std::env::temp_dir().join("bpmux-test-diag.log"),
         );
         cmd.env("BPMUX_TEST_SEED_CI_GREEN", "1");
-        let default_mock = if extra_env.iter().any(|(k, _)| *k == "BPMUX_GH_BASE_URL") {
+        let default_mock = if connection_already_seeded(data_base_dir.path()) {
             None
         } else {
             let server = MockServer::start();
@@ -184,8 +205,7 @@ impl TestBpmux {
                 }));
                 mock_story_mutations_with_state(&server, n, state);
             }
-            cmd.env("BPMUX_GH_BASE_URL", format!("{}/", server.base_url()));
-            cmd.env("BPMUX_REPO", "acme/bpmux");
+            seed_github_connection(data_base_dir.path(), &format!("{}/", server.base_url()));
             Some(server)
         };
         for (k, v) in extra_env {

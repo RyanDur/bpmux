@@ -5,6 +5,7 @@ members = [
     "applications/cli",
     "applications/mcp",
     "applications/server",
+    "applications/test-support",
     "components/auth",
     "components/database-support",
     "components/awareness",

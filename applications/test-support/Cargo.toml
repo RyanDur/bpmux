@@ -1,0 +1,14 @@
+[package]
+name = "test-support"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Dev-only harness tools, never packaged: seed-github-connection writes the token-less base_url connection a test server boots from — the same storage path the UI writes, no env vars"
+
+[dependencies]
+database-support = { path = "../../components/database-support" }
+integrations = { path = "../../components/integrations" }
+location = { path = "../../components/location" }
+
+[lints]
+workspace = true

@@ -7,7 +7,7 @@ const LAUNCH_HELPER_PATH = join(__dirname, 'helpers', 'launch.ts')
 const launchHelperSource = (): string => readFileSync(LAUNCH_HELPER_PATH, 'utf-8')
 
 test.describe('#1205 launch-helper safe-inherited-env allow-list', () => {
-  test('allow-list excludes every GH-routing env var bpmux tracker.rs reads', () => {
+  test('allow-list excludes the retired GH env vars so ambient credentials never reach a spawned process', () => {
     const ghRoutingKeys = ['GH_TOKEN', 'GITHUB_TOKEN', 'BPMUX_REPO', 'BPMUX_GH_BASE_URL']
     for (const k of ghRoutingKeys) {
       expect(SAFE_INHERITED_ENV_KEYS).not.toContain(k)
@@ -70,10 +70,11 @@ test.describe('#1205 launchIsolatedElectron wires pickSafeInheritedEnv at the en
     expect(src).not.toMatch(/env:\s*\{\s*\.\.\.process\.env/)
   })
 
-  test('launch.ts explicit env-overrides set BPMUX_REPO + GH_TOKEN to mock values, not inherited', () => {
+  test('launch.ts seeds the github connection into storage, never env', () => {
     const src = launchHelperSource()
-    expect(src).toMatch(/ghEnvOverrides\['BPMUX_REPO'\]\s*=\s*'acme\/bpmux'/)
-    expect(src).toMatch(/ghEnvOverrides\['GH_TOKEN'\]\s*=\s*'mock-gh-token'/)
+    expect(src).toMatch(/seedGithubConnection\(dataBase, ghBaseUrl\)/)
+    expect(src).not.toMatch(/ghEnvOverrides/)
+    expect(src).not.toMatch(/BPMUX_GH_BASE_URL/)
   })
 })
 

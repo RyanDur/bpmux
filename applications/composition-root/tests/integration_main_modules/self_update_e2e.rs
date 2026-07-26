@@ -80,9 +80,6 @@ fn binary_change_triggers_graceful_restart_with_exit_code() {
         .env("BPMUX_DATA_BASE", data_base.path())
         .env("BPMUX_AUTH_TOKEN_PATH", auth_token.path())
         .env("BPMUX_BINARY_WATCH_INTERVAL_SECS", "1")
-        .env("BPMUX_GH_BASE_URL", "http://127.0.0.1:1/")
-        .env("BPMUX_REPO", "acme/bpmux")
-        .env("GH_TOKEN", "fake-test-token")
         .env(
             "BPMUX_LOG",
             std::env::temp_dir().join("bpmux-self-update-e2e-diag.log"),

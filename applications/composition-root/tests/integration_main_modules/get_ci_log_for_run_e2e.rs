@@ -64,7 +64,7 @@ fn get_ci_log_for_run_returns_structured_failures_from_mocked_actions() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let result = dev
@@ -98,7 +98,7 @@ fn get_ci_log_for_run_rejects_missing_run_id() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let result = dev

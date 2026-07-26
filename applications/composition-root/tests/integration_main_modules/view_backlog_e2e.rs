@@ -23,7 +23,7 @@ fn view_backlog_returns_zero_counts_for_empty_board() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let result = pm
@@ -94,7 +94,7 @@ fn view_backlog_reflects_seeded_states_via_fixture() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(1500)).await;
 
         let result = pm

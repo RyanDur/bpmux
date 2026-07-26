@@ -4,6 +4,25 @@ use tokio_util::sync::CancellationToken;
 
 use sync::OrchestratorHandle;
 
+fn resolve_tracker(data_gateways: &storage::DataGateways) -> transport::rest::TrackerHandle {
+    let connections = integrations::data_gateway::GithubConnectionDataGateway::new(
+        data_gateways.gateway.clone(),
+        Arc::new(integrations::github::keychain::KeychainSecretStore),
+    );
+    match connections.resolve() {
+        Ok(Some(connection)) => {
+            integrations::github::GitHubSourceAdapter::from_connection(&connection).map(Arc::new)
+        }
+        Ok(None) => None,
+        Err(e) => {
+            diag::log_diag(&format!(
+                "github-connection: resolve failed at boot — running unconnected: {e}"
+            ));
+            None
+        }
+    }
+}
+
 fn startup_routing_id(select: &store::Select, identity: &str) -> String {
     select
         .select(|state| store::routing::resolve(&state.routing, user_routing::short_name(identity)))
@@ -20,8 +39,7 @@ pub async fn run_server(
 ) -> anyhow::Result<()> {
     let auth_state = build_auth_state()?;
 
-    let tracker: transport::rest::TrackerHandle =
-        integrations::github::GitHubSourceAdapter::from_env().map(std::sync::Arc::new);
+    let tracker: transport::rest::TrackerHandle = resolve_tracker(&data_gateways);
 
     let race_window = race_window_barrier_from_env();
 

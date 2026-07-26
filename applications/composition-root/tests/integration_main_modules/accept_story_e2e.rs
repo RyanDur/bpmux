@@ -130,10 +130,10 @@ fn accept_story_view_board_reflects_accepted_via_mocked_seed() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, &base_url, 600)
+        harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, 600)
             .await;
 
         let mut pushed = false;
@@ -193,10 +193,10 @@ fn accept_role_survives_ingest_poll_after_acceptor_label_seed() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, &base_url, 601)
+        harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, 601)
             .await;
 
         let mut pushed = false;

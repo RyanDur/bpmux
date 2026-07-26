@@ -117,12 +117,11 @@ pub async fn seed_team_verifiable_evidence(bpmux: &super::pty::TestBpmux, story_
 
 pub async fn seed_team_verifiable_evidence_with_mock_gh(
     bpmux: &super::pty::TestBpmux,
-    mock_gh_base_url: &str,
     story_id: u64,
 ) {
-    let pm = TestBridge::connect_with_mock_gh(bpmux, "pm", mock_gh_base_url).await;
-    let designer = TestBridge::connect_with_mock_gh(bpmux, "designer", mock_gh_base_url).await;
-    let dev = TestBridge::connect_with_mock_gh(bpmux, "dev", mock_gh_base_url).await;
+    let pm = TestBridge::connect_with_mock_gh(bpmux, "pm").await;
+    let designer = TestBridge::connect_with_mock_gh(bpmux, "designer").await;
+    let dev = TestBridge::connect_with_mock_gh(bpmux, "dev").await;
     pm.call_tool(
         "label_story",
         serde_json::json!({

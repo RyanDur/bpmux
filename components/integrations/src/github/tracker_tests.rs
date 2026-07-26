@@ -114,114 +114,38 @@ fn log_labels_fetch_failure_distinguishes_backends() {
     assert!(contents.contains("(gh parse)") && contents.contains("#3"));
 }
 
-mod tracker_selection {
-    use super::super::tracker::{FallbackReason, TrackerSelection, select_from_env};
-    use std::collections::HashMap;
+mod tracker_construction {
+    use super::super::tracker::OctocrabStoryTracker;
+    use crate::github::connection::GithubConnection;
 
-    fn reader(env: HashMap<&str, &str>) -> impl Fn(&str) -> Option<String> {
-        let owned: HashMap<String, String> = env
-            .into_iter()
-            .map(|(k, v)| (k.to_string(), v.to_string()))
-            .collect();
-        move |key: &str| owned.get(key).cloned()
+    #[tokio::test]
+    async fn a_hosted_connection_builds_a_tracker() {
+        let connection = GithubConnection::Hosted {
+            owner: "owner".to_string(),
+            repo: "bpmux".to_string(),
+            token: "t".to_string(),
+        };
+        assert!(OctocrabStoryTracker::from_connection(&connection).is_some());
+    }
+
+    #[tokio::test]
+    async fn a_base_url_connection_builds_a_tracker_without_credentials() {
+        let connection = GithubConnection::WithBaseUrl {
+            owner: "acme".to_string(),
+            repo: "bpmux".to_string(),
+            base_url: "http://127.0.0.1:9012/".to_string(),
+        };
+        assert!(OctocrabStoryTracker::from_connection(&connection).is_some());
     }
 
     #[test]
-    fn returns_octocrab_when_repo_and_gh_token_set() {
-        let r = reader(HashMap::from([
-            ("BPMUX_REPO", "owner/bpmux"),
-            ("GH_TOKEN", "t"),
-        ]));
-        assert_eq!(
-            select_from_env(r),
-            TrackerSelection::Octocrab {
-                owner: "owner".to_string(),
-                repo: "bpmux".to_string(),
-                token: "t".to_string(),
-            }
-        );
-    }
-
-    #[test]
-    fn returns_octocrab_when_repo_and_github_token_set() {
-        let r = reader(HashMap::from([
-            ("BPMUX_REPO", "owner/bpmux"),
-            ("GITHUB_TOKEN", "gh-actions-token"),
-        ]));
-        assert!(matches!(
-            select_from_env(r),
-            TrackerSelection::Octocrab { .. }
-        ));
-    }
-
-    #[test]
-    fn gh_token_wins_when_both_tokens_set() {
-        let r = reader(HashMap::from([
-            ("BPMUX_REPO", "o/r"),
-            ("GH_TOKEN", "primary"),
-            ("GITHUB_TOKEN", "secondary"),
-        ]));
-        match select_from_env(r) {
-            TrackerSelection::Octocrab { token, .. } => assert_eq!(token, "primary"),
-            other => panic!("expected Octocrab, got {other:?}"),
-        }
-    }
-
-    #[test]
-    fn fallback_no_repo_when_bpmux_repo_missing() {
-        let r = reader(HashMap::from([("GH_TOKEN", "t")]));
-        assert_eq!(
-            select_from_env(r),
-            TrackerSelection::Fallback(FallbackReason::NoRepo)
-        );
-    }
-
-    #[test]
-    fn fallback_malformed_repo_when_no_slash() {
-        let r = reader(HashMap::from([
-            ("BPMUX_REPO", "justname"),
-            ("GH_TOKEN", "t"),
-        ]));
-        assert_eq!(
-            select_from_env(r),
-            TrackerSelection::Fallback(FallbackReason::MalformedRepo)
-        );
-    }
-
-    #[test]
-    fn fallback_malformed_repo_when_owner_empty() {
-        let r = reader(HashMap::from([("BPMUX_REPO", "/bpmux"), ("GH_TOKEN", "t")]));
-        assert_eq!(
-            select_from_env(r),
-            TrackerSelection::Fallback(FallbackReason::MalformedRepo)
-        );
-    }
-
-    #[test]
-    fn fallback_malformed_repo_when_name_empty() {
-        let r = reader(HashMap::from([("BPMUX_REPO", "owner/"), ("GH_TOKEN", "t")]));
-        assert_eq!(
-            select_from_env(r),
-            TrackerSelection::Fallback(FallbackReason::MalformedRepo)
-        );
-    }
-
-    #[test]
-    fn fallback_no_token_when_neither_token_set() {
-        let r = reader(HashMap::from([("BPMUX_REPO", "o/r")]));
-        assert_eq!(
-            select_from_env(r),
-            TrackerSelection::Fallback(FallbackReason::NoToken)
-        );
-    }
-
-    #[test]
-    fn fallback_when_env_is_completely_empty() {
-        let r = reader(HashMap::new());
-        assert_eq!(
-            select_from_env(r),
-            TrackerSelection::Fallback(FallbackReason::NoRepo)
-        );
+    fn an_unparseable_base_url_yields_no_tracker() {
+        let connection = GithubConnection::WithBaseUrl {
+            owner: "acme".to_string(),
+            repo: "bpmux".to_string(),
+            base_url: "not a uri".to_string(),
+        };
+        assert!(OctocrabStoryTracker::from_connection(&connection).is_none());
     }
 }
 

@@ -58,7 +58,7 @@ fn view_board_response_exposes_story_fields_for_agent_assertions() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(1500)).await;
 
         let board = dev
@@ -115,8 +115,8 @@ fn deliver_story_signal_routes_desk_check_to_designer_not_dev() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
-        let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer", &base_url).await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev").await;
+        let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer").await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
@@ -177,9 +177,9 @@ fn pass_desk_check_signal_routes_to_owner_not_dev() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer", &base_url).await;
-        let owner = TestBridge::connect_with_mock_gh(&bpmux, "owner", &base_url).await;
-        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
+        let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer").await;
+        let owner = TestBridge::connect_with_mock_gh(&bpmux, "owner").await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev").await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
@@ -253,10 +253,10 @@ fn fail_desk_check_signal_reaches_dev_and_the_owner_but_not_other_peers() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer", &base_url).await;
-        let owner = TestBridge::connect_with_mock_gh(&bpmux, "owner", &base_url).await;
-        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
-        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
+        let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer").await;
+        let owner = TestBridge::connect_with_mock_gh(&bpmux, "owner").await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev").await;
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm").await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
@@ -355,9 +355,9 @@ fn accept_story_allows_pm_and_broadcasts_role_attribution() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
-        let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer", &base_url).await;
-        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm").await;
+        let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer").await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev").await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
@@ -469,8 +469,8 @@ fn accept_story_refuses_designer_and_dev_per_workflow_substrate() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer", &base_url).await;
-        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
+        let designer = TestBridge::connect_with_mock_gh(&bpmux, "designer").await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev").await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
@@ -521,12 +521,11 @@ fn accept_story_is_idempotent_on_already_closed() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm").await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
-        harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, &base_url, 213)
-            .await;
+        harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, 213).await;
 
         let first = pm
             .call_tool(

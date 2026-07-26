@@ -23,8 +23,8 @@ fn external_state_change_propagates_to_two_bridges_via_shared_mock_gh() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let bridge_a = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
-        let bridge_b = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
+        let bridge_a = TestBridge::connect_with_mock_gh(&bpmux, "pm").await;
+        let bridge_b = TestBridge::connect_with_mock_gh(&bpmux, "dev").await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 
@@ -202,8 +202,8 @@ fn bridge_a_create_story_propagates_to_bridge_b_via_shared_mock_gh() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let bridge_a = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
-        let bridge_b = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
+        let bridge_a = TestBridge::connect_with_mock_gh(&bpmux, "pm").await;
+        let bridge_b = TestBridge::connect_with_mock_gh(&bpmux, "dev").await;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
 

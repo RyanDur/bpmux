@@ -131,7 +131,7 @@ fn fail_desk_check_view_board_reflects_in_progress_via_fixture_seed() {
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
         let designer =
-            TestBridge::connect_with_mock_gh(&bpmux, "designer", &base_url).await;
+            TestBridge::connect_with_mock_gh(&bpmux, "designer").await;
         tokio::time::sleep(Duration::from_millis(1500)).await;
 
         designer

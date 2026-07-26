@@ -6,18 +6,14 @@ mod errors;
 mod fetch;
 mod json_shape;
 mod rest_helpers;
-mod selection;
 mod sub_issues;
 mod trait_impl;
 
 #[cfg(test)]
 mod gh_state_label_tests;
 
-#[cfg(test)]
-pub(crate) use selection::FallbackReason;
-pub(crate) use selection::{TrackerSelection, select_from_env};
-
 use super::trait_def::{ensure_crypto_provider_installed, log_labels_fetch_failure};
+use crate::github::connection::GithubConnection;
 
 #[derive(Clone)]
 pub struct OctocrabStoryTracker {
@@ -34,40 +30,34 @@ impl OctocrabStoryTracker {
 }
 
 impl OctocrabStoryTracker {
-    pub fn from_env() -> Option<Self> {
-        match select_from_env(|k| std::env::var(k).ok()) {
-            TrackerSelection::Octocrab { owner, repo, token } => {
+    pub fn from_connection(connection: &GithubConnection) -> Option<Self> {
+        match connection {
+            GithubConnection::Hosted { owner, repo, token } => {
                 ensure_crypto_provider_installed();
                 let client = octocrab::OctocrabBuilder::new()
-                    .personal_token(token)
+                    .personal_token(token.clone())
                     .build()
                     .ok()?;
                 Some(Self {
                     client,
-                    owner,
-                    repo,
+                    owner: owner.clone(),
+                    repo: repo.clone(),
                     rate_limit_observer: rate_limit::RateLimitObserver::new(),
                 })
             }
-            TrackerSelection::OctocrabWithBaseUrl {
+            GithubConnection::WithBaseUrl {
                 owner,
                 repo,
                 base_url,
-            } => match Self::with_base_url(&base_url, owner, repo) {
+            } => match Self::with_base_url(base_url, owner.clone(), repo.clone()) {
                 Ok(tracker) => Some(tracker),
                 Err(e) => {
                     diag::log_diag(&format!(
-                        "OctocrabStoryTracker::from_env: BPMUX_GH_BASE_URL build failed: {e}"
+                        "OctocrabStoryTracker::from_connection: base_url build failed: {e}"
                     ));
                     None
                 }
             },
-            TrackerSelection::Fallback(reason) => {
-                diag::log_diag(&format!(
-                    "OctocrabStoryTracker::from_env: missing env config ({reason:?})"
-                ));
-                None
-            }
         }
     }
 

@@ -15,6 +15,7 @@ import {
   readdirSync,
   statSync
 } from 'fs'
+import { execFileSync } from 'child_process'
 import { tmpdir } from 'os'
 import { join, basename } from 'path'
 import * as net from 'net'
@@ -51,6 +52,7 @@ export type LaunchOpts = {
   seedRoster?: ReadonlyArray<string>
   extraEnv?: Record<string, string>
   preserveTempPaths?: boolean
+  ghBaseUrl?: string
 }
 
 export type LaunchResult = {
@@ -101,6 +103,12 @@ export const pickSafeInheritedEnv = (env: NodeJS.ProcessEnv = process.env): Node
  * `app.close` so the cleanup fires automatically in every test's
  * `finally { await app.close() }` path.
  */
+const SEEDER_PATH = join(__dirname, '../../../..', 'target/debug/seed-github-connection')
+
+const seedGithubConnection = (dataBase: string, baseUrl: string): void => {
+  execFileSync(SEEDER_PATH, [dataBase, 'acme/bpmux', baseUrl])
+}
+
 const TRASH_ROOT = join(tmpdir(), 'bpmux-e2e-trash')
 const TRASH_STALE_MS = 30 * 60 * 1000
 
@@ -184,15 +192,13 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
   ownedTempPaths.push(installedDir)
   const defaultInstalledBinaryPath = join(installedDir, 'bpmux')
 
-  const callerSetsGhBaseUrl = !!opts.extraEnv?.['BPMUX_GH_BASE_URL']
   let defaultMockGh: MockGhServer | undefined
-  const ghEnvOverrides: Record<string, string> = {}
-  if (!callerSetsGhBaseUrl) {
+  const ghBaseUrl = await (async () => {
+    if (opts.ghBaseUrl) return opts.ghBaseUrl
     defaultMockGh = await startMockGhServer()
-    ghEnvOverrides['BPMUX_GH_BASE_URL'] = defaultMockGh.baseUrl
-    ghEnvOverrides['BPMUX_REPO'] = 'acme/bpmux'
-    ghEnvOverrides['GH_TOKEN'] = 'mock-gh-token'
-  }
+    return defaultMockGh.baseUrl
+  })()
+  seedGithubConnection(dataBase, ghBaseUrl)
 
   const app = await electron.launch({
     args: ['out/main/index.js', `--user-data-dir=${userDataDir}`],
@@ -221,7 +227,6 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       // path. Tests that need FileStorage explicitly (e.g., asserting
       // on-disk artifacts) can override via opts.extraEnv.
       BPMUX_E2E: '1',
-      ...ghEnvOverrides,
       ...(opts.extraEnv ?? {})
     }
   })
@@ -342,13 +347,6 @@ export const launchTwoElectronsSharedBackend = async (
   }
 }
 
-// #1127: Playwright counterpart to #724's `TestBpmux::start_with_mock_gh`.
-// Spawns an in-process httpmock-style GH server and points the spawned
-// bpmux's GitHubSourceAdapter at it via BPMUX_GH_BASE_URL. Drops
-// BPMUX_TEST_MODE entirely — server uses the prod orchestrator with
-// the real adapter against the mock boundary. Tests drive mutations
-// via /api/rpc/{tool} (auth-gated), not /api/test/* (deprecated as
-// the InMemoryAdapter substrate retires).
 export type MockGhLaunchResult = {
   win: Page
   mockGh: MockGhServer
@@ -369,13 +367,8 @@ export const launchWithMockGh = async (opts: LaunchOpts = {}): Promise<MockGhLau
   const authTokenPath = join(authDir, 'auth_token')
   const result = await launchIsolatedElectron({
     ...opts,
+    ghBaseUrl: mockGh.baseUrl,
     extraEnv: {
-      // Real GitHubSourceAdapter aimed at the in-process mock.
-      // BPMUX_REPO + GH_TOKEN are required by `from_env()` even
-      // though the mock ignores credentials.
-      BPMUX_GH_BASE_URL: mockGh.baseUrl,
-      BPMUX_REPO: 'acme/bpmux',
-      GH_TOKEN: 'mock-gh-token',
       BPMUX_AUTH_TOKEN_PATH: authTokenPath,
       BPMUX_POLL_INTERVAL_SECS: '600',
       ...(opts.extraEnv ?? {})

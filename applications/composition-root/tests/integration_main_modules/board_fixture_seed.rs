@@ -86,7 +86,7 @@ fn bpmux_surfaces_fixture_story_body_through_real_adapter_via_mocked_octocrab() 
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(2500)).await;
 
         let story = dev

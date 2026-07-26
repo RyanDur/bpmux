@@ -6,8 +6,10 @@ impl GitHubSourceAdapter {
         Self { inner }
     }
 
-    pub fn from_env() -> Option<Self> {
-        OctocrabStoryTracker::from_env().map(Self::new)
+    pub fn from_connection(
+        connection: &crate::github::connection::GithubConnection,
+    ) -> Option<Self> {
+        OctocrabStoryTracker::from_connection(connection).map(Self::new)
     }
 
     pub async fn accept_story(&self, number: u64) -> Result<(), String> {

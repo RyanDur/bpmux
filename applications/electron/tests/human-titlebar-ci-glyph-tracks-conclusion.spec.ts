@@ -35,11 +35,7 @@ const launchWithCiConclusion = async (
   const { app } = await launchIsolatedElectron({
     dataBase,
     userDataDir: udd,
-    extraEnv: {
-      BPMUX_GH_BASE_URL: mockGh.baseUrl,
-      BPMUX_REPO: 'acme/bpmux',
-      GH_TOKEN: 'mock-gh-token'
-    }
+    ghBaseUrl: mockGh.baseUrl
   })
   return { app, mockGh }
 }

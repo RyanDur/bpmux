@@ -369,8 +369,8 @@ fn a_rejected_acceptance_reopens_the_closed_story_for_rework() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
-        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm").await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev").await;
         let mut ingested = false;
         for _ in 0..POLL_ATTEMPTS {
             if pm
@@ -388,7 +388,7 @@ fn a_rejected_acceptance_reopens_the_closed_story_for_rework() {
             "the mock-GH story reaches the canonical store via ingest before the walk begins"
         );
 
-        harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, &base_url, 700)
+        harness::story_helpers::seed_team_verifiable_evidence_with_mock_gh(&bpmux, 700)
             .await;
 
         let mut labeled = false;

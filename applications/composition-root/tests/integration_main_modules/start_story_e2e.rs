@@ -145,7 +145,7 @@ fn start_story_view_board_reflects_in_progress_via_board_fixture_seed() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev", &base_url).await;
+        let dev = TestBridge::connect_with_mock_gh(&bpmux, "dev").await;
         tokio::time::sleep(Duration::from_millis(1500)).await;
 
         dev.call_tool(

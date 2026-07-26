@@ -60,8 +60,7 @@ impl CiJobStatusError {
         Self {
             code: "auth_failed",
             message: "GitHub authentication failed (401/403)".to_string(),
-            next_action: "Verify GITHUB_TOKEN environment / token scope (repo + workflow)"
-                .to_string(),
+            next_action: "Verify the GitHub connection's token scope (repo + workflow)".to_string(),
         }
     }
 

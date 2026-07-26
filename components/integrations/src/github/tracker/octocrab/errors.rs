@@ -12,7 +12,7 @@ impl BoardFetchError {
     pub fn user_message(&self) -> String {
         match self {
             Self::AuthInvalid => {
-                "GITHUB_TOKEN missing or invalid — set it and restart bpmux".to_string()
+                "GitHub token missing or invalid — reconnect GitHub and restart bpmux".to_string()
             }
             Self::RateLimited {
                 retry_after_secs: Some(s),

@@ -146,7 +146,7 @@ fn reject_story_view_board_reflects_ready_via_fixture_seed() {
     let bpmux = TestBpmux::start_with_mock_gh(&base_url);
     let rt = tokio::runtime::Runtime::new().expect("rt");
     rt.block_on(async {
-        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm", &base_url).await;
+        let pm = TestBridge::connect_with_mock_gh(&bpmux, "pm").await;
         tokio::time::sleep(Duration::from_millis(1500)).await;
 
         pm.call_tool(
