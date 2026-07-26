@@ -47,7 +47,10 @@ struct LegacyRoutingIdentity {
 }
 
 fn is_ephemeral_stories(msg: &Message) -> bool {
-    matches!(msg.state_delta, Some(StateDeltaPayload::Stories { .. }))
+    matches!(
+        msg.state_delta,
+        Some(StateDeltaPayload::Stories { .. }) | Some(StateDeltaPayload::Roster { .. })
+    )
 }
 
 pub fn migrate_file_log_to_sqlite(dir: &Path) -> Result<MigrationReport, MigrationError> {

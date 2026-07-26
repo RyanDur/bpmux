@@ -1,13 +1,20 @@
 pub fn broadcast_state_delta(hub: &hub::Hub, payload: message::StateDeltaPayload, label: &str) {
-    let msg = message::Message {
+    if let Err(e) = hub.broadcast(&state_delta_message(payload)) {
+        diag::log_diag(&format!("{label}: state-delta broadcast failed: {e}"));
+    }
+}
+
+pub fn broadcast_state_delta_ephemeral(hub: &hub::Hub, payload: message::StateDeltaPayload) {
+    hub.broadcast_ephemeral(&state_delta_message(payload));
+}
+
+fn state_delta_message(payload: message::StateDeltaPayload) -> message::Message {
+    message::Message {
         from: "bpmux".to_string(),
         text: String::new(),
         ts: chrono::Utc::now(),
         message_type: message::MessageType::StateDelta,
         state_delta: Some(payload),
         ..message::Message::default()
-    };
-    if let Err(e) = hub.broadcast(&msg) {
-        diag::log_diag(&format!("{label}: state-delta broadcast failed: {e}"));
     }
 }

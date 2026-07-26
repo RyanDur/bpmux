@@ -355,6 +355,22 @@ async fn drain_roster_presence(
 }
 
 #[tokio::test]
+async fn roster_changes_reach_the_wire_but_never_the_log() {
+    let (hub, mut rx, _dir) = fresh_hub();
+    let store = owner_park_kernel(hub.clone());
+
+    seed_dev_online_kernel(&store);
+
+    let members = drain_roster_presence(&mut rx).await;
+    assert_eq!(members.len(), 1, "the wire carries the roster delta");
+    let logged = hub.read_messages().expect("log readable");
+    assert!(
+        logged.is_empty(),
+        "the log stays empty — roster rebuilds from live links, not history"
+    );
+}
+
+#[tokio::test]
 async fn owner_park_marks_delivering_role_blocked_and_broadcasts() {
     use product_management::story::Work;
 

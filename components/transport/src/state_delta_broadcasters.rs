@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::state_delta::broadcast_state_delta;
+use crate::state_delta::{broadcast_state_delta, broadcast_state_delta_ephemeral};
 use ci::slice::{CiBroadcastListener, CiSnapshot};
 use message::{CiSnapshotWire, ReactionAggregateWire, StateDeltaPayload};
 use reactions::slice::{AggregatedReaction, ReactionsBroadcastListener};
@@ -20,7 +20,7 @@ impl RosterHubBroadcaster {
 
 impl RosterBroadcastListener for RosterHubBroadcaster {
     fn on_changed(&self, members: &[RosterMember]) {
-        broadcast_state_delta(
+        broadcast_state_delta_ephemeral(
             &self.hub,
             StateDeltaPayload::Roster {
                 members: roster::members_wire(members, |routing_id| {
@@ -28,7 +28,6 @@ impl RosterBroadcastListener for RosterHubBroadcaster {
                         .select(|state| store::routing::role_for(&state.routing, routing_id))
                 }),
             },
-            "roster_listener",
         );
     }
 }

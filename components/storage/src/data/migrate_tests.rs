@@ -86,10 +86,13 @@ fn drops_only_board_snapshot_keeps_all_else_in_order() {
     );
 
     let report = migrate_file_log_to_sqlite(dir.path()).unwrap();
-    assert_eq!(report.filtered, 2, "both Stories deltas dropped");
     assert_eq!(
-        report.migrated, 5,
-        "chat x3 + Roster + BoardInvalidated migrated (roster is durable per #1642; BoardInvalidated is a replay-event)"
+        report.filtered, 3,
+        "both Stories deltas and the Roster delta dropped"
+    );
+    assert_eq!(
+        report.migrated, 4,
+        "chat x3 + BoardInvalidated migrated (roster rebuilds from live links — owner ruling 2026-07-25 overrides #1642; BoardInvalidated stays a replay-event)"
     );
 
     let migrated = read_target(dir.path());
@@ -102,8 +105,8 @@ fn drops_only_board_snapshot_keeps_all_else_in_order() {
             .iter()
             .filter(|m| matches!(m.state_delta, Some(StateDeltaPayload::Roster { .. })))
             .count(),
-        1,
-        "roster delta is preserved (durable content, not bloat)"
+        0,
+        "no roster delta survives — roster rebuilds from live links"
     );
     assert_eq!(
         migrated
