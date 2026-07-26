@@ -6,6 +6,9 @@ license.workspace = true
 description = "The CI domain: run/job/log vocabulary, state classification and reporting, the poll-fetch port, and the slice (actions, reduce, selectors, listeners)"
 
 [dependencies]
+database-support = { path = "../database-support" }
+rusqlite = { version = "0.32", features = ["bundled"] }
+diag = { path = "../diag" }
 message = { path = "../message" }
 rate_limit = { path = "../rate_limit" }
 workflow = { path = "../workflow" }

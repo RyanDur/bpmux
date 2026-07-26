@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use awareness::SurfacedTopicsRepo;
 use awareness::data_gateway::TopicsDataGateway;
+use ci::data_gateway::CiRunsDataGateway;
 use database_support::DatabaseGateway;
 use memory::lessons::{LessonDataGateway, LessonRepo};
 use message_log::MessageLog;
@@ -40,6 +41,7 @@ pub struct DataGateways {
     pub topics: Arc<dyn SurfacedTopicsRepo>,
     pub lessons: Arc<dyn LessonRepo>,
     pub transitions: Arc<TransitionsDataGateway>,
+    pub ci_runs: Arc<CiRunsDataGateway>,
 }
 
 pub fn open(dir: &Path) -> DataGateways {
@@ -61,6 +63,7 @@ pub fn open(dir: &Path) -> DataGateways {
         topics: Arc::new(TopicsDataGateway::new(gateway.clone())),
         lessons: Arc::new(LessonDataGateway::new(dir.to_path_buf())),
         transitions: Arc::new(TransitionsDataGateway::new(gateway.clone())),
+        ci_runs: Arc::new(CiRunsDataGateway::new(gateway.clone())),
         gateway,
     }
 }

@@ -6,6 +6,7 @@ license.workspace = true
 description = "The persistence edge: the sqlite store implementing the feature-owned repo ports over the injected database gateway"
 
 [dependencies]
+ci = { path = "../ci" }
 awareness = { path = "../awareness" }
 diag = { path = "../diag" }
 memory = { path = "../memory" }

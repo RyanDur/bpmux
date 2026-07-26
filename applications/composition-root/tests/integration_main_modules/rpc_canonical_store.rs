@@ -103,7 +103,8 @@ async fn two_callers_observe_same_canonical_store_through_rpc() {
         .layer(Extension(dispatch))
         .layer(Extension(no_race_window))
         .layer(Extension(app_store.selector()))
-        .layer(Extension(storage::open(&hub.dir).transitions));
+        .layer(Extension(storage::open(&hub.dir).transitions))
+        .layer(Extension(storage::open(&hub.dir).ci_runs));
 
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
     let port = listener.local_addr().expect("addr").port();

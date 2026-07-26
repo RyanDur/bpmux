@@ -76,6 +76,7 @@ pub async fn run_server(
         pty_registry,
         lessons: data_gateways.lessons.clone(),
         transitions: data_gateways.transitions.clone(),
+        ci_runs: data_gateways.ci_runs.clone(),
         port,
     });
     let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{port}")).await?;

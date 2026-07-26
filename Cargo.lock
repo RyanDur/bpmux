@@ -427,8 +427,11 @@ name = "ci"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "database-support",
+ "diag",
  "message",
  "rate_limit",
+ "rusqlite",
  "serde",
  "serde_json",
  "workflow",
@@ -2978,6 +2981,7 @@ version = "0.1.0"
 dependencies = [
  "awareness",
  "chrono",
+ "ci",
  "database-support",
  "diag",
  "memory",

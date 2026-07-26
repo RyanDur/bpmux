@@ -179,6 +179,9 @@ fn assemble(
     app_store.add_listener(Arc::new(store::TransitionPersister::new(
         data_gateways.transitions.clone(),
     )));
+    app_store.add_listener(Arc::new(store::CiRunsPersister::new(
+        data_gateways.ci_runs.clone(),
+    )));
     StoreParts {
         hub,
         rate_limit_observer,

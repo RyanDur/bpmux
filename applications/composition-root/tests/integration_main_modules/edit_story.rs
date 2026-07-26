@@ -83,7 +83,8 @@ async fn edit_story_replaces_body_at_canonical_store() {
         .layer(Extension(dispatch))
         .layer(Extension(no_race_window))
         .layer(Extension(app_store.selector()))
-        .layer(Extension(storage::open(&hub.dir).transitions));
+        .layer(Extension(storage::open(&hub.dir).transitions))
+        .layer(Extension(storage::open(&hub.dir).ci_runs));
 
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
     let port = listener.local_addr().expect("addr").port();

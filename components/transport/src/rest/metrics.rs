@@ -6,11 +6,13 @@ use axum::response::IntoResponse;
 
 use super::board_metrics;
 use super::shared::json_headers;
+use ci::data_gateway::CiRunsDataGateway;
 use product_management::data_gateway::TransitionsDataGateway;
 
 pub fn assemble_metrics(
     select: &store::Select,
     transitions: &TransitionsDataGateway,
+    ci_runs: &CiRunsDataGateway,
 ) -> serde_json::Value {
     let now = chrono::Utc::now();
     let window_start = now - chrono::Duration::days(view::velocity::WINDOW_DAYS);
@@ -41,14 +43,20 @@ pub fn assemble_metrics(
 
     let mut payload = serde_json::to_value(&flow).unwrap_or_else(|_| serde_json::json!({}));
     payload["board"] = serde_json::to_value(&board).unwrap_or_else(|_| serde_json::json!({}));
+    let dora = view::dora::compute(
+        &ci_runs.since(window_start.timestamp()),
+        view::velocity::WINDOW_DAYS,
+    );
+    payload["dora"] = serde_json::to_value(&dora).unwrap_or_else(|_| serde_json::json!({}));
     payload
 }
 
 pub async fn get_metrics(
     Extension(select): Extension<store::Select>,
     Extension(transitions): Extension<Arc<TransitionsDataGateway>>,
+    Extension(ci_runs): Extension<Arc<CiRunsDataGateway>>,
 ) -> impl IntoResponse {
-    let payload = assemble_metrics(&select, &transitions);
+    let payload = assemble_metrics(&select, &transitions, &ci_runs);
     (
         StatusCode::OK,
         json_headers(),

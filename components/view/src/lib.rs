@@ -1,4 +1,5 @@
 pub mod board;
+pub mod dora;
 pub mod roadmap_render;
 pub mod velocity;
 

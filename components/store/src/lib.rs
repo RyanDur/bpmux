@@ -25,10 +25,10 @@ mod sync_reduce_tests;
 pub use action::PollKind;
 pub use app::{AppAction, AppState, app_reduce};
 pub use app::{
-    BoardPlacementPersister, BoardPlacementReconciler, CiBroadcast, CiListeners, EvidencePersister,
-    LocalHistoryPersister, OwnerParkListener, ReactionsBroadcast, ReactionsListeners,
-    ReactionsPersister, RosterBroadcast, RosterListeners, RoutingPersister, SharedHistoryPersister,
-    TransitionPersister,
+    BoardPlacementPersister, BoardPlacementReconciler, CiBroadcast, CiListeners, CiRunsPersister,
+    EvidencePersister, LocalHistoryPersister, OwnerParkListener, ReactionsBroadcast,
+    ReactionsListeners, ReactionsPersister, RosterBroadcast, RosterListeners, RoutingPersister,
+    SharedHistoryPersister, TransitionPersister,
 };
 pub use ci::{BoxedFuture, CiAction, CiBroadcastListener, CiPollFetch, CiSnapshot};
 pub use commitments::CommitmentsAction;

@@ -19,6 +19,7 @@ use product_management::story::slice::{Stories, StoryAction};
 
 mod action_conversions;
 mod board_placement;
+mod ci_runs;
 mod dispatch_log;
 mod evidence;
 mod history;
@@ -29,6 +30,7 @@ mod reduce;
 mod routing;
 mod transitions;
 pub use board_placement::{BoardPlacementPersister, BoardPlacementReconciler};
+pub use ci_runs::CiRunsPersister;
 pub(super) use dispatch_log::validate_and_log;
 pub use evidence::EvidencePersister;
 pub use history::{LocalHistoryPersister, SharedHistoryPersister};
