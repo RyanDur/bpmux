@@ -39,6 +39,7 @@
     }
   }
 
+  & .titlebar-settings,
   & .titlebar-theme-toggle {
     display: inline-flex;
     align-items: center;

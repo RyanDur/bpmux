@@ -218,6 +218,7 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
       // them).
       BPMUX_TEST_SEED_API: '1',
       BPMUX_TEST_SEED_CI_GREEN: '1',
+      BPMUX_TEST_INMEMORY_SECRETS: '1',
       // #1289 + #1290: route bpmux's session storage through
       // MemoryStorage so per-test backend-startup disk-I/O cost is
       // eliminated — the substrate-class that empirically falsified

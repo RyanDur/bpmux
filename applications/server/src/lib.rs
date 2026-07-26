@@ -5,10 +5,16 @@ use tokio_util::sync::CancellationToken;
 use sync::OrchestratorHandle;
 
 fn github_connections(data_gateways: &storage::DataGateways) -> transport::rest::ConnectionsHandle {
+    let secrets: Arc<dyn integrations::github::connection::SecretStore> =
+        if setup::ephemeral_secrets_enabled() {
+            Arc::new(integrations::in_memory::InMemorySecretStore::default())
+        } else {
+            Arc::new(integrations::github::keychain::KeychainSecretStore)
+        };
     Arc::new(
         integrations::data_gateway::GithubConnectionDataGateway::new(
             data_gateways.gateway.clone(),
-            Arc::new(integrations::github::keychain::KeychainSecretStore),
+            secrets,
         ),
     )
 }

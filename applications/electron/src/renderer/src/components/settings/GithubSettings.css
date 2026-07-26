@@ -1,0 +1,51 @@
+.github-settings {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(26rem, calc(100vw - 4rem));
+  max-height: min(30rem, calc(100vh - 4rem));
+  padding: var(--space-16);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--bg-base);
+  color: var(--fg-primary);
+  z-index: 40;
+}
+
+.github-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-8);
+}
+
+.github-settings-header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.github-settings-form {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.github-settings-form label {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+  color: var(--fg-secondary);
+}
+
+.github-settings-error {
+  color: var(--accent-error);
+}
+
+.github-settings-disconnect {
+  margin-top: var(--space-8);
+}
+
+.github-settings-note {
+  margin-top: var(--space-16);
+  font-size: 0.75rem;
+  color: var(--fg-secondary);
+}

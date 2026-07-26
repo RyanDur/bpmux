@@ -2,12 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import Board from '@components/board/Board'
 import BoardResizeHandle from '@components/board/resize/BoardResizeHandle'
 import Chat from '@components/chat/Chat'
-import CiGlyph from '@components/ci/CiGlyph'
+import GithubSettings from '@components/settings/GithubSettings'
+import Titlebar from '@components/titlebar/Titlebar'
 import { useBoardLayout } from '@components/board/useBoardLayout'
 import { useScope } from './useScope'
 import { useTerminals } from '@components/terminal/useTerminals'
-import { useTheme } from './useTheme'
-import { MoonIcon, SunIcon } from './icons/TitlebarIcons'
 import Sidebar from '@components/sidebar/Sidebar'
 import type { ChatMessage, ConnectionStatus } from '@transport/types'
 import { type SendOptions } from '@state'
@@ -43,7 +42,7 @@ const AppShell = ({
   } = useBoardLayout()
   const confirmDialogRef = useRef<HTMLDialogElement>(null)
   const [metricsOpen, setMetricsOpen] = useState<boolean>(false)
-  const { theme, toggle: toggleTheme } = useTheme()
+  const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
   const bridge = typeof window !== 'undefined' ? window.bpmux : undefined
 
   const {
@@ -96,35 +95,7 @@ const AppShell = ({
 
   return (
     <main className="app" data-test="app-root">
-      <header className="titlebar" data-test="titlebar">
-        <strong
-          className={`titlebar-app titlebar-app--${status}`}
-          data-status={status}
-          data-test="titlebar-app"
-          aria-label={`bpmux ${status === 'connected' ? 'online' : status === 'connecting' ? 'reconnecting' : 'offline'}`}
-        >
-          bpmux
-          <small className="titlebar-app-state" data-test="titlebar-app-state">
-            {status === 'connected'
-              ? 'online'
-              : status === 'connecting'
-                ? 'reconnecting'
-                : 'offline'}
-          </small>
-        </strong>
-        <button
-          type="button"
-          className="titlebar-theme-toggle"
-          onClick={toggleTheme}
-          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-          title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-        >
-          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-        </button>
-        <output data-test="titlebar-ci">
-          <CiGlyph />
-        </output>
-      </header>
+      <Titlebar status={status} onOpenSettings={() => setSettingsOpen(true)} />
       <section className="app-body">
         <Sidebar
           recipient={recipient}
@@ -172,6 +143,13 @@ const AppShell = ({
         ) : null}
         <Board hidden={!boardOpen} width={boardWidth} />
       </section>
+      <GithubSettings
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        apiBase={bridge?.apiBase}
+        authToken={bridge?.authToken}
+        ownerNonce={bridge?.ownerNonce}
+      />
       {confirmClose && (
         <dialog
           ref={confirmDialogRef}

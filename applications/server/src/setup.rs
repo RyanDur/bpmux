@@ -18,6 +18,13 @@ pub(super) fn hydrate_outbox(outbox: &Arc<dyn source_sync::OutboxRepo>) -> Vec<Q
     }
 }
 
+pub(super) fn ephemeral_secrets_enabled() -> bool {
+    test_mode_enabled()
+        || std::env::var("BPMUX_TEST_INMEMORY_SECRETS")
+            .map(|v| !v.is_empty() && v != "0")
+            .unwrap_or(false)
+}
+
 pub(super) fn test_mode_enabled() -> bool {
     std::env::var("BPMUX_TEST_MODE")
         .map(|v| !v.is_empty() && v != "0")

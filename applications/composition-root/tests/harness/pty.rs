@@ -181,6 +181,7 @@ impl TestBpmux {
             std::env::temp_dir().join("bpmux-test-diag.log"),
         );
         cmd.env("BPMUX_TEST_SEED_CI_GREEN", "1");
+        cmd.env("BPMUX_TEST_INMEMORY_SECRETS", "1");
         let default_mock = if connection_already_seeded(data_base_dir.path()) {
             None
         } else {
