@@ -5,7 +5,7 @@ use std::path::Path;
 use super::SqliteStorage;
 use super::migrate::MigrationError;
 use super::sqlite_messages as messages;
-use message::{Message, StateDeltaPayload};
+use message::Message;
 use message_log::MessageLog;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,7 +43,7 @@ pub fn import_conversation(
                 report.unparseable_lines += 1;
                 continue;
             };
-            if is_ephemeral_stories(&msg) {
+            if is_state_projection(&msg) {
                 report.filtered_ephemeral += 1;
                 continue;
             }
@@ -102,6 +102,9 @@ fn content_key(msg: &Message) -> String {
     format!("content:{}:{}:{}", msg.ts.to_rfc3339(), msg.from, msg.text)
 }
 
-fn is_ephemeral_stories(msg: &Message) -> bool {
-    matches!(msg.state_delta, Some(StateDeltaPayload::Stories { .. }))
+fn is_state_projection(msg: &Message) -> bool {
+    matches!(
+        msg.message_type,
+        message::MessageType::StateDelta | message::MessageType::StateSnapshot
+    )
 }

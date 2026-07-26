@@ -129,6 +129,35 @@ fn id_less_legacy_lines_import_once_and_dedupe_by_content() {
 }
 
 #[test]
+fn no_state_projection_imports_regardless_of_domain() {
+    let dir = TempDir::new().unwrap();
+    let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
+
+    let mut ci = chat_at("", "2026-07-13T09:00:00Z");
+    ci.message_type = MessageType::StateDelta;
+    ci.state_delta = Some(message::StateDeltaPayload::Ci {
+        snapshot: serde_json::from_value(serde_json::json!({
+            "state": "green", "run_id": 1, "head_sha": "abc", "display_title": "t"
+        }))
+        .unwrap(),
+    });
+    let source = write_jsonl(
+        &dir,
+        "legacy-ci.jsonl",
+        &[
+            ci,
+            chat_at("the conversation itself", "2026-07-13T10:00:00Z"),
+        ],
+    );
+
+    let report = import_conversation(dir.path(), &source).unwrap();
+
+    assert_eq!(report.imported, 1);
+    assert_eq!(report.filtered_ephemeral, 1);
+    assert_eq!(texts(&storage), vec!["the conversation itself"]);
+}
+
+#[test]
 fn ephemeral_board_deltas_are_filtered_not_imported() {
     let dir = TempDir::new().unwrap();
     let storage = SqliteStorage::new(dir.path().to_path_buf()).unwrap();
