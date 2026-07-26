@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod ci_transition;
 pub mod ci_watcher;
 
 #[cfg(test)]
@@ -18,7 +19,7 @@ pub mod ws;
 #[cfg(test)]
 mod auth_tests;
 #[cfg(test)]
-mod ci_watcher_tests;
+mod ci_transition_tests;
 #[cfg(test)]
 mod delivery_predicate_tests;
 #[cfg(test)]

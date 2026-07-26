@@ -1,4 +1,4 @@
-use super::ci_watcher::{Observation, Transition, classify_transition};
+use super::ci_transition::{Observation, Transition, classify_transition};
 
 fn obs(run_id: u64, conclusion: &'static str) -> Observation {
     (Some(run_id), conclusion)

@@ -1,20 +1,16 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 
 use store::{
-    AppState, BoardPlacementPersister, BoardPlacementReconciler, CiBroadcast, CiListeners,
-    CiPollFetch, EvidencePersister, LocalHistoryPersister, OwnerParkListener, ReactionsBroadcast,
-    ReactionsListeners, ReactionsPersister, RosterBroadcast, RosterListeners, RoutingPersister,
+    AppState, BoardPlacementPersister, BoardPlacementReconciler, CiPollFetch, EvidencePersister,
+    LocalHistoryPersister, OwnerParkListener, ReactionsPersister, RoutingPersister,
     SharedHistoryPersister, Store, StoreParts, app_reduce,
 };
 use sync::{self, SyncOrchestrator};
 use transport::rest::broadcast_listeners::{
     EpicBroadcast, IterationBroadcast, OutcomeBroadcast, StoryBroadcast,
-};
-use transport::state_delta_broadcasters::{
-    CiHubBroadcaster, ReactionsHubBroadcaster, RosterHubBroadcaster,
 };
 
 pub fn build_store(
@@ -165,21 +161,8 @@ fn assemble(
         Box::new(app_reduce),
     );
     let store_select = store::Select::new(Arc::downgrade(&app_store));
-    let roster_listeners: RosterListeners = Arc::new(Mutex::new(vec![Arc::new(
-        RosterHubBroadcaster::new(hub.clone(), store_select),
-    )]));
-    let reactions_listeners: ReactionsListeners = Arc::new(Mutex::new(vec![Arc::new(
-        ReactionsHubBroadcaster::new(hub.clone()),
-    )]));
-    let ci_listeners: CiListeners = Arc::new(Mutex::new(vec![Arc::new(CiHubBroadcaster::new(
-        hub.clone(),
-        actions_url.clone(),
-    ))]));
-    app_store.add_listener(Arc::new(RosterBroadcast::new(roster_listeners.clone())));
-    app_store.add_listener(Arc::new(ReactionsBroadcast::new(
-        reactions_listeners.clone(),
-    )));
-    app_store.add_listener(Arc::new(CiBroadcast::new(ci_listeners.clone())));
+    let broadcasters =
+        super::store_listeners::wire_hub_broadcasters(&app_store, &hub, store_select, &actions_url);
     let ci_poll = Arc::new(store::ci_watch::CiPoll::new(
         tracker.clone(),
         hub.clone(),
@@ -202,8 +185,8 @@ fn assemble(
         rate_limit_observer,
         app_store,
         actions_url,
-        ci_listeners,
-        roster_listeners,
-        reactions_listeners,
+        ci_listeners: broadcasters.ci,
+        roster_listeners: broadcasters.roster,
+        reactions_listeners: broadcasters.reactions,
     }
 }

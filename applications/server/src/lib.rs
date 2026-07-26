@@ -138,6 +138,7 @@ mod startup_sequence;
 mod startup_tasks;
 #[cfg(test)]
 mod startup_tasks_tests;
+pub(crate) mod store_listeners;
 pub mod store_wiring;
 mod wiring;
 use routes::{gated_routes, test_routes, test_seed_routes};
