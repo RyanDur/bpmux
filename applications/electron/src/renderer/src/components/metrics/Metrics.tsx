@@ -20,6 +20,11 @@ type VelocityPayload = {
   sparse: boolean
   note: string | null
   wip_history: WipPoint[]
+  dora?: {
+    deployment_frequency_per_day: number
+    change_failure_rate: number | null
+    mttr_hours: number | null
+  }
 }
 
 const currentWip = (history: WipPoint[]): number =>
@@ -150,6 +155,41 @@ const Metrics = ({ apiBase, authToken, onClose, open }: Props): React.JSX.Elemen
               />
             }
           />
+          {data.dora && (
+            <>
+              <MetricTile
+                label={`Deploys / day (${data.window_days}d)`}
+                value={data.dora.deployment_frequency_per_day.toFixed(2)}
+                bar={
+                  <Bar
+                    value={data.dora.deployment_frequency_per_day}
+                    max={5}
+                    color="var(--accent-success)"
+                  />
+                }
+              />
+              <MetricTile
+                label="Change failure rate"
+                value={formatPercent(data.dora.change_failure_rate)}
+                bar={
+                  <Bar
+                    value={(data.dora.change_failure_rate ?? 0) * 100}
+                    max={100}
+                    color={
+                      data.dora.change_failure_rate && data.dora.change_failure_rate > 0.2
+                        ? 'var(--accent-warning)'
+                        : 'var(--accent-success)'
+                    }
+                  />
+                }
+              />
+              <MetricTile
+                label="MTTR (red → green)"
+                value={formatHours(data.dora.mttr_hours)}
+                bar={<Bar value={data.dora.mttr_hours ?? 0} max={48} color="var(--accent-info)" />}
+              />
+            </>
+          )}
           {data.sparse && (
             <p className="metrics-note">
               <small>{data.note ?? 'Sparse data window.'}</small>
