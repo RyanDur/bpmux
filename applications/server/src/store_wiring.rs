@@ -12,6 +12,7 @@ use sync::{self, SyncOrchestrator};
 use transport::rest::broadcast_listeners::{
     EpicBroadcast, IterationBroadcast, OutcomeBroadcast, StoryBroadcast,
 };
+use transport::rest::hydration_listeners::SliceHydration;
 
 pub fn build_store(
     hub: Arc<hub::Hub>,
@@ -70,6 +71,10 @@ pub(crate) fn build_store_with_refresh<A: sync::SourceAdapter + 'static>(
         actions_url,
     );
     let store_select = store::Select::new(std::sync::Arc::downgrade(&parts.app_store));
+    parts.app_store.add_listener(Arc::new(SliceHydration::board(
+        parts.hub.clone(),
+        store_select.clone(),
+    )));
     let refresh = Arc::new(SyncOrchestrator::new(
         adapter,
         codec,
@@ -161,8 +166,25 @@ fn assemble(
         Box::new(app_reduce),
     );
     let store_select = store::Select::new(Arc::downgrade(&app_store));
-    let broadcasters =
-        super::store_listeners::wire_hub_broadcasters(&app_store, &hub, store_select, &actions_url);
+    let broadcasters = super::store_listeners::wire_hub_broadcasters(
+        &app_store,
+        &hub,
+        store_select.clone(),
+        &actions_url,
+    );
+    app_store.add_listener(Arc::new(SliceHydration::roster(
+        hub.clone(),
+        store_select.clone(),
+    )));
+    app_store.add_listener(Arc::new(SliceHydration::reactions(
+        hub.clone(),
+        store_select.clone(),
+    )));
+    app_store.add_listener(Arc::new(SliceHydration::ci(
+        hub.clone(),
+        store_select,
+        actions_url.clone(),
+    )));
     let ci_poll = Arc::new(store::ci_watch::CiPoll::new(
         tracker.clone(),
         hub.clone(),
@@ -184,7 +206,6 @@ fn assemble(
         hub,
         rate_limit_observer,
         app_store,
-        actions_url,
         ci_listeners: broadcasters.ci,
         roster_listeners: broadcasters.roster,
         reactions_listeners: broadcasters.reactions,

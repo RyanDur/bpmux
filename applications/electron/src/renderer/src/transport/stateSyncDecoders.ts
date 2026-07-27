@@ -2,10 +2,8 @@ import * as D from 'schemawax'
 import {
   type CiSnapshotWire,
   type ReactionAggregateWire,
-  type ReactionsChannelSnapshot,
   type RosterMemberWire,
   type StateDeltaPayload,
-  type StateSnapshotPayload,
   type SyncStatusWire
 } from './types'
 import type { RoadmapCard, RoadmapOutcomeData } from '@components/board/roadmap/selectRoadmap'
@@ -58,10 +56,6 @@ const reactionAggregate: D.Decoder<ReactionAggregateWire> = D.object({
     count: D.number,
     users: D.array(D.string)
   }
-})
-
-const reactionsChannelSnapshot: D.Decoder<ReactionsChannelSnapshot> = D.object({
-  required: { channel: D.string, aggregated: D.array(reactionAggregate) }
 })
 
 const outcomeReadinessWire = D.object({
@@ -129,14 +123,6 @@ const roadmapCard: D.Decoder<RoadmapCard> = D.object({
     gap_count: D.number,
     tone: D.literalUnion('now', 'ready', 'gap', 'future')
   }
-})
-
-export const stateSnapshotDecoder: D.Decoder<StateSnapshotPayload> = D.object({
-  required: {
-    reactions: D.array(reactionsChannelSnapshot),
-    roster: D.array(rosterMember)
-  },
-  optional: { ci: D.nullable(ciSnapshot) }
 })
 
 export const stateDeltaDecoder: D.Decoder<StateDeltaPayload> = D.oneOf(

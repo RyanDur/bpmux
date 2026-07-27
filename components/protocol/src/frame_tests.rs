@@ -371,7 +371,6 @@ fn the_server_chat_golden_is_exactly_what_the_rust_serializer_produces() {
         message_type: Some("chat".to_string()),
         multi_depth: Box::new(None),
         state_delta: None,
-        state_snapshot: None,
     };
     let golden: serde_json::Value =
         serde_json::from_str(include_str!("../golden/server-chat-message.json"))

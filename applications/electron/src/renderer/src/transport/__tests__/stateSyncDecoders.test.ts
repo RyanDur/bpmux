@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { stateDeltaDecoder, stateSnapshotDecoder } from '../stateSyncDecoders'
+import { stateDeltaDecoder } from '../stateSyncDecoders'
 
 describe('stateDeltaDecoder', () => {
   test('decodes a ci delta with null snapshot fields (serde Option -> null)', () => {
@@ -140,11 +140,5 @@ describe('stateDeltaDecoder', () => {
     expect(stateDeltaDecoder.validate({ domain: 'ci', snapshot: { state: 'bogus' } }).type).toBe(
       'error'
     )
-  })
-})
-
-describe('stateSnapshotDecoder', () => {
-  test('decodes a snapshot with ci absent (skip_serializing_if)', () => {
-    expect(stateSnapshotDecoder.validate({ reactions: [], roster: [] }).type).toBe('ok')
   })
 })

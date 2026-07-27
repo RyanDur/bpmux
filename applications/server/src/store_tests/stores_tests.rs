@@ -198,9 +198,11 @@ async fn roster_wire_role_follows_the_registered_assignment_not_the_display() {
     }))
     .await;
 
-    let snapshot = orch.build_snapshot();
-    let member = snapshot
-        .roster
+    let members = roster::members_wire(&orch.roster_members(), |routing_id| {
+        orch.selector()
+            .select(|state| store::routing::role_for(&state.routing, routing_id))
+    });
+    let member = members
         .iter()
         .find(|m| m.routing_id == "sess-aria")
         .expect("aria in roster wire projection");
@@ -223,9 +225,11 @@ async fn roster_wire_role_falls_back_to_display_derivation_for_an_unassigned_mem
     }))
     .await;
 
-    let snapshot = orch.build_snapshot();
-    let member = snapshot
-        .roster
+    let members = roster::members_wire(&orch.roster_members(), |routing_id| {
+        orch.selector()
+            .select(|state| store::routing::role_for(&state.routing, routing_id))
+    });
+    let member = members
         .iter()
         .find(|m| m.routing_id == "sess-legacy")
         .expect("legacy member in roster wire projection");

@@ -96,8 +96,5 @@ fn content_key(msg: &Message) -> String {
 }
 
 fn is_state_projection(msg: &Message) -> bool {
-    matches!(
-        msg.message_type,
-        message::MessageType::StateDelta | message::MessageType::StateSnapshot
-    )
+    matches!(msg.message_type, message::MessageType::StateDelta)
 }

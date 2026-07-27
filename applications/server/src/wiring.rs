@@ -12,6 +12,7 @@ pub(super) struct RouterDeps {
     pub unfurl_cache: transport::unfurl::UnfurlCacheHandle,
     pub hub: Arc<hub::Hub>,
     pub tracker: transport::rest::TrackerHandle,
+    pub actions_url: ci::ActionsUrl,
     pub connections: transport::rest::ConnectionsHandle,
     pub ci_log_store: CiLogStore,
     pub electron_capture_lock: Arc<tokio::sync::Mutex<()>>,
@@ -32,6 +33,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         unfurl_cache,
         hub,
         tracker,
+        actions_url,
         connections,
         ci_log_store,
         electron_capture_lock,
@@ -107,7 +109,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         .layer(axum::Extension(lessons))
         .layer(axum::Extension(transitions))
         .layer(axum::Extension(ci_runs))
-        .layer(axum::Extension(store.actions_url().clone()))
+        .layer(axum::Extension(actions_url))
         .layer(axum::Extension(store.selector()))
         .layer(axum::Extension(store))
         .layer(axum::Extension(dispatch))

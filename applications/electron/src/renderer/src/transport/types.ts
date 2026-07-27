@@ -18,7 +18,6 @@ export type ServerChatMessage = {
   addressee_ids?: string[] | null
   message_type?: string | null
   state_delta?: StateDeltaPayload | null
-  state_snapshot?: StateSnapshotPayload | null
 }
 
 export type ReactionAggregateWire = {
@@ -88,17 +87,6 @@ export type StateDeltaPayload =
   | { domain: 'outcomes'; outcomes: RoadmapOutcomeData[] }
   | { domain: 'iterations'; iterations: BoardIterationData[] }
   | { domain: 'roadmap'; roadmap: RoadmapCard[] }
-
-export type ReactionsChannelSnapshot = {
-  channel: string
-  aggregated: ReactionAggregateWire[]
-}
-
-export type StateSnapshotPayload = {
-  reactions: ReactionsChannelSnapshot[]
-  ci?: CiSnapshotWire | null
-  roster: RosterMemberWire[]
-}
 
 export type CommentWire = {
   id: number

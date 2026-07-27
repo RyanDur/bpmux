@@ -3,7 +3,6 @@ import type {
   ReactionAggregateWire,
   RosterMemberWire,
   StateDeltaPayload,
-  StateSnapshotPayload,
   SyncStatusWire
 } from './types'
 
@@ -20,22 +19,6 @@ export const emptyMirrorState = (): MirrorState => ({
   sync: null,
   roster: []
 })
-
-export const applyStateSnapshot = (
-  prev: MirrorState,
-  snapshot: StateSnapshotPayload
-): MirrorState => {
-  const reactions = new Map<string, ReactionAggregateWire[]>()
-  for (const entry of snapshot.reactions) {
-    reactions.set(entry.channel, entry.aggregated)
-  }
-  return {
-    reactions,
-    ci: snapshot.ci ?? null,
-    sync: prev.sync,
-    roster: snapshot.roster
-  }
-}
 
 export const applyStateDelta = (prev: MirrorState, delta: StateDeltaPayload): MirrorState => {
   switch (delta.domain) {

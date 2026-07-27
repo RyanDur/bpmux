@@ -4,8 +4,7 @@ export const MESSAGE_TYPE = {
   System: 'system',
   Insight: 'insight',
   Nudge: 'nudge',
-  StateDelta: 'state-delta',
-  StateSnapshot: 'state-snapshot'
+  StateDelta: 'state-delta'
 } as const
 
 export type MessageType = (typeof MESSAGE_TYPE)[keyof typeof MESSAGE_TYPE]

@@ -866,14 +866,14 @@ async fn a_non_chat_message_is_never_injected_into_a_terminal() {
     let mut rx = register_live_cat(&registry, &store, "sess-dev", "dev", "term-dev");
 
     let mut state = chat("bpmux", "STATE-BODY", None);
-    state.message_type = MessageType::StateSnapshot;
+    state.message_type = MessageType::StateDelta;
     deliver_to_terminals(&state, &registry, &store.select(), &store.dispatcher());
 
     registry.write_to("term-dev", b"NONCHAT-SENTINEL\r");
     let seen = drain_for(&mut rx, "NONCHAT-SENTINEL").await;
     assert!(
         !seen.contains("STATE-BODY"),
-        "only chat/insight messages are injected — a state-snapshot must never be written into a PTY; got {seen:?}"
+        "only chat/insight messages are injected — a state-delta must never be written into a PTY; got {seen:?}"
     );
 }
 

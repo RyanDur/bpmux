@@ -21,7 +21,6 @@ import {
   historyLoaded,
   messageReceived,
   mirrorDeltaReceived,
-  mirrorSnapshotReceived,
   ptyExitReceived,
   ptyModeReceived,
   ptyOutputReceived,
@@ -35,8 +34,8 @@ const chatFrameToAction = (
   message: ServerChatMessage,
   nextSeq: () => number
 ): StateAction | null => {
-  if (message.message_type === MESSAGE_TYPE.StateSnapshot) {
-    return message.state_snapshot ? mirrorSnapshotReceived(message.state_snapshot) : null
+  if (message.message_type === 'state-snapshot') {
+    return null
   }
   if (message.message_type === MESSAGE_TYPE.StateDelta) {
     return message.state_delta ? mirrorDeltaReceived(message.state_delta, message.ts) : null

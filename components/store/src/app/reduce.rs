@@ -140,5 +140,6 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
                 None => state.clone(),
             }
         }
+        AppAction::ClientConnected(_) => state.clone(),
     }
 }

@@ -117,19 +117,6 @@ describe('messageDecoder', () => {
     if (result.type === 'ok') expect(result.data.state_delta).toBeNull()
   })
 
-  test('decodes a message carrying a state_snapshot', () => {
-    const result = messageDecoder.validate({
-      type: 'message',
-      from: 'bpmux',
-      text: '',
-      ts: 't',
-      message_type: 'state-snapshot',
-      state_snapshot: { reactions: [], roster: [] }
-    })
-    expect(result.type).toBe('ok')
-    if (result.type === 'ok') expect(result.data.state_snapshot).not.toBeNull()
-  })
-
   test('decodes the additive delivery id fields when present', () => {
     const result = messageDecoder.validate({
       type: 'message',

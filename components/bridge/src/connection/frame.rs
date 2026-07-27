@@ -22,7 +22,6 @@ pub(super) async fn handle_message_frame(
         message_type,
         multi_depth: _,
         state_delta,
-        state_snapshot: _,
     } = msg
     else {
         return;

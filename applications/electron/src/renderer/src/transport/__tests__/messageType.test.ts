@@ -4,7 +4,7 @@ import { MESSAGE_TYPE, asMessageType } from '../messageType'
 describe('MESSAGE_TYPE source', () => {
   it('mirrors the Rust MessageType wire values exactly', () => {
     expect(Object.values(MESSAGE_TYPE).sort()).toEqual(
-      ['activity', 'chat', 'insight', 'nudge', 'state-delta', 'state-snapshot', 'system'].sort()
+      ['activity', 'chat', 'insight', 'nudge', 'state-delta', 'system'].sort()
     )
   })
 })

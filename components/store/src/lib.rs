@@ -15,7 +15,6 @@ mod app;
 mod dispatch;
 mod select;
 mod slice_access;
-mod snapshot;
 
 #[cfg(test)]
 mod boundary_tests;
@@ -23,7 +22,7 @@ mod boundary_tests;
 mod sync_reduce_tests;
 
 pub use action::PollKind;
-pub use app::{AppAction, AppState, app_reduce};
+pub use app::{AppAction, AppState, ClientConnection, app_reduce};
 pub use app::{
     BoardPlacementPersister, BoardPlacementReconciler, CiBroadcast, CiListeners, CiRunsPersister,
     EvidencePersister, LocalHistoryPersister, OwnerParkListener, ReactionsBroadcast,
@@ -43,7 +42,6 @@ pub struct Store {
     hub: Arc<hub::Hub>,
     rate_limit_observer: rate_limit::RateLimitObserver,
     app_store: Arc<kernel::Store<app::AppState, app::AppAction>>,
-    actions_url: ::ci::ActionsUrl,
     #[cfg(feature = "test-support")]
     ci_listeners: app::CiListeners,
     #[cfg(feature = "test-support")]
@@ -56,7 +54,6 @@ pub struct StoreParts {
     pub hub: Arc<hub::Hub>,
     pub rate_limit_observer: rate_limit::RateLimitObserver,
     pub app_store: Arc<kernel::Store<app::AppState, app::AppAction>>,
-    pub actions_url: ::ci::ActionsUrl,
     pub ci_listeners: app::CiListeners,
     pub roster_listeners: app::RosterListeners,
     pub reactions_listeners: app::ReactionsListeners,
@@ -68,7 +65,6 @@ impl Store {
             hub: parts.hub,
             rate_limit_observer: parts.rate_limit_observer,
             app_store: parts.app_store,
-            actions_url: parts.actions_url,
             #[cfg(feature = "test-support")]
             ci_listeners: parts.ci_listeners,
             #[cfg(feature = "test-support")]
@@ -76,10 +72,6 @@ impl Store {
             #[cfg(feature = "test-support")]
             reactions_listeners: parts.reactions_listeners,
         }
-    }
-
-    pub fn actions_url(&self) -> &::ci::ActionsUrl {
-        &self.actions_url
     }
 
     pub fn rate_limit_observer(&self) -> &rate_limit::RateLimitObserver {

@@ -122,6 +122,12 @@ impl AppState {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct ClientConnection {
+    pub user_id: Option<String>,
+    pub identity: String,
+}
+
 #[derive(Clone)]
 pub enum AppAction {
     Roster(RosterAction),
@@ -139,4 +145,5 @@ pub enum AppAction {
     Board(BoardAction),
     SharedHistory(SharedHistoryAction),
     OwnerSession(OwnerSessionAction),
+    ClientConnected(ClientConnection),
 }

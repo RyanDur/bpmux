@@ -63,6 +63,7 @@ pub fn validate_and_log(action: &AppAction) {
         AppAction::Board(_) => "Board",
         AppAction::SharedHistory(_) => "SharedHistory",
         AppAction::OwnerSession(_) => "OwnerSession",
+        AppAction::ClientConnected(_) => "ClientConnected",
     };
     match action {
         AppAction::Routing(RoutingAction::Registered {

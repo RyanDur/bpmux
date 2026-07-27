@@ -2,7 +2,6 @@ import type {
   ChatMessage,
   CommentWire,
   StateDeltaPayload,
-  StateSnapshotPayload,
   TimelineEventWire
 } from '@transport/types'
 export type SendOptions = {
@@ -34,7 +33,6 @@ export const StateActionType = {
   Welcomed: 'state/welcomed',
   MessageReceived: 'state/messageReceived',
   HistoryLoaded: 'state/historyLoaded',
-  MirrorSnapshotReceived: 'state/mirrorSnapshotReceived',
   MirrorDeltaReceived: 'state/mirrorDeltaReceived',
   PtyOutputReceived: 'state/ptyOutputReceived',
   PtyExitReceived: 'state/ptyExitReceived',
@@ -68,7 +66,6 @@ export type StateAction =
   | { type: typeof StateActionType.Welcomed }
   | { type: typeof StateActionType.MessageReceived; message: ChatMessage }
   | { type: typeof StateActionType.HistoryLoaded; history: HistoryMessage[] }
-  | { type: typeof StateActionType.MirrorSnapshotReceived; payload: StateSnapshotPayload }
   | { type: typeof StateActionType.MirrorDeltaReceived; delta: StateDeltaPayload; ts: string }
   | { type: typeof StateActionType.PtyOutputReceived; terminalId: string; data: string }
   | { type: typeof StateActionType.PtyExitReceived; terminalId: string }
@@ -162,11 +159,6 @@ export const messageReceived = (message: ChatMessage): StateAction => ({
 export const historyLoaded = (history: HistoryMessage[]): StateAction => ({
   type: StateActionType.HistoryLoaded,
   history
-})
-
-export const mirrorSnapshotReceived = (payload: StateSnapshotPayload): StateAction => ({
-  type: StateActionType.MirrorSnapshotReceived,
-  payload
 })
 
 export const mirrorDeltaReceived = (delta: StateDeltaPayload, ts: string): StateAction => ({

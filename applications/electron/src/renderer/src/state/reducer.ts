@@ -1,4 +1,4 @@
-import { applyStateDelta, applyStateSnapshot, emptyMirrorState } from '@transport/state-delta'
+import { applyStateDelta, emptyMirrorState } from '@transport/state-delta'
 import { asMessageType } from '@transport/messageType'
 import { StateActionType, type StateAction, type HistoryMessage } from './actions'
 import type {
@@ -101,8 +101,6 @@ export const stateReducer = (state: StateSnapshot, action: StateAction): StateSn
       timelineByStory.set(action.storyId, action.events)
       return { ...state, timelineByStory }
     }
-    case StateActionType.MirrorSnapshotReceived:
-      return { ...state, mirror: applyStateSnapshot(state.mirror, action.payload) }
     case StateActionType.MirrorDeltaReceived: {
       const next: StateSnapshot = {
         ...state,

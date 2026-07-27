@@ -18,7 +18,6 @@ mod peer_lag;
 mod roadmap_write_handlers;
 pub mod roster;
 mod session_io;
-mod snapshot;
 mod startup;
 
 pub use client::*;
@@ -29,7 +28,7 @@ pub use peer_lag::*;
 pub use roster::*;
 pub use session_io::send_json;
 use session_io::wait_for_identify;
-use snapshot::system_announcement;
+use startup::system_announcement;
 
 const HEARTBEAT_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
 
@@ -78,7 +77,6 @@ pub(super) async fn run_ws_session(
         &mut tx,
         &hub,
         &store,
-        &orchestrator,
         &identity,
         routing_user_id.as_deref(),
         is_owner,

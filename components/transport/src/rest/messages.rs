@@ -155,7 +155,6 @@ pub async fn post_message(
         explicit_privacy,
         multi_depth: payload.multi_depth,
         state_delta: None,
-        state_snapshot: None,
     };
     crate::delivery_ids::stamp_delivery_ids(&select, &mut msg);
     if let Err(e) = hub.broadcast(&msg) {

@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use super::matching::{addressee_matches, from_matches, to_reaches};
 use super::multi_depth::MultiDepthPayload;
 use super::state_delta::StateDeltaPayload;
-use super::state_snapshot::StateSnapshotPayload;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -17,8 +16,6 @@ pub enum MessageType {
     Nudge,
     #[serde(rename = "state-delta")]
     StateDelta,
-    #[serde(rename = "state-snapshot")]
-    StateSnapshot,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -59,28 +56,11 @@ pub struct Message {
         deserialize_with = "deserialize_state_delta_tolerant"
     )]
     pub state_delta: Option<StateDeltaPayload>,
-
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "deserialize_state_snapshot_tolerant"
-    )]
-    pub state_snapshot: Option<StateSnapshotPayload>,
 }
 
 fn deserialize_state_delta_tolerant<'de, D>(
     deserializer: D,
 ) -> Result<Option<StateDeltaPayload>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let raw = Option::<serde_json::Value>::deserialize(deserializer)?;
-    Ok(raw.and_then(|v| serde_json::from_value(v).ok()))
-}
-
-fn deserialize_state_snapshot_tolerant<'de, D>(
-    deserializer: D,
-) -> Result<Option<StateSnapshotPayload>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -115,7 +95,6 @@ impl MessageType {
             MessageType::Insight => Some("insight".into()),
             MessageType::Nudge => Some("nudge".into()),
             MessageType::StateDelta => Some("state-delta".into()),
-            MessageType::StateSnapshot => Some("state-snapshot".into()),
         }
     }
 }
@@ -128,7 +107,6 @@ impl From<Option<&str>> for MessageType {
             Some("insight") => MessageType::Insight,
             Some("nudge") => MessageType::Nudge,
             Some("state-delta") => MessageType::StateDelta,
-            Some("state-snapshot") => MessageType::StateSnapshot,
             _ => MessageType::Chat,
         }
     }

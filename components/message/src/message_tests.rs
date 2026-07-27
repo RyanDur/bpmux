@@ -466,45 +466,6 @@ fn roster_delta_wire_json_is_byte_identical_for_every_role_and_presence_string()
 }
 
 #[test]
-fn state_snapshot_wire_json_is_byte_identical_with_ci_and_roster_present() {
-    let wire = serde_json::json!({
-        "reactions": [],
-        "ci": {
-            "state": "green",
-            "run_id": 42,
-            "head_sha": "abc",
-            "display_title": "t",
-            "last_successful_poll_at": "2026-07-03T00:00:00Z",
-            "url": "https://example/actions"
-        },
-        "roster": [{
-            "routing_id": "r1",
-            "name": "n",
-            "identity": "i",
-            "role": "Owner",
-            "presence": "Online"
-        }]
-    });
-    let payload: StateSnapshotPayload =
-        serde_json::from_value(wire.clone()).expect("snapshot parses");
-    assert_eq!(
-        serde_json::to_value(&payload).expect("snapshot serializes"),
-        wire,
-        "the connect-time hydration snapshot wire shape must round-trip byte-identical"
-    );
-}
-
-#[test]
-fn empty_state_snapshot_omits_ci_and_emits_empty_reaction_and_roster_lists() {
-    let payload = StateSnapshotPayload::default();
-    assert_eq!(
-        serde_json::to_value(&payload).expect("serialize"),
-        serde_json::json!({"reactions": [], "roster": []}),
-        "an empty snapshot omits ci (skip_serializing_if) and emits empty lists — the renderer's baseline"
-    );
-}
-
-#[test]
 fn persisted_ci_delta_without_url_or_poll_time_survives_and_keeps_typed_values() {
     let raw = r#"{
         "from": "bpmux",

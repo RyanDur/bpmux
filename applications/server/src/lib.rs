@@ -68,7 +68,7 @@ pub async fn run_server(
         data_gateways.clone(),
         &tracker,
         ct.clone(),
-        actions_url,
+        actions_url.clone(),
     );
     let store = std::sync::Arc::new(store_inner);
 
@@ -110,6 +110,7 @@ pub async fn run_server(
         unfurl_cache,
         hub,
         tracker,
+        actions_url,
         connections,
         ci_log_store,
         electron_capture_lock,

@@ -10,6 +10,7 @@ mod capture;
 mod ci;
 mod classifier;
 pub mod github_connection;
+pub mod hydration_listeners;
 mod iteration_close;
 mod labels;
 mod lessons;

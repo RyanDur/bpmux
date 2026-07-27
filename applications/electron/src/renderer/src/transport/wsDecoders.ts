@@ -12,7 +12,7 @@ import {
   type ServerTimelineHydrated,
   type ServerWelcome
 } from './types'
-import { stateDeltaDecoder, stateSnapshotDecoder } from './stateSyncDecoders'
+import { stateDeltaDecoder } from './stateSyncDecoders'
 
 export const welcomeDecoder: D.Decoder<ServerWelcome> = D.object({
   required: { type: D.literal('welcome') }
@@ -117,7 +117,6 @@ export const messageDecoder: D.Decoder<ServerChatMessage> = D.object({
     addressee: D.nullable(D.string),
     addressee_ids: D.nullable(D.array(D.string)),
     message_type: D.nullable(D.string),
-    state_delta: D.oneOf(stateDeltaDecoder, D.succeed(null)),
-    state_snapshot: D.nullable(stateSnapshotDecoder)
+    state_delta: D.oneOf(stateDeltaDecoder, D.succeed(null))
   }
 })

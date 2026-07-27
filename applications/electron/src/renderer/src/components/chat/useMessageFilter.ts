@@ -43,8 +43,8 @@ const LEGACY_TYPE_REMAP: Record<string, MessageClass> = {
   [MESSAGE_TYPE.Activity]: 'events',
   [MESSAGE_TYPE.Insight]: 'events',
   [MESSAGE_TYPE.StateDelta]: 'events',
-  [MESSAGE_TYPE.StateSnapshot]: 'events',
-  [MESSAGE_TYPE.Nudge]: 'events'
+  [MESSAGE_TYPE.Nudge]: 'events',
+  'state-snapshot': 'events'
 }
 
 export const classOf = (messageType: string | null | undefined): MessageClass => {
