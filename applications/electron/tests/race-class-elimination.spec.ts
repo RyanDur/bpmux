@@ -32,7 +32,7 @@ const readFrames = async (
   win.evaluate(() => (window as unknown as { __bpmuxFrames: CapturedFrame[] }).__bpmuxFrames ?? [])
 
 test.describe('#1213 race-class elimination — WS-only state-flow integration', () => {
-  test('AC8 / falsifier-(e): WS-connect delivers StateSnapshot as first non-Welcome frame', async () => {
+  test('AC8 / falsifier-(e): WS-connect hydrates via slice deltas after Welcome — never a snapshot', async () => {
     const { app } = await launchIsolatedElectron({})
     const win = await app.firstWindow()
     await win.addInitScript(installFrameCapture)
@@ -42,21 +42,24 @@ test.describe('#1213 race-class elimination — WS-only state-flow integration',
       .poll(
         async () => {
           const frames = await readFrames(win)
-          return frames.some((f) => f.message_type === 'state-snapshot')
+          return frames.some(
+            (f) => f.message_type === 'state-delta' && f.state_delta?.domain === 'roster'
+          )
         },
         { timeout: 5_000 }
       )
       .toBe(true)
     const frames = await readFrames(win)
     const welcomeIdx = frames.findIndex((f) => f.type === 'welcome')
-    const snapshotIdx = frames.findIndex((f) => f.message_type === 'state-snapshot')
+    const rosterIdx = frames.findIndex(
+      (f) => f.message_type === 'state-delta' && f.state_delta?.domain === 'roster'
+    )
     expect(welcomeIdx).toBeGreaterThanOrEqual(0)
-    expect(snapshotIdx).toBeGreaterThan(welcomeIdx)
-    const between = frames.slice(welcomeIdx + 1, snapshotIdx)
+    expect(rosterIdx).toBeGreaterThan(welcomeIdx)
     expect(
-      between.filter((f) => f.message_type === 'state-delta').length,
-      'no state-delta should appear before the connect-snapshot'
-    ).toBe(0)
+      frames.some((f) => f.message_type === 'state-snapshot'),
+      'the store snapshot is retired — hydration is each slice answering as deltas'
+    ).toBe(false)
     await app.close()
   })
 
@@ -70,7 +73,9 @@ test.describe('#1213 race-class elimination — WS-only state-flow integration',
       .poll(
         async () => {
           const frames = await readFrames(win)
-          return frames.some((f) => f.message_type === 'state-snapshot')
+          return frames.some(
+            (f) => f.message_type === 'state-delta' && f.state_delta?.domain === 'roster'
+          )
         },
         { timeout: 5_000 }
       )
@@ -105,7 +110,7 @@ test.describe('#1213 race-class elimination — WS-only state-flow integration',
     await app.close()
   })
 
-  test('AC11 / falsifier-(e): reconnect re-delivers StateSnapshot per-connection', async () => {
+  test('AC11 / falsifier-(e): reconnect re-hydrates per-connection via slice deltas', async () => {
     const { app } = await launchIsolatedElectron({})
     const win = await app.firstWindow()
     await win.addInitScript(installFrameCapture)
@@ -115,7 +120,11 @@ test.describe('#1213 race-class elimination — WS-only state-flow integration',
       .poll(
         async () => {
           const frames = await readFrames(win)
-          return frames.filter((f) => f.message_type === 'state-snapshot').length >= 1
+          return (
+            frames.filter(
+              (f) => f.message_type === 'state-delta' && f.state_delta?.domain === 'roster'
+            ).length >= 1
+          )
         },
         { timeout: 5_000 }
       )
@@ -126,7 +135,11 @@ test.describe('#1213 race-class elimination — WS-only state-flow integration',
       .poll(
         async () => {
           const frames = await readFrames(win)
-          return frames.filter((f) => f.message_type === 'state-snapshot').length >= 1
+          return (
+            frames.filter(
+              (f) => f.message_type === 'state-delta' && f.state_delta?.domain === 'roster'
+            ).length >= 1
+          )
         },
         { timeout: 5_000 }
       )
