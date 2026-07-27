@@ -82,6 +82,9 @@ export type StateDeltaPayload =
       blockers: { id: number; title: string; state: string }[]
     }
   | { domain: 'board_invalidated'; reason: string }
+  | { domain: 'story_upserted'; story: Story }
+  | { domain: 'story_removed'; id: number }
+  | { domain: 'story_order'; ids: number[] }
   | { domain: 'stories'; stories: Story[]; columns?: BoardColumn[] }
   | { domain: 'epics'; epics: Epic[] }
   | { domain: 'outcomes'; outcomes: RoadmapOutcomeData[] }

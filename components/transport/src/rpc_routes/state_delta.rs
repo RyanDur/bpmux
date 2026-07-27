@@ -36,10 +36,6 @@ pub fn fire_board_invalidate(hub: &Arc<hub::Hub>) {
     }
 }
 
-pub fn fire_stories(hub: &Arc<hub::Hub>, select: &store::Select) {
-    crate::rest::shared::broadcast_stories(hub, select);
-}
-
 pub fn story_state_label(select: &store::Select, number: u64) -> Option<&'static str> {
     let (story, iterations) = select.select(|state| {
         (

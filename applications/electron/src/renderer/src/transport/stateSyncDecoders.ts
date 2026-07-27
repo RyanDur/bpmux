@@ -151,6 +151,9 @@ export const stateDeltaDecoder: D.Decoder<StateDeltaPayload> = D.oneOf(
     }
   }),
   D.object({ required: { domain: D.literal('board_invalidated'), reason: D.string } }),
+  D.object({ required: { domain: D.literal('story_upserted'), story } }),
+  D.object({ required: { domain: D.literal('story_removed'), id: D.number } }),
+  D.object({ required: { domain: D.literal('story_order'), ids: D.array(D.number) } }),
   D.object({
     required: { domain: D.literal('stories'), stories: D.array(story) },
     optional: { columns: D.array(column) }

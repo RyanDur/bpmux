@@ -18,8 +18,7 @@ mod effective_role_tests;
 mod rpc_dispatch_tests;
 
 use state_delta::{
-    fire_board_invalidate, fire_stories, fire_story_transition, fire_view_backlog_marker,
-    story_state_label,
+    fire_board_invalidate, fire_story_transition, fire_view_backlog_marker, story_state_label,
 };
 use tool_dispatch::{ToolCaller, dispatch, effective_role};
 pub use validation::{ACTOR_ID_HEADER, AGENT_HEADER, actor_id_from_headers, agent_from_headers};
@@ -116,7 +115,6 @@ pub async fn post_rpc_tool(
                 fire_view_backlog_marker(&hub);
             } else if !is_read_only_tool(&tool) {
                 fire_board_invalidate(&hub);
-                fire_stories(&hub, &select);
                 if let (Some(id), Some(from_state)) = (transition_id, prior_state)
                     && let Some(target_state) =
                         declared_target_state.or_else(|| story_state_label(&select, id))

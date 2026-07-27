@@ -5,7 +5,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
-use crate::rest::shared::{broadcast_board_invalidate, broadcast_stories, err_body, json_headers};
+use crate::rest::shared::{broadcast_board_invalidate, err_body, json_headers};
 use bridge::iteration_close::{
     CloseIterationError, broadcast_iteration_close_blocked,
     build_close_iteration_ready_queue_blocked_body, close_iteration,
@@ -43,7 +43,6 @@ pub async fn post_close_iteration(
     match close_iteration(&hub, refresh, &dispatch, &select, iteration_id).await {
         Ok(()) => {
             broadcast_board_invalidate(&hub);
-            broadcast_stories(&hub, &select);
             let body = serde_json::json!({
                 "promoted": Vec::<u64>::new(),
                 "deleted_marker_id": serde_json::Value::Null,

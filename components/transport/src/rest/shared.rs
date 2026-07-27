@@ -65,6 +65,17 @@ pub fn broadcast_board_invalidate(hub: &hub::Hub) {
     }
 }
 
+pub fn state_delta_message(payload: message::StateDeltaPayload) -> message::Message {
+    message::Message {
+        from: "bpmux".to_string(),
+        text: String::new(),
+        ts: chrono::Utc::now(),
+        message_type: message::MessageType::StateDelta,
+        state_delta: Some(payload),
+        ..message::Message::default()
+    }
+}
+
 pub fn stories_message(stories: serde_json::Value) -> message::Message {
     message::Message {
         from: "bpmux".to_string(),

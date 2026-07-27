@@ -1,16 +1,11 @@
-use std::sync::Arc;
-
 use axum::Json;
-use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 
 use axum::http::HeaderMap;
 
-use super::shared::{
-    broadcast_board_invalidate, broadcast_stories, err_body, json_headers, owner_walk_or_forbidden,
-};
+use super::shared::{err_body, json_headers, owner_walk_or_forbidden};
 
 #[derive(Deserialize)]
 pub struct AcceptPayload {
@@ -22,7 +17,6 @@ pub struct AcceptPayload {
 }
 
 pub async fn post_accept_story(
-    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(orchestrator): axum::Extension<sync::OrchestratorHandle>,
     axum::Extension(select): axum::Extension<store::Select>,
     headers: HeaderMap,
@@ -70,15 +64,11 @@ pub async fn post_accept_story(
     )
     .await
     {
-        Ok(()) => {
-            broadcast_board_invalidate(&hub);
-            broadcast_stories(&hub, &select);
-            (
-                StatusCode::OK,
-                json_headers(),
-                serde_json::json!({ "ok": true }).to_string(),
-            )
-        }
+        Ok(()) => (
+            StatusCode::OK,
+            json_headers(),
+            serde_json::json!({ "ok": true }).to_string(),
+        ),
         Err(e) => (
             StatusCode::BAD_GATEWAY,
             json_headers(),
@@ -93,7 +83,6 @@ pub struct RejectPayload {
 }
 
 pub async fn post_reject_story(
-    State(hub): State<Arc<hub::Hub>>,
     axum::Extension(orchestrator): axum::Extension<sync::OrchestratorHandle>,
     axum::Extension(select): axum::Extension<store::Select>,
     headers: HeaderMap,
@@ -128,15 +117,11 @@ pub async fn post_reject_story(
     )
     .await
     {
-        Ok(()) => {
-            broadcast_board_invalidate(&hub);
-            broadcast_stories(&hub, &select);
-            (
-                StatusCode::OK,
-                json_headers(),
-                serde_json::json!({ "ok": true }).to_string(),
-            )
-        }
+        Ok(()) => (
+            StatusCode::OK,
+            json_headers(),
+            serde_json::json!({ "ok": true }).to_string(),
+        ),
         Err(e) => (
             StatusCode::BAD_GATEWAY,
             json_headers(),

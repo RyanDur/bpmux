@@ -25,6 +25,9 @@ mod room;
 mod roster;
 mod search;
 pub mod shared;
+pub(crate) mod story_frames;
+#[cfg(test)]
+mod story_frames_tests;
 mod wait;
 mod wake;
 

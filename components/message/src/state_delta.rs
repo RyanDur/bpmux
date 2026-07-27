@@ -35,6 +35,12 @@ pub enum StateDeltaPayload {
     },
     #[serde(rename = "board_invalidated")]
     BoardInvalidated { reason: String },
+    #[serde(rename = "story_upserted")]
+    StoryUpserted { story: serde_json::Value },
+    #[serde(rename = "story_removed")]
+    StoryRemoved { id: u64 },
+    #[serde(rename = "story_order")]
+    StoryOrder { ids: Vec<u64> },
     #[serde(rename = "stories")]
     Stories {
         stories: serde_json::Value,

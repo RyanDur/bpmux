@@ -1,23 +1,25 @@
 pub fn ordered_board_stories(select: &store::Select) -> Vec<serde_json::Value> {
-    select.select(|state| {
-        let all = product_management::story::slice::all(&state.stories);
-        let iterations = product_management::iteration::all(&state.iterations);
-        let codec = source_codec::gh_label_codec::GhLabelCodec;
-        let items: Vec<serde_json::Value> = all
-            .iter()
-            .map(|story| {
-                let projected = product_management::scheduling::projected_state(story, &iterations);
-                let wire =
-                    board::wire_state(&projected, board::held_stage(story, &state.board).as_ref());
-                view::board::story_to_board_json(&codec, story, &wire)
-            })
-            .collect();
-        let current_order: Vec<u64> =
-            product_management::iteration::label::current_iteration(&iterations)
-                .map(|iteration| iteration.stories.iter().map(|id| id.value()).collect())
-                .unwrap_or_default();
-        sort_ready_by_membership(items, &current_order)
-    })
+    select.select(board_stories_json)
+}
+
+pub(crate) fn board_stories_json(state: &store::AppState) -> Vec<serde_json::Value> {
+    let all = product_management::story::slice::all(&state.stories);
+    let iterations = product_management::iteration::all(&state.iterations);
+    let codec = source_codec::gh_label_codec::GhLabelCodec;
+    let items: Vec<serde_json::Value> = all
+        .iter()
+        .map(|story| {
+            let projected = product_management::scheduling::projected_state(story, &iterations);
+            let wire =
+                board::wire_state(&projected, board::held_stage(story, &state.board).as_ref());
+            view::board::story_to_board_json(&codec, story, &wire)
+        })
+        .collect();
+    let current_order: Vec<u64> =
+        product_management::iteration::label::current_iteration(&iterations)
+            .map(|iteration| iteration.stories.iter().map(|id| id.value()).collect())
+            .unwrap_or_default();
+    sort_ready_by_membership(items, &current_order)
 }
 
 pub fn sort_ready_by_membership(

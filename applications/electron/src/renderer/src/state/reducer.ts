@@ -1,4 +1,5 @@
 import { applyStateDelta, emptyMirrorState } from '@transport/state-delta'
+import { orderStories, removeStory, upsertStory } from '@components/board/storyFolds'
 import { asMessageType } from '@transport/messageType'
 import { StateActionType, type StateAction, type HistoryMessage } from './actions'
 import type {
@@ -111,6 +112,15 @@ export const stateReducer = (state: StateSnapshot, action: StateAction): StateSn
         if (action.delta.columns !== undefined) {
           next.columns = action.delta.columns
         }
+      }
+      if (action.delta.domain === 'story_upserted') {
+        next.stories = upsertStory(state.stories, action.delta.story)
+      }
+      if (action.delta.domain === 'story_removed') {
+        next.stories = removeStory(state.stories, action.delta.id)
+      }
+      if (action.delta.domain === 'story_order') {
+        next.stories = orderStories(state.stories, action.delta.ids)
       }
       if (action.delta.domain === 'epics') {
         next.epics = action.delta.epics
