@@ -10,9 +10,10 @@ use super::shared::{
 };
 
 pub async fn get_story_comments(
-    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::Extension(tracker_cell): axum::Extension<super::shared::TrackerCell>,
     axum::extract::Path(number): axum::extract::Path<u64>,
 ) -> impl IntoResponse {
+    let tracker: TrackerHandle = tracker_cell.current();
     let Some(tracker) = tracker else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
@@ -35,10 +36,11 @@ pub async fn get_story_comments(
 }
 
 pub async fn get_story_timeline(
-    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::Extension(tracker_cell): axum::Extension<super::shared::TrackerCell>,
     axum::Extension(orchestrator): axum::Extension<sync::OrchestratorHandle>,
     axum::extract::Path(number): axum::extract::Path<u64>,
 ) -> impl IntoResponse {
+    let tracker: TrackerHandle = tracker_cell.current();
     let Some(tracker) = tracker else {
         if orchestrator.is_some() {
             return (StatusCode::OK, json_headers(), "[]".to_string());
@@ -70,10 +72,11 @@ pub async fn get_story_timeline(
 
 pub async fn post_story_comment(
     State(hub): State<Arc<hub::Hub>>,
-    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::Extension(tracker_cell): axum::Extension<super::shared::TrackerCell>,
     axum::extract::Path(number): axum::extract::Path<u64>,
     Json(payload): Json<CommentPayload>,
 ) -> impl IntoResponse {
+    let tracker: TrackerHandle = tracker_cell.current();
     let Some(tracker) = tracker else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,

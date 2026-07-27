@@ -8,8 +8,9 @@ impl GitHubSourceAdapter {
 
     pub fn from_connection(
         connection: &crate::github::connection::GithubConnection,
+        observer: rate_limit::RateLimitObserver,
     ) -> Option<Self> {
-        OctocrabStoryTracker::from_connection(connection).map(Self::new)
+        OctocrabStoryTracker::from_connection(connection, observer).map(Self::new)
     }
 
     pub async fn accept_story(&self, number: u64) -> Result<(), String> {

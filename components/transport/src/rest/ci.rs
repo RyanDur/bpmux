@@ -15,10 +15,11 @@ pub async fn get_ci(
 }
 
 pub async fn get_ci_log(
-    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::Extension(tracker_cell): axum::Extension<super::shared::TrackerCell>,
     axum::Extension(ci_log_store): axum::Extension<ci::CiLogStore>,
     axum::extract::Path(run_id): axum::extract::Path<u64>,
 ) -> impl IntoResponse {
+    let tracker: TrackerHandle = tracker_cell.current();
     if let Some(cached) = ci_log_store.read(run_id) {
         return (
             StatusCode::OK,
@@ -65,10 +66,11 @@ pub struct CiJobsQuery {
 }
 
 pub async fn get_ci_jobs(
-    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::Extension(tracker_cell): axum::Extension<super::shared::TrackerCell>,
     axum::extract::Path(run_id): axum::extract::Path<u64>,
     axum::extract::Query(query): axum::extract::Query<CiJobsQuery>,
 ) -> impl IntoResponse {
+    let tracker: TrackerHandle = tracker_cell.current();
     let Some(tracker) = tracker else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,
@@ -104,9 +106,10 @@ pub async fn get_ci_jobs(
 }
 
 pub async fn post_ci_rerun(
-    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::Extension(tracker_cell): axum::Extension<super::shared::TrackerCell>,
     axum::extract::Path(run_id): axum::extract::Path<u64>,
 ) -> impl IntoResponse {
+    let tracker: TrackerHandle = tracker_cell.current();
     let Some(tracker) = tracker else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,

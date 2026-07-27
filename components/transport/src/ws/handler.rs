@@ -14,7 +14,7 @@ pub async fn ws_handler(
     axum::Extension(store): axum::Extension<Arc<store::Store>>,
     axum::Extension(dispatch): axum::Extension<store::Dispatch>,
     axum::Extension(pty_registry): axum::Extension<Arc<room::LivePtyRegistry>>,
-    axum::Extension(tracker): axum::Extension<crate::rest::TrackerHandle>,
+    axum::Extension(cell): axum::Extension<crate::rest::shared::TrackerCell>,
     axum::Extension(orchestrator): axum::Extension<sync::OrchestratorHandle>,
 ) -> Response {
     let deps = WsDeps {
@@ -22,7 +22,7 @@ pub async fn ws_handler(
         store,
         dispatch,
         pty_registry,
-        tracker,
+        cell,
         orchestrator,
     };
     ws.on_upgrade(move |socket| handle_ws(socket, deps))

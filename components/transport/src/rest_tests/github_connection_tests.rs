@@ -22,6 +22,7 @@ struct Harness {
     secrets: Arc<InMemorySecretStore>,
     seeded: SeededStore,
     actions_url: ci::ActionsUrl,
+    cell: crate::rest::shared::TrackerCell,
     _dir: TempDir,
 }
 
@@ -33,6 +34,8 @@ fn harness() -> Harness {
         Arc::new(GithubConnectionDataGateway::new(db, secrets.clone()));
     let seeded = SeededStore::new(Vec::new(), Vec::new(), Vec::new());
     let actions_url = ci::ActionsUrl::for_repo(None);
+    let cell = crate::rest::shared::TrackerCell::seeded(None);
+    let orchestrator: sync::OrchestratorHandle = None;
     let router = axum::Router::new()
         .route(
             "/api/github-connection",
@@ -42,13 +45,16 @@ fn harness() -> Harness {
         )
         .layer(axum::Extension(connections.clone()))
         .layer(axum::Extension(seeded.select()))
-        .layer(axum::Extension(actions_url.clone()));
+        .layer(axum::Extension(actions_url.clone()))
+        .layer(axum::Extension(cell.clone()))
+        .layer(axum::Extension(orchestrator));
     Harness {
         router,
         connections,
         secrets,
         seeded,
         actions_url,
+        cell,
         _dir: dir,
     }
 }
@@ -281,6 +287,36 @@ async fn put_with_neither_token_nor_base_url_is_refused() {
     .await;
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     assert_eq!(h.connections.resolve().expect("resolve"), None);
+}
+
+#[tokio::test]
+async fn put_connects_the_live_cell_so_syncing_needs_no_restart() {
+    let h = harness();
+    claim_owner_nonce(&h, "launch-1");
+    assert!(!h.cell.is_connected());
+    let response = send(h.router, "PUT", Some(base_url_payload()), Some("launch-1")).await;
+    assert_eq!(response.status(), StatusCode::OK);
+    assert!(
+        h.cell.is_connected(),
+        "submitting creds swaps the one live cell — every poller and door sees the connection on its next read"
+    );
+}
+
+#[tokio::test]
+async fn delete_disconnects_the_live_cell() {
+    let h = harness();
+    claim_owner_nonce(&h, "launch-1");
+    send(
+        h.router.clone(),
+        "PUT",
+        Some(base_url_payload()),
+        Some("launch-1"),
+    )
+    .await;
+    assert!(h.cell.is_connected());
+    let response = send(h.router, "DELETE", None, Some("launch-1")).await;
+    assert_eq!(response.status(), StatusCode::OK);
+    assert!(!h.cell.is_connected());
 }
 
 #[tokio::test]

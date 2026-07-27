@@ -16,12 +16,16 @@ pub async fn run_sync_status_heartbeat(
     source: Arc<dyn SyncStatusSource>,
     hub: Arc<hub::Hub>,
     interval: std::time::Duration,
+    connected: super::ConnectedProbe,
 ) {
     let start = tokio::time::Instant::now() + interval;
     let mut ticker = tokio::time::interval_at(start, interval);
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         ticker.tick().await;
+        if !connected() {
+            continue;
+        }
         let snapshot = source.status();
         broadcast_sync_status_heartbeat(&hub, &snapshot);
     }

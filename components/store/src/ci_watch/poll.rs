@@ -7,10 +7,9 @@ use hub::Hub;
 use kernel::{DeliveryMode, Dispatch, Listener, ListenerFuture, Reaction};
 use rate_limit::RateLimitObserver;
 
-use super::{CiAction, CiPollFetch, CiWatchDriver};
+use super::{CiAction, CiWatchDriver};
 
 pub struct CiPoll {
-    tracker: Option<Arc<dyn CiPollFetch>>,
     hub: Arc<Hub>,
     parent_ct: CancellationToken,
     observer: RateLimitObserver,
@@ -20,14 +19,12 @@ pub struct CiPoll {
 
 impl CiPoll {
     pub fn new(
-        tracker: Option<Arc<dyn CiPollFetch>>,
         hub: Arc<Hub>,
         parent_ct: CancellationToken,
         observer: RateLimitObserver,
         watch_driver: Arc<dyn CiWatchDriver>,
     ) -> Self {
         Self {
-            tracker,
             hub,
             parent_ct,
             observer,
@@ -37,9 +34,6 @@ impl CiPoll {
     }
 
     fn start(&self, dispatch: Dispatch<AppAction>) {
-        let Some(tracker) = self.tracker.clone() else {
-            return;
-        };
         let mut guard = self
             .token
             .lock()
@@ -50,7 +44,6 @@ impl CiPoll {
         let token = self.parent_ct.child_token();
         self.watch_driver.spawn_watch(
             dispatch.clone(),
-            tracker,
             self.hub.clone(),
             self.observer.clone(),
             token.clone(),

@@ -18,31 +18,18 @@ pub fn build_store(
     tracker: Option<Arc<dyn CiPollFetch>>,
     parent_ct: CancellationToken,
 ) -> Store {
-    build_store_with_outbox(
-        hub,
-        data_gateways,
-        tracker,
-        parent_ct,
-        Vec::new(),
-        ci::ActionsUrl::for_repo(None),
-    )
-}
-
-pub(crate) fn build_store_with_outbox(
-    hub: Arc<hub::Hub>,
-    data_gateways: storage::DataGateways,
-    tracker: Option<Arc<dyn CiPollFetch>>,
-    parent_ct: CancellationToken,
-    initial_outbox: Vec<source_sync::QueuedWrite>,
-    actions_url: ci::ActionsUrl,
-) -> Store {
+    let observer = tracker
+        .as_ref()
+        .map(|t| t.rate_limit_observer())
+        .unwrap_or_default();
     Store::from_parts(assemble(
         hub,
         data_gateways,
-        tracker,
+        Arc::new(move || tracker.clone()),
+        observer,
         parent_ct,
-        initial_outbox,
-        actions_url,
+        Vec::new(),
+        ci::ActionsUrl::for_repo(None),
     ))
 }
 
@@ -50,7 +37,8 @@ pub(crate) fn build_store_with_outbox(
 pub(crate) fn build_store_with_refresh<A: sync::SourceAdapter + 'static>(
     hub: Arc<hub::Hub>,
     data_gateways: storage::DataGateways,
-    tracker: Option<Arc<dyn CiPollFetch>>,
+    cell: integrations::github::live::TrackerCell,
+    connected: bridge::polling::ConnectedProbe,
     parent_ct: CancellationToken,
     initial_outbox: Vec<source_sync::QueuedWrite>,
     adapter: Arc<A>,
@@ -60,10 +48,12 @@ pub(crate) fn build_store_with_refresh<A: sync::SourceAdapter + 'static>(
     actions_url: ci::ActionsUrl,
 ) -> (Store, Arc<SyncOrchestrator>) {
     let outbox_sink = data_gateways.outbox.clone();
+    let observer = cell.observer();
     let parts = assemble(
         hub,
         data_gateways,
-        tracker,
+        transport::ci_watcher::cell_fetch_resolver(cell),
+        observer,
         parent_ct.clone(),
         initial_outbox,
         actions_url,
@@ -86,6 +76,7 @@ pub(crate) fn build_store_with_refresh<A: sync::SourceAdapter + 'static>(
         ingest_interval,
         hydration_interval,
         parent_ct.clone(),
+        connected,
     ));
     parts.app_store.add_listener(sync_poll);
     parts
@@ -124,15 +115,12 @@ pub(crate) fn build_store_with_refresh<A: sync::SourceAdapter + 'static>(
 fn assemble(
     hub: Arc<hub::Hub>,
     data_gateways: storage::DataGateways,
-    tracker: Option<Arc<dyn CiPollFetch>>,
+    ci_fetch: transport::ci_watcher::CiFetchResolver,
+    rate_limit_observer: rate_limit::RateLimitObserver,
     parent_ct: CancellationToken,
     initial_outbox: Vec<source_sync::QueuedWrite>,
     actions_url: ci::ActionsUrl,
 ) -> StoreParts {
-    let rate_limit_observer = tracker
-        .as_ref()
-        .map(|t| t.rate_limit_observer())
-        .unwrap_or_default();
     let app_store = kernel::Store::new(
         AppState::with_board(board::persistence::load(&hub.dir))
             .with_reactions(store::reactions::from_store(&reactions::load(&hub.dir)))
@@ -165,12 +153,12 @@ fn assemble(
         actions_url.clone(),
     )));
     let ci_poll = Arc::new(store::ci_watch::CiPoll::new(
-        tracker.clone(),
         hub.clone(),
         parent_ct,
         rate_limit_observer.clone(),
         Arc::new(transport::ci_watcher::CiWatcherDriver {
             actions_url: actions_url.clone(),
+            fetch: ci_fetch,
         }),
     ));
     app_store.add_listener(ci_poll);

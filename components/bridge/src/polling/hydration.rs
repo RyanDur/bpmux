@@ -46,6 +46,7 @@ pub async fn run_hydration_loop_cancellable(
     interval: std::time::Duration,
     observer: rate_limit::RateLimitObserver,
     ct: tokio_util::sync::CancellationToken,
+    connected: super::ConnectedProbe,
 ) {
     let start = tokio::time::Instant::now() + interval;
     let mut ticker = tokio::time::interval_at(start, interval);
@@ -54,6 +55,9 @@ pub async fn run_hydration_loop_cancellable(
         tokio::select! {
             _ = ct.cancelled() => break,
             _ = ticker.tick() => {}
+        }
+        if !connected() {
+            continue;
         }
         let snapshot = observer.snapshot();
         let decision = rate_limit::decide_backoff(

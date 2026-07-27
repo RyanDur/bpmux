@@ -7,13 +7,12 @@ use hub::Hub;
 use kernel::Dispatch;
 use rate_limit::RateLimitObserver;
 
-use ci::slice::{CiAction, CiPollFetch};
+use ci::slice::CiAction;
 
 pub trait CiWatchDriver: Send + Sync {
     fn spawn_watch(
         &self,
         dispatch: Dispatch<AppAction>,
-        tracker: Arc<dyn CiPollFetch>,
         hub: Arc<Hub>,
         observer: RateLimitObserver,
         ct: CancellationToken,

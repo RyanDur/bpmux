@@ -3,7 +3,7 @@ use std::sync::Arc;
 pub(crate) struct GithubBoot {
     pub connections: transport::rest::ConnectionsHandle,
     pub actions_url: ci::ActionsUrl,
-    pub tracker: transport::rest::TrackerHandle,
+    pub cell: integrations::github::live::TrackerCell,
 }
 
 pub(crate) fn resolve(data_gateways: &storage::DataGateways) -> GithubBoot {
@@ -33,13 +33,15 @@ pub(crate) fn resolve(data_gateways: &storage::DataGateways) -> GithubBoot {
             .as_ref()
             .map(integrations::github::connection::GithubConnection::owner_repo),
     );
-    let tracker: transport::rest::TrackerHandle = connection
-        .as_ref()
-        .and_then(integrations::github::GitHubSourceAdapter::from_connection)
-        .map(Arc::new);
+    let cell = integrations::github::live::TrackerCell::seeded(None);
+    if let Some(adapter) = connection.as_ref().and_then(|c| {
+        integrations::github::GitHubSourceAdapter::from_connection(c, cell.observer())
+    }) {
+        cell.connect(Arc::new(adapter));
+    }
     GithubBoot {
         connections,
         actions_url,
-        tracker,
+        cell,
     }
 }

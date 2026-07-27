@@ -13,22 +13,31 @@ use store::{AppAction, CiAction, CiPollFetch, CiSnapshot};
 
 pub const WATCHER_UNHEALTHY_THRESHOLD: Duration = Duration::from_secs(120);
 
+pub type CiFetchResolver = Arc<dyn Fn() -> Option<Arc<dyn CiPollFetch>> + Send + Sync>;
+
+pub fn cell_fetch_resolver(cell: crate::rest::shared::TrackerCell) -> CiFetchResolver {
+    Arc::new(move || {
+        cell.current()
+            .map(|adapter| adapter as Arc<dyn CiPollFetch>)
+    })
+}
+
 pub struct CiWatcherDriver {
     pub actions_url: ci::ActionsUrl,
+    pub fetch: CiFetchResolver,
 }
 
 impl CiWatchDriver for CiWatcherDriver {
     fn spawn_watch(
         &self,
         dispatch: Dispatch<AppAction>,
-        tracker: Arc<dyn CiPollFetch>,
         hub: Arc<Hub>,
         observer: RateLimitObserver,
         ct: CancellationToken,
     ) {
         spawn(
             dispatch,
-            tracker,
+            self.fetch.clone(),
             hub,
             observer,
             ct,
@@ -39,7 +48,7 @@ impl CiWatchDriver for CiWatcherDriver {
 
 pub fn spawn<A>(
     dispatch: Dispatch<A>,
-    tracker: Arc<dyn CiPollFetch>,
+    fetch: CiFetchResolver,
     hub: Arc<Hub>,
     observer: RateLimitObserver,
     ct: CancellationToken,
@@ -61,6 +70,9 @@ pub fn spawn<A>(
                 _ = ct.cancelled() => break,
                 _ = interval.tick() => {}
             }
+            let Some(tracker) = fetch() else {
+                continue;
+            };
             let conditional = tracker
                 .list_latest_run_on_main_conditional(last_etag.as_deref())
                 .await;

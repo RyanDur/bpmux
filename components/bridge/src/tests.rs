@@ -391,6 +391,7 @@ mod poll_loop_tests {
             source,
             hub,
             Duration::from_millis(50),
+            std::sync::Arc::new(|| true),
         ));
         let received = tokio::time::timeout(Duration::from_millis(500), rx.recv())
             .await
@@ -424,6 +425,7 @@ mod poll_loop_tests {
             source,
             hub,
             Duration::from_millis(50),
+            std::sync::Arc::new(|| true),
         ));
         let first = tokio::time::timeout(Duration::from_millis(500), rx.recv())
             .await

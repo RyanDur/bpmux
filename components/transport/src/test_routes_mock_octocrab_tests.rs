@@ -49,7 +49,9 @@ async fn fixture_mock_octocrab(
         .route("/api/board", axum::routing::get(super::rest::get_board))
         .with_state(fresh_test_hub())
         .layer(axum::Extension(orchestrator))
-        .layer(axum::Extension(none_tracker))
+        .layer(axum::Extension(
+            integrations::github::live::TrackerCell::seeded(none_tracker),
+        ))
         .layer(axum::Extension(store::Dispatch::recording().0))
         .layer(axum::Extension(select.clone()));
     (router, orch, select)

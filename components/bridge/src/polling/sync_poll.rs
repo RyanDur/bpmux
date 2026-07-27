@@ -12,6 +12,7 @@ pub struct SyncPoll {
     refresh: Arc<SyncOrchestrator>,
     select: store::Select,
     observer: RateLimitObserver,
+    connected: super::ConnectedProbe,
     ingest_interval: Duration,
     hydration_interval: Duration,
     parent_ct: CancellationToken,
@@ -27,11 +28,13 @@ impl SyncPoll {
         ingest_interval: Duration,
         hydration_interval: Duration,
         parent_ct: CancellationToken,
+        connected: super::ConnectedProbe,
     ) -> Self {
         Self {
             refresh,
             select,
             observer,
+            connected,
             ingest_interval,
             hydration_interval,
             parent_ct,
@@ -54,6 +57,7 @@ impl SyncPoll {
             self.ingest_interval,
             Some(self.observer.clone()),
             token.clone(),
+            self.connected.clone(),
         ));
         *guard = Some(token);
         drop(guard);
@@ -77,6 +81,7 @@ impl SyncPoll {
             self.hydration_interval,
             self.observer.clone(),
             token.clone(),
+            self.connected.clone(),
         ));
         *guard = Some(token);
         drop(guard);

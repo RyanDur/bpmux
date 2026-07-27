@@ -5,10 +5,11 @@ use super::board::{board_iterations, ordered_board_stories, sort_ready_by_member
 use super::shared::{TrackerHandle, err_body, json_headers};
 
 pub async fn get_board(
-    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::Extension(tracker_cell): axum::Extension<super::shared::TrackerCell>,
     axum::Extension(orchestrator): axum::Extension<sync::OrchestratorHandle>,
     axum::Extension(select): axum::Extension<store::Select>,
 ) -> impl IntoResponse {
+    let tracker: TrackerHandle = tracker_cell.current();
     if let Some(refresh) = orchestrator.as_ref() {
         if select.select(|state| product_management::story::slice::is_empty(&state.stories)) {
             match refresh.refresh_all().await {
@@ -92,9 +93,10 @@ pub async fn get_iterations(
 }
 
 pub async fn get_story(
-    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::Extension(tracker_cell): axum::Extension<super::shared::TrackerCell>,
     axum::extract::Path(number): axum::extract::Path<u64>,
 ) -> impl IntoResponse {
+    let tracker: TrackerHandle = tracker_cell.current();
     let Some(tracker) = tracker else {
         return (
             StatusCode::SERVICE_UNAVAILABLE,

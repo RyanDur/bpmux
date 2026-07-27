@@ -37,7 +37,7 @@ pub(super) struct WsDeps {
     store: Arc<store::Store>,
     dispatch: store::Dispatch,
     pty_registry: Arc<room::LivePtyRegistry>,
-    tracker: crate::rest::TrackerHandle,
+    cell: crate::rest::shared::TrackerCell,
     orchestrator: sync::OrchestratorHandle,
 }
 
@@ -51,7 +51,7 @@ pub(super) async fn run_ws_session(
         store,
         dispatch,
         pty_registry,
-        tracker,
+        cell,
         orchestrator,
     } = deps;
     let (mut identity, replay_cursor, identify_user_id, identify_owner_nonce) =
@@ -112,6 +112,7 @@ pub(super) async fn run_ws_session(
                 ws_result = rx.next() => {
                     match ws_result {
                         Some(Ok(WsMessage::Text(text))) => {
+                            let tracker: crate::rest::TrackerHandle = cell.current();
                             let client_ctx = client::ClientCtx {
                                 hub: &hub,
                                 store: &store,

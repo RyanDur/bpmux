@@ -125,7 +125,13 @@ mod tracker_construction {
             repo: "bpmux".to_string(),
             token: "t".to_string(),
         };
-        assert!(OctocrabStoryTracker::from_connection(&connection).is_some());
+        assert!(
+            OctocrabStoryTracker::from_connection(
+                &connection,
+                rate_limit::RateLimitObserver::new()
+            )
+            .is_some()
+        );
     }
 
     #[tokio::test]
@@ -135,7 +141,13 @@ mod tracker_construction {
             repo: "bpmux".to_string(),
             base_url: "http://127.0.0.1:9012/".to_string(),
         };
-        assert!(OctocrabStoryTracker::from_connection(&connection).is_some());
+        assert!(
+            OctocrabStoryTracker::from_connection(
+                &connection,
+                rate_limit::RateLimitObserver::new()
+            )
+            .is_some()
+        );
     }
 
     #[test]
@@ -145,7 +157,13 @@ mod tracker_construction {
             repo: "bpmux".to_string(),
             base_url: "not a uri".to_string(),
         };
-        assert!(OctocrabStoryTracker::from_connection(&connection).is_none());
+        assert!(
+            OctocrabStoryTracker::from_connection(
+                &connection,
+                rate_limit::RateLimitObserver::new()
+            )
+            .is_none()
+        );
     }
 }
 

@@ -6,6 +6,7 @@ pub mod connection;
 mod delegates;
 mod ingest;
 pub mod keychain;
+pub mod live;
 mod mutation;
 mod mutation_events;
 mod source_adapter;
@@ -13,6 +14,8 @@ pub mod tracker;
 
 #[cfg(test)]
 mod adapter_tests;
+#[cfg(test)]
+mod live_tests;
 #[cfg(test)]
 mod tracker_tests;
 

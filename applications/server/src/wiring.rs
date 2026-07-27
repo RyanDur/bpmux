@@ -11,7 +11,7 @@ pub(super) struct RouterDeps {
     pub auth_state: AuthState,
     pub unfurl_cache: transport::unfurl::UnfurlCacheHandle,
     pub hub: Arc<hub::Hub>,
-    pub tracker: transport::rest::TrackerHandle,
+    pub cell: transport::rest::shared::TrackerCell,
     pub actions_url: ci::ActionsUrl,
     pub connections: transport::rest::ConnectionsHandle,
     pub ci_log_store: CiLogStore,
@@ -32,7 +32,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         auth_state,
         unfurl_cache,
         hub,
-        tracker,
+        cell,
         actions_url,
         connections,
         ci_log_store,
@@ -100,7 +100,7 @@ pub(super) fn build_router(deps: RouterDeps) -> axum::Router {
         .merge(test_routes)
         .merge(test_seed_routes)
         .with_state(hub)
-        .layer(axum::Extension(tracker))
+        .layer(axum::Extension(cell))
         .layer(axum::Extension(connections))
         .layer(axum::Extension(ci_log_store))
         .layer(axum::Extension(electron_capture_lock))

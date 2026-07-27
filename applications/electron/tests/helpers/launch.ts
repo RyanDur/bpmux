@@ -53,6 +53,7 @@ export type LaunchOpts = {
   extraEnv?: Record<string, string>
   preserveTempPaths?: boolean
   ghBaseUrl?: string
+  unconnected?: boolean
 }
 
 export type LaunchResult = {
@@ -193,12 +194,14 @@ export const launchIsolatedElectron = async (opts: LaunchOpts = {}): Promise<Lau
   const defaultInstalledBinaryPath = join(installedDir, 'bpmux')
 
   let defaultMockGh: MockGhServer | undefined
-  const ghBaseUrl = await (async () => {
-    if (opts.ghBaseUrl) return opts.ghBaseUrl
-    defaultMockGh = await startMockGhServer()
-    return defaultMockGh.baseUrl
-  })()
-  seedGithubConnection(dataBase, ghBaseUrl)
+  if (!opts.unconnected) {
+    const ghBaseUrl = await (async () => {
+      if (opts.ghBaseUrl) return opts.ghBaseUrl
+      defaultMockGh = await startMockGhServer()
+      return defaultMockGh.baseUrl
+    })()
+    seedGithubConnection(dataBase, ghBaseUrl)
+  }
 
   const app = await electron.launch({
     args: ['out/main/index.js', `--user-data-dir=${userDataDir}`],

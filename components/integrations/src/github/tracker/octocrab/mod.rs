@@ -30,7 +30,10 @@ impl OctocrabStoryTracker {
 }
 
 impl OctocrabStoryTracker {
-    pub fn from_connection(connection: &GithubConnection) -> Option<Self> {
+    pub fn from_connection(
+        connection: &GithubConnection,
+        observer: rate_limit::RateLimitObserver,
+    ) -> Option<Self> {
         match connection {
             GithubConnection::Hosted { owner, repo, token } => {
                 ensure_crypto_provider_installed();
@@ -42,7 +45,7 @@ impl OctocrabStoryTracker {
                     client,
                     owner: owner.clone(),
                     repo: repo.clone(),
-                    rate_limit_observer: rate_limit::RateLimitObserver::new(),
+                    rate_limit_observer: observer,
                 })
             }
             GithubConnection::WithBaseUrl {
@@ -50,7 +53,10 @@ impl OctocrabStoryTracker {
                 repo,
                 base_url,
             } => match Self::with_base_url(base_url, owner.clone(), repo.clone()) {
-                Ok(tracker) => Some(tracker),
+                Ok(tracker) => Some(Self {
+                    rate_limit_observer: observer,
+                    ..tracker
+                }),
                 Err(e) => {
                     diag::log_diag(&format!(
                         "OctocrabStoryTracker::from_connection: base_url build failed: {e}"

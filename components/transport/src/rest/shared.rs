@@ -3,6 +3,7 @@ use std::sync::Arc;
 use serde::Deserialize;
 
 pub type TrackerHandle = Option<Arc<integrations::github::GitHubSourceAdapter>>;
+pub type TrackerCell = integrations::github::live::TrackerCell;
 
 pub const OWNER_NONCE_HEADER: &str = "x-bpmux-owner-nonce";
 

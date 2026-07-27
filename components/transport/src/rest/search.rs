@@ -19,9 +19,10 @@ pub struct SearchParams {
 
 pub async fn search_messages(
     State(hub): State<Arc<hub::Hub>>,
-    axum::Extension(tracker): axum::Extension<TrackerHandle>,
+    axum::Extension(tracker_cell): axum::Extension<super::shared::TrackerCell>,
     Query(params): Query<SearchParams>,
 ) -> impl IntoResponse {
+    let tracker: TrackerHandle = tracker_cell.current();
     let message_class = params.message_type.as_deref().and_then(|t| match t {
         "correction" | "experience" => Some(comprehension::MessageClass::Experience(
             comprehension::classifier::ExperienceKind::Correction,

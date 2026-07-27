@@ -50,7 +50,9 @@ async fn fixture_test_mode_on() -> (axum::Router, Arc<SyncOrchestrator>, store::
         .route("/api/board", axum::routing::get(super::rest::get_board))
         .with_state(fresh_test_hub())
         .layer(axum::Extension(orchestrator))
-        .layer(axum::Extension(none_tracker))
+        .layer(axum::Extension(
+            integrations::github::live::TrackerCell::seeded(none_tracker),
+        ))
         .layer(axum::Extension(store::Dispatch::recording().0))
         .layer(axum::Extension(select.clone()));
     (router, orch, select)
@@ -240,7 +242,9 @@ async fn rest_get_board_auto_reingests_when_orchestrator_store_is_empty() {
         .route("/api/board", axum::routing::get(super::rest::get_board))
         .with_state(fresh_test_hub())
         .layer(axum::Extension(orchestrator))
-        .layer(axum::Extension(none_tracker))
+        .layer(axum::Extension(
+            integrations::github::live::TrackerCell::seeded(none_tracker),
+        ))
         .layer(axum::Extension(store.select()));
 
     assert!(

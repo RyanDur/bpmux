@@ -15,3 +15,5 @@ pub use ingest::run_ingest_poll_loop_cancellable;
 pub use sync_poll::SyncPoll;
 #[cfg(test)]
 pub use {drain::SyncStatusSource, ingest::IngestTicker};
+
+pub type ConnectedProbe = std::sync::Arc<dyn Fn() -> bool + Send + Sync>;

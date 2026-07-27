@@ -189,7 +189,9 @@ pub fn board_router(hub: Arc<hub::Hub>, tracker: TrackerHandle) -> axum::Router 
             post(crate::rest::post_reject_story),
         )
         .with_state(hub)
-        .layer(axum::Extension(tracker))
+        .layer(axum::Extension(
+            integrations::github::live::TrackerCell::seeded(tracker),
+        ))
         .layer(axum::Extension(none_refresh))
         .layer(axum::Extension(select))
 }

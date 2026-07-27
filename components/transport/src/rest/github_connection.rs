@@ -8,7 +8,7 @@ use serde::Deserialize;
 use integrations::data_gateway::{ConnectionError, GithubConnectionDataGateway};
 use integrations::github::connection::GithubConnection;
 
-use super::shared::{JsonResponse, err_body, json_headers, owner_walk_or_forbidden};
+use super::shared::{JsonResponse, TrackerCell, err_body, json_headers, owner_walk_or_forbidden};
 
 pub type ConnectionsHandle = Arc<GithubConnectionDataGateway>;
 
@@ -98,6 +98,8 @@ pub async fn put_github_connection(
     axum::Extension(connections): axum::Extension<ConnectionsHandle>,
     axum::Extension(select): axum::Extension<store::Select>,
     axum::Extension(actions_url): axum::Extension<ci::ActionsUrl>,
+    axum::Extension(cell): axum::Extension<TrackerCell>,
+    axum::Extension(orchestrator): axum::Extension<sync::OrchestratorHandle>,
     headers: HeaderMap,
     Json(payload): Json<ConnectPayload>,
 ) -> impl IntoResponse {
@@ -116,6 +118,26 @@ pub async fn put_github_connection(
     }
     let (owner, repo) = candidate.owner_repo();
     actions_url.set_repo(Some((owner, repo)));
+    match integrations::github::GitHubSourceAdapter::from_connection(&candidate, cell.observer()) {
+        Some(adapter) => {
+            cell.connect(Arc::new(adapter));
+            if let Some(orchestrator) = orchestrator {
+                tokio::spawn(async move {
+                    if let Err(e) = orchestrator.refresh_all().await {
+                        diag::log_diag(&format!(
+                            "github-connection: first sync after connect failed ({e}) — the poll loop retries"
+                        ));
+                    }
+                });
+            }
+        }
+        None => {
+            cell.disconnect();
+            diag::log_diag(
+                "github-connection: stored settings do not build a client — running unconnected until they change",
+            );
+        }
+    }
     ok_body(connection_body(&candidate))
 }
 
@@ -123,6 +145,7 @@ pub async fn delete_github_connection(
     axum::Extension(connections): axum::Extension<ConnectionsHandle>,
     axum::Extension(select): axum::Extension<store::Select>,
     axum::Extension(actions_url): axum::Extension<ci::ActionsUrl>,
+    axum::Extension(cell): axum::Extension<TrackerCell>,
     headers: HeaderMap,
 ) -> impl IntoResponse {
     if let Err(refusal) = owner_walk_or_forbidden(&select, &headers, "disconnecting github") {
@@ -132,5 +155,6 @@ pub async fn delete_github_connection(
         return storage_failure("disconnect failed", &e);
     }
     actions_url.set_repo(None);
+    cell.disconnect();
     ok_body(serde_json::json!({"state": "disconnected"}))
 }

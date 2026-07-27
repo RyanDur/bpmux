@@ -57,7 +57,8 @@ async fn write_queued_burst_single_flights_one_drain_that_pushes_each_write_once
     let (store_inner, orch) = build_store_with_refresh(
         hub.clone(),
         storage::open(&hub.dir),
-        None,
+        integrations::github::live::TrackerCell::seeded(None),
+        std::sync::Arc::new(|| true),
         CancellationToken::new(),
         Vec::new(),
         Arc::clone(&adapter),
@@ -107,7 +108,8 @@ async fn polling_liveness_facts_never_drain_a_seeded_outbox() {
     let (store_inner, _orch) = build_store_with_refresh(
         hub.clone(),
         storage::open(&hub.dir),
-        None,
+        integrations::github::live::TrackerCell::seeded(None),
+        std::sync::Arc::new(|| true),
         CancellationToken::new(),
         vec![seeded_write(9101, "one", 1), seeded_write(9102, "two", 2)],
         Arc::clone(&adapter),
@@ -164,7 +166,8 @@ async fn a_mutated_write_is_selectable_the_moment_mutate_returns() {
     let (store_inner, orch) = build_store_with_refresh(
         hub.clone(),
         storage::open(&hub.dir),
-        None,
+        integrations::github::live::TrackerCell::seeded(None),
+        std::sync::Arc::new(|| true),
         CancellationToken::new(),
         Vec::new(),
         Arc::clone(&adapter),
@@ -204,7 +207,8 @@ async fn an_ingested_upsert_is_selectable_the_moment_refresh_returns() {
     let (store_inner, orch) = build_store_with_refresh(
         hub.clone(),
         storage::open(&hub.dir),
-        None,
+        integrations::github::live::TrackerCell::seeded(None),
+        std::sync::Arc::new(|| true),
         CancellationToken::new(),
         Vec::new(),
         Arc::clone(&adapter),

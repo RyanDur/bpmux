@@ -444,7 +444,9 @@ async fn post_ci_rerun_returns_when_tracker_missing() {
             "/api/ci/rerun/{run_id}",
             axum::routing::post(transport::rest::post_ci_rerun),
         )
-        .layer(axum::Extension(none_tracker));
+        .layer(axum::Extension(
+            integrations::github::live::TrackerCell::seeded(none_tracker),
+        ));
     let response = post_json(router, "/api/ci/rerun/42", "").await;
     assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
     let body = response_json(response).await;
@@ -465,7 +467,9 @@ async fn post_ci_rerun_returns_success_when_tracker_post_succeeds() {
             "/api/ci/rerun/{run_id}",
             axum::routing::post(transport::rest::post_ci_rerun),
         )
-        .layer(axum::Extension(tracker));
+        .layer(axum::Extension(
+            integrations::github::live::TrackerCell::seeded(tracker),
+        ));
     let response = post_json(router, "/api/ci/rerun/123", "").await;
     m.assert();
     assert_eq!(response.status(), StatusCode::OK);
@@ -488,7 +492,9 @@ async fn post_ci_rerun_returns_when_github_upstream_errors() {
             "/api/ci/rerun/{run_id}",
             axum::routing::post(transport::rest::post_ci_rerun),
         )
-        .layer(axum::Extension(tracker));
+        .layer(axum::Extension(
+            integrations::github::live::TrackerCell::seeded(tracker),
+        ));
     let response = post_json(router, "/api/ci/rerun/999", "").await;
     m.assert();
     assert_eq!(response.status(), StatusCode::BAD_GATEWAY);

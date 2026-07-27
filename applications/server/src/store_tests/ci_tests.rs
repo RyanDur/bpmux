@@ -262,7 +262,7 @@ async fn ci_updated_run_change_or_conclusion_change_fires_listener() {
 }
 
 #[tokio::test]
-async fn start_ci_polling_no_op_without_tracker() {
+async fn start_ci_polling_runs_even_without_a_source_and_the_loop_skips_quietly() {
     let (hub, _dir) = fresh_hub();
     let orch: Arc<Store> = Arc::new(build_store(
         hub.clone(),
@@ -271,7 +271,10 @@ async fn start_ci_polling_no_op_without_tracker() {
         CancellationToken::new(),
     ));
     orch.dispatch(AppAction::Ci(CiAction::StartPolling)).await;
-    assert!(!orch.is_running(PollKind::Ci).await);
+    assert!(
+        orch.is_running(PollKind::Ci).await,
+        "the loop is always on — connectivity gates the fetch, not the machinery, so a live connect needs no restart"
+    );
 }
 
 #[tokio::test]
@@ -570,7 +573,8 @@ async fn start_ingest_polling_spawns_loop_with_refresh() {
     let (store_inner, _refresh) = build_store_with_refresh(
         hub.clone(),
         storage::open(&hub.dir),
-        None,
+        integrations::github::live::TrackerCell::seeded(None),
+        std::sync::Arc::new(|| true),
         CancellationToken::new(),
         Vec::new(),
         adapter_for_tests(),
@@ -605,7 +609,8 @@ async fn start_hydration_polling_spawns_loop_with_refresh() {
     let (store_inner, _refresh) = build_store_with_refresh(
         hub.clone(),
         storage::open(&hub.dir),
-        None,
+        integrations::github::live::TrackerCell::seeded(None),
+        std::sync::Arc::new(|| true),
         CancellationToken::new(),
         Vec::new(),
         adapter_for_tests(),
@@ -640,7 +645,8 @@ async fn start_ingest_idempotent_no_op_when_already_running() {
     let (store_inner, _refresh) = build_store_with_refresh(
         hub.clone(),
         storage::open(&hub.dir),
-        None,
+        integrations::github::live::TrackerCell::seeded(None),
+        std::sync::Arc::new(|| true),
         CancellationToken::new(),
         Vec::new(),
         adapter_for_tests(),
@@ -674,7 +680,8 @@ async fn start_hydration_idempotent_no_op_when_already_running() {
     let (store_inner, _refresh) = build_store_with_refresh(
         hub.clone(),
         storage::open(&hub.dir),
-        None,
+        integrations::github::live::TrackerCell::seeded(None),
+        std::sync::Arc::new(|| true),
         CancellationToken::new(),
         Vec::new(),
         adapter_for_tests(),

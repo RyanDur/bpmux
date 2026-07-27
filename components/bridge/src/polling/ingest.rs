@@ -35,6 +35,7 @@ pub async fn run_ingest_poll_loop(
         interval,
         observer,
         tokio_util::sync::CancellationToken::new(),
+        std::sync::Arc::new(|| true),
     )
     .await
 }
@@ -44,6 +45,7 @@ pub async fn run_ingest_poll_loop_cancellable(
     interval: std::time::Duration,
     observer: Option<rate_limit::RateLimitObserver>,
     ct: tokio_util::sync::CancellationToken,
+    connected: super::ConnectedProbe,
 ) {
     let start = tokio::time::Instant::now() + interval;
     let mut ticker = tokio::time::interval_at(start, interval);
@@ -56,6 +58,9 @@ pub async fn run_ingest_poll_loop_cancellable(
         tokio::select! {
             _ = ct.cancelled() => break,
             _ = ticker.tick() => {}
+        }
+        if !connected() {
+            continue;
         }
         let poll_started_at = chrono::Utc::now();
         match refresh.ingest(last_poll_since).await {

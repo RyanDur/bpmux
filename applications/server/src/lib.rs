@@ -21,15 +21,21 @@ pub async fn run_server(
     let auth_state = build_auth_state()?;
 
     let github = github_boot::resolve(&data_gateways);
-    let (connections, actions_url, tracker) =
-        (github.connections, github.actions_url, github.tracker);
+    let (connections, actions_url, cell) = (github.connections, github.actions_url, github.cell);
+    let connected: bridge::polling::ConnectedProbe = if test_mode_enabled() {
+        std::sync::Arc::new(|| true)
+    } else {
+        let probe_cell = cell.clone();
+        std::sync::Arc::new(move || probe_cell.is_connected())
+    };
 
     let race_window = race_window_barrier_from_env();
 
     let (store_inner, orchestrator) = compose::compose_store(
         hub.clone(),
         data_gateways.clone(),
-        &tracker,
+        &cell,
+        connected.clone(),
         ct.clone(),
         actions_url.clone(),
     );
@@ -45,34 +51,32 @@ pub async fn run_server(
         store.selector(),
         store.dispatcher(),
     );
-    if let Some(refresh) = orchestrator.as_ref() {
-        tokio::spawn(bridge::run_sync_status_heartbeat(
-            refresh.clone(),
-            hub.clone(),
-            bridge::sync_status_heartbeat_interval_from_env(),
-        ));
+    tokio::spawn(bridge::run_sync_status_heartbeat(
+        orchestrator.clone(),
+        hub.clone(),
+        bridge::sync_status_heartbeat_interval_from_env(),
+        connected.clone(),
+    ));
+    if connected() {
         startup_tasks::spawn_background_ingest(
-            refresh.clone(),
+            orchestrator.clone(),
             store.dispatcher(),
             store.selector(),
         );
     }
     wire_startup_roster(&store, &hub, &pty_registry).await;
-    start_polling(&store, orchestrator.is_some()).await;
+    start_polling(&store, true).await;
 
     let unfurl_cache: transport::unfurl::UnfurlCacheHandle =
         std::sync::Arc::new(transport::unfurl::UnfurlCache::new());
 
-    let orchestrator_handle: OrchestratorHandle = orchestrator.map(|orch| {
-        let handle: Arc<sync::SyncOrchestrator> = orch;
-        handle
-    });
+    let orchestrator_handle: OrchestratorHandle = Some(orchestrator);
 
     let router = build_router(RouterDeps {
         auth_state,
         unfurl_cache,
         hub,
-        tracker,
+        cell,
         actions_url,
         connections,
         ci_log_store,
