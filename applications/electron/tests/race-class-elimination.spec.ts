@@ -101,7 +101,7 @@ test.describe('#1213 race-class elimination — WS-only state-flow integration',
         async () => {
           const frames = await readFrames(win)
           return frames.some(
-            (f) => f.message_type === 'state-delta' && f.state_delta?.domain === 'reactions'
+            (f) => f.message_type === 'state-delta' && f.state_delta?.domain === 'reaction_updated'
           )
         },
         { timeout: 5_000 }

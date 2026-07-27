@@ -35,6 +35,18 @@ pub enum StateDeltaPayload {
     },
     #[serde(rename = "board_invalidated")]
     BoardInvalidated { reason: String },
+    #[serde(rename = "reaction_updated")]
+    ReactionUpdated {
+        channel: String,
+        message_key: String,
+        emoji: String,
+        count: u64,
+        users: Vec<String>,
+    },
+    #[serde(rename = "roster_member_upserted")]
+    RosterMemberUpserted { member: RosterMemberWire },
+    #[serde(rename = "roster_member_removed")]
+    RosterMemberRemoved { routing_id: String },
     #[serde(rename = "story_upserted")]
     StoryUpserted { story: serde_json::Value },
     #[serde(rename = "story_removed")]

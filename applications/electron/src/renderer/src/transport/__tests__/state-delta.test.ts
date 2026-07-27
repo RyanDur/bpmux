@@ -84,6 +84,82 @@ describe('applyStateDelta', () => {
     expect(next.ci?.last_successful_poll_at).toBe('2026-06-18T12:00:00Z')
   })
 
+  test('a reaction toggle updates exactly one aggregate in place', () => {
+    const seeded = seededWith([
+      {
+        domain: 'reactions',
+        channel: 'a',
+        aggregated: [
+          { message_key: 'k1', emoji: '👍', count: 1, users: ['dev'] },
+          { message_key: 'k2', emoji: '🎉', count: 1, users: ['pm'] }
+        ]
+      }
+    ])
+    const next = applyStateDelta(seeded, {
+      domain: 'reaction_updated',
+      channel: 'a',
+      message_key: 'k1',
+      emoji: '👍',
+      count: 2,
+      users: ['dev', 'owner']
+    })
+    expect(next.reactions.get('a')).toEqual([
+      { message_key: 'k1', emoji: '👍', count: 2, users: ['dev', 'owner'] },
+      { message_key: 'k2', emoji: '🎉', count: 1, users: ['pm'] }
+    ])
+  })
+
+  test('a toggle down to zero removes the aggregate, and an empty channel disappears', () => {
+    const seeded = seededWith([
+      {
+        domain: 'reactions',
+        channel: 'a',
+        aggregated: [{ message_key: 'k1', emoji: '👍', count: 1, users: ['dev'] }]
+      }
+    ])
+    const next = applyStateDelta(seeded, {
+      domain: 'reaction_updated',
+      channel: 'a',
+      message_key: 'k1',
+      emoji: '👍',
+      count: 0,
+      users: []
+    })
+    expect(next.reactions.has('a')).toBe(false)
+  })
+
+  test('a roster member upsert replaces in place or appends, and a removal drops one member', () => {
+    const member = (routing_id: string, presence: string): never =>
+      ({
+        routing_id,
+        name: routing_id,
+        identity: `${routing_id}:claude-code`,
+        role: 'Dev',
+        presence
+      }) as never
+    const seeded = seededWith([
+      { domain: 'roster', members: [member('sess-a', 'Online'), member('sess-b', 'Online')] }
+    ])
+    const updated = applyStateDelta(seeded, {
+      domain: 'roster_member_upserted',
+      member: member('sess-a', 'Busy')
+    })
+    expect(updated.roster.map((m) => [m.routing_id, m.presence])).toEqual([
+      ['sess-a', 'Busy'],
+      ['sess-b', 'Online']
+    ])
+    const joined = applyStateDelta(updated, {
+      domain: 'roster_member_upserted',
+      member: member('sess-c', 'Online')
+    })
+    expect(joined.roster.map((m) => m.routing_id)).toEqual(['sess-a', 'sess-b', 'sess-c'])
+    const left = applyStateDelta(joined, {
+      domain: 'roster_member_removed',
+      routing_id: 'sess-b'
+    })
+    expect(left.roster.map((m) => m.routing_id)).toEqual(['sess-a', 'sess-c'])
+  })
+
   test('replaces roster wholesale', () => {
     const seeded = seededWith([
       {

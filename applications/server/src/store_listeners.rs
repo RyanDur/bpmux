@@ -4,9 +4,8 @@ use store::{
     AppAction, AppState, CiBroadcast, CiListeners, ReactionsBroadcast, ReactionsListeners,
     RosterBroadcast, RosterListeners,
 };
-use transport::state_delta_broadcasters::{
-    CiHubBroadcaster, ReactionsHubBroadcaster, RosterHubBroadcaster,
-};
+use transport::granular_broadcasts::{ReactionDeltaBroadcast, RosterDeltaBroadcast};
+use transport::state_delta_broadcasters::CiHubBroadcaster;
 
 pub(crate) struct BroadcastListeners {
     pub roster: RosterListeners,
@@ -17,16 +16,12 @@ pub(crate) struct BroadcastListeners {
 pub(crate) fn wire_hub_broadcasters(
     app_store: &Arc<kernel::Store<AppState, AppAction>>,
     hub: &Arc<hub::Hub>,
-    store_select: store::Select,
     actions_url: &ci::ActionsUrl,
 ) -> BroadcastListeners {
-    let roster: RosterListeners = Arc::new(Mutex::new(vec![Arc::new(RosterHubBroadcaster::new(
-        hub.clone(),
-        store_select,
-    ))]));
-    let reactions: ReactionsListeners = Arc::new(Mutex::new(vec![Arc::new(
-        ReactionsHubBroadcaster::new(hub.clone()),
-    )]));
+    let roster: RosterListeners = Arc::new(Mutex::new(Vec::new()));
+    let reactions: ReactionsListeners = Arc::new(Mutex::new(Vec::new()));
+    app_store.add_listener(Arc::new(RosterDeltaBroadcast::new(hub.clone())));
+    app_store.add_listener(Arc::new(ReactionDeltaBroadcast::new(hub.clone())));
     let ci: CiListeners = Arc::new(Mutex::new(vec![Arc::new(CiHubBroadcaster::new(
         hub.clone(),
         actions_url.clone(),

@@ -151,6 +151,18 @@ export const stateDeltaDecoder: D.Decoder<StateDeltaPayload> = D.oneOf(
     }
   }),
   D.object({ required: { domain: D.literal('board_invalidated'), reason: D.string } }),
+  D.object({
+    required: {
+      domain: D.literal('reaction_updated'),
+      channel: D.string,
+      message_key: D.string,
+      emoji: D.string,
+      count: D.number,
+      users: D.array(D.string)
+    }
+  }),
+  D.object({ required: { domain: D.literal('roster_member_upserted'), member: rosterMember } }),
+  D.object({ required: { domain: D.literal('roster_member_removed'), routing_id: D.string } }),
   D.object({ required: { domain: D.literal('story_upserted'), story } }),
   D.object({ required: { domain: D.literal('story_removed'), id: D.number } }),
   D.object({ required: { domain: D.literal('story_order'), ids: D.array(D.number) } }),

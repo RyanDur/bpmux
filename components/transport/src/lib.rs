@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod ci_transition;
 pub mod ci_watcher;
+pub mod granular_broadcasts;
 
 #[cfg(test)]
 mod boundary_tests;

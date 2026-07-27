@@ -166,12 +166,8 @@ fn assemble(
         Box::new(app_reduce),
     );
     let store_select = store::Select::new(Arc::downgrade(&app_store));
-    let broadcasters = super::store_listeners::wire_hub_broadcasters(
-        &app_store,
-        &hub,
-        store_select.clone(),
-        &actions_url,
-    );
+    let broadcasters =
+        super::store_listeners::wire_hub_broadcasters(&app_store, &hub, &actions_url);
     app_store.add_listener(Arc::new(SliceHydration::roster(
         hub.clone(),
         store_select.clone(),
