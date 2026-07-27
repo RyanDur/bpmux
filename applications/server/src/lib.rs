@@ -4,35 +4,6 @@ use tokio_util::sync::CancellationToken;
 
 use sync::OrchestratorHandle;
 
-fn github_connections(data_gateways: &storage::DataGateways) -> transport::rest::ConnectionsHandle {
-    let secrets: Arc<dyn integrations::github::connection::SecretStore> =
-        if setup::ephemeral_secrets_enabled() {
-            Arc::new(integrations::in_memory::InMemorySecretStore::default())
-        } else {
-            Arc::new(integrations::github::keychain::KeychainSecretStore)
-        };
-    Arc::new(
-        integrations::data_gateway::GithubConnectionDataGateway::new(
-            data_gateways.gateway.clone(),
-            secrets,
-        ),
-    )
-}
-
-fn stored_github_connection(
-    connections: &transport::rest::ConnectionsHandle,
-) -> Option<integrations::github::connection::GithubConnection> {
-    match connections.resolve() {
-        Ok(connection) => connection,
-        Err(e) => {
-            diag::log_diag(&format!(
-                "github-connection: resolve failed at boot — running unconnected: {e}"
-            ));
-            None
-        }
-    }
-}
-
 fn startup_routing_id(select: &store::Select, identity: &str) -> String {
     select
         .select(|state| store::routing::resolve(&state.routing, user_routing::short_name(identity)))
@@ -49,17 +20,9 @@ pub async fn run_server(
 ) -> anyhow::Result<()> {
     let auth_state = build_auth_state()?;
 
-    let connections = github_connections(&data_gateways);
-    let connection = stored_github_connection(&connections);
-    let actions_url = ci::ActionsUrl::for_repo(
-        connection
-            .as_ref()
-            .map(integrations::github::connection::GithubConnection::owner_repo),
-    );
-    let tracker: transport::rest::TrackerHandle = connection
-        .as_ref()
-        .and_then(integrations::github::GitHubSourceAdapter::from_connection)
-        .map(std::sync::Arc::new);
+    let github = github_boot::resolve(&data_gateways);
+    let (connections, actions_url, tracker) =
+        (github.connections, github.actions_url, github.tracker);
 
     let race_window = race_window_barrier_from_env();
 
@@ -161,6 +124,7 @@ use startup_sequence::*;
 use wiring::*;
 
 mod daemon;
+mod github_boot;
 pub use daemon::run;
 
 #[cfg(test)]
