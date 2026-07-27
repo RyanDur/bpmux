@@ -91,7 +91,11 @@ fn title_case(id: &str) -> String {
 }
 
 pub fn board_epics(select: &store::Select) -> Vec<serde_json::Value> {
-    select.select(|state| {
+    select.select(board_epics_json)
+}
+
+pub(crate) fn board_epics_json(state: &store::AppState) -> Vec<serde_json::Value> {
+    {
         let stories = product_management::story::slice::all(&state.stories);
         let iterations = product_management::iteration::all(&state.iterations);
         product_management::epic::all(&state.epics)
@@ -112,12 +116,16 @@ pub fn board_epics(select: &store::Select) -> Vec<serde_json::Value> {
                 })
             })
             .collect()
-    })
+    }
 }
 
 pub fn board_iterations(select: &store::Select) -> Vec<serde_json::Value> {
+    select.select(board_iterations_json)
+}
+
+pub(crate) fn board_iterations_json(state: &store::AppState) -> Vec<serde_json::Value> {
     use view::board::IterationView;
-    select.select(|state| {
+    {
         let outcomes = product_management::outcome::all(&state.outcomes);
         let workflow = workflow::current_workflow();
         product_management::iteration::all(&state.iterations)
@@ -127,11 +135,15 @@ pub fn board_iterations(select: &store::Select) -> Vec<serde_json::Value> {
                     .unwrap_or_default()
             })
             .collect()
-    })
+    }
 }
 
 pub fn board_roadmap(select: &store::Select) -> Vec<serde_json::Value> {
-    select.select(|state| {
+    select.select(board_roadmap_json)
+}
+
+pub(crate) fn board_roadmap_json(state: &store::AppState) -> Vec<serde_json::Value> {
+    {
         product_management::roadmap::selectors::roadmap_cards(
             &product_management::outcome::all(&state.outcomes),
             &product_management::iteration::all(&state.iterations),
@@ -140,12 +152,16 @@ pub fn board_roadmap(select: &store::Select) -> Vec<serde_json::Value> {
         .iter()
         .filter_map(|card| serde_json::to_value(card).ok())
         .collect()
-    })
+    }
 }
 
 pub fn board_outcomes(select: &store::Select) -> Vec<serde_json::Value> {
+    select.select(board_outcomes_json)
+}
+
+pub(crate) fn board_outcomes_json(state: &store::AppState) -> Vec<serde_json::Value> {
     use view::board::OutcomeView;
-    select.select(|state| {
+    {
         let all_iterations = product_management::iteration::all(&state.iterations);
         let workflow = workflow::current_workflow();
         product_management::outcome::all(&state.outcomes)
@@ -156,5 +172,5 @@ pub fn board_outcomes(select: &store::Select) -> Vec<serde_json::Value> {
                     .unwrap_or_default()
             })
             .collect()
-    })
+    }
 }

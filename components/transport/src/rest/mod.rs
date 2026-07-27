@@ -12,6 +12,9 @@ mod classifier;
 pub mod github_connection;
 pub mod hydration_listeners;
 mod iteration_close;
+pub(crate) mod keyed_frames;
+#[cfg(test)]
+mod keyed_frames_tests;
 mod labels;
 mod lessons;
 mod messages;

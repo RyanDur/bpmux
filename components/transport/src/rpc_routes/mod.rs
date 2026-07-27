@@ -17,9 +17,7 @@ mod effective_role_tests;
 #[cfg(test)]
 mod rpc_dispatch_tests;
 
-use state_delta::{
-    fire_board_invalidate, fire_story_transition, fire_view_backlog_marker, story_state_label,
-};
+use state_delta::{fire_story_transition, fire_view_backlog_marker, story_state_label};
 use tool_dispatch::{ToolCaller, dispatch, effective_role};
 pub use validation::{ACTOR_ID_HEADER, AGENT_HEADER, actor_id_from_headers, agent_from_headers};
 use validation::{args_from_value, is_read_only_tool};
@@ -113,15 +111,13 @@ pub async fn post_rpc_tool(
         Ok(message) => {
             if tool == "view_backlog" {
                 fire_view_backlog_marker(&hub);
-            } else if !is_read_only_tool(&tool) {
-                fire_board_invalidate(&hub);
-                if let (Some(id), Some(from_state)) = (transition_id, prior_state)
-                    && let Some(target_state) =
-                        declared_target_state.or_else(|| story_state_label(&select, id))
-                    && target_state != from_state
-                {
-                    fire_story_transition(&hub, id, from_state, target_state, &agent);
-                }
+            } else if !is_read_only_tool(&tool)
+                && let (Some(id), Some(from_state)) = (transition_id, prior_state)
+                && let Some(target_state) =
+                    declared_target_state.or_else(|| story_state_label(&select, id))
+                && target_state != from_state
+            {
+                fire_story_transition(&hub, id, from_state, target_state, &agent);
             }
             (
                 StatusCode::OK,

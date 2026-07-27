@@ -97,6 +97,18 @@ export type StateDeltaPayload =
   | { domain: 'story_order'; ids: number[] }
   | { domain: 'stories'; stories: Story[]; columns?: BoardColumn[] }
   | { domain: 'epics'; epics: Epic[] }
+  | { domain: 'epic_upserted'; epic: Epic }
+  | { domain: 'epic_removed'; id: number }
+  | { domain: 'epic_order'; ids: number[] }
+  | { domain: 'outcome_upserted'; outcome: RoadmapOutcomeData }
+  | { domain: 'outcome_removed'; id: number }
+  | { domain: 'outcome_order'; ids: number[] }
+  | { domain: 'iteration_upserted'; iteration: BoardIterationData }
+  | { domain: 'iteration_removed'; id: number }
+  | { domain: 'iteration_order'; ids: number[] }
+  | { domain: 'roadmap_card_upserted'; card: RoadmapCard }
+  | { domain: 'roadmap_card_removed'; id: number }
+  | { domain: 'roadmap_order'; ids: number[] }
   | { domain: 'outcomes'; outcomes: RoadmapOutcomeData[] }
   | { domain: 'iterations'; iterations: BoardIterationData[] }
   | { domain: 'roadmap'; roadmap: RoadmapCard[] }

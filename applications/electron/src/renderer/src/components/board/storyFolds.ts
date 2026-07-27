@@ -1,21 +1,21 @@
-import type { Story } from './types'
+type Keyed = { id: number }
 
-export const upsertStory = (stories: Story[], incoming: Story): Story[] => {
-  const index = stories.findIndex((s) => s.id === incoming.id)
-  if (index === -1) return [...stories, incoming]
-  return stories.map((s, i) => (i === index ? incoming : s))
+export const upsertById = <T extends Keyed>(items: T[], incoming: T): T[] => {
+  const index = items.findIndex((item) => item.id === incoming.id)
+  if (index === -1) return [...items, incoming]
+  return items.map((item, i) => (i === index ? incoming : item))
 }
 
-export const removeStory = (stories: Story[], id: number): Story[] =>
-  stories.filter((s) => s.id !== id)
+export const removeById = <T extends Keyed>(items: T[], id: number): T[] =>
+  items.filter((item) => item.id !== id)
 
-export const orderStories = (stories: Story[], ids: number[]): Story[] => {
-  const byId = new Map(stories.map((s) => [s.id, s]))
+export const orderByIds = <T extends Keyed>(items: T[], ids: number[]): T[] => {
+  const byId = new Map(items.map((item) => [item.id, item]))
   const ordered = ids.flatMap((id) => {
     const found = byId.get(id)
     if (found === undefined) return []
     byId.delete(id)
     return [found]
   })
-  return [...ordered, ...stories.filter((s) => byId.has(s.id))]
+  return [...ordered, ...items.filter((item) => byId.has(item.id))]
 }

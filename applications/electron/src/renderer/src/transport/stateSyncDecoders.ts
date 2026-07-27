@@ -171,6 +171,18 @@ export const stateDeltaDecoder: D.Decoder<StateDeltaPayload> = D.oneOf(
     optional: { columns: D.array(column) }
   }),
   D.object({ required: { domain: D.literal('epics'), epics: D.array(epic) } }),
+  D.object({ required: { domain: D.literal('epic_upserted'), epic } }),
+  D.object({ required: { domain: D.literal('epic_removed'), id: D.number } }),
+  D.object({ required: { domain: D.literal('epic_order'), ids: D.array(D.number) } }),
+  D.object({ required: { domain: D.literal('outcome_upserted'), outcome: roadmapOutcome } }),
+  D.object({ required: { domain: D.literal('outcome_removed'), id: D.number } }),
+  D.object({ required: { domain: D.literal('outcome_order'), ids: D.array(D.number) } }),
+  D.object({ required: { domain: D.literal('iteration_upserted'), iteration: boardIteration } }),
+  D.object({ required: { domain: D.literal('iteration_removed'), id: D.number } }),
+  D.object({ required: { domain: D.literal('iteration_order'), ids: D.array(D.number) } }),
+  D.object({ required: { domain: D.literal('roadmap_card_upserted'), card: roadmapCard } }),
+  D.object({ required: { domain: D.literal('roadmap_card_removed'), id: D.number } }),
+  D.object({ required: { domain: D.literal('roadmap_order'), ids: D.array(D.number) } }),
   D.object({ required: { domain: D.literal('outcomes'), outcomes: D.array(roadmapOutcome) } }),
   D.object({
     required: { domain: D.literal('iterations'), iterations: D.array(boardIteration) }

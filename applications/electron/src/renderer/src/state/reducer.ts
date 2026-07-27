@@ -1,5 +1,5 @@
 import { applyStateDelta, emptyMirrorState } from '@transport/state-delta'
-import { orderStories, removeStory, upsertStory } from '@components/board/storyFolds'
+import { orderByIds, removeById, upsertById } from '@components/board/storyFolds'
 import { asMessageType } from '@transport/messageType'
 import { StateActionType, type StateAction, type HistoryMessage } from './actions'
 import type {
@@ -114,13 +114,49 @@ export const stateReducer = (state: StateSnapshot, action: StateAction): StateSn
         }
       }
       if (action.delta.domain === 'story_upserted') {
-        next.stories = upsertStory(state.stories, action.delta.story)
+        next.stories = upsertById(state.stories, action.delta.story)
       }
       if (action.delta.domain === 'story_removed') {
-        next.stories = removeStory(state.stories, action.delta.id)
+        next.stories = removeById(state.stories, action.delta.id)
       }
       if (action.delta.domain === 'story_order') {
-        next.stories = orderStories(state.stories, action.delta.ids)
+        next.stories = orderByIds(state.stories, action.delta.ids)
+      }
+      if (action.delta.domain === 'epic_upserted') {
+        next.epics = upsertById(state.epics, action.delta.epic)
+      }
+      if (action.delta.domain === 'epic_removed') {
+        next.epics = removeById(state.epics, action.delta.id)
+      }
+      if (action.delta.domain === 'epic_order') {
+        next.epics = orderByIds(state.epics, action.delta.ids)
+      }
+      if (action.delta.domain === 'outcome_upserted') {
+        next.outcomes = upsertById(state.outcomes, action.delta.outcome)
+      }
+      if (action.delta.domain === 'outcome_removed') {
+        next.outcomes = removeById(state.outcomes, action.delta.id)
+      }
+      if (action.delta.domain === 'outcome_order') {
+        next.outcomes = orderByIds(state.outcomes, action.delta.ids)
+      }
+      if (action.delta.domain === 'iteration_upserted') {
+        next.iterations = upsertById(state.iterations, action.delta.iteration)
+      }
+      if (action.delta.domain === 'iteration_removed') {
+        next.iterations = removeById(state.iterations, action.delta.id)
+      }
+      if (action.delta.domain === 'iteration_order') {
+        next.iterations = orderByIds(state.iterations, action.delta.ids)
+      }
+      if (action.delta.domain === 'roadmap_card_upserted') {
+        next.roadmap = upsertById(state.roadmap, action.delta.card)
+      }
+      if (action.delta.domain === 'roadmap_card_removed') {
+        next.roadmap = removeById(state.roadmap, action.delta.id)
+      }
+      if (action.delta.domain === 'roadmap_order') {
+        next.roadmap = orderByIds(state.roadmap, action.delta.ids)
       }
       if (action.delta.domain === 'epics') {
         next.epics = action.delta.epics

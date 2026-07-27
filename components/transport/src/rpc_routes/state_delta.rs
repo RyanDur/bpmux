@@ -18,24 +18,6 @@ pub fn fire_view_backlog_marker(hub: &Arc<hub::Hub>) {
     }
 }
 
-pub fn fire_board_invalidate(hub: &Arc<hub::Hub>) {
-    let delta = Message {
-        from: "bpmux".to_string(),
-        text: String::new(),
-        ts: Utc::now(),
-        message_type: MessageType::StateDelta,
-        state_delta: Some(StateDeltaPayload::BoardInvalidated {
-            reason: "board changed".to_string(),
-        }),
-        ..Default::default()
-    };
-    if let Err(e) = hub.broadcast(&delta) {
-        diag::log_diag(&format!(
-            "rpc: board_invalidated state-delta broadcast failed: {e}"
-        ));
-    }
-}
-
 pub fn story_state_label(select: &store::Select, number: u64) -> Option<&'static str> {
     let (story, iterations) = select.select(|state| {
         (

@@ -53,6 +53,30 @@ pub enum StateDeltaPayload {
     StoryRemoved { id: u64 },
     #[serde(rename = "story_order")]
     StoryOrder { ids: Vec<u64> },
+    #[serde(rename = "epic_upserted")]
+    EpicUpserted { epic: serde_json::Value },
+    #[serde(rename = "epic_removed")]
+    EpicRemoved { id: u64 },
+    #[serde(rename = "epic_order")]
+    EpicOrder { ids: Vec<u64> },
+    #[serde(rename = "outcome_upserted")]
+    OutcomeUpserted { outcome: serde_json::Value },
+    #[serde(rename = "outcome_removed")]
+    OutcomeRemoved { id: u64 },
+    #[serde(rename = "outcome_order")]
+    OutcomeOrder { ids: Vec<u64> },
+    #[serde(rename = "iteration_upserted")]
+    IterationUpserted { iteration: serde_json::Value },
+    #[serde(rename = "iteration_removed")]
+    IterationRemoved { id: u64 },
+    #[serde(rename = "iteration_order")]
+    IterationOrder { ids: Vec<u64> },
+    #[serde(rename = "roadmap_card_upserted")]
+    RoadmapCardUpserted { card: serde_json::Value },
+    #[serde(rename = "roadmap_card_removed")]
+    RoadmapCardRemoved { id: u64 },
+    #[serde(rename = "roadmap_order")]
+    RoadmapOrder { ids: Vec<u64> },
     #[serde(rename = "stories")]
     Stories {
         stories: serde_json::Value,

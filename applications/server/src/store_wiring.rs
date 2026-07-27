@@ -9,9 +9,7 @@ use store::{
     SharedHistoryPersister, Store, StoreParts, app_reduce,
 };
 use sync::{self, SyncOrchestrator};
-use transport::rest::broadcast_listeners::{
-    EpicBroadcast, IterationBroadcast, OutcomeBroadcast, StoryBroadcast,
-};
+use transport::rest::broadcast_listeners::BoardBroadcast;
 use transport::rest::hydration_listeners::SliceHydration;
 
 pub fn build_store(
@@ -90,24 +88,9 @@ pub(crate) fn build_store_with_refresh<A: sync::SourceAdapter + 'static>(
         parent_ct.clone(),
     ));
     parts.app_store.add_listener(sync_poll);
-    parts.app_store.add_listener(Arc::new(OutcomeBroadcast::new(
-        parts.hub.clone(),
-        store_select.clone(),
-    )));
     parts
         .app_store
-        .add_listener(Arc::new(IterationBroadcast::new(
-            parts.hub.clone(),
-            store_select.clone(),
-        )));
-    parts.app_store.add_listener(Arc::new(EpicBroadcast::new(
-        parts.hub.clone(),
-        store_select.clone(),
-    )));
-    parts.app_store.add_listener(Arc::new(StoryBroadcast::new(
-        parts.hub.clone(),
-        store_select.clone(),
-    )));
+        .add_listener(Arc::new(BoardBroadcast::new(parts.hub.clone())));
     parts.app_store.add_listener(Arc::new(OwnerParkListener));
     parts
         .app_store
