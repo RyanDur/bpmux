@@ -132,9 +132,7 @@ const GithubSettings = ({
           disconnect
         </button>
       )}
-      <p className="github-settings-note">
-        syncing binds at launch — restart bpmux after changing the connection
-      </p>
+      <p className="github-settings-note">live · always current</p>
     </dialog>
   )
 }

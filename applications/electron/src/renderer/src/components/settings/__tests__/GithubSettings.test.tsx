@@ -34,8 +34,9 @@ describe('the connect form is complete before any network settles', () => {
     expect(html).toContain('data-test="gh-connect"')
   })
 
-  test('the restart-to-sync truth is stated on the surface', () => {
+  test('the live-sync truth is stated on the surface — no restart language survives', () => {
     const html = renderToStaticMarkup(<GithubSettings {...baseProps} open={true} />)
-    expect(html).toContain('restart bpmux after changing the connection')
+    expect(html).toContain('live · always current')
+    expect(html).not.toContain('restart')
   })
 })
