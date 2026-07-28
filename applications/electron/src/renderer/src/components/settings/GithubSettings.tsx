@@ -52,6 +52,10 @@ const GithubSettings = ({
 
   const connect = (event: React.FormEvent): void => {
     event.preventDefault()
+    if (enterprise && (baseUrl.trim() === '' || token.trim() === '')) {
+      fail('enterprise needs both the API base URL and a token')
+      return
+    }
     if (apiBase === undefined) return
     putGithubConnection(
       { apiBase, authToken, ownerNonce },

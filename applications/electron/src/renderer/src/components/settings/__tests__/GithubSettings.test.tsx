@@ -1,6 +1,9 @@
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { cleanup } from '@testing-library/react'
 import GithubSettings from '../GithubSettings'
+
+afterEach(cleanup)
 
 const baseProps = {
   apiBase: undefined,
@@ -50,5 +53,65 @@ describe('the enterprise reveal', () => {
     expect(screen.queryByText('API base URL')).toBeNull()
     await userEvent.click(screen.getByRole('checkbox'))
     expect(screen.getByText('API base URL')).toBeTruthy()
+  })
+})
+
+describe('an enterprise connection needs both the API base URL and a token', () => {
+  const disconnected = (): Response =>
+    new Response(JSON.stringify({ state: 'disconnected' }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    })
+
+  const openEnterpriseForm = async (): Promise<{
+    screen: (typeof import('@testing-library/react'))['screen']
+    user: ReturnType<(typeof import('@testing-library/user-event'))['default']['setup']>
+    fetchSpy: ReturnType<typeof vi.fn>
+  }> => {
+    const { render, screen } = await import('@testing-library/react')
+    const { default: userEvent } = await import('@testing-library/user-event')
+    const fetchSpy = vi.fn(async () => disconnected())
+    vi.stubGlobal('fetch', fetchSpy)
+    const user = userEvent.setup()
+    render(<GithubSettings {...baseProps} apiBase="http://127.0.0.1:9" open={true} />)
+    await screen.findByText('not connected')
+    await user.click(screen.getByRole('checkbox'))
+    await user.type(screen.getByLabelText('owner'), 'acme')
+    await user.type(screen.getByLabelText('repository'), 'bpmux')
+    return { screen, user, fetchSpy }
+  }
+
+  const putCalls = (fetchSpy: ReturnType<typeof vi.fn>): unknown[] =>
+    fetchSpy.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === 'PUT')
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  test('a missing token blocks the submit before any request leaves', async () => {
+    const { screen, user, fetchSpy } = await openEnterpriseForm()
+    await user.type(screen.getByLabelText('API base URL'), 'https://ghe.example.com/api/v3/')
+    await user.click(screen.getByText('connect'))
+    await screen.findByText('enterprise needs both the API base URL and a token')
+    expect(putCalls(fetchSpy)).toHaveLength(0)
+  })
+
+  test('a missing base URL blocks the submit instead of silently connecting to github.com', async () => {
+    const { screen, user, fetchSpy } = await openEnterpriseForm()
+    await user.type(screen.getByLabelText('token'), 'ghp_secret')
+    await user.click(screen.getByText('connect'))
+    await screen.findByText('enterprise needs both the API base URL and a token')
+    expect(putCalls(fetchSpy)).toHaveLength(0)
+  })
+
+  test('both present lets the PUT leave with the base_url in the payload', async () => {
+    const { screen, user, fetchSpy } = await openEnterpriseForm()
+    await user.type(screen.getByLabelText('token'), 'ghp_secret')
+    await user.type(screen.getByLabelText('API base URL'), 'https://ghe.example.com/api/v3/')
+    await user.click(screen.getByText('connect'))
+    const puts = putCalls(fetchSpy)
+    expect(puts).toHaveLength(1)
+    const [, init] = puts[0] as [unknown, RequestInit]
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      base_url: 'https://ghe.example.com/api/v3/'
+    })
   })
 })
