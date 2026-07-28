@@ -132,9 +132,6 @@ const Roadmap = (): React.JSX.Element => {
     setFocusedId((current) => (current === outcomeId ? null : outcomeId))
   return (
     <section className="roadmap" data-test="roadmap">
-      <p className="roadmap-live" data-test="roadmap-live">
-        live · always current
-      </p>
       {bands.length === 0 ? (
         <p className="roadmap-empty" data-test="roadmap-empty">
           No outcomes on the roadmap yet

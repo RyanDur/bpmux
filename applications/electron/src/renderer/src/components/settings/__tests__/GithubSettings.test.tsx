@@ -34,9 +34,9 @@ describe('the connect form is complete before any network settles', () => {
     expect(html).toContain('data-test="gh-connect"')
   })
 
-  test('the live-sync truth is stated on the surface — no restart language survives', () => {
+  test('no static status caption survives on the surface', () => {
     const html = renderToStaticMarkup(<GithubSettings {...baseProps} open={true} />)
-    expect(html).toContain('live · always current')
+    expect(html).not.toContain('always current')
     expect(html).not.toContain('restart')
   })
 })

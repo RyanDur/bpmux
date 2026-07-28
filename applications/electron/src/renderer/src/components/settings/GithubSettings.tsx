@@ -158,7 +158,6 @@ const GithubSettings = ({
           disconnect
         </button>
       )}
-      <p className="github-settings-note">live · always current</p>
     </dialog>
   )
 }

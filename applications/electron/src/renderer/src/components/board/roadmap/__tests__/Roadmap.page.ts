@@ -22,7 +22,6 @@ export const roadmap = {
   hasBenefit: (name: string): boolean => card(name).querySelector('.roadmap-outcome-why') !== null,
   readiness: (name: string): HTMLElement | null =>
     within(card(name)).queryByText(/^(ready|\d+ gaps?)$/),
-  liveShown: (): boolean => screen.queryByText('live · always current') !== null,
   emptyShown: (): boolean => screen.queryByText('No outcomes on the roadmap yet') !== null,
   focus: (name: string): Promise<void> => userEvent.click(toggle(name)),
   drill: (name: string): HTMLElement => card(name).querySelector('.roadmap-drill') as HTMLElement,

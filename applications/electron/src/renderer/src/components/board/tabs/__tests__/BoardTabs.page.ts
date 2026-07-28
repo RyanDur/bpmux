@@ -33,7 +33,6 @@ export const boardTabs = {
     ).length > 0,
   panelHasIteration: (name: TabName, iterationTitle: string): boolean =>
     within(visiblePanel(name)).queryByText(iterationTitle) !== null,
-  nowHasRoadmap: (): boolean =>
-    within(visiblePanel('now')).queryByText(/live · always current/) !== null,
+  nowHasRoadmap: (): boolean => visiblePanel('now').querySelector('[data-test="roadmap"]') !== null,
   epicTitleCount: (title: string): number => screen.queryAllByText(title).length
 }

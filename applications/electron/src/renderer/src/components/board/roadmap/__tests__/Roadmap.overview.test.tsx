@@ -72,12 +72,6 @@ describe('Roadmap — outcomes by horizon, the overview', () => {
     expect(roadmap.readiness('None three')).toBeNull()
   })
 
-  it('shows the live indicator (readiness is live-derived, not a static dump)', () => {
-    seedRoadmap([card({ id: 1 })])
-    render(<Roadmap />)
-    expect(roadmap.liveShown()).toBe(true)
-  })
-
   it('renders an empty-state when there are no outcomes', () => {
     seedRoadmap([])
     render(<Roadmap />)

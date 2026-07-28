@@ -50,8 +50,3 @@
   margin-top: var(--space-8);
 }
 
-.github-settings-note {
-  margin-top: var(--space-16);
-  font-size: 0.75rem;
-  color: var(--fg-secondary);
-}
