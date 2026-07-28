@@ -52,7 +52,7 @@ pub(crate) fn build_store_with_refresh<A: sync::SourceAdapter + 'static>(
     let parts = assemble(
         hub,
         data_gateways,
-        transport::ci_watcher::cell_fetch_resolver(cell),
+        transport::ci_watch_driver::cell_fetch_resolver(cell),
         observer,
         parent_ct.clone(),
         initial_outbox,
@@ -115,7 +115,7 @@ pub(crate) fn build_store_with_refresh<A: sync::SourceAdapter + 'static>(
 fn assemble(
     hub: Arc<hub::Hub>,
     data_gateways: storage::DataGateways,
-    ci_fetch: transport::ci_watcher::CiFetchResolver,
+    ci_fetch: transport::ci_watch_driver::CiFetchResolver,
     rate_limit_observer: rate_limit::RateLimitObserver,
     parent_ct: CancellationToken,
     initial_outbox: Vec<source_sync::QueuedWrite>,
@@ -156,7 +156,7 @@ fn assemble(
         hub.clone(),
         parent_ct,
         rate_limit_observer.clone(),
-        Arc::new(transport::ci_watcher::CiWatcherDriver {
+        Arc::new(transport::ci_watch_driver::CiWatcherDriver {
             actions_url: actions_url.clone(),
             fetch: ci_fetch,
         }),

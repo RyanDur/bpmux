@@ -8,47 +8,13 @@ use hub::Hub;
 use kernel::Dispatch;
 use message::{CiSnapshotWire, Message, MessageType, StateDeltaPayload};
 use rate_limit::RateLimitObserver;
-use store::ci_watch::CiWatchDriver;
-use store::{AppAction, CiAction, CiPollFetch, CiSnapshot};
+use store::{CiAction, CiSnapshot};
 
 pub const WATCHER_UNHEALTHY_THRESHOLD: Duration = Duration::from_secs(120);
 
-pub type CiFetchResolver = Arc<dyn Fn() -> Option<Arc<dyn CiPollFetch>> + Send + Sync>;
-
-pub fn cell_fetch_resolver(cell: crate::rest::shared::TrackerCell) -> CiFetchResolver {
-    Arc::new(move || {
-        cell.current()
-            .map(|adapter| adapter as Arc<dyn CiPollFetch>)
-    })
-}
-
-pub struct CiWatcherDriver {
-    pub actions_url: ci::ActionsUrl,
-    pub fetch: CiFetchResolver,
-}
-
-impl CiWatchDriver for CiWatcherDriver {
-    fn spawn_watch(
-        &self,
-        dispatch: Dispatch<AppAction>,
-        hub: Arc<Hub>,
-        observer: RateLimitObserver,
-        ct: CancellationToken,
-    ) {
-        spawn(
-            dispatch,
-            self.fetch.clone(),
-            hub,
-            observer,
-            ct,
-            self.actions_url.clone(),
-        );
-    }
-}
-
 pub fn spawn<A>(
     dispatch: Dispatch<A>,
-    fetch: CiFetchResolver,
+    fetch: crate::ci_watch_driver::CiFetchResolver,
     hub: Arc<Hub>,
     observer: RateLimitObserver,
     ct: CancellationToken,
