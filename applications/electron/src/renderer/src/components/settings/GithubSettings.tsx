@@ -32,6 +32,8 @@ const GithubSettings = ({
   const [owner, setOwner] = useState('')
   const [repo, setRepo] = useState('')
   const [token, setToken] = useState('')
+  const [enterprise, setEnterprise] = useState(false)
+  const [baseUrl, setBaseUrl] = useState('')
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -51,7 +53,10 @@ const GithubSettings = ({
   const connect = (event: React.FormEvent): void => {
     event.preventDefault()
     if (apiBase === undefined) return
-    putGithubConnection({ apiBase, authToken, ownerNonce }, { owner, repo, token })
+    putGithubConnection(
+      { apiBase, authToken, ownerNonce },
+      enterprise ? { owner, repo, token, base_url: baseUrl } : { owner, repo, token }
+    )
       .onPending(setBusy)
       .onSuccess(settle)
       .onFailure((error) => fail(describeHttpError(error)))
@@ -117,6 +122,27 @@ const GithubSettings = ({
             autoComplete="off"
           />
         </label>
+        <label className="github-settings-enterprise">
+          <input
+            data-test="gh-enterprise"
+            type="checkbox"
+            checked={enterprise}
+            onChange={(e) => setEnterprise(e.target.checked)}
+          />
+          GitHub Enterprise
+        </label>
+        {enterprise && (
+          <label>
+            API base URL
+            <input
+              data-test="gh-base-url"
+              value={baseUrl}
+              onChange={(e) => setBaseUrl(e.target.value)}
+              autoComplete="off"
+              placeholder="https://github.example.com/api/v3/"
+            />
+          </label>
+        )}
         <button type="submit" data-test="gh-connect" disabled={busy}>
           {connected ? 'reconnect' : 'connect'}
         </button>

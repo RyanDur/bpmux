@@ -7,6 +7,12 @@ pub enum GithubConnection {
         repo: String,
         token: String,
     },
+    Enterprise {
+        owner: String,
+        repo: String,
+        base_url: String,
+        token: String,
+    },
     WithBaseUrl {
         owner: String,
         repo: String,
@@ -30,6 +36,7 @@ impl GithubConnection {
     pub fn owner_repo(&self) -> (&str, &str) {
         match self {
             GithubConnection::Hosted { owner, repo, .. }
+            | GithubConnection::Enterprise { owner, repo, .. }
             | GithubConnection::WithBaseUrl { owner, repo, .. } => (owner, repo),
         }
     }

@@ -27,6 +27,14 @@ export class GithubSettingsPage {
     return this.win.locator('[data-test="gh-token"]')
   }
 
+  enterprise(): Locator {
+    return this.win.locator('[data-test="gh-enterprise"]')
+  }
+
+  baseUrl(): Locator {
+    return this.win.locator('[data-test="gh-base-url"]')
+  }
+
   connect(): Locator {
     return this.win.locator('[data-test="gh-connect"]')
   }

@@ -40,3 +40,15 @@ describe('the connect form is complete before any network settles', () => {
     expect(html).not.toContain('restart')
   })
 })
+
+describe('the enterprise reveal', () => {
+  test('the checkbox renders and the API base field stays hidden until checked', async () => {
+    const { render, screen } = await import('@testing-library/react')
+    const { default: userEvent } = await import('@testing-library/user-event')
+    render(<GithubSettings {...baseProps} open={true} />)
+    expect(screen.getByText('GitHub Enterprise')).toBeTruthy()
+    expect(screen.queryByText('API base URL')).toBeNull()
+    await userEvent.click(screen.getByRole('checkbox'))
+    expect(screen.getByText('API base URL')).toBeTruthy()
+  })
+})

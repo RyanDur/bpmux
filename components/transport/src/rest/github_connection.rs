@@ -33,7 +33,13 @@ fn connection_body(connection: &GithubConnection) -> serde_json::Value {
         GithubConnection::Hosted { owner, repo, .. } => {
             serde_json::json!({"state": "connected", "owner": owner, "repo": repo})
         }
-        GithubConnection::WithBaseUrl {
+        GithubConnection::Enterprise {
+            owner,
+            repo,
+            base_url,
+            ..
+        }
+        | GithubConnection::WithBaseUrl {
             owner,
             repo,
             base_url,
@@ -80,7 +86,13 @@ fn candidate_from(payload: &ConnectPayload) -> Result<GithubConnection, JsonResp
         .map(str::trim)
         .filter(|t| !t.is_empty());
     match (base_url, token) {
-        (Some(base_url), _) => Ok(GithubConnection::WithBaseUrl {
+        (Some(base_url), Some(token)) => Ok(GithubConnection::Enterprise {
+            owner,
+            repo,
+            base_url: base_url.to_string(),
+            token: token.to_string(),
+        }),
+        (Some(base_url), None) => Ok(GithubConnection::WithBaseUrl {
             owner,
             repo,
             base_url: base_url.to_string(),

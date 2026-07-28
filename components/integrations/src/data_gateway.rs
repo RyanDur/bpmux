@@ -34,6 +34,19 @@ impl GithubConnectionDataGateway {
                     base_url: None,
                 }
             }
+            GithubConnection::Enterprise {
+                owner,
+                repo,
+                base_url,
+                token,
+            } => {
+                self.secrets.store(GITHUB_TOKEN_KEY, token)?;
+                db::ConnectionRow {
+                    owner: owner.clone(),
+                    repo: repo.clone(),
+                    base_url: Some(base_url.clone()),
+                }
+            }
             GithubConnection::WithBaseUrl {
                 owner,
                 repo,
@@ -53,10 +66,18 @@ impl GithubConnectionDataGateway {
             return Ok(None);
         };
         match row.base_url {
-            Some(base_url) => Ok(Some(GithubConnection::WithBaseUrl {
-                owner: row.owner,
-                repo: row.repo,
-                base_url,
+            Some(base_url) => Ok(Some(match self.secrets.load(GITHUB_TOKEN_KEY)? {
+                Some(token) => GithubConnection::Enterprise {
+                    owner: row.owner,
+                    repo: row.repo,
+                    base_url,
+                    token,
+                },
+                None => GithubConnection::WithBaseUrl {
+                    owner: row.owner,
+                    repo: row.repo,
+                    base_url,
+                },
             })),
             None => match self.secrets.load(GITHUB_TOKEN_KEY)? {
                 Some(token) => Ok(Some(GithubConnection::Hosted {

@@ -36,6 +36,12 @@
   color: var(--fg-secondary);
 }
 
+.github-settings-enterprise {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .github-settings-error {
   color: var(--accent-error);
 }

@@ -11,6 +11,7 @@ export type ConnectPayload = {
   owner: string
   repo: string
   token: string
+  base_url?: string
 }
 
 const wire = D.object({

@@ -58,7 +58,7 @@ fn a_hosted_connection_round_trips_with_its_token_from_the_secret_store() {
 }
 
 #[test]
-fn a_base_url_connection_round_trips_without_touching_the_secret_store() {
+fn a_base_url_connection_saves_without_touching_the_secret_store() {
     let h = harness();
     let mock = GithubConnection::WithBaseUrl {
         owner: "acme".to_string(),
@@ -66,11 +66,37 @@ fn a_base_url_connection_round_trips_without_touching_the_secret_store() {
         base_url: "http://127.0.0.1:9012".to_string(),
     };
     h.connections.save(&mock).expect("save");
-    assert_eq!(h.connections.resolve().expect("resolve"), Some(mock));
     assert_eq!(
         h.secrets.touches(),
         0,
-        "base_url connections are token-less — the secret store is never consulted"
+        "saving a token-less connection never consults the secret store"
+    );
+    assert_eq!(
+        h.connections.resolve().expect("resolve"),
+        Some(mock),
+        "with no token in the keychain, a base_url row resolves token-less"
+    );
+}
+
+#[test]
+fn an_enterprise_connection_round_trips_with_base_url_and_keychain_token() {
+    let h = harness();
+    let enterprise = GithubConnection::Enterprise {
+        owner: "acme".to_string(),
+        repo: "bpmux".to_string(),
+        base_url: "https://github.example.corp/api/v3/".to_string(),
+        token: "ghp_enterprise".to_string(),
+    };
+    h.connections.save(&enterprise).expect("save");
+    assert_eq!(
+        h.secrets.load(GITHUB_TOKEN_KEY).expect("load"),
+        Some("ghp_enterprise".to_string()),
+        "the enterprise token lives in the keychain like a hosted one"
+    );
+    assert_eq!(
+        h.connections.resolve().expect("resolve"),
+        Some(enterprise),
+        "a base_url row WITH a keychain token resolves as enterprise"
     );
 }
 

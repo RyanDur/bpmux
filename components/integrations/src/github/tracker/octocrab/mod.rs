@@ -48,6 +48,26 @@ impl OctocrabStoryTracker {
                     rate_limit_observer: observer,
                 })
             }
+            GithubConnection::Enterprise {
+                owner,
+                repo,
+                base_url,
+                token,
+            } => {
+                ensure_crypto_provider_installed();
+                let client = octocrab::OctocrabBuilder::new()
+                    .base_uri(base_url)
+                    .ok()?
+                    .personal_token(token.clone())
+                    .build()
+                    .ok()?;
+                Some(Self {
+                    client,
+                    owner: owner.clone(),
+                    repo: repo.clone(),
+                    rate_limit_observer: observer,
+                })
+            }
             GithubConnection::WithBaseUrl {
                 owner,
                 repo,
