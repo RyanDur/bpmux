@@ -36,10 +36,17 @@
   color: var(--fg-secondary);
 }
 
-.github-settings-enterprise {
+.github-settings-form label.github-settings-enterprise {
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-6);
+  color: var(--fg-primary);
+}
+
+.github-settings-form label.github-settings-enterprise input {
+  width: auto;
+  margin: 0;
 }
 
 .github-settings-error {
