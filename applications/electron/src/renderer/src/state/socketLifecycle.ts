@@ -15,7 +15,6 @@ export type SocketLifecycle = {
   send(msg: ClientMessage): void
   connect(url: string): void
   teardown(): void
-  resetBackoff(): void
 }
 
 type LifecycleDeps = {
@@ -24,11 +23,8 @@ type LifecycleDeps = {
   identify(): ClientMessage
 }
 
-export const socketLifecycle = ({
-  dispatch,
-  onFrame,
-  identify
-}: LifecycleDeps): SocketLifecycle => {
+export const socketLifecycle = (deps: LifecycleDeps): SocketLifecycle => {
+  const { dispatch, onFrame, identify } = deps
   let socket: WebSocket | null = null
   let attempt: Result.Async<WebSocket, unknown> | null = null
   let backoff = INITIAL_BACKOFF_MS
@@ -38,44 +34,41 @@ export const socketLifecycle = ({
   const send = (msg: ClientMessage): void => {
     captureSentFrame(msg)
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      console.warn('bpmux state: send dropped, socket not open', msg)
+      console.warn('bpmux ws: send dropped, socket not open', msg)
       return
     }
     socket.send(JSON.stringify(msg))
   }
 
   const scheduleReconnect = (url: string): void => {
-    const delay = backoff
-    backoff = Math.min(delay * 2, MAX_BACKOFF_MS)
-    reconnectTimer = setTimeout(() => connect(url), delay)
+    reconnectTimer = setTimeout(() => connect(url), backoff)
+    backoff = Math.min(backoff * 2, MAX_BACKOFF_MS)
+  }
+
+  const announce = (): void => {
+    backoff = INITIAL_BACKOFF_MS
+    dispatch(awaitingReconnect ? reconnected() : connected())
+    awaitingReconnect = false
+    send(identify())
+  }
+
+  const dropped = (url: string, ev: CloseEvent): void => {
+    console.warn('bpmux ws: closed, reconnecting', ev.code, ev.reason)
+    socket = null
+    awaitingReconnect = true
+    rejectPendingOlderHistory('socket closed')
+    dispatch(disconnected())
+    scheduleReconnect(url)
   }
 
   const wire = (sock: WebSocket, url: string): void => {
     socket = sock
-    backoff = INITIAL_BACKOFF_MS
-    if (awaitingReconnect) {
-      awaitingReconnect = false
-      dispatch(reconnected())
-    } else {
-      dispatch(connected())
-    }
-    send(identify())
+    announce()
     sock.onmessage = (ev) => {
-      if (socket !== sock) return
-      if (typeof ev.data === 'string') onFrame(ev.data)
-    }
-    sock.onerror = (ev) => {
-      if (socket !== sock) return
-      console.warn('bpmux ws: socket error', ev)
+      if (socket === sock && typeof ev.data === 'string') onFrame(ev.data)
     }
     sock.onclose = (ev) => {
-      if (socket !== sock) return
-      console.warn('bpmux ws: closed, reconnecting', ev.code, ev.reason)
-      socket = null
-      awaitingReconnect = true
-      rejectPendingOlderHistory('socket closed')
-      dispatch(disconnected())
-      scheduleReconnect(url)
+      if (socket === sock) dropped(url, ev)
     }
   }
 
@@ -92,26 +85,15 @@ export const socketLifecycle = ({
   }
 
   const teardown = (): void => {
-    if (reconnectTimer) {
-      clearTimeout(reconnectTimer)
-      reconnectTimer = null
-    }
-    const sock = socket
+    if (reconnectTimer) clearTimeout(reconnectTimer)
+    reconnectTimer = null
+    if (socket) socket.onmessage = socket.onerror = socket.onclose = null
     socket = null
-    if (sock) {
-      sock.onmessage = null
-      sock.onerror = null
-      sock.onclose = null
-    }
-    const chain = attempt
+    attempt?.cancel()
     attempt = null
-    chain?.cancel()
-  }
-
-  const resetBackoff = (): void => {
     backoff = INITIAL_BACKOFF_MS
     awaitingReconnect = false
   }
 
-  return { send, connect, teardown, resetBackoff }
+  return { send, connect, teardown }
 }

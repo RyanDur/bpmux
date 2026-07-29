@@ -35,10 +35,7 @@ export const socketMiddleware: Middleware<StateSnapshot, StateAction> = (api) =>
     switch (action.type) {
       case StateActionType.StartRequested: {
         if (sameConfig(config, action.config)) return
-        if (config !== null) {
-          lifecycle.teardown()
-          lifecycle.resetBackoff()
-        }
+        if (config !== null) lifecycle.teardown()
         config = action.config
         next(action)
         if (!action.config.url) {
@@ -148,7 +145,6 @@ export const socketMiddleware: Middleware<StateSnapshot, StateAction> = (api) =>
         return
       case StateActionType.Reset:
         lifecycle.teardown()
-        lifecycle.resetBackoff()
         messageSeq = 0
         config = null
         next(action)
