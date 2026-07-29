@@ -25,4 +25,21 @@ test.describe('GitHub settings — the owner connects, reconfigures, and disconn
 
     await app.close()
   })
+
+  test('validation errors paint into reserved slots — the dialog never changes height', async () => {
+    const { app } = await launchIsolatedElectron({ unconnected: true })
+    const win = await app.firstWindow()
+    const settings = new GithubSettingsPage(win)
+
+    await settings.openButton().click()
+    await settings.enterprise().check()
+    const before = await settings.dialog().boundingBox()
+
+    await settings.connect().click()
+    await expect(win.locator('#gh-owner-error')).toHaveText('enter the owner')
+    const after = await settings.dialog().boundingBox()
+    expect(after?.height).toBe(before?.height)
+
+    await app.close()
+  })
 })

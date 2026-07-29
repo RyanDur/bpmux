@@ -67,6 +67,8 @@
 }
 
 .github-settings-field-error {
+  line-height: 1.4;
+  min-height: 1.4em;
   color: var(--accent-error);
   font-size: 0.75rem;
 }

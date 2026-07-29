@@ -28,16 +28,14 @@ const ConnectField = ({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           aria-invalid={error !== undefined}
-          aria-describedby={error === undefined ? undefined : errorId}
+          aria-describedby={errorId}
           autoComplete="off"
           placeholder={placeholder}
         />
       </label>
-      {error !== undefined && (
-        <small id={errorId} className="github-settings-field-error">
-          {error}
-        </small>
-      )}
+      <small id={errorId} className="github-settings-field-error">
+        {error}
+      </small>
     </fieldset>
   )
 }

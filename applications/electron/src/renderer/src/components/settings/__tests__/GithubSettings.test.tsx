@@ -37,6 +37,11 @@ describe('the connect form is complete before any network settles', () => {
     expect(html).toContain('data-test="gh-connect"')
   })
 
+  test('each field reserves its message slot so errors never shift the form', () => {
+    const html = renderToStaticMarkup(<GithubSettings {...baseProps} open={true} />)
+    expect(html.match(/github-settings-field-error/g)).toHaveLength(3)
+  })
+
   test('no static status caption survives on the surface', () => {
     const html = renderToStaticMarkup(<GithubSettings {...baseProps} open={true} />)
     expect(html).not.toContain('always current')
