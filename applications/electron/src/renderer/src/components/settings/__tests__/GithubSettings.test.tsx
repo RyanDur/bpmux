@@ -1,9 +1,27 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { cleanup } from '@testing-library/react'
+import { act, cleanup } from '@testing-library/react'
 import GithubSettings from '../GithubSettings'
+import { dispatchState, resetStateForTest } from '@state/store'
+import { mirrorDeltaReceived } from '@state/actions'
+import type { SyncStatusWire } from '@transport/types'
 
 afterEach(cleanup)
+
+const healthySync: SyncStatusWire = {
+  last_ingest_at: null,
+  last_push_at: null,
+  pending_events: 0,
+  last_error: null,
+  dropped_events: [],
+  stale: false,
+  startup_fail: false
+}
+
+const pushSync = (status: SyncStatusWire): void =>
+  act(() => {
+    dispatchState(mirrorDeltaReceived({ domain: 'sync_poll', status }, '2026-07-28T00:00:00Z'))
+  })
 
 const baseProps = {
   apiBase: undefined,
@@ -58,6 +76,50 @@ describe('the enterprise reveal', () => {
     expect(screen.queryByText('API base URL')).toBeNull()
     await userEvent.click(screen.getByRole('checkbox'))
     expect(screen.getByText('API base URL')).toBeTruthy()
+  })
+})
+
+describe('a refused connection surfaces in the dialog — sync status is the failure surface', () => {
+  const statusResponse = (body: Record<string, unknown>): Response =>
+    new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    })
+
+  const openDialog = async (
+    status: Record<string, unknown>
+  ): Promise<(typeof import('@testing-library/react'))['screen']> => {
+    const { render, screen } = await import('@testing-library/react')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => statusResponse(status))
+    )
+    render(<GithubSettings {...baseProps} apiBase="http://127.0.0.1:9" open={true} />)
+    await screen.findByText(/connected/)
+    return screen
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    resetStateForTest()
+  })
+
+  test('a failing sync shows what GitHub said', async () => {
+    const screen = await openDialog({ state: 'connected', owner: 'acme', repo: 'bpmux' })
+    pushSync({ ...healthySync, last_error: 'ingest: GitHub: 401 Bad credentials' })
+    await screen.findByText(/401 Bad credentials/)
+  })
+
+  test('a healthy sync shows no failure line', async () => {
+    const screen = await openDialog({ state: 'connected', owner: 'acme', repo: 'bpmux' })
+    pushSync(healthySync)
+    expect(screen.queryByText(/sync is failing/)).toBeNull()
+  })
+
+  test('a disconnected board shows no failure line even if a stale error lingers', async () => {
+    const screen = await openDialog({ state: 'disconnected' })
+    pushSync({ ...healthySync, last_error: 'ingest: source unreachable' })
+    expect(screen.queryByText(/sync is failing/)).toBeNull()
   })
 })
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSyncStatus } from '@state'
 import { describeHttpError } from '@transport/http'
 import {
   type GithubConnectionStatus,
@@ -89,6 +90,7 @@ const GithubSettings = ({
   }
 
   const connected = view.phase === 'settled' && view.status.state === 'connected'
+  const syncError = useSyncStatus()?.last_error
 
   return (
     <dialog className="github-settings" open={open} aria-label="GitHub settings">
@@ -109,6 +111,11 @@ const GithubSettings = ({
           {view.status.state === 'connected'
             ? `connected to ${view.status.owner}/${view.status.repo}`
             : 'not connected'}
+        </p>
+      )}
+      {connected && syncError !== null && syncError !== undefined && (
+        <p className="github-settings-error" data-test="gh-sync-error">
+          sync is failing — {syncError}
         </p>
       )}
       <form className="github-settings-form" onSubmit={connect} noValidate>
