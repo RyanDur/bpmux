@@ -67,13 +67,14 @@ const GithubSettings = ({
   }
 
   const outcomeOf = (call: Result.Async<GithubConnectionStatus, HttpError>): Promise<void> =>
-    call
-      .onPending(setBusy)
-      .settle(
-        (status): View => ({ phase: 'settled', status }),
-        (error): View => ({ phase: 'failed', message: describeHttpError(error) })
+    call.onPending(setBusy).value.then((result) =>
+      applyOutcome(
+        result.either(
+          (status): View => ({ phase: 'settled', status }),
+          (error): View => ({ phase: 'failed', message: describeHttpError(error) })
+        )
       )
-      .then(applyOutcome)
+    )
 
   const connect = (event: React.FormEvent): void => {
     event.preventDefault()
