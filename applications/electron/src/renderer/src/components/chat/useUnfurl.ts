@@ -53,14 +53,14 @@ export const useUnfurl = ({
       const existing = cache.get(url)
       if (existing) continue
       cache.set(url, { state: 'loading' })
-      http
+      void http
         .get<UnfurlData>({ apiBase, authToken }, `/api/unfurl?url=${encodeURIComponent(url)}`)
-        .onSuccess((data) => {
+        .settle(
+          (data) => data,
+          (): UnfurlData => ({ url })
+        )
+        .then((data) => {
           cache.set(url, { state: 'resolved', data })
-          bump()
-        })
-        .onFailure(() => {
-          cache.set(url, { state: 'resolved', data: { url } })
           bump()
         })
     }
