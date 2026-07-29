@@ -29,7 +29,7 @@ pub enum MessagingCommands {
     WakeOnEvent {
         #[arg(
             long,
-            help = "The event-class to wake on (e.g. ci_state_changed, story_state_transition)"
+            help = "The event-class to wake on (e.g. ci_state_changed, story_state_transition, story_upserted, reaction_updated, roster_member_upserted)"
         )]
         event: String,
         #[arg(

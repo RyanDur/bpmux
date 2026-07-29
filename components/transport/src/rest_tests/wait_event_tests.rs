@@ -316,6 +316,27 @@ async fn delivers_a_story_transition_state_delta_as_a_subscription_event() {
 }
 
 #[tokio::test]
+async fn delivers_a_granular_story_upsert_as_a_subscription_event() {
+    let dir = TempDir::new().expect("tmpdir");
+    init_session(&dir);
+    let (hub, router) = wait_app(&dir);
+    hub.broadcast(&state_delta_message(
+        message::StateDeltaPayload::StoryUpserted {
+            story: serde_json::json!({"id": 42, "title": "granular wake proof"}),
+        },
+    ))
+    .expect("broadcast");
+    let request = Request::builder()
+        .uri("/api/wait-for-event?as=designer&timeout_ms=2000")
+        .body(Body::empty())
+        .expect("request");
+    let event = body_json(router.oneshot(request).await.expect("response")).await;
+    assert_eq!(event["event_class"], "story_upserted");
+    assert_eq!(event["payload"]["story"]["id"], 42);
+    assert_eq!(event["payload"]["story"]["title"], "granular wake proof");
+}
+
+#[tokio::test]
 async fn a_gui_only_delta_is_not_delivered_as_an_agent_event() {
     let dir = TempDir::new().expect("tmpdir");
     init_session(&dir);

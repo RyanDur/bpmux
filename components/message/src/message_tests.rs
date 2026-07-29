@@ -551,6 +551,118 @@ fn ci_state_changed_subscription_event_without_a_url_falls_back_to_the_github_ba
 }
 
 #[test]
+fn granular_mutation_deltas_are_nameable_agent_events_with_the_wire_shape_as_payload() {
+    let cases: Vec<(StateDeltaPayload, &str, serde_json::Value)> = vec![
+        (
+            StateDeltaPayload::StoryUpserted {
+                story: serde_json::json!({"id": 7, "title": "a story"}),
+            },
+            "story_upserted",
+            serde_json::json!({"story": {"id": 7, "title": "a story"}}),
+        ),
+        (
+            StateDeltaPayload::StoryRemoved { id: 7 },
+            "story_removed",
+            serde_json::json!({"id": 7}),
+        ),
+        (
+            StateDeltaPayload::StoryOrder { ids: vec![3, 1, 2] },
+            "story_order",
+            serde_json::json!({"ids": [3, 1, 2]}),
+        ),
+        (
+            StateDeltaPayload::EpicUpserted {
+                epic: serde_json::json!({"id": 9}),
+            },
+            "epic_upserted",
+            serde_json::json!({"epic": {"id": 9}}),
+        ),
+        (
+            StateDeltaPayload::OutcomeRemoved { id: 4 },
+            "outcome_removed",
+            serde_json::json!({"id": 4}),
+        ),
+        (
+            StateDeltaPayload::IterationOrder { ids: vec![5] },
+            "iteration_order",
+            serde_json::json!({"ids": [5]}),
+        ),
+        (
+            StateDeltaPayload::RoadmapCardUpserted {
+                card: serde_json::json!({"id": 2}),
+            },
+            "roadmap_card_upserted",
+            serde_json::json!({"card": {"id": 2}}),
+        ),
+        (
+            StateDeltaPayload::ReactionUpdated {
+                channel: "board".to_string(),
+                message_key: "m1".to_string(),
+                emoji: "🎉".to_string(),
+                count: 0,
+                users: vec![],
+            },
+            "reaction_updated",
+            serde_json::json!({
+                "channel": "board", "message_key": "m1", "emoji": "🎉",
+                "count": 0, "users": []
+            }),
+        ),
+        (
+            StateDeltaPayload::RosterMemberRemoved {
+                routing_id: "dev-a".to_string(),
+            },
+            "roster_member_removed",
+            serde_json::json!({"routing_id": "dev-a"}),
+        ),
+        (
+            StateDeltaPayload::IterationClose {
+                promoted: vec![11],
+                deleted_marker_id: None,
+            },
+            "iteration_close",
+            serde_json::json!({"promoted": [11], "deleted_marker_id": null}),
+        ),
+    ];
+    for (payload, expected_class, expected_body) in cases {
+        assert_eq!(
+            payload.to_subscription_event("2026-07-28T00:00:00Z"),
+            Some((expected_class, expected_body)),
+            "agent event for {expected_class}"
+        );
+    }
+}
+
+#[test]
+fn hydration_deltas_stay_gui_only_and_never_wake_agents() {
+    let hydration: Vec<StateDeltaPayload> = vec![
+        StateDeltaPayload::Stories {
+            stories: serde_json::json!([]),
+            columns: None,
+        },
+        StateDeltaPayload::Epics {
+            epics: serde_json::json!([]),
+        },
+        StateDeltaPayload::Roster { members: vec![] },
+        StateDeltaPayload::Reactions {
+            channel: "board".to_string(),
+            aggregated: vec![],
+        },
+        StateDeltaPayload::SyncPoll {
+            status: serde_json::json!({}),
+        },
+    ];
+    for payload in hydration {
+        assert!(
+            payload
+                .to_subscription_event("2026-07-28T00:00:00Z")
+                .is_none(),
+            "hydration payloads are addressed catch-up, not events"
+        );
+    }
+}
+
+#[test]
 fn reaches_user_an_explicit_id_send_is_direct_even_with_no_role_list() {
     let msg = Message {
         from: "dev".to_string(),
