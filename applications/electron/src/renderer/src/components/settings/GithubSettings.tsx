@@ -6,6 +6,13 @@ import {
   getGithubConnection,
   putGithubConnection
 } from '@transport/githubConnectionClient'
+import ConnectField from './ConnectField'
+import {
+  type FieldErrors,
+  type FieldName,
+  hasErrors,
+  validateConnectForm
+} from './githubConnectForm'
 import './GithubSettings.css'
 
 type Props = {
@@ -35,6 +42,14 @@ const GithubSettings = ({
   const [enterprise, setEnterprise] = useState(false)
   const [baseUrl, setBaseUrl] = useState('')
   const [busy, setBusy] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+
+  const edit =
+    (field: FieldName, set: (value: string) => void) =>
+    (value: string): void => {
+      setFieldErrors((previous) => ({ ...previous, [field]: undefined }))
+      set(value)
+    }
 
   useEffect(() => {
     if (!open || apiBase === undefined) return
@@ -52,10 +67,9 @@ const GithubSettings = ({
 
   const connect = (event: React.FormEvent): void => {
     event.preventDefault()
-    if (enterprise && (baseUrl.trim() === '' || token.trim() === '')) {
-      fail('enterprise needs both the API base URL and a token')
-      return
-    }
+    const errors = validateConnectForm({ owner, repo, token, enterprise, baseUrl })
+    setFieldErrors(errors)
+    if (hasErrors(errors)) return
     if (apiBase === undefined) return
     putGithubConnection(
       { apiBase, authToken, ownerNonce },
@@ -97,35 +111,29 @@ const GithubSettings = ({
             : 'not connected'}
         </p>
       )}
-      <form className="github-settings-form" onSubmit={connect}>
-        <label>
-          owner
-          <input
-            data-test="gh-owner"
-            value={owner}
-            onChange={(e) => setOwner(e.target.value)}
-            autoComplete="off"
-          />
-        </label>
-        <label>
-          repository
-          <input
-            data-test="gh-repo"
-            value={repo}
-            onChange={(e) => setRepo(e.target.value)}
-            autoComplete="off"
-          />
-        </label>
-        <label>
-          token
-          <input
-            data-test="gh-token"
-            type="password"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            autoComplete="off"
-          />
-        </label>
+      <form className="github-settings-form" onSubmit={connect} noValidate>
+        <ConnectField
+          label="owner"
+          testId="gh-owner"
+          value={owner}
+          onChange={edit('owner', setOwner)}
+          error={fieldErrors.owner}
+        />
+        <ConnectField
+          label="repository"
+          testId="gh-repo"
+          value={repo}
+          onChange={edit('repo', setRepo)}
+          error={fieldErrors.repo}
+        />
+        <ConnectField
+          label="token"
+          testId="gh-token"
+          type="password"
+          value={token}
+          onChange={edit('token', setToken)}
+          error={fieldErrors.token}
+        />
         <label className="github-settings-enterprise">
           <input
             data-test="gh-enterprise"
@@ -136,16 +144,14 @@ const GithubSettings = ({
           GitHub Enterprise
         </label>
         {enterprise && (
-          <label>
-            API base URL
-            <input
-              data-test="gh-base-url"
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              autoComplete="off"
-              placeholder="https://github.example.com/api/v3/"
-            />
-          </label>
+          <ConnectField
+            label="API base URL"
+            testId="gh-base-url"
+            value={baseUrl}
+            onChange={edit('baseUrl', setBaseUrl)}
+            error={fieldErrors.baseUrl}
+            placeholder="https://github.example.com/api/v3/"
+          />
         )}
         <button type="submit" data-test="gh-connect" disabled={busy}>
           {connected ? 'reconnect' : 'connect'}

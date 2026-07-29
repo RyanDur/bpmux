@@ -56,7 +56,7 @@ describe('the enterprise reveal', () => {
   })
 })
 
-describe('an enterprise connection needs both the API base URL and a token', () => {
+describe('validation happens inline, on submit, next to the field', () => {
   const disconnected = (): Response =>
     new Response(JSON.stringify({ state: 'disconnected' }), {
       status: 200,
@@ -86,11 +86,16 @@ describe('an enterprise connection needs both the API base URL and a token', () 
 
   afterEach(() => vi.unstubAllGlobals())
 
-  test('a missing token blocks the submit before any request leaves', async () => {
+  test('an empty submit marks every field inline and no request leaves', async () => {
     const { screen, user, fetchSpy } = await openEnterpriseForm()
-    await user.type(screen.getByLabelText('API base URL'), 'https://ghe.example.com/api/v3/')
+    await user.clear(screen.getByLabelText('owner'))
+    await user.clear(screen.getByLabelText('repository'))
     await user.click(screen.getByText('connect'))
-    await screen.findByText('enterprise needs both the API base URL and a token')
+    await screen.findByText('enter the owner')
+    expect(screen.getByText('enter the repository')).toBeTruthy()
+    expect(screen.getByText('enter a token')).toBeTruthy()
+    expect(screen.getByText('enter the API base URL')).toBeTruthy()
+    expect(screen.getByLabelText('owner').getAttribute('aria-invalid')).toBe('true')
     expect(putCalls(fetchSpy)).toHaveLength(0)
   })
 
@@ -98,8 +103,18 @@ describe('an enterprise connection needs both the API base URL and a token', () 
     const { screen, user, fetchSpy } = await openEnterpriseForm()
     await user.type(screen.getByLabelText('token'), 'ghp_secret')
     await user.click(screen.getByText('connect'))
-    await screen.findByText('enterprise needs both the API base URL and a token')
+    await screen.findByText('enter the API base URL')
+    expect(screen.queryByText('enter a token')).toBeNull()
     expect(putCalls(fetchSpy)).toHaveLength(0)
+  })
+
+  test('correcting a field retires its error without waiting for the next submit', async () => {
+    const { screen, user } = await openEnterpriseForm()
+    await user.click(screen.getByText('connect'))
+    await screen.findByText('enter a token')
+    await user.type(screen.getByLabelText('token'), 'ghp_secret')
+    expect(screen.queryByText('enter a token')).toBeNull()
+    expect(screen.getByText('enter the API base URL')).toBeTruthy()
   })
 
   test('both present lets the PUT leave with the base_url in the payload', async () => {

@@ -53,6 +53,24 @@
   color: var(--accent-error);
 }
 
+.github-settings-field {
+  display: grid;
+  gap: 0.2rem;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.github-settings-form input[aria-invalid='true'] {
+  border-color: var(--accent-error);
+  outline-color: var(--accent-error);
+}
+
+.github-settings-field-error {
+  color: var(--accent-error);
+  font-size: 0.75rem;
+}
+
 .github-settings-disconnect {
   margin-top: var(--space-8);
 }
