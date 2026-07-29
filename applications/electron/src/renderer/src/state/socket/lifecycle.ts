@@ -5,10 +5,9 @@ import {
   connecting as connectingStarted,
   disconnected,
   reconnected
-} from './actions'
-import { rejectPendingOlderHistory } from './olderHistory'
-import { INITIAL_BACKOFF_MS, MAX_BACKOFF_MS } from './constants'
-import { captureSentFrame } from './testCapture'
+} from '../actions'
+import { rejectPendingOlderHistory } from '../olderHistory'
+import { INITIAL_BACKOFF_MS, MAX_BACKOFF_MS } from '../constants'
 import type { ClientMessage } from '@transport/types'
 
 export type SocketLifecycle = {
@@ -32,7 +31,6 @@ export const socketLifecycle = (deps: LifecycleDeps): SocketLifecycle => {
   let awaitingReconnect = false
 
   const send = (msg: ClientMessage): void => {
-    captureSentFrame(msg)
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       console.warn('bpmux ws: send dropped, socket not open', msg)
       return

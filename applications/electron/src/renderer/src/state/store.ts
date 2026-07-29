@@ -1,7 +1,7 @@
 import { applyMiddleware, createStore, type Store } from './redux'
 import { emptySnapshot, stateReducer, type StateSnapshot } from './reducer'
 import { reset, type StateAction } from './actions'
-import { socketMiddleware } from './socketMiddleware'
+import { socketMiddlewares } from './socket'
 import { emitMiddleware } from './emitMiddleware'
 import { resetStateEmitter } from './emitter'
 import { stopSentFrameCapture } from './testCapture'
@@ -10,7 +10,7 @@ const makeStore = (): Store<StateSnapshot, StateAction> =>
   createStore(
     stateReducer,
     emptySnapshot(undefined),
-    applyMiddleware(socketMiddleware, emitMiddleware)
+    applyMiddleware(...socketMiddlewares(), emitMiddleware)
   )
 
 let store = makeStore()
