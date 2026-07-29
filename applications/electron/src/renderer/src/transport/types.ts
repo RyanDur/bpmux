@@ -71,6 +71,7 @@ export type StateDeltaPayload =
   | { domain: 'ci'; snapshot: CiSnapshotWire }
   | { domain: 'ci_poll'; snapshot: CiSnapshotWire }
   | { domain: 'sync_poll'; status: SyncStatusWire }
+  | { domain: 'history'; messages: HistoryMessageWire[] }
   | { domain: 'roster'; members: RosterMemberWire[] }
   | {
       domain: 'iteration_close'
@@ -147,11 +148,6 @@ export type HistoryMessageWire = {
   to?: string[] | null
   addressee?: string | null
   message_type?: string | null
-}
-
-export type ServerHistoryHydrated = {
-  type: 'history_hydrated'
-  messages: HistoryMessageWire[]
 }
 
 export type ServerHistoryPageLoaded = {
@@ -241,12 +237,6 @@ type ClientTimelineHydrate = {
   story_id: number
 }
 
-type ClientHistoryHydrate = {
-  type: 'history_hydrate'
-  chat_limit: number
-  activity_limit: number
-}
-
 type ClientHistoryPage = {
   type: 'history_page'
   request_id: number
@@ -296,7 +286,6 @@ export type ClientMessage =
   | ClientReactionToggle
   | ClientCommentsHydrate
   | ClientTimelineHydrate
-  | ClientHistoryHydrate
   | ClientHistoryPage
   | ClientSetOutcomeHorizon
   | ClientReorderOutcomeIteration

@@ -91,4 +91,6 @@ pub enum StateDeltaPayload {
     Iterations { iterations: serde_json::Value },
     #[serde(rename = "roadmap")]
     Roadmap { roadmap: serde_json::Value },
+    #[serde(rename = "history")]
+    History { messages: Vec<serde_json::Value> },
 }

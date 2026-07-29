@@ -6,9 +6,7 @@ use futures::stream::SplitSink;
 use super::client_handlers::{
     handle_pty_input, handle_pty_subscribe, handle_reaction_toggle, handle_send,
 };
-use super::hydrate::{
-    handle_comments_hydrate, handle_history_hydrate, handle_history_page, handle_timeline_hydrate,
-};
+use super::hydrate::{handle_comments_hydrate, handle_history_page, handle_timeline_hydrate};
 use super::roadmap_write_handlers::{
     handle_add_story_to_iteration, handle_reorder_iteration, handle_reorder_outcome_iteration,
     handle_reprioritize_outcome, handle_set_outcome_horizon,
@@ -116,12 +114,6 @@ pub async fn handle_client_message(
         }
         Ok(ClientMessage::TimelineHydrate { story_id }) => {
             handle_timeline_hydrate(ctx, tx, story_id).await?;
-        }
-        Ok(ClientMessage::HistoryHydrate {
-            chat_limit,
-            activity_limit,
-        }) => {
-            handle_history_hydrate(ctx, tx, chat_limit, activity_limit).await?;
         }
         Ok(ClientMessage::HistoryPage {
             request_id,

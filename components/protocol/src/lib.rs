@@ -56,11 +56,6 @@ pub enum ClientMessage {
     CommentsHydrate { story_id: u64 },
     #[serde(rename = "timeline_hydrate")]
     TimelineHydrate { story_id: u64 },
-    #[serde(rename = "history_hydrate")]
-    HistoryHydrate {
-        chat_limit: usize,
-        activity_limit: usize,
-    },
     #[serde(rename = "history_page")]
     HistoryPage {
         request_id: u64,
@@ -146,8 +141,6 @@ pub enum ServerMessage {
         story_id: u64,
         events: Vec<serde_json::Value>,
     },
-    #[serde(rename = "history_hydrated")]
-    HistoryHydrated { messages: Vec<serde_json::Value> },
     #[serde(rename = "history_page_loaded")]
     HistoryPageLoaded {
         request_id: u64,

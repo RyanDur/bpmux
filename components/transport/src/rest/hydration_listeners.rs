@@ -6,6 +6,9 @@ use store::{AppAction, AppState, ClientConnection};
 
 type FrameBuilder = Box<dyn Fn(&AppState, &store::Select) -> Vec<StateDeltaPayload> + Send + Sync>;
 
+const HISTORY_CHAT_LIMIT: usize = 200;
+const HISTORY_ACTIVITY_LIMIT: usize = 50;
+
 pub struct SliceHydration {
     hub: Arc<hub::Hub>,
     select: store::Select,
@@ -81,6 +84,30 @@ impl SliceHydration {
                         }]
                     })
                     .unwrap_or_default()
+            }),
+        )
+    }
+
+    pub fn history(hub: Arc<hub::Hub>, select: store::Select) -> Self {
+        let ledger = Arc::clone(&hub);
+        Self::listening(
+            hub,
+            select,
+            Box::new(move |_, _| {
+                let chat = ledger.read_recent(HISTORY_CHAT_LIMIT, 0, &Message::is_chat);
+                let activity = ledger.read_recent(HISTORY_ACTIVITY_LIMIT, 0, &|m: &Message| {
+                    m.message_type == MessageType::Activity
+                });
+                let (Ok(mut combined), Ok(activity)) = (chat, activity) else {
+                    return Vec::new();
+                };
+                combined.extend(activity);
+                combined.sort_by_key(|m| m.ts);
+                let messages = combined
+                    .iter()
+                    .map(|m| serde_json::to_value(m).unwrap_or(serde_json::Value::Null))
+                    .collect();
+                vec![StateDeltaPayload::History { messages }]
             }),
         )
     }

@@ -44,7 +44,6 @@ export const StateActionType = {
   CommentsHydrated: 'state/commentsHydrated',
   TimelineHydrateRequested: 'state/timelineHydrateRequested',
   TimelineHydrated: 'state/timelineHydrated',
-  HistoryHydrateRequested: 'state/historyHydrateRequested',
   OlderHistoryRequested: 'state/olderHistoryRequested',
   OutcomeHorizonChangeRequested: 'state/outcomeHorizonChangeRequested',
   OutcomeIterationReorderRequested: 'state/outcomeIterationReorderRequested',
@@ -94,11 +93,6 @@ export type StateAction =
       type: typeof StateActionType.TimelineHydrated
       storyId: number
       events: TimelineEventWire[]
-    }
-  | {
-      type: typeof StateActionType.HistoryHydrateRequested
-      chatLimit: number
-      activityLimit: number
     }
   | {
       type: typeof StateActionType.OlderHistoryRequested
@@ -228,12 +222,6 @@ export const timelineHydrated = (storyId: number, events: TimelineEventWire[]): 
   type: StateActionType.TimelineHydrated,
   storyId,
   events
-})
-
-export const historyHydrateRequested = (chatLimit: number, activityLimit: number): StateAction => ({
-  type: StateActionType.HistoryHydrateRequested,
-  chatLimit,
-  activityLimit
 })
 
 export const olderHistoryRequested = (

@@ -25,22 +25,21 @@ const serverMessage = (over: Record<string, unknown> = {}): string =>
 
 const WELCOME = JSON.stringify({ type: 'welcome' })
 
-const historyHydrateCount = (conn: TestWsConnection): number =>
-  conn.received.filter((r) => {
-    try {
-      return (JSON.parse(r) as { type?: string }).type === 'history_hydrate'
-    } catch {
-      return false
-    }
-  }).length
-
 const serveHistory = async (
   conn: TestWsConnection,
   messages: Record<string, unknown>[]
 ): Promise<void> => {
   conn.send(WELCOME)
-  await vi.waitFor(() => expect(historyHydrateCount(conn)).toBeGreaterThan(0))
-  conn.send(JSON.stringify({ type: 'history_hydrated', messages }))
+  conn.send(
+    JSON.stringify({
+      type: 'message',
+      from: 'bpmux',
+      text: '',
+      ts: '2026-05-24T00:00:00.000Z',
+      message_type: 'state-delta',
+      state_delta: { domain: 'history', messages }
+    })
+  )
 }
 
 let server: TestWsServer
@@ -163,15 +162,14 @@ describe('connection — message dedup + live-append subscription', () => {
 })
 
 describe('connection — history hydrate-on-identify + merge (no live-notify on history)', () => {
-  test('history hydrates over WS on identify and merges; a duplicate start does NOT re-hydrate', async () => {
+  test('a server-pushed history delta merges into state — no request ever leaves the renderer', async () => {
     const conn = await connect('http://api', 'tok')
     await serveHistory(conn, [{ from: 'pm', text: 'old', ts: '2026-05-23T00:00:00.000Z' }])
     await vi.waitFor(() =>
       expect(getStateSnapshot().messages.some((m) => m.text === 'old')).toBe(true)
     )
-    const hydrateFrames = historyHydrateCount(conn)
-    startConnection({ url: server.url, apiBase: 'http://api', authToken: 'tok' })
-    expect(historyHydrateCount(conn)).toBe(hydrateFrames)
+    const requests = conn.received.filter((r) => r.includes('hydrate'))
+    expect(requests).toEqual([])
   })
 
   test('history-merge emits ZERO live-message append-events (only live frames notify)', async () => {

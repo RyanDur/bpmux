@@ -5,7 +5,6 @@ import { MESSAGE_TYPE, asMessageType } from '@transport/messageType'
 import {
   commentsHydratedDecoder,
   errorDecoder,
-  historyHydratedDecoder,
   historyPageLoadedDecoder,
   messageDecoder,
   pongDecoder,
@@ -38,7 +37,9 @@ const chatFrameToAction = (
     return null
   }
   if (message.message_type === MESSAGE_TYPE.StateDelta) {
-    return message.state_delta ? mirrorDeltaReceived(message.state_delta, message.ts) : null
+    if (!message.state_delta) return null
+    if (message.state_delta.domain === 'history') return historyLoaded(message.state_delta.messages)
+    return mirrorDeltaReceived(message.state_delta, message.ts)
   }
   const chat: ChatMessage = {
     id: `${message.ts}-${nextSeq()}`,
@@ -96,11 +97,6 @@ export const dispatchServerFrame = (
     .or(() =>
       maybe(timelineHydratedDecoder.decode(frame)).map((hydrated) =>
         dispatch(timelineHydrated(hydrated.story_id, hydrated.events))
-      )
-    )
-    .or(() =>
-      maybe(historyHydratedDecoder.decode(frame)).map((hydrated) =>
-        dispatch(historyLoaded(hydrated.messages))
       )
     )
     .or(() =>

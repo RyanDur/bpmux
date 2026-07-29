@@ -3,7 +3,6 @@ import {
   type ServerChatMessage,
   type ServerCommentsHydrated,
   type ServerError,
-  type ServerHistoryHydrated,
   type ServerHistoryPageLoaded,
   type ServerPong,
   type ServerPtyExit,
@@ -69,22 +68,6 @@ export const timelineHydratedDecoder: D.Decoder<ServerTimelineHydrated> = D.obje
         optional: {
           label: D.string,
           body: D.string
-        }
-      })
-    )
-  }
-})
-
-export const historyHydratedDecoder: D.Decoder<ServerHistoryHydrated> = D.object({
-  required: {
-    type: D.literal('history_hydrated'),
-    messages: D.array(
-      D.object({
-        required: { from: D.string, text: D.string, ts: D.string },
-        optional: {
-          to: D.nullable(D.array(D.string)),
-          addressee: D.nullable(D.string),
-          message_type: D.nullable(D.string)
         }
       })
     )

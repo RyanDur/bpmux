@@ -651,6 +651,9 @@ fn hydration_deltas_stay_gui_only_and_never_wake_agents() {
         StateDeltaPayload::SyncPoll {
             status: serde_json::json!({}),
         },
+        StateDeltaPayload::History {
+            messages: vec![serde_json::json!({"text": "old chat"})],
+        },
     ];
     for payload in hydration {
         assert!(

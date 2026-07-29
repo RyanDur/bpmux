@@ -1,6 +1,7 @@
 import * as D from 'schemawax'
 import {
   type CiSnapshotWire,
+  type HistoryMessageWire,
   type ReactionAggregateWire,
   type RosterMemberWire,
   type StateDeltaPayload,
@@ -125,6 +126,15 @@ const roadmapCard: D.Decoder<RoadmapCard> = D.object({
   }
 })
 
+const historyMessage: D.Decoder<HistoryMessageWire> = D.object({
+  required: { from: D.string, text: D.string, ts: D.string },
+  optional: {
+    to: D.nullable(D.array(D.string)),
+    addressee: D.nullable(D.string),
+    message_type: D.nullable(D.string)
+  }
+})
+
 export const stateDeltaDecoder: D.Decoder<StateDeltaPayload> = D.oneOf(
   D.object({
     required: {
@@ -136,6 +146,7 @@ export const stateDeltaDecoder: D.Decoder<StateDeltaPayload> = D.oneOf(
   D.object({ required: { domain: D.literal('ci'), snapshot: ciSnapshot } }),
   D.object({ required: { domain: D.literal('ci_poll'), snapshot: ciSnapshot } }),
   D.object({ required: { domain: D.literal('sync_poll'), status: syncStatus } }),
+  D.object({ required: { domain: D.literal('history'), messages: D.array(historyMessage) } }),
   D.object({ required: { domain: D.literal('roster'), members: D.array(rosterMember) } }),
   D.object({
     required: {

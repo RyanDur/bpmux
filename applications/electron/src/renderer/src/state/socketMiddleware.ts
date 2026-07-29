@@ -70,13 +70,6 @@ export const socketMiddleware: Middleware<StateSnapshot, StateAction> = (api) =>
       case StateActionType.TimelineHydrateRequested:
         send({ type: 'timeline_hydrate', story_id: action.storyId })
         return
-      case StateActionType.HistoryHydrateRequested:
-        send({
-          type: 'history_hydrate',
-          chat_limit: action.chatLimit,
-          activity_limit: action.activityLimit
-        })
-        return
       case StateActionType.OlderHistoryRequested:
         send({
           type: 'history_page',

@@ -102,39 +102,24 @@ fn timeline_hydrated_reply_serializes_to_the_caller_only_frame() {
 }
 
 #[test]
-fn history_hydrate_frame_deserializes_with_snake_case_limits() {
-    let wire = r#"{"type":"history_hydrate","chat_limit":200,"activity_limit":50}"#;
-    let parsed: ClientMessage =
-        serde_json::from_str(wire).expect("renderer history_hydrate frame must deserialize");
+fn history_rides_the_hydration_delta_family_not_a_request_verb() {
+    let no_verb: Result<ClientMessage, _> =
+        serde_json::from_str(r#"{"type":"history_hydrate","chat_limit":200,"activity_limit":50}"#);
     assert!(
-        matches!(
-            &parsed,
-            ClientMessage::HistoryHydrate {
-                chat_limit: 200,
-                activity_limit: 50
-            }
-        ),
-        "expected HistoryHydrate{{200,50}}, got {parsed:?}"
+        no_verb.is_err(),
+        "history_hydrate retired — history hydrates on ClientConnected like every slice"
     );
-}
-
-#[test]
-fn history_hydrated_reply_serializes_to_the_caller_only_frame() {
-    let msg = ServerMessage::HistoryHydrated {
-        messages: vec![serde_json::json!({
-            "from": "dev",
-            "text": "hello",
-            "ts": "2026-04-22T15:20:00Z"
-        })],
+    let delta = message::StateDeltaPayload::History {
+        messages: vec![serde_json::json!({"from": "dev", "text": "hello"})],
     };
-    let json = serde_json::to_string(&msg).expect("serialize HistoryHydrated");
+    let json = serde_json::to_string(&delta).expect("serialize history delta");
     assert!(
-        json.contains(r#""type":"history_hydrated""#),
-        "missing type tag: {json}"
+        json.contains(r#""domain":"history""#),
+        "missing domain: {json}"
     );
     assert!(
         json.contains(r#""text":"hello""#),
-        "missing history message payload: {json}"
+        "missing payload: {json}"
     );
 }
 

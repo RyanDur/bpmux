@@ -3,7 +3,6 @@ use futures::stream::SplitSink;
 
 use super::client::ClientCtx;
 use super::send_json;
-use message::MessageType;
 use protocol::ServerMessage;
 
 pub(super) async fn handle_comments_hydrate(
@@ -34,40 +33,6 @@ pub(super) async fn handle_comments_hydrate(
             .await?;
         }
     }
-    Ok(())
-}
-
-pub(super) async fn handle_history_hydrate(
-    ctx: &ClientCtx<'_>,
-    tx: &mut SplitSink<WebSocket, WsMessage>,
-    chat_limit: usize,
-    activity_limit: usize,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let chat = ctx
-        .hub
-        .read_recent(chat_limit, 0, &|m: &message::Message| m.is_chat());
-    let activity = ctx
-        .hub
-        .read_recent(activity_limit, 0, &|m: &message::Message| {
-            m.message_type == MessageType::Activity
-        });
-    let reply = match (chat, activity) {
-        (Ok(mut combined), Ok(activity)) => {
-            combined.extend(activity);
-            combined.sort_by_key(|m| m.ts);
-            let serialized: Vec<serde_json::Value> = combined
-                .iter()
-                .map(|m| serde_json::to_value(m).unwrap_or(serde_json::Value::Null))
-                .collect();
-            ServerMessage::HistoryHydrated {
-                messages: serialized,
-            }
-        }
-        (Err(e), _) | (_, Err(e)) => ServerMessage::Error {
-            reason: format!("read history failed: {e}"),
-        },
-    };
-    send_json(tx, &reply).await?;
     Ok(())
 }
 

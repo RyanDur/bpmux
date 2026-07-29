@@ -143,6 +143,10 @@ fn assemble(
         hub.clone(),
         store_select.clone(),
     )));
+    app_store.add_listener(Arc::new(SliceHydration::history(
+        hub.clone(),
+        store_select.clone(),
+    )));
     app_store.add_listener(Arc::new(SliceHydration::reactions(
         hub.clone(),
         store_select.clone(),
