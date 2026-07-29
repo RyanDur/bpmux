@@ -1,20 +1,10 @@
-import { tryCatch } from '@ryandur/sand'
 import type { Middleware } from './redux'
 import type { StateSnapshot } from './reducer'
-import {
-  StateActionType,
-  connected,
-  connecting,
-  disconnected,
-  reconnected,
-  type StateAction,
-  type ConnectionConfig
-} from './actions'
+import { StateActionType, disconnected, type StateAction, type ConnectionConfig } from './actions'
 import { dispatchServerFrame } from './decode'
-import { rejectPendingOlderHistory } from './olderHistory'
 import { encodeKeystroke } from './ptyCodec'
-import { INITIAL_BACKOFF_MS, MAX_BACKOFF_MS, RENDERER_IDENTITY, RENDERER_TOOL } from './constants'
-import { captureSentFrame } from './testCapture'
+import { RENDERER_IDENTITY, RENDERER_TOOL } from './constants'
+import { socketLifecycle } from './socketLifecycle'
 import type { ClientMessage } from '@transport/types'
 
 const sameConfig = (a: ConnectionConfig | null, b: ConnectionConfig): boolean =>
@@ -25,104 +15,29 @@ const sameConfig = (a: ConnectionConfig | null, b: ConnectionConfig): boolean =>
   a.ownerNonce === b.ownerNonce
 
 export const socketMiddleware: Middleware<StateSnapshot, StateAction> = (api) => {
-  let socket: WebSocket | null = null
-  let backoff = INITIAL_BACKOFF_MS
-  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
-  let awaitingReconnect = false
   let messageSeq = 0
   let config: ConnectionConfig | null = null
 
-  const send = (msg: ClientMessage): void => {
-    captureSentFrame(msg)
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      console.warn('bpmux state: send dropped, socket not open', msg)
-      return
-    }
-    socket.send(JSON.stringify(msg))
-  }
+  const lifecycle = socketLifecycle({
+    dispatch: (action) => api.dispatch(action),
+    onFrame: (raw) => dispatchServerFrame(raw, api.dispatch, () => (messageSeq += 1)),
+    identify: () => ({
+      type: 'identify',
+      name: RENDERER_IDENTITY,
+      tool: RENDERER_TOOL,
+      ...(config?.ownerNonce ? { owner_nonce: config.ownerNonce } : {})
+    })
+  })
 
-  const scheduleReconnect = (url: string): void => {
-    const delay = backoff
-    backoff = Math.min(delay * 2, MAX_BACKOFF_MS)
-    reconnectTimer = setTimeout(() => connect(url), delay)
-  }
-
-  const connect = (url: string): void => {
-    api.dispatch(connecting())
-    const constructResult = tryCatch(
-      () => new WebSocket(url),
-      (err) => err
-    )
-    if (!constructResult.isSuccess) {
-      console.warn('bpmux ws: construct failed, retrying', constructResult.reason)
-      scheduleReconnect(url)
-      return
-    }
-    const sock = constructResult.value
-    socket = sock
-    sock.onopen = () => {
-      if (socket !== sock) return
-      backoff = INITIAL_BACKOFF_MS
-      if (awaitingReconnect) {
-        awaitingReconnect = false
-        api.dispatch(reconnected())
-      } else {
-        api.dispatch(connected())
-      }
-      send({
-        type: 'identify',
-        name: RENDERER_IDENTITY,
-        tool: RENDERER_TOOL,
-        ...(config?.ownerNonce ? { owner_nonce: config.ownerNonce } : {})
-      })
-    }
-    sock.onmessage = (ev) => {
-      if (socket !== sock) return
-      if (typeof ev.data === 'string') {
-        dispatchServerFrame(ev.data, api.dispatch, () => (messageSeq += 1))
-      }
-    }
-    sock.onerror = (ev) => {
-      if (socket !== sock) return
-      console.warn('bpmux ws: socket error', ev)
-    }
-    sock.onclose = (ev) => {
-      if (socket !== sock) return
-      console.warn('bpmux ws: closed, reconnecting', ev.code, ev.reason)
-      socket = null
-      awaitingReconnect = true
-      rejectPendingOlderHistory('socket closed')
-      api.dispatch(disconnected())
-      scheduleReconnect(url)
-    }
-  }
-
-  const teardown = (): void => {
-    if (reconnectTimer) {
-      clearTimeout(reconnectTimer)
-      reconnectTimer = null
-    }
-    const sock = socket
-    socket = null
-    if (sock) {
-      sock.onopen = null
-      sock.onmessage = null
-      sock.onerror = null
-      sock.onclose = null
-      if (sock.readyState === WebSocket.OPEN || sock.readyState === WebSocket.CONNECTING) {
-        sock.close(1000, 'renderer unmounting')
-      }
-    }
-  }
+  const send = (msg: ClientMessage): void => lifecycle.send(msg)
 
   return (next) => (action) => {
     switch (action.type) {
       case StateActionType.StartRequested: {
         if (sameConfig(config, action.config)) return
         if (config !== null) {
-          teardown()
-          backoff = INITIAL_BACKOFF_MS
-          awaitingReconnect = false
+          lifecycle.teardown()
+          lifecycle.resetBackoff()
         }
         config = action.config
         next(action)
@@ -131,7 +46,7 @@ export const socketMiddleware: Middleware<StateSnapshot, StateAction> = (api) =>
           api.dispatch(disconnected())
           return
         }
-        connect(action.config.url)
+        lifecycle.connect(action.config.url)
         return
       }
       case StateActionType.ChatSendRequested: {
@@ -232,9 +147,8 @@ export const socketMiddleware: Middleware<StateSnapshot, StateAction> = (api) =>
         dispatchServerFrame(action.raw, api.dispatch, () => (messageSeq += 1))
         return
       case StateActionType.Reset:
-        teardown()
-        backoff = INITIAL_BACKOFF_MS
-        awaitingReconnect = false
+        lifecycle.teardown()
+        lifecycle.resetBackoff()
         messageSeq = 0
         config = null
         next(action)
