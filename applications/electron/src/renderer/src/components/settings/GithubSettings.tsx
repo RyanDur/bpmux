@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { type Result } from '@ryandur/sand'
 import { useSyncStatus } from '@state'
-import { type HttpError, describeHttpError } from '@transport/http'
+import { describeHttpError } from '@transport/http'
 import {
   type GithubConnectionStatus,
   deleteGithubConnection,
@@ -61,20 +60,12 @@ const GithubSettings = ({
       .onFailure((error) => setView({ phase: 'failed', message: describeHttpError(error) })).cancel
   }, [open, apiBase, authToken, ownerNonce])
 
-  const applyOutcome = (outcome: View): void => {
-    setView(outcome)
-    if (outcome.phase === 'settled') setToken('')
+  const settle = (status: GithubConnectionStatus): void => {
+    setView({ phase: 'settled', status })
+    setToken('')
   }
 
-  const outcomeOf = (call: Result.Async<GithubConnectionStatus, HttpError>): Promise<void> =>
-    call.onPending(setBusy).value.then((result) =>
-      applyOutcome(
-        result.either(
-          (status): View => ({ phase: 'settled', status }),
-          (error): View => ({ phase: 'failed', message: describeHttpError(error) })
-        )
-      )
-    )
+  const fail = (message: string): void => setView({ phase: 'failed', message })
 
   const connect = (event: React.FormEvent): void => {
     event.preventDefault()
@@ -82,17 +73,21 @@ const GithubSettings = ({
     setFieldErrors(errors)
     if (hasErrors(errors)) return
     if (apiBase === undefined) return
-    void outcomeOf(
-      putGithubConnection(
-        { apiBase, authToken, ownerNonce },
-        enterprise ? { owner, repo, token, base_url: baseUrl } : { owner, repo, token }
-      )
+    putGithubConnection(
+      { apiBase, authToken, ownerNonce },
+      enterprise ? { owner, repo, token, base_url: baseUrl } : { owner, repo, token }
     )
+      .onPending(setBusy)
+      .onSuccess(settle)
+      .onFailure((error) => fail(describeHttpError(error)))
   }
 
   const disconnect = (): void => {
     if (apiBase === undefined) return
-    void outcomeOf(deleteGithubConnection({ apiBase, authToken, ownerNonce }))
+    deleteGithubConnection({ apiBase, authToken, ownerNonce })
+      .onPending(setBusy)
+      .onSuccess(settle)
+      .onFailure((error) => fail(describeHttpError(error)))
   }
 
   const connected = view.phase === 'settled' && view.status.state === 'connected'
