@@ -104,10 +104,13 @@ describe('a refused connection surfaces in the dialog — sync status is the fai
     resetStateForTest()
   })
 
-  test('a failing sync shows what GitHub said', async () => {
+  test('a failing sync shows the human clause and keeps the raw string in the tooltip', async () => {
     const screen = await openDialog({ state: 'connected', owner: 'acme', repo: 'bpmux' })
-    pushSync({ ...healthySync, last_error: 'ingest: GitHub: 401 Bad credentials' })
-    await screen.findByText(/401 Bad credentials/)
+    const raw = 'ingest: GitHub refused the token — check it in GitHub settings and reconnect'
+    pushSync({ ...healthySync, last_error: raw })
+    const line = await screen.findByText(/GitHub refused the token/)
+    expect(line.textContent).not.toContain('ingest:')
+    expect(line.getAttribute('title')).toBe(raw)
   })
 
   test('a healthy sync shows no failure line', async () => {

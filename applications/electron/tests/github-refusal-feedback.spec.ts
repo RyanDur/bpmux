@@ -26,8 +26,11 @@ test.describe('a token GitHub refuses surfaces in the dialog, front to back', ()
     await settings.connect().click()
 
     await expect(settings.connectionState()).toHaveAttribute('data-state', 'connected')
-    await expect(win.locator('[data-test="gh-sync-error"]')).toBeVisible({ timeout: 20_000 })
-    await expect(win.locator('[data-test="gh-sync-error"]')).toContainText('sync is failing')
+    const syncError = win.locator('[data-test="gh-sync-error"]')
+    await expect(syncError).toBeVisible({ timeout: 20_000 })
+    await expect(syncError).toContainText('GitHub refused the token')
+    await expect(syncError).not.toContainText('ingest:')
+    await expect(syncError).not.toContainText('restart')
 
     await app.close()
     await mockGh.close()

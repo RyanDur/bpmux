@@ -139,10 +139,11 @@ impl OctocrabStoryTracker {
             .map_err(|e| format!("body collect: {e}"))?
             .to_bytes();
         if !status.is_success() {
-            return Err(format!(
-                "github error {status}: {}",
-                String::from_utf8_lossy(&bytes)
-            ));
+            return Err(super::errors::classify_response(
+                status.as_u16(),
+                &String::from_utf8_lossy(&bytes),
+            )
+            .user_message());
         }
         Ok(bytes.to_vec())
     }

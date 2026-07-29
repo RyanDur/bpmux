@@ -8,6 +8,7 @@ import {
   putGithubConnection
 } from '@transport/githubConnectionClient'
 import ConnectField from './ConnectField'
+import { presentSyncError } from './syncErrorCopy'
 import {
   type FieldErrors,
   type FieldName,
@@ -114,8 +115,8 @@ const GithubSettings = ({
         </p>
       )}
       {connected && syncError !== null && syncError !== undefined && (
-        <p className="github-settings-error" data-test="gh-sync-error">
-          sync is failing — {syncError}
+        <p className="github-settings-error" data-test="gh-sync-error" title={syncError}>
+          sync is failing — {presentSyncError(syncError)}
         </p>
       )}
       <form className="github-settings-form" onSubmit={connect} noValidate>

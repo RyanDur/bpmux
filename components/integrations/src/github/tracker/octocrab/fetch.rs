@@ -45,10 +45,11 @@ impl OctocrabStoryTracker {
             .map_err(|e| format!("body collect: {e}"))?
             .to_bytes();
         if !status.is_success() {
-            return Err(format!(
-                "github error {status}: {}",
-                String::from_utf8_lossy(&body)
-            ));
+            return Err(super::errors::classify_response(
+                status.as_u16(),
+                &String::from_utf8_lossy(&body),
+            )
+            .user_message());
         }
         let issue: octocrab::models::issues::Issue =
             serde_json::from_slice(&body).map_err(|e| format!("json parse: {e}"))?;

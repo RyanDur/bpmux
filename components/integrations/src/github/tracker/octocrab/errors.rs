@@ -12,7 +12,7 @@ impl BoardFetchError {
     pub fn user_message(&self) -> String {
         match self {
             Self::AuthInvalid => {
-                "GitHub token missing or invalid — reconnect GitHub and restart bpmux".to_string()
+                "GitHub refused the token — check it in GitHub settings and reconnect".to_string()
             }
             Self::RateLimited {
                 retry_after_secs: Some(s),
@@ -23,6 +23,25 @@ impl BoardFetchError {
             Self::NetworkUnreachable => "offline".to_string(),
             Self::Other(e) => format!("fetch failed: {e}"),
         }
+    }
+}
+
+pub fn classify_response(code: u16, body: &str) -> BoardFetchError {
+    let body_lc = body.to_lowercase();
+    if code == 401 || code == 403 {
+        if body_lc.contains("rate limit") || body_lc.contains("api rate") {
+            BoardFetchError::RateLimited {
+                retry_after_secs: None,
+            }
+        } else {
+            BoardFetchError::AuthInvalid
+        }
+    } else if code == 429 {
+        BoardFetchError::RateLimited {
+            retry_after_secs: None,
+        }
+    } else {
+        BoardFetchError::Other(format!("github error {code}: {body}"))
     }
 }
 
