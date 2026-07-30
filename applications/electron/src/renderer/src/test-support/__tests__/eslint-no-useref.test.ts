@@ -18,7 +18,16 @@ const ENFORCED_DISCHARGED_FILES = [
 ].map((f) => resolve(ELECTRON_APP_ROOT, f))
 
 const lintAs = async (code: string, filePath: string): Promise<ESLint.LintResult[]> => {
-  const eslint = new ESLint({ cwd: ELECTRON_APP_ROOT })
+  const eslint = new ESLint({
+    cwd: ELECTRON_APP_ROOT,
+    overrideConfig: [
+      {
+        files: ['**/*.{ts,tsx}'],
+        languageOptions: { parserOptions: { projectService: false } },
+        rules: { '@typescript-eslint/switch-exhaustiveness-check': 'off' }
+      }
+    ]
+  })
   return eslint.lintText(code, { filePath })
 }
 

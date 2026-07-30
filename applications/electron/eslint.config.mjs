@@ -150,5 +150,22 @@ export default defineConfig(
       '@typescript-eslint/consistent-type-definitions': 'off'
     }
   },
+  // Exhaustiveness canon: a switch WITHOUT a default over a union/enum must arm
+  // every case — growth in the union breaks the build here until the site decides.
+  // A switch WITH a default has declared itself partial (the reducer idiom:
+  // default returns state), and the default is honored as that declaration.
+  {
+    files: ['src/renderer/src/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.{ts,tsx}', '**/__tests__/**', '**/__html5-stub__*'],
+    languageOptions: {
+      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname }
+    },
+    rules: {
+      '@typescript-eslint/switch-exhaustiveness-check': [
+        'error',
+        { considerDefaultExhaustiveForUnions: true }
+      ]
+    }
+  },
   eslintConfigPrettier
 )

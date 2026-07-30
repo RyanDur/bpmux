@@ -7,7 +7,16 @@ const STUB_PRODUCTION_TSX = resolve(ELECTRON_APP_ROOT, 'src/renderer/src/__html5
 const STUB_TEST_TSX = resolve(ELECTRON_APP_ROOT, 'src/renderer/src/__html5-stub__.test.tsx')
 
 const lintAs = async (code: string, filePath: string): Promise<ESLint.LintResult[]> => {
-  const eslint = new ESLint({ cwd: ELECTRON_APP_ROOT })
+  const eslint = new ESLint({
+    cwd: ELECTRON_APP_ROOT,
+    overrideConfig: [
+      {
+        files: ['**/*.{ts,tsx}'],
+        languageOptions: { parserOptions: { projectService: false } },
+        rules: { '@typescript-eslint/switch-exhaustiveness-check': 'off' }
+      }
+    ]
+  })
   return eslint.lintText(code, { filePath })
 }
 

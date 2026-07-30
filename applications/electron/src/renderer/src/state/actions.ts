@@ -25,118 +25,118 @@ export type HistoryMessage = {
   message_type?: string | null
 }
 
-export const StateActionType = {
-  Connecting: 'state/connecting',
-  Connected: 'state/connected',
-  Reconnected: 'state/reconnected',
-  Disconnected: 'state/disconnected',
-  Welcomed: 'state/welcomed',
-  MessageReceived: 'state/messageReceived',
-  HistoryLoaded: 'state/historyLoaded',
-  MirrorDeltaReceived: 'state/mirrorDeltaReceived',
-  PtyOutputReceived: 'state/ptyOutputReceived',
-  PtyExitReceived: 'state/ptyExitReceived',
-  PtyModeReceived: 'state/ptyModeReceived',
-  StartRequested: 'state/startRequested',
-  ChatSendRequested: 'state/chatSendRequested',
-  ReactionToggleRequested: 'state/reactionToggleRequested',
-  CommentsHydrateRequested: 'state/commentsHydrateRequested',
-  CommentsHydrated: 'state/commentsHydrated',
-  TimelineHydrateRequested: 'state/timelineHydrateRequested',
-  TimelineHydrated: 'state/timelineHydrated',
-  OlderHistoryRequested: 'state/olderHistoryRequested',
-  OutcomeHorizonChangeRequested: 'state/outcomeHorizonChangeRequested',
-  OutcomeIterationReorderRequested: 'state/outcomeIterationReorderRequested',
-  OutcomeReprioritizeRequested: 'state/outcomeReprioritizeRequested',
-  IterationReorderRequested: 'state/iterationReorderRequested',
-  AddStoryToIterationRequested: 'state/addStoryToIterationRequested',
-  PtySubscribeRequested: 'state/ptySubscribeRequested',
-  PtyInputRequested: 'state/ptyInputRequested',
-  PtyResizeRequested: 'state/ptyResizeRequested',
-  FrameReceived: 'state/frameReceived',
-  Reset: 'state/reset'
-} as const
+export enum StateActionType {
+  Connecting = 'state/connecting',
+  Connected = 'state/connected',
+  Reconnected = 'state/reconnected',
+  Disconnected = 'state/disconnected',
+  Welcomed = 'state/welcomed',
+  MessageReceived = 'state/messageReceived',
+  HistoryLoaded = 'state/historyLoaded',
+  MirrorDeltaReceived = 'state/mirrorDeltaReceived',
+  PtyOutputReceived = 'state/ptyOutputReceived',
+  PtyExitReceived = 'state/ptyExitReceived',
+  PtyModeReceived = 'state/ptyModeReceived',
+  StartRequested = 'state/startRequested',
+  ChatSendRequested = 'state/chatSendRequested',
+  ReactionToggleRequested = 'state/reactionToggleRequested',
+  CommentsHydrateRequested = 'state/commentsHydrateRequested',
+  CommentsHydrated = 'state/commentsHydrated',
+  TimelineHydrateRequested = 'state/timelineHydrateRequested',
+  TimelineHydrated = 'state/timelineHydrated',
+  OlderHistoryRequested = 'state/olderHistoryRequested',
+  OutcomeHorizonChangeRequested = 'state/outcomeHorizonChangeRequested',
+  OutcomeIterationReorderRequested = 'state/outcomeIterationReorderRequested',
+  OutcomeReprioritizeRequested = 'state/outcomeReprioritizeRequested',
+  IterationReorderRequested = 'state/iterationReorderRequested',
+  AddStoryToIterationRequested = 'state/addStoryToIterationRequested',
+  PtySubscribeRequested = 'state/ptySubscribeRequested',
+  PtyInputRequested = 'state/ptyInputRequested',
+  PtyResizeRequested = 'state/ptyResizeRequested',
+  FrameReceived = 'state/frameReceived',
+  Reset = 'state/reset'
+}
 
 export type StateAction =
-  | { type: typeof StateActionType.Connecting }
-  | { type: typeof StateActionType.Connected }
-  | { type: typeof StateActionType.Reconnected }
-  | { type: typeof StateActionType.Disconnected }
-  | { type: typeof StateActionType.Welcomed }
-  | { type: typeof StateActionType.MessageReceived; message: ChatMessage }
-  | { type: typeof StateActionType.HistoryLoaded; history: HistoryMessage[] }
-  | { type: typeof StateActionType.MirrorDeltaReceived; delta: StateDeltaPayload; ts: string }
-  | { type: typeof StateActionType.PtyOutputReceived; terminalId: string; data: string }
-  | { type: typeof StateActionType.PtyExitReceived; terminalId: string }
+  | { type: StateActionType.Connecting }
+  | { type: StateActionType.Connected }
+  | { type: StateActionType.Reconnected }
+  | { type: StateActionType.Disconnected }
+  | { type: StateActionType.Welcomed }
+  | { type: StateActionType.MessageReceived; message: ChatMessage }
+  | { type: StateActionType.HistoryLoaded; history: HistoryMessage[] }
+  | { type: StateActionType.MirrorDeltaReceived; delta: StateDeltaPayload; ts: string }
+  | { type: StateActionType.PtyOutputReceived; terminalId: string; data: string }
+  | { type: StateActionType.PtyExitReceived; terminalId: string }
   | {
-      type: typeof StateActionType.PtyModeReceived
+      type: StateActionType.PtyModeReceived
       terminalId: string
       bracketedPaste: boolean
     }
-  | { type: typeof StateActionType.StartRequested; config: ConnectionConfig }
-  | { type: typeof StateActionType.ChatSendRequested; text: string; opts?: SendOptions }
+  | { type: StateActionType.StartRequested; config: ConnectionConfig }
+  | { type: StateActionType.ChatSendRequested; text: string; opts?: SendOptions }
   | {
-      type: typeof StateActionType.ReactionToggleRequested
+      type: StateActionType.ReactionToggleRequested
       channel: string
       messageKey: string
       emoji: string
       user: string
     }
-  | { type: typeof StateActionType.CommentsHydrateRequested; storyId: number }
+  | { type: StateActionType.CommentsHydrateRequested; storyId: number }
   | {
-      type: typeof StateActionType.CommentsHydrated
+      type: StateActionType.CommentsHydrated
       storyId: number
       comments: CommentWire[]
     }
-  | { type: typeof StateActionType.TimelineHydrateRequested; storyId: number }
+  | { type: StateActionType.TimelineHydrateRequested; storyId: number }
   | {
-      type: typeof StateActionType.TimelineHydrated
+      type: StateActionType.TimelineHydrated
       storyId: number
       events: TimelineEventWire[]
     }
   | {
-      type: typeof StateActionType.OlderHistoryRequested
+      type: StateActionType.OlderHistoryRequested
       requestId: number
       before: string
       limit: number
     }
   | {
-      type: typeof StateActionType.OutcomeHorizonChangeRequested
+      type: StateActionType.OutcomeHorizonChangeRequested
       outcomeId: number
       horizon: 'now' | 'next' | 'later'
     }
   | {
-      type: typeof StateActionType.OutcomeIterationReorderRequested
+      type: StateActionType.OutcomeIterationReorderRequested
       outcomeId: number
       iterationId: number
       position: number
     }
   | {
-      type: typeof StateActionType.OutcomeReprioritizeRequested
+      type: StateActionType.OutcomeReprioritizeRequested
       outcomeId: number
       position: number
     }
   | {
-      type: typeof StateActionType.IterationReorderRequested
+      type: StateActionType.IterationReorderRequested
       iterationId: number
       position: number
     }
   | {
-      type: typeof StateActionType.AddStoryToIterationRequested
+      type: StateActionType.AddStoryToIterationRequested
       iterationId: number
       storyId: number
       position: number
     }
-  | { type: typeof StateActionType.PtySubscribeRequested; terminalId: string }
-  | { type: typeof StateActionType.PtyInputRequested; terminalId: string; keystroke: string }
+  | { type: StateActionType.PtySubscribeRequested; terminalId: string }
+  | { type: StateActionType.PtyInputRequested; terminalId: string; keystroke: string }
   | {
-      type: typeof StateActionType.PtyResizeRequested
+      type: StateActionType.PtyResizeRequested
       terminalId: string
       cols: number
       rows: number
     }
-  | { type: typeof StateActionType.FrameReceived; raw: string }
-  | { type: typeof StateActionType.Reset }
+  | { type: StateActionType.FrameReceived; raw: string }
+  | { type: StateActionType.Reset }
 
 export const connecting = (): StateAction => ({ type: StateActionType.Connecting })
 export const connected = (): StateAction => ({ type: StateActionType.Connected })
