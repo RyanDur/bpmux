@@ -1,3 +1,4 @@
+import { some } from '@ryandur/sand'
 import { format } from 'date-fns'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import MessageBody from '../../chat/MessageBody'
@@ -39,8 +40,8 @@ const Comments = ({ storyId, apiBase, authToken, onError }: Props): React.JSX.El
   const wasAtBottomRef = useRef<boolean>(true)
 
   const offline = apiBase === undefined
-  const serverComments: readonly CommentWire[] | null = offline ? [] : hydratedComments
-  const comments = serverComments === null ? null : mergeComments(serverComments, optimistic)
+  const serverComments = offline ? some<CommentWire[]>([]) : hydratedComments
+  const comments = serverComments.map((server) => mergeComments(server, optimistic)).orNull()
 
   const captureScroll = useCallback((): void => {
     const el = commentsListRef.current

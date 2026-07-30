@@ -1,4 +1,5 @@
 import { format } from 'date-fns'
+import { maybe } from '@ryandur/sand'
 import { useCiSnapshot } from '@state'
 import type { CiSnapshotWire, CiStateWire } from '@transport/types'
 import {
@@ -55,11 +56,15 @@ const conclusionAriaLabel = (conclusion: string): string => {
 
 const CiGlyph = (): React.JSX.Element => {
   const ciSnapshot = useCiSnapshot()
-  const actionsUrl = ciSnapshot?.url ?? GITHUB_FALLBACK_URL
-  const conclusion = ciSnapshot ? stateToConclusion(ciSnapshot.state) : 'unknown'
+  const actionsUrl = ciSnapshot.mBind((snapshot) => maybe(snapshot.url)).orElse(GITHUB_FALLBACK_URL)
+  const conclusion = ciSnapshot
+    .map((snapshot) => stateToConclusion(snapshot.state))
+    .orElse('unknown')
   const watcherUnhealthy = isWatcherUnhealthy(ciSnapshot)
   const glyph = conclusionGlyph(conclusion)
-  const tooltip = buildTooltip(ciSnapshot, conclusion, watcherUnhealthy)
+  const tooltip = ciSnapshot
+    .map((snapshot) => presentTooltip(snapshot, conclusion, watcherUnhealthy))
+    .orElse('CI state loading…')
 
   return (
     <a
@@ -84,24 +89,24 @@ const CiGlyph = (): React.JSX.Element => {
   )
 }
 
-const buildTooltip = (
-  ci: CiSnapshotWire | null,
+const presentTooltip = (
+  ci: CiSnapshotWire,
   conclusion: CiConclusion,
   watcherUnhealthy: boolean
-): string => {
-  if (!ci) return 'CI state loading…'
-  const lines = [`CI · ${CI_BRANCH} · ${conclusion}`]
-  if (ci.display_title) lines.push(ci.display_title)
-  if (ci.head_sha) lines.push(ci.head_sha.slice(0, 7))
-  if (ci.last_successful_poll_at) {
-    lines.push(`polled ${format(new Date(ci.last_successful_poll_at), 'h:mm:ss a')}`)
-  }
-  if (watcherUnhealthy && ci.last_successful_poll_at) {
-    const ageSecs = Math.round((Date.now() - Date.parse(ci.last_successful_poll_at)) / 1000)
-    lines.push(`⚠ watcher last polled ${ageSecs}s ago`)
-  }
-  lines.push('(click to open on GitHub)')
-  return lines.join('\n')
-}
+): string =>
+  [
+    `CI · ${CI_BRANCH} · ${conclusion}`,
+    ...(ci.display_title ? [ci.display_title] : []),
+    ...(ci.head_sha ? [ci.head_sha.slice(0, 7)] : []),
+    ...(ci.last_successful_poll_at
+      ? [`polled ${format(new Date(ci.last_successful_poll_at), 'h:mm:ss a')}`]
+      : []),
+    ...(watcherUnhealthy && ci.last_successful_poll_at
+      ? [
+          `⚠ watcher last polled ${Math.round((Date.now() - Date.parse(ci.last_successful_poll_at)) / 1000)}s ago`
+        ]
+      : []),
+    '(click to open on GitHub)'
+  ].join('\n')
 
 export default CiGlyph

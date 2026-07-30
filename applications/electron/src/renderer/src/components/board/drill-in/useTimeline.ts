@@ -84,7 +84,7 @@ const markReworkCycles = (events: ClassifiedEvent[]): ClassifiedEvent[] => {
 export const useTimeline = ({ apiBase, storyId }: UseTimelineArgs): UseTimelineResult => {
   const boardInvalidateTick = useBoardInvalidateTick()
   const offline = apiBase === undefined
-  const rawEvents = useTimelineEvents(storyId ?? -1)
+  const rawEvents = useTimelineEvents(storyId ?? -1).orNull()
 
   const events = useMemo<ClassifiedEvent[] | null>(() => {
     if (offline) return []

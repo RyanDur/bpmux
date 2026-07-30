@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { has } from '@ryandur/sand'
+import { maybe } from '@ryandur/sand'
 import { useSyncStatus } from '@state'
 import { describeHttpError } from '@transport/http'
 import {
@@ -92,7 +92,7 @@ const GithubSettings = ({
   }
 
   const connected = view.phase === 'settled' && view.status.state === 'connected'
-  const syncError = useSyncStatus()?.last_error
+  const syncError = useSyncStatus().mBind((status) => maybe(status.last_error))
 
   return (
     <dialog className="github-settings" open={open} aria-label="GitHub settings">
@@ -115,11 +115,19 @@ const GithubSettings = ({
             : 'not connected'}
         </p>
       )}
-      {connected && has(syncError) && (
-        <p className="github-settings-error" data-test="gh-sync-error" title={syncError}>
-          sync is failing — {presentSyncError(syncError)}
-        </p>
-      )}
+      {connected &&
+        syncError
+          .map((error) => (
+            <p
+              key="gh-sync-error"
+              className="github-settings-error"
+              data-test="gh-sync-error"
+              title={error}
+            >
+              sync is failing — {presentSyncError(error)}
+            </p>
+          ))
+          .orNull()}
       <form className="github-settings-form" onSubmit={connect} noValidate>
         <ConnectField
           label="owner"

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { maybe, nothing } from '@ryandur/sand'
 import {
   WATCHER_UNHEALTHY_THRESHOLD_MS,
   derivedClassName,
@@ -14,53 +15,53 @@ const isoSecondsAgo = (secs: number): string => new Date(NOW - secs * 1000).toIS
 describe('watcherHealth pure helpers', () => {
   describe('isWatcherUnhealthy', () => {
     it('returns false when state is null', () => {
-      expect(isWatcherUnhealthy(null, NOW)).toBe(false)
+      expect(isWatcherUnhealthy(nothing(), NOW)).toBe(false)
     })
 
     it('returns false when last_successful_poll_at is null', () => {
-      expect(isWatcherUnhealthy({ last_successful_poll_at: null }, NOW)).toBe(false)
+      expect(isWatcherUnhealthy(maybe({ last_successful_poll_at: null }), NOW)).toBe(false)
     })
 
     it('returns false when last_successful_poll_at is undefined', () => {
-      expect(isWatcherUnhealthy({}, NOW)).toBe(false)
+      expect(isWatcherUnhealthy(maybe({}), NOW)).toBe(false)
     })
 
     it('returns false when last_successful_poll_at is invalid RFC3339', () => {
-      expect(isWatcherUnhealthy({ last_successful_poll_at: 'not-a-date' }, NOW)).toBe(false)
+      expect(isWatcherUnhealthy(maybe({ last_successful_poll_at: 'not-a-date' }), NOW)).toBe(false)
     })
 
     it('returns false when poll-age is below threshold', () => {
       const ageSecs = WATCHER_UNHEALTHY_THRESHOLD_MS / 1000 - 5
-      expect(isWatcherUnhealthy({ last_successful_poll_at: isoSecondsAgo(ageSecs) }, NOW)).toBe(
-        false
-      )
+      expect(
+        isWatcherUnhealthy(maybe({ last_successful_poll_at: isoSecondsAgo(ageSecs) }), NOW)
+      ).toBe(false)
     })
 
     it('returns true when poll-age exceeds threshold', () => {
       const ageSecs = WATCHER_UNHEALTHY_THRESHOLD_MS / 1000 + 5
-      expect(isWatcherUnhealthy({ last_successful_poll_at: isoSecondsAgo(ageSecs) }, NOW)).toBe(
-        true
-      )
+      expect(
+        isWatcherUnhealthy(maybe({ last_successful_poll_at: isoSecondsAgo(ageSecs) }), NOW)
+      ).toBe(true)
     })
 
     it('returns false at exactly threshold (strictly greater)', () => {
       const ageSecs = WATCHER_UNHEALTHY_THRESHOLD_MS / 1000
-      expect(isWatcherUnhealthy({ last_successful_poll_at: isoSecondsAgo(ageSecs) }, NOW)).toBe(
-        false
-      )
+      expect(
+        isWatcherUnhealthy(maybe({ last_successful_poll_at: isoSecondsAgo(ageSecs) }), NOW)
+      ).toBe(false)
     })
   })
 
   describe('watcherUnhealthyAriaLabel', () => {
     it('returns no-successful-poll-observed message when timestamp absent', () => {
-      expect(watcherUnhealthyAriaLabel(null, NOW)).toContain('no successful poll observed')
-      expect(watcherUnhealthyAriaLabel({}, NOW)).toContain('no successful poll observed')
+      expect(watcherUnhealthyAriaLabel(nothing(), NOW)).toContain('no successful poll observed')
+      expect(watcherUnhealthyAriaLabel(maybe({}), NOW)).toContain('no successful poll observed')
     })
 
     it('includes computed age in seconds when timestamp present', () => {
       const ageSecs = 150
       const label = watcherUnhealthyAriaLabel(
-        { last_successful_poll_at: isoSecondsAgo(ageSecs) },
+        maybe({ last_successful_poll_at: isoSecondsAgo(ageSecs) }),
         NOW
       )
       expect(label).toContain('last successful poll 150s ago')
@@ -68,7 +69,7 @@ describe('watcherHealth pure helpers', () => {
 
     it('rounds age to nearest second', () => {
       const lastPoll = new Date(NOW - 150_700).toISOString()
-      const label = watcherUnhealthyAriaLabel({ last_successful_poll_at: lastPoll }, NOW)
+      const label = watcherUnhealthyAriaLabel(maybe({ last_successful_poll_at: lastPoll }), NOW)
       expect(label).toMatch(/\b15[01]s ago\b/)
     })
   })

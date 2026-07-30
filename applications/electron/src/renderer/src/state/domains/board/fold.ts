@@ -5,7 +5,7 @@ import type { BoardColumn, Epic, Story } from '@components/board/types'
 import type { RoadmapCard, RoadmapOutcomeData } from '@components/board/roadmap/selectRoadmap'
 import type { BoardIterationData } from '@components/board/iteration/selectIterations'
 
-export type BoardSlice = {
+export type BoardState = {
   stories: Story[]
   columns: BoardColumn[]
   epics: Epic[]
@@ -15,7 +15,7 @@ export type BoardSlice = {
   boardInvalidateTick: number
 }
 
-export const emptyBoard = (): BoardSlice => ({
+export const initialBoard: BoardState = {
   stories: [],
   columns: [],
   epics: [],
@@ -23,51 +23,51 @@ export const emptyBoard = (): BoardSlice => ({
   iterations: [],
   roadmap: [],
   boardInvalidateTick: 0
-})
+}
 
 const onActionType = caseOf('type')
 const onDomain = caseOf('domain')
 
-export const boardFold = (slice: BoardSlice, action: StateAction): BoardSlice | null =>
-  onActionType<StateAction, BoardSlice | null>(action, {
+export const boardFold = (state: BoardState = initialBoard, action: StateAction): BoardState =>
+  onActionType<StateAction, BoardState>(action, {
     [StateActionType.MirrorDeltaReceived]: ({ delta }) =>
-      onDomain<typeof delta, BoardSlice>(delta, {
+      onDomain<typeof delta, BoardState>(delta, {
         stories: ({ stories, columns }) => ({
-          ...slice,
+          ...state,
           stories,
-          columns: columns !== undefined ? columns : slice.columns
+          columns: columns !== undefined ? columns : state.columns
         }),
-        story_upserted: ({ story }) => ({ ...slice, stories: upsertById(slice.stories, story) }),
-        story_removed: ({ id }) => ({ ...slice, stories: removeById(slice.stories, id) }),
-        story_order: ({ ids }) => ({ ...slice, stories: orderByIds(slice.stories, ids) }),
-        epics: ({ epics }) => ({ ...slice, epics }),
-        epic_upserted: ({ epic }) => ({ ...slice, epics: upsertById(slice.epics, epic) }),
-        epic_removed: ({ id }) => ({ ...slice, epics: removeById(slice.epics, id) }),
-        epic_order: ({ ids }) => ({ ...slice, epics: orderByIds(slice.epics, ids) }),
-        outcomes: ({ outcomes }) => ({ ...slice, outcomes }),
+        story_upserted: ({ story }) => ({ ...state, stories: upsertById(state.stories, story) }),
+        story_removed: ({ id }) => ({ ...state, stories: removeById(state.stories, id) }),
+        story_order: ({ ids }) => ({ ...state, stories: orderByIds(state.stories, ids) }),
+        epics: ({ epics }) => ({ ...state, epics }),
+        epic_upserted: ({ epic }) => ({ ...state, epics: upsertById(state.epics, epic) }),
+        epic_removed: ({ id }) => ({ ...state, epics: removeById(state.epics, id) }),
+        epic_order: ({ ids }) => ({ ...state, epics: orderByIds(state.epics, ids) }),
+        outcomes: ({ outcomes }) => ({ ...state, outcomes }),
         outcome_upserted: ({ outcome }) => ({
-          ...slice,
-          outcomes: upsertById(slice.outcomes, outcome)
+          ...state,
+          outcomes: upsertById(state.outcomes, outcome)
         }),
-        outcome_removed: ({ id }) => ({ ...slice, outcomes: removeById(slice.outcomes, id) }),
-        outcome_order: ({ ids }) => ({ ...slice, outcomes: orderByIds(slice.outcomes, ids) }),
-        iterations: ({ iterations }) => ({ ...slice, iterations }),
+        outcome_removed: ({ id }) => ({ ...state, outcomes: removeById(state.outcomes, id) }),
+        outcome_order: ({ ids }) => ({ ...state, outcomes: orderByIds(state.outcomes, ids) }),
+        iterations: ({ iterations }) => ({ ...state, iterations }),
         iteration_upserted: ({ iteration }) => ({
-          ...slice,
-          iterations: upsertById(slice.iterations, iteration)
+          ...state,
+          iterations: upsertById(state.iterations, iteration)
         }),
-        iteration_removed: ({ id }) => ({ ...slice, iterations: removeById(slice.iterations, id) }),
-        iteration_order: ({ ids }) => ({ ...slice, iterations: orderByIds(slice.iterations, ids) }),
-        roadmap: ({ roadmap }) => ({ ...slice, roadmap }),
+        iteration_removed: ({ id }) => ({ ...state, iterations: removeById(state.iterations, id) }),
+        iteration_order: ({ ids }) => ({ ...state, iterations: orderByIds(state.iterations, ids) }),
+        roadmap: ({ roadmap }) => ({ ...state, roadmap }),
         roadmap_card_upserted: ({ card }) => ({
-          ...slice,
-          roadmap: upsertById(slice.roadmap, card)
+          ...state,
+          roadmap: upsertById(state.roadmap, card)
         }),
-        roadmap_card_removed: ({ id }) => ({ ...slice, roadmap: removeById(slice.roadmap, id) }),
-        roadmap_order: ({ ids }) => ({ ...slice, roadmap: orderByIds(slice.roadmap, ids) }),
+        roadmap_card_removed: ({ id }) => ({ ...state, roadmap: removeById(state.roadmap, id) }),
+        roadmap_order: ({ ids }) => ({ ...state, roadmap: orderByIds(state.roadmap, ids) }),
         board_invalidated: () => ({
-          ...slice,
-          boardInvalidateTick: slice.boardInvalidateTick + 1
+          ...state,
+          boardInvalidateTick: state.boardInvalidateTick + 1
         })
-      }).orNull()
-  }).orNull()
+      }).orElse(state)
+  }).orElse(state)

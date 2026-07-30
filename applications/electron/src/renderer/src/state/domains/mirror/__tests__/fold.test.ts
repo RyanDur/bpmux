@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'vitest'
-import { applyStateDelta, emptyMirrorState } from '../fold'
+import { applyStateDelta, initialMirror } from '../fold'
 import type { MirrorState } from '../fold'
 import type { StateDeltaPayload } from '@transport/types'
 
 const seededWith = (deltas: StateDeltaPayload[]): MirrorState =>
-  deltas.reduce(applyStateDelta, emptyMirrorState())
+  deltas.reduce(applyStateDelta, initialMirror)
 
 describe('applyStateDelta', () => {
   test('merges reactions for a single channel without touching others', () => {
@@ -26,8 +26,8 @@ describe('applyStateDelta', () => {
       aggregated: [{ message_key: 'k1', emoji: '👍', count: 2, users: ['dev', 'pm'] }]
     }
     const next = applyStateDelta(seeded, delta)
-    expect(next.reactions.get('a')?.[0].count).toBe(2)
-    expect(next.reactions.get('b')?.[0].count).toBe(1)
+    expect(next.reactions['a']?.[0].count).toBe(2)
+    expect(next.reactions['b']?.[0].count).toBe(1)
   })
 
   test('removes empty reactions channel from the map', () => {
@@ -39,7 +39,7 @@ describe('applyStateDelta', () => {
       }
     ])
     const next = applyStateDelta(seeded, { domain: 'reactions', channel: 'a', aggregated: [] })
-    expect(next.reactions.has('a')).toBe(false)
+    expect(next.reactions['a']).toBeUndefined()
   })
 
   test('replaces ci snapshot in place', () => {
@@ -53,7 +53,7 @@ describe('applyStateDelta', () => {
   })
 
   test('sync_poll heartbeat stores the full sync status in the mirror', () => {
-    const next = applyStateDelta(emptyMirrorState(), {
+    const next = applyStateDelta(initialMirror, {
       domain: 'sync_poll',
       status: {
         last_ingest_at: '2026-06-18T12:00:00Z',
@@ -103,7 +103,7 @@ describe('applyStateDelta', () => {
       count: 2,
       users: ['dev', 'owner']
     })
-    expect(next.reactions.get('a')).toEqual([
+    expect(next.reactions['a']).toEqual([
       { message_key: 'k1', emoji: '👍', count: 2, users: ['dev', 'owner'] },
       { message_key: 'k2', emoji: '🎉', count: 1, users: ['pm'] }
     ])
@@ -125,7 +125,7 @@ describe('applyStateDelta', () => {
       count: 0,
       users: []
     })
-    expect(next.reactions.has('a')).toBe(false)
+    expect(next.reactions['a']).toBeUndefined()
   })
 
   test('a roster member upsert replaces in place or appends, and a removal drops one member', () => {

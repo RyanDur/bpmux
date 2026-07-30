@@ -3,54 +3,57 @@ import { useSyncStatus } from '@state'
 import type { SyncStatusWire } from '@transport/types'
 import { type SyncState, deriveState, stateAriaLabel, stateGlyph } from './syncState'
 
-const buildTooltip = (state: SyncState, report: SyncStatusWire | null): string => {
-  if (!report) return 'Sync status loading…'
-  const lines: string[] = []
+const presentTooltip = (state: SyncState, report: SyncStatusWire): string => {
   switch (state) {
     case 'connected':
-      lines.push('Sync · connected')
-      if (report.last_push_at) lines.push(`last push ${report.last_push_at}`)
-      break
+      return [
+        'Sync · connected',
+        ...(report.last_push_at ? [`last push ${report.last_push_at}`] : [])
+      ].join('\n')
     case 'loading':
-      lines.push('Sync · loading')
-      break
+      return 'Sync · loading'
     case 'syncing':
-      lines.push(`Sync · syncing ${report.pending_events} pending`)
-      break
+      return `Sync · syncing ${report.pending_events} pending`
     case 'offline-queued':
-      lines.push(`Sync · offline, ${report.pending_events} queued`)
-      if (report.last_error) lines.push(`error: ${report.last_error}`)
-      break
+      return [
+        `Sync · offline, ${report.pending_events} queued`,
+        ...(report.last_error ? [`error: ${report.last_error}`] : [])
+      ].join('\n')
     case 'drained-permanent-failure':
-      lines.push(`Sync · ${report.dropped_events.length} dropped on permanent failure`)
-      for (const d of report.dropped_events.slice(0, 3)) {
-        lines.push(`#${d.story_id}: ${d.error}`)
-      }
-      break
+      return [
+        `Sync · ${report.dropped_events.length} dropped on permanent failure`,
+        ...report.dropped_events
+          .slice(0, 3)
+          .map((dropped) => `#${dropped.story_id}: ${dropped.error}`)
+      ].join('\n')
     case 'stale':
-      lines.push('Sync · stale')
-      if (report.last_ingest_at) lines.push(`last ingest ${report.last_ingest_at}`)
-      break
+      return [
+        'Sync · stale',
+        ...(report.last_ingest_at ? [`last ingest ${report.last_ingest_at}`] : [])
+      ].join('\n')
     case 'startup-fail':
-      lines.push('Sync · startup pull failed')
-      if (report.last_error) lines.push(`error: ${report.last_error}`)
-      lines.push('board is empty until GitHub sync succeeds')
-      break
+      return [
+        'Sync · startup pull failed',
+        ...(report.last_error ? [`error: ${report.last_error}`] : []),
+        'board is empty until GitHub sync succeeds'
+      ].join('\n')
   }
-  return lines.join('\n')
 }
 
 const SyncStatusGlyph = (): React.JSX.Element => {
   const report = useSyncStatus()
   const state = deriveState(report)
-  const count =
-    state === 'drained-permanent-failure'
-      ? (report?.dropped_events.length ?? 0)
-      : (report?.pending_events ?? 0)
+  const count = report
+    .map((present) =>
+      state === 'drained-permanent-failure' ? present.dropped_events.length : present.pending_events
+    )
+    .orElse(0)
 
   const glyph = stateGlyph(state)
   const ariaLabel = stateAriaLabel(state, count)
-  const tooltip = buildTooltip(state, report)
+  const tooltip = report
+    .map((present) => presentTooltip(state, present))
+    .orElse('Sync status loading…')
   const showCount = state !== 'connected' && count > 0
 
   return (

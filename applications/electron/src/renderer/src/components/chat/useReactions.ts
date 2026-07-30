@@ -18,7 +18,7 @@ export type UseReactionsResult = {
 }
 
 export const useReactions = ({ channel }: UseReactionsArgs): UseReactionsResult => {
-  const fromMirror = useReactionsByChannel().get(channel) ?? []
+  const fromMirror = useReactionsByChannel()[channel] ?? []
 
   const toggle = useCallback(
     (messageKey: string, emoji: string, user: string): void => {

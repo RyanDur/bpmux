@@ -1,3 +1,4 @@
+import type { Maybe } from '@ryandur/sand'
 import type { SyncStatusWire } from '@transport/types'
 
 export type SyncState =
@@ -9,8 +10,10 @@ export type SyncState =
   | 'stale'
   | 'startup-fail'
 
-export const deriveState = (report: SyncStatusWire | null): SyncState => {
-  if (!report) return 'loading'
+export const deriveState = (report: Maybe<SyncStatusWire>): SyncState =>
+  report.map(presentState).orElse('loading')
+
+const presentState = (report: SyncStatusWire): SyncState => {
   if (report.dropped_events.length > 0) return 'drained-permanent-failure'
   if (report.startup_fail) return 'startup-fail'
   if (report.pending_events > 0 && report.last_error !== null) return 'offline-queued'

@@ -1,21 +1,22 @@
-import { type ConnectionSlice, connectionFold, emptyConnection } from './domains/connection/fold'
-import { type ChatSlice, chatFold, emptyChat } from './domains/chat/fold'
-import { type DrillInSlice, drillInFold, emptyDrillIn } from './domains/drillIn/fold'
-import { type BoardSlice, boardFold, emptyBoard } from './domains/board/fold'
-import { type MirrorState, emptyMirrorState, mirrorFold } from './domains/mirror/fold'
+import { type ConnectionState, connectionFold, initialConnection } from './domains/connection/fold'
+import { type ChatState, chatFold, initialChat } from './domains/chat/fold'
+import { type DrillInState, drillInFold, initialDrillIn } from './domains/drillIn/fold'
+import { type BoardState, boardFold, initialBoard } from './domains/board/fold'
+import { type MirrorState, initialMirror, mirrorFold } from './domains/mirror/fold'
 import type { StateAction } from './actions'
 
-export type StateSnapshot = ConnectionSlice &
-  ChatSlice &
-  DrillInSlice &
-  BoardSlice & { mirror: MirrorState }
+export type StateSnapshot = ConnectionState &
+  ChatState &
+  DrillInState &
+  BoardState & { mirror: MirrorState }
 
 export const emptySnapshot = (url: string | undefined): StateSnapshot => ({
-  ...emptyConnection(url),
-  ...emptyChat(),
-  ...emptyDrillIn(),
-  ...emptyBoard(),
-  mirror: emptyMirrorState()
+  ...initialConnection,
+  status: url ? 'connecting' : 'disconnected',
+  ...initialChat,
+  ...initialDrillIn,
+  ...initialBoard,
+  mirror: initialMirror
 })
 
 export const stateReducer = (state: StateSnapshot, action: StateAction): StateSnapshot => {
@@ -25,6 +26,6 @@ export const stateReducer = (state: StateSnapshot, action: StateAction): StateSn
     drillInFold(state, action),
     boardFold(state, action),
     mirrorFold(state, action)
-  ].filter((patch) => patch !== null)
+  ].filter((folded) => folded !== state)
   return patches.length === 0 ? state : Object.assign({}, state, ...patches)
 }

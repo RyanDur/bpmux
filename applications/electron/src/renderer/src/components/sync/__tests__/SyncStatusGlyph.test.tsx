@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import SyncStatusGlyph from '../SyncStatusGlyph'
 import { deriveState } from '../syncState'
+import { nothing, some } from '@ryandur/sand'
 import { dispatchState, resetStateForTest } from '@state/store'
 import { mirrorDeltaReceived } from '@state/actions'
 import type { SyncStatusWire } from '@transport/types'
@@ -62,36 +63,40 @@ describe('SyncStatusGlyph — derives state from the WS mirror (no /api/sync-sta
 
 describe('deriveState — full-state coverage (null report never false-greens)', () => {
   test('null report → loading (NOT connected)', () => {
-    expect(deriveState(null)).toBe('loading')
-    expect(deriveState(null)).not.toBe('connected')
+    expect(deriveState(nothing())).toBe('loading')
+    expect(deriveState(nothing())).not.toBe('connected')
   })
 
   test('present healthy report → connected', () => {
-    expect(deriveState(report)).toBe('connected')
+    expect(deriveState(some(report))).toBe('connected')
   })
 
   test('dropped_events → drained-permanent-failure', () => {
     expect(
-      deriveState({
-        ...report,
-        dropped_events: [{ story_id: 1, error: 'x', ts: '2026-04-22T16:00:00Z' }]
-      })
+      deriveState(
+        some({
+          ...report,
+          dropped_events: [{ story_id: 1, error: 'x', ts: '2026-04-22T16:00:00Z' }]
+        })
+      )
     ).toBe('drained-permanent-failure')
   })
 
   test('startup_fail → startup-fail', () => {
-    expect(deriveState({ ...report, startup_fail: true })).toBe('startup-fail')
+    expect(deriveState(some({ ...report, startup_fail: true }))).toBe('startup-fail')
   })
 
   test('pending events with a last_error → offline-queued', () => {
-    expect(deriveState({ ...report, pending_events: 2, last_error: 'boom' })).toBe('offline-queued')
+    expect(deriveState(some({ ...report, pending_events: 2, last_error: 'boom' }))).toBe(
+      'offline-queued'
+    )
   })
 
   test('pending events without a last_error → syncing', () => {
-    expect(deriveState({ ...report, pending_events: 2 })).toBe('syncing')
+    expect(deriveState(some({ ...report, pending_events: 2 }))).toBe('syncing')
   })
 
   test('stale report → stale', () => {
-    expect(deriveState({ ...report, stale: true })).toBe('stale')
+    expect(deriveState(some({ ...report, stale: true }))).toBe('stale')
   })
 })

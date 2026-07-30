@@ -9,51 +9,57 @@ import type {
 } from '@transport/types'
 
 export type MirrorState = {
-  reactions: ReadonlyMap<string, ReactionAggregateWire[]>
+  reactions: Readonly<Record<string, ReactionAggregateWire[]>>
   ci: CiSnapshotWire | null
   sync: SyncStatusWire | null
   roster: RosterMemberWire[]
 }
 
-export const emptyMirrorState = (): MirrorState => ({
-  reactions: new Map(),
+export const initialMirror: MirrorState = {
+  reactions: {},
   ci: null,
   sync: null,
   roster: []
-})
+}
+
+const keep = (
+  reactions: MirrorState['reactions'],
+  channel: string,
+  aggregates: ReactionAggregateWire[]
+): MirrorState['reactions'] => {
+  const { [channel]: _replaced, ...others } = reactions
+  return aggregates.length === 0 ? others : { ...others, [channel]: aggregates }
+}
 
 const onActionType = caseOf('type')
 const onDomain = caseOf('domain')
 
 export const mirrorFold = (
-  slice: { mirror: MirrorState },
+  state: { mirror: MirrorState } = { mirror: initialMirror },
   action: StateAction
-): { mirror: MirrorState } | null =>
-  onActionType<StateAction, { mirror: MirrorState } | null>(action, {
+): { mirror: MirrorState } =>
+  onActionType<StateAction, { mirror: MirrorState }>(action, {
     [StateActionType.MirrorDeltaReceived]: ({ delta }) => {
-      const mirror = applyStateDelta(slice.mirror, delta)
-      return mirror === slice.mirror ? null : { mirror }
+      const mirror = applyStateDelta(state.mirror, delta)
+      return mirror === state.mirror ? state : { mirror }
     }
-  }).orNull()
+  }).orElse(state)
 
 export const applyStateDelta = (prev: MirrorState, delta: StateDeltaPayload): MirrorState =>
   onDomain<StateDeltaPayload, MirrorState>(delta, {
     reaction_updated: ({ channel, message_key, emoji, count, users }) => {
-      const reactions = new Map(prev.reactions)
-      const list = reactions.get(channel) ?? []
+      const list = prev.reactions[channel] ?? []
       const index = list.findIndex(
         (aggregate) => aggregate.message_key === message_key && aggregate.emoji === emoji
       )
       const aggregate = { message_key, emoji, count, users }
       const nextList =
         count === 0
-          ? list.filter((_, position) => position !== index)
+          ? list.filter((_existing, position) => position !== index)
           : index === -1
             ? [...list, aggregate]
             : list.map((existing, position) => (position === index ? aggregate : existing))
-      if (nextList.length === 0) reactions.delete(channel)
-      else reactions.set(channel, nextList)
-      return { ...prev, reactions }
+      return { ...prev, reactions: keep(prev.reactions, channel, nextList) }
     },
     roster_member_upserted: ({ member }) => {
       const index = prev.roster.findIndex((existing) => existing.routing_id === member.routing_id)
@@ -67,12 +73,10 @@ export const applyStateDelta = (prev: MirrorState, delta: StateDeltaPayload): Mi
       ...prev,
       roster: prev.roster.filter((member) => member.routing_id !== routing_id)
     }),
-    reactions: ({ channel, aggregated }) => {
-      const reactions = new Map(prev.reactions)
-      if (aggregated.length === 0) reactions.delete(channel)
-      else reactions.set(channel, aggregated)
-      return { ...prev, reactions }
-    },
+    reactions: ({ channel, aggregated }) => ({
+      ...prev,
+      reactions: keep(prev.reactions, channel, aggregated)
+    }),
     ci: ({ snapshot }) => ({ ...prev, ci: snapshot }),
     ci_poll: ({ snapshot }) => ({ ...prev, ci: snapshot }),
     sync_poll: ({ status }) => ({ ...prev, sync: status }),

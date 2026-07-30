@@ -35,7 +35,7 @@ describe('state selector hooks', () => {
 
   it('useSyncStatus reflects a sync_poll mirror-delta', () => {
     const { result } = renderHook(() => useSyncStatus())
-    expect(result.current).toBeNull()
+    expect(result.current.isNothing).toBe(true)
     act(() =>
       dispatchState(
         mirrorDeltaReceived(
@@ -55,6 +55,6 @@ describe('state selector hooks', () => {
         )
       )
     )
-    expect(result.current?.pending_events).toBe(2)
+    expect(result.current.map((status) => status.pending_events).orNull()).toBe(2)
   })
 })

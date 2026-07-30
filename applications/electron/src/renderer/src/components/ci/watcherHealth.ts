@@ -1,29 +1,33 @@
+import { type Maybe, maybe, not } from '@ryandur/sand'
+
 export const WATCHER_UNHEALTHY_THRESHOLD_MS = 120_000
 
 export type WatcherHealthInput = {
   last_successful_poll_at?: string | null
 }
 
+const lastPollOf = (state: Maybe<WatcherHealthInput>): Maybe<number> =>
+  state
+    .mBind((input) => maybe(input.last_successful_poll_at))
+    .map(Date.parse)
+    .mBind((lastPollMs) => maybe(lastPollMs, (parsed) => not(Number.isNaN(parsed))))
+
 export const isWatcherUnhealthy = (
-  state: WatcherHealthInput | null,
+  state: Maybe<WatcherHealthInput>,
   now: number = Date.now()
-): boolean => {
-  if (!state || !state.last_successful_poll_at) return false
-  const lastPollMs = Date.parse(state.last_successful_poll_at)
-  if (Number.isNaN(lastPollMs)) return false
-  return now - lastPollMs > WATCHER_UNHEALTHY_THRESHOLD_MS
-}
+): boolean =>
+  lastPollOf(state)
+    .map((lastPollMs) => now - lastPollMs > WATCHER_UNHEALTHY_THRESHOLD_MS)
+    .orElse(false)
 
 export const watcherUnhealthyAriaLabel = (
-  state: WatcherHealthInput | null,
+  state: Maybe<WatcherHealthInput>,
   now: number = Date.now()
-): string => {
-  if (!state?.last_successful_poll_at) {
-    return 'CI watcher unhealthy — no successful poll observed'
-  }
-  const ageSecs = Math.round((now - Date.parse(state.last_successful_poll_at)) / 1000)
-  return `CI watcher unhealthy — last successful poll ${ageSecs}s ago`
-}
+): string =>
+  lastPollOf(state)
+    .map((lastPollMs) => Math.round((now - lastPollMs) / 1000))
+    .map((ageSecs) => `CI watcher unhealthy — last successful poll ${ageSecs}s ago`)
+    .orElse('CI watcher unhealthy — no successful poll observed')
 
 export const derivedClassName = (conclusion: string, watcherUnhealthy: boolean): string =>
   `ci-glyph ci-glyph--${conclusion}${watcherUnhealthy ? ' ci-glyph--watcher-unhealthy' : ''}`
