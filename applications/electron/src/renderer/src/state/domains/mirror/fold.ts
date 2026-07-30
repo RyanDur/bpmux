@@ -1,10 +1,11 @@
+import { StateActionType, type StateAction } from '../../actions'
 import type {
   CiSnapshotWire,
   ReactionAggregateWire,
   RosterMemberWire,
   StateDeltaPayload,
   SyncStatusWire
-} from './types'
+} from '@transport/types'
 
 export type MirrorState = {
   reactions: ReadonlyMap<string, ReactionAggregateWire[]>
@@ -19,6 +20,15 @@ export const emptyMirrorState = (): MirrorState => ({
   sync: null,
   roster: []
 })
+
+export const mirrorFold = (
+  slice: { mirror: MirrorState },
+  action: StateAction
+): { mirror: MirrorState } | null => {
+  if (action.type !== StateActionType.MirrorDeltaReceived) return null
+  const mirror = applyStateDelta(slice.mirror, action.delta)
+  return mirror === slice.mirror ? null : { mirror }
+}
 
 export const applyStateDelta = (prev: MirrorState, delta: StateDeltaPayload): MirrorState => {
   switch (delta.domain) {

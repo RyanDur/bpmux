@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
-import { applyStateDelta, emptyMirrorState } from '../state-delta'
-import type { MirrorState } from '../state-delta'
-import type { StateDeltaPayload } from '../types'
+import { applyStateDelta, emptyMirrorState } from '../fold'
+import type { MirrorState } from '../fold'
+import type { StateDeltaPayload } from '@transport/types'
 
 const seededWith = (deltas: StateDeltaPayload[]): MirrorState =>
   deltas.reduce(applyStateDelta, emptyMirrorState())
