@@ -7,7 +7,7 @@ import type { SocketDoor } from './door'
 export const translating =
   (frameFor: (action: StateAction) => ClientMessage | null) =>
   (door: SocketDoor): Middleware<StateSnapshot, StateAction> =>
-  () =>
+  (_storeApi) =>
   (next) =>
   (action) => {
     const frame = frameFor(action)

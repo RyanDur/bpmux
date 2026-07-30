@@ -7,7 +7,7 @@ import { translating } from './translating'
 
 export const chatSend =
   (door: SocketDoor): Middleware<StateSnapshot, StateAction> =>
-  () =>
+  (_storeApi) =>
   (next) =>
   (action) => {
     if (action.type !== StateActionType.ChatSendRequested) return next(action)
