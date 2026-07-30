@@ -28,6 +28,7 @@ export const connectionFold = (
       state.status === 'connecting' ? state : { ...state, status: 'connecting' },
     [ConnectionActionType.Connected]: () => ({ ...state, status: 'connected' }),
     [ConnectionActionType.Reconnected]: () => ({
+      ...state,
       status: 'connected',
       reconnectTick: state.reconnectTick + 1
     }),
