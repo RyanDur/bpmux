@@ -1,15 +1,18 @@
+import { has, maybe } from '@ryandur/sand'
 import { StateActionType } from '../actions'
 import type { ClientMessage } from '@transport/types'
 import type { Translator } from './translating'
 
 export const chatSend: Translator = (action) => {
   if (action.type !== StateActionType.ChatSendRequested) return null
-  const trimmed = action.text.trim()
-  if (!trimmed) return null
-  const frame: ClientMessage = { type: 'send', text: trimmed }
-  if (action.opts?.addressee) frame.addressee = action.opts.addressee
-  if (action.opts?.to && action.opts.to.length > 0) frame.to = action.opts.to
-  return frame
+  return maybe(action.text.trim(), has)
+    .map((text) => {
+      const frame: ClientMessage = { type: 'send', text }
+      if (has(action.opts?.addressee)) frame.addressee = action.opts.addressee
+      if (has(action.opts?.to)) frame.to = action.opts.to
+      return frame
+    })
+    .orNull()
 }
 
 export const reactionToggle: Translator = (action) =>

@@ -1,3 +1,4 @@
+import { has } from '@ryandur/sand'
 import type { Dispatch } from '../redux'
 import { type ConnectionConfig, type StateAction, disconnected } from '../actions'
 import { dispatchServerFrame } from '../decode'
@@ -37,7 +38,8 @@ export const socketDoor = (): SocketDoor => {
       config = next
     },
     connect: (dispatch) => {
-      if (!config?.url) {
+      const url = config?.url
+      if (!has(url)) {
         console.error('bpmux ws: no url provided via window.bpmux.wsUrl')
         dispatch(disconnected())
         return
@@ -52,7 +54,7 @@ export const socketDoor = (): SocketDoor => {
           ...(config?.ownerNonce ? { owner_nonce: config.ownerNonce } : {})
         })
       })
-      lifecycle.connect(config.url)
+      lifecycle.connect(url)
     },
     send: (msg) => {
       captureSentFrame(msg)

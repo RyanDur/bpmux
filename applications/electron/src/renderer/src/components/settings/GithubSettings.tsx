@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { has } from '@ryandur/sand'
 import { useSyncStatus } from '@state'
 import { describeHttpError } from '@transport/http'
 import {
@@ -114,7 +115,7 @@ const GithubSettings = ({
             : 'not connected'}
         </p>
       )}
-      {connected && syncError !== null && syncError !== undefined && (
+      {connected && has(syncError) && (
         <p className="github-settings-error" data-test="gh-sync-error" title={syncError}>
           sync is failing — {presentSyncError(syncError)}
         </p>
