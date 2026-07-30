@@ -1,6 +1,6 @@
-import { caseOf } from '@ryandur/sand'
 import { orderByIds, removeById, upsertById } from '@components/board/storyFolds'
-import { StateActionType, type StateAction } from '../../actions'
+import { MirrorActionType } from '../mirror/actions'
+import type { StateAction } from '../../actions'
 import type { BoardColumn, Epic, Story } from '@components/board/types'
 import type { RoadmapCard, RoadmapOutcomeData } from '@components/board/roadmap/selectRoadmap'
 import type { BoardIterationData } from '@components/board/iteration/selectIterations'
@@ -25,49 +25,57 @@ export const initialBoard: BoardState = {
   boardInvalidateTick: 0
 }
 
-const onActionType = caseOf('type')
-const onDomain = caseOf('domain')
-
-export const boardFold = (state: BoardState = initialBoard, action: StateAction): BoardState =>
-  onActionType<StateAction, BoardState>(action, {
-    [StateActionType.MirrorDeltaReceived]: ({ delta }) =>
-      onDomain<typeof delta, BoardState>(delta, {
-        stories: ({ stories, columns }) => ({
-          ...state,
-          stories,
-          columns: columns !== undefined ? columns : state.columns
-        }),
-        story_upserted: ({ story }) => ({ ...state, stories: upsertById(state.stories, story) }),
-        story_removed: ({ id }) => ({ ...state, stories: removeById(state.stories, id) }),
-        story_order: ({ ids }) => ({ ...state, stories: orderByIds(state.stories, ids) }),
-        epics: ({ epics }) => ({ ...state, epics }),
-        epic_upserted: ({ epic }) => ({ ...state, epics: upsertById(state.epics, epic) }),
-        epic_removed: ({ id }) => ({ ...state, epics: removeById(state.epics, id) }),
-        epic_order: ({ ids }) => ({ ...state, epics: orderByIds(state.epics, ids) }),
-        outcomes: ({ outcomes }) => ({ ...state, outcomes }),
-        outcome_upserted: ({ outcome }) => ({
-          ...state,
-          outcomes: upsertById(state.outcomes, outcome)
-        }),
-        outcome_removed: ({ id }) => ({ ...state, outcomes: removeById(state.outcomes, id) }),
-        outcome_order: ({ ids }) => ({ ...state, outcomes: orderByIds(state.outcomes, ids) }),
-        iterations: ({ iterations }) => ({ ...state, iterations }),
-        iteration_upserted: ({ iteration }) => ({
-          ...state,
-          iterations: upsertById(state.iterations, iteration)
-        }),
-        iteration_removed: ({ id }) => ({ ...state, iterations: removeById(state.iterations, id) }),
-        iteration_order: ({ ids }) => ({ ...state, iterations: orderByIds(state.iterations, ids) }),
-        roadmap: ({ roadmap }) => ({ ...state, roadmap }),
-        roadmap_card_upserted: ({ card }) => ({
-          ...state,
-          roadmap: upsertById(state.roadmap, card)
-        }),
-        roadmap_card_removed: ({ id }) => ({ ...state, roadmap: removeById(state.roadmap, id) }),
-        roadmap_order: ({ ids }) => ({ ...state, roadmap: orderByIds(state.roadmap, ids) }),
-        board_invalidated: () => ({
-          ...state,
-          boardInvalidateTick: state.boardInvalidateTick + 1
-        })
-      }).orElse(state)
-  }).orElse(state)
+export const boardFold = (state: BoardState = initialBoard, action: StateAction): BoardState => {
+  if (action.type !== MirrorActionType.MirrorDeltaReceived) return state
+  const delta = action.delta
+  switch (delta.domain) {
+    case 'stories':
+      return {
+        ...state,
+        stories: delta.stories,
+        columns: delta.columns !== undefined ? delta.columns : state.columns
+      }
+    case 'story_upserted':
+      return { ...state, stories: upsertById(state.stories, delta.story) }
+    case 'story_removed':
+      return { ...state, stories: removeById(state.stories, delta.id) }
+    case 'story_order':
+      return { ...state, stories: orderByIds(state.stories, delta.ids) }
+    case 'epics':
+      return { ...state, epics: delta.epics }
+    case 'epic_upserted':
+      return { ...state, epics: upsertById(state.epics, delta.epic) }
+    case 'epic_removed':
+      return { ...state, epics: removeById(state.epics, delta.id) }
+    case 'epic_order':
+      return { ...state, epics: orderByIds(state.epics, delta.ids) }
+    case 'outcomes':
+      return { ...state, outcomes: delta.outcomes }
+    case 'outcome_upserted':
+      return { ...state, outcomes: upsertById(state.outcomes, delta.outcome) }
+    case 'outcome_removed':
+      return { ...state, outcomes: removeById(state.outcomes, delta.id) }
+    case 'outcome_order':
+      return { ...state, outcomes: orderByIds(state.outcomes, delta.ids) }
+    case 'iterations':
+      return { ...state, iterations: delta.iterations }
+    case 'iteration_upserted':
+      return { ...state, iterations: upsertById(state.iterations, delta.iteration) }
+    case 'iteration_removed':
+      return { ...state, iterations: removeById(state.iterations, delta.id) }
+    case 'iteration_order':
+      return { ...state, iterations: orderByIds(state.iterations, delta.ids) }
+    case 'roadmap':
+      return { ...state, roadmap: delta.roadmap }
+    case 'roadmap_card_upserted':
+      return { ...state, roadmap: upsertById(state.roadmap, delta.card) }
+    case 'roadmap_card_removed':
+      return { ...state, roadmap: removeById(state.roadmap, delta.id) }
+    case 'roadmap_order':
+      return { ...state, roadmap: orderByIds(state.roadmap, delta.ids) }
+    case 'board_invalidated':
+      return { ...state, boardInvalidateTick: state.boardInvalidateTick + 1 }
+    default:
+      return state
+  }
+}

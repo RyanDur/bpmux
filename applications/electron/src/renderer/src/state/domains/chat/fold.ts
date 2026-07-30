@@ -1,6 +1,6 @@
-import { caseOf } from '@ryandur/sand'
 import { asMessageType } from '@transport/messageType'
-import { StateActionType, type HistoryMessage, type StateAction } from '../../actions'
+import { ChatActionType, type HistoryMessage } from './actions'
+import type { StateAction } from '../../actions'
 import type { ChatMessage } from '@transport/types'
 
 export type ChatState = {
@@ -32,16 +32,16 @@ const mergeHistory = (state: ChatState, history: HistoryMessage[]): ChatMessage[
   return [...hydrated, ...unseen]
 }
 
-const onActionType = caseOf('type')
-
-export const chatFold = (state: ChatState = initialChat, action: StateAction): ChatState =>
-  onActionType<StateAction, ChatState>(action, {
-    [StateActionType.MessageReceived]: ({ message }) => {
-      const key = messageKey(message)
+export const chatFold = (state: ChatState = initialChat, action: StateAction): ChatState => {
+  switch (action.type) {
+    case ChatActionType.MessageReceived: {
+      const key = messageKey(action.message)
       if (state.messages.some((existing) => messageKey(existing) === key)) return state
-      return { messages: [...state.messages, message] }
-    },
-    [StateActionType.HistoryLoaded]: ({ history }) => ({
-      messages: mergeHistory(state, history)
-    })
-  }).orElse(state)
+      return { messages: [...state.messages, action.message] }
+    }
+    case ChatActionType.HistoryLoaded:
+      return { messages: mergeHistory(state, action.history) }
+    default:
+      return state
+  }
+}

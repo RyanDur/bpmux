@@ -1,5 +1,6 @@
-import { caseOf } from '@ryandur/sand'
-import { StateActionType, type StateAction } from '../../actions'
+import { matchOn } from '@ryandur/sand'
+import { ConnectionActionType } from './actions'
+import type { StateAction } from '../../actions'
 import type { ConnectionStatus } from '@transport/types'
 
 export type ConnectionState = {
@@ -12,19 +13,23 @@ export const initialConnection: ConnectionState = {
   reconnectTick: 0
 }
 
-const onActionType = caseOf('type')
+const connectionTypes = Object.values(ConnectionActionType)
+const matchConnection = matchOn(connectionTypes)
+
+const isConnectionType = (candidate: StateAction['type']): candidate is ConnectionActionType =>
+  (connectionTypes as StateAction['type'][]).includes(candidate)
 
 export const connectionFold = (
   state: ConnectionState = initialConnection,
   action: StateAction
 ): ConnectionState =>
-  onActionType<StateAction, ConnectionState>(action, {
-    [StateActionType.Connecting]: () =>
+  matchConnection<ConnectionState>(isConnectionType(action.type) ? action.type : null, {
+    [ConnectionActionType.Connecting]: () =>
       state.status === 'connecting' ? state : { ...state, status: 'connecting' },
-    [StateActionType.Connected]: () => ({ ...state, status: 'connected' }),
-    [StateActionType.Reconnected]: () => ({
+    [ConnectionActionType.Connected]: () => ({ ...state, status: 'connected' }),
+    [ConnectionActionType.Reconnected]: () => ({
       status: 'connected',
       reconnectTick: state.reconnectTick + 1
     }),
-    [StateActionType.Disconnected]: () => ({ ...state, status: 'disconnected' })
+    [ConnectionActionType.Disconnected]: () => ({ ...state, status: 'disconnected' })
   }).orElse(state)
