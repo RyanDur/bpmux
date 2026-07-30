@@ -1,3 +1,4 @@
+import { caseOf } from '@ryandur/sand'
 import { StateActionType, type StateAction } from '../../actions'
 import type { CommentWire, TimelineEventWire } from '@transport/types'
 
@@ -11,19 +12,18 @@ export const emptyDrillIn = (): DrillInSlice => ({
   timelineByStory: new Map()
 })
 
-export const drillInFold = (slice: DrillInSlice, action: StateAction): DrillInSlice | null => {
-  switch (action.type) {
-    case StateActionType.CommentsHydrated: {
+const onActionType = caseOf('type')
+
+export const drillInFold = (slice: DrillInSlice, action: StateAction): DrillInSlice | null =>
+  onActionType<StateAction, DrillInSlice | null>(action, {
+    [StateActionType.CommentsHydrated]: ({ storyId, comments }) => {
       const commentsByStory = new Map(slice.commentsByStory)
-      commentsByStory.set(action.storyId, action.comments)
+      commentsByStory.set(storyId, comments)
       return { ...slice, commentsByStory }
-    }
-    case StateActionType.TimelineHydrated: {
+    },
+    [StateActionType.TimelineHydrated]: ({ storyId, events }) => {
       const timelineByStory = new Map(slice.timelineByStory)
-      timelineByStory.set(action.storyId, action.events)
+      timelineByStory.set(storyId, events)
       return { ...slice, timelineByStory }
     }
-    default:
-      return null
-  }
-}
+  }).orNull()

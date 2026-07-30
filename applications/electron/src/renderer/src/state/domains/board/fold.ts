@@ -1,3 +1,4 @@
+import { caseOf } from '@ryandur/sand'
 import { orderByIds, removeById, upsertById } from '@components/board/storyFolds'
 import { StateActionType, type StateAction } from '../../actions'
 import type { BoardColumn, Epic, Story } from '@components/board/types'
@@ -24,57 +25,49 @@ export const emptyBoard = (): BoardSlice => ({
   boardInvalidateTick: 0
 })
 
-export const boardFold = (slice: BoardSlice, action: StateAction): BoardSlice | null => {
-  if (action.type !== StateActionType.MirrorDeltaReceived) return null
-  const delta = action.delta
-  switch (delta.domain) {
-    case 'stories':
-      return {
-        ...slice,
-        stories: delta.stories,
-        columns: delta.columns !== undefined ? delta.columns : slice.columns
-      }
-    case 'story_upserted':
-      return { ...slice, stories: upsertById(slice.stories, delta.story) }
-    case 'story_removed':
-      return { ...slice, stories: removeById(slice.stories, delta.id) }
-    case 'story_order':
-      return { ...slice, stories: orderByIds(slice.stories, delta.ids) }
-    case 'epics':
-      return { ...slice, epics: delta.epics }
-    case 'epic_upserted':
-      return { ...slice, epics: upsertById(slice.epics, delta.epic) }
-    case 'epic_removed':
-      return { ...slice, epics: removeById(slice.epics, delta.id) }
-    case 'epic_order':
-      return { ...slice, epics: orderByIds(slice.epics, delta.ids) }
-    case 'outcomes':
-      return { ...slice, outcomes: delta.outcomes }
-    case 'outcome_upserted':
-      return { ...slice, outcomes: upsertById(slice.outcomes, delta.outcome) }
-    case 'outcome_removed':
-      return { ...slice, outcomes: removeById(slice.outcomes, delta.id) }
-    case 'outcome_order':
-      return { ...slice, outcomes: orderByIds(slice.outcomes, delta.ids) }
-    case 'iterations':
-      return { ...slice, iterations: delta.iterations }
-    case 'iteration_upserted':
-      return { ...slice, iterations: upsertById(slice.iterations, delta.iteration) }
-    case 'iteration_removed':
-      return { ...slice, iterations: removeById(slice.iterations, delta.id) }
-    case 'iteration_order':
-      return { ...slice, iterations: orderByIds(slice.iterations, delta.ids) }
-    case 'roadmap':
-      return { ...slice, roadmap: delta.roadmap }
-    case 'roadmap_card_upserted':
-      return { ...slice, roadmap: upsertById(slice.roadmap, delta.card) }
-    case 'roadmap_card_removed':
-      return { ...slice, roadmap: removeById(slice.roadmap, delta.id) }
-    case 'roadmap_order':
-      return { ...slice, roadmap: orderByIds(slice.roadmap, delta.ids) }
-    case 'board_invalidated':
-      return { ...slice, boardInvalidateTick: slice.boardInvalidateTick + 1 }
-    default:
-      return null
-  }
-}
+const onActionType = caseOf('type')
+const onDomain = caseOf('domain')
+
+export const boardFold = (slice: BoardSlice, action: StateAction): BoardSlice | null =>
+  onActionType<StateAction, BoardSlice | null>(action, {
+    [StateActionType.MirrorDeltaReceived]: ({ delta }) =>
+      onDomain<typeof delta, BoardSlice>(delta, {
+        stories: ({ stories, columns }) => ({
+          ...slice,
+          stories,
+          columns: columns !== undefined ? columns : slice.columns
+        }),
+        story_upserted: ({ story }) => ({ ...slice, stories: upsertById(slice.stories, story) }),
+        story_removed: ({ id }) => ({ ...slice, stories: removeById(slice.stories, id) }),
+        story_order: ({ ids }) => ({ ...slice, stories: orderByIds(slice.stories, ids) }),
+        epics: ({ epics }) => ({ ...slice, epics }),
+        epic_upserted: ({ epic }) => ({ ...slice, epics: upsertById(slice.epics, epic) }),
+        epic_removed: ({ id }) => ({ ...slice, epics: removeById(slice.epics, id) }),
+        epic_order: ({ ids }) => ({ ...slice, epics: orderByIds(slice.epics, ids) }),
+        outcomes: ({ outcomes }) => ({ ...slice, outcomes }),
+        outcome_upserted: ({ outcome }) => ({
+          ...slice,
+          outcomes: upsertById(slice.outcomes, outcome)
+        }),
+        outcome_removed: ({ id }) => ({ ...slice, outcomes: removeById(slice.outcomes, id) }),
+        outcome_order: ({ ids }) => ({ ...slice, outcomes: orderByIds(slice.outcomes, ids) }),
+        iterations: ({ iterations }) => ({ ...slice, iterations }),
+        iteration_upserted: ({ iteration }) => ({
+          ...slice,
+          iterations: upsertById(slice.iterations, iteration)
+        }),
+        iteration_removed: ({ id }) => ({ ...slice, iterations: removeById(slice.iterations, id) }),
+        iteration_order: ({ ids }) => ({ ...slice, iterations: orderByIds(slice.iterations, ids) }),
+        roadmap: ({ roadmap }) => ({ ...slice, roadmap }),
+        roadmap_card_upserted: ({ card }) => ({
+          ...slice,
+          roadmap: upsertById(slice.roadmap, card)
+        }),
+        roadmap_card_removed: ({ id }) => ({ ...slice, roadmap: removeById(slice.roadmap, id) }),
+        roadmap_order: ({ ids }) => ({ ...slice, roadmap: orderByIds(slice.roadmap, ids) }),
+        board_invalidated: () => ({
+          ...slice,
+          boardInvalidateTick: slice.boardInvalidateTick + 1
+        })
+      }).orNull()
+  }).orNull()

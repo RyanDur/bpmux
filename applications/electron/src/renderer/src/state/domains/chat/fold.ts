@@ -1,3 +1,4 @@
+import { caseOf } from '@ryandur/sand'
 import { asMessageType } from '@transport/messageType'
 import { StateActionType, type HistoryMessage, type StateAction } from '../../actions'
 import type { ChatMessage } from '@transport/types'
@@ -8,46 +9,46 @@ export type ChatSlice = {
 
 export const emptyChat = (): ChatSlice => ({ messages: [] })
 
-const messageKey = (m: { from: string; text: string; ts: string }): string =>
-  `${m.ts}|${m.from}|${m.text}`
+const messageKey = (message: { from: string; text: string; ts: string }): string =>
+  `${message.ts}|${message.from}|${message.text}`
 
 const mergeHistory = (slice: ChatSlice, history: HistoryMessage[]): ChatMessage[] => {
   const seen = new Set<string>()
   const merged: ChatMessage[] = []
-  for (const h of history) {
+  for (const entry of history) {
     const chat: ChatMessage = {
-      id: `hist-${h.ts}-${merged.length}`,
-      from: h.from,
-      text: h.text,
-      ts: h.ts,
-      to: h.to ?? null,
-      addressee: h.addressee ?? null,
-      messageType: asMessageType(h.message_type)
+      id: `hist-${entry.ts}-${merged.length}`,
+      from: entry.from,
+      text: entry.text,
+      ts: entry.ts,
+      to: entry.to ?? null,
+      addressee: entry.addressee ?? null,
+      messageType: asMessageType(entry.message_type)
     }
-    const k = messageKey(chat)
-    if (seen.has(k)) continue
-    seen.add(k)
+    const key = messageKey(chat)
+    if (seen.has(key)) continue
+    seen.add(key)
     merged.push(chat)
   }
-  for (const m of slice.messages) {
-    const k = messageKey(m)
-    if (seen.has(k)) continue
-    seen.add(k)
-    merged.push(m)
+  for (const message of slice.messages) {
+    const key = messageKey(message)
+    if (seen.has(key)) continue
+    seen.add(key)
+    merged.push(message)
   }
   return merged
 }
 
-export const chatFold = (slice: ChatSlice, action: StateAction): ChatSlice | null => {
-  switch (action.type) {
-    case StateActionType.MessageReceived: {
-      const key = messageKey(action.message)
-      if (slice.messages.some((m) => messageKey(m) === key)) return null
-      return { messages: [...slice.messages, action.message] }
-    }
-    case StateActionType.HistoryLoaded:
-      return { messages: mergeHistory(slice, action.history) }
-    default:
-      return null
-  }
-}
+const onActionType = caseOf('type')
+
+export const chatFold = (slice: ChatSlice, action: StateAction): ChatSlice | null =>
+  onActionType<StateAction, ChatSlice | null>(action, {
+    [StateActionType.MessageReceived]: ({ message }) => {
+      const key = messageKey(message)
+      if (slice.messages.some((existing) => messageKey(existing) === key)) return null
+      return { messages: [...slice.messages, message] }
+    },
+    [StateActionType.HistoryLoaded]: ({ history }) => ({
+      messages: mergeHistory(slice, history)
+    })
+  }).orNull()

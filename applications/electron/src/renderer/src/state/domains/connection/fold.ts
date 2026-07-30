@@ -1,3 +1,4 @@
+import { caseOf } from '@ryandur/sand'
 import { StateActionType, type StateAction } from '../../actions'
 import type { ConnectionStatus } from '@transport/types'
 
@@ -11,20 +12,19 @@ export const emptyConnection = (url: string | undefined): ConnectionSlice => ({
   reconnectTick: 0
 })
 
+const onActionType = caseOf('type')
+
 export const connectionFold = (
   slice: ConnectionSlice,
   action: StateAction
-): ConnectionSlice | null => {
-  switch (action.type) {
-    case StateActionType.Connecting:
-      return slice.status === 'connecting' ? null : { ...slice, status: 'connecting' }
-    case StateActionType.Connected:
-      return { ...slice, status: 'connected' }
-    case StateActionType.Reconnected:
-      return { status: 'connected', reconnectTick: slice.reconnectTick + 1 }
-    case StateActionType.Disconnected:
-      return { ...slice, status: 'disconnected' }
-    default:
-      return null
-  }
-}
+): ConnectionSlice | null =>
+  onActionType<StateAction, ConnectionSlice | null>(action, {
+    [StateActionType.Connecting]: () =>
+      slice.status === 'connecting' ? null : { ...slice, status: 'connecting' },
+    [StateActionType.Connected]: () => ({ ...slice, status: 'connected' }),
+    [StateActionType.Reconnected]: () => ({
+      status: 'connected',
+      reconnectTick: slice.reconnectTick + 1
+    }),
+    [StateActionType.Disconnected]: () => ({ ...slice, status: 'disconnected' })
+  }).orNull()

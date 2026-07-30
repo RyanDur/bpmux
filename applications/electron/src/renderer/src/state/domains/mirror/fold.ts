@@ -1,3 +1,4 @@
+import { caseOf } from '@ryandur/sand'
 import { StateActionType, type StateAction } from '../../actions'
 import type {
   CiSnapshotWire,
@@ -21,64 +22,59 @@ export const emptyMirrorState = (): MirrorState => ({
   roster: []
 })
 
+const onActionType = caseOf('type')
+const onDomain = caseOf('domain')
+
 export const mirrorFold = (
   slice: { mirror: MirrorState },
   action: StateAction
-): { mirror: MirrorState } | null => {
-  if (action.type !== StateActionType.MirrorDeltaReceived) return null
-  const mirror = applyStateDelta(slice.mirror, action.delta)
-  return mirror === slice.mirror ? null : { mirror }
-}
+): { mirror: MirrorState } | null =>
+  onActionType<StateAction, { mirror: MirrorState } | null>(action, {
+    [StateActionType.MirrorDeltaReceived]: ({ delta }) => {
+      const mirror = applyStateDelta(slice.mirror, delta)
+      return mirror === slice.mirror ? null : { mirror }
+    }
+  }).orNull()
 
-export const applyStateDelta = (prev: MirrorState, delta: StateDeltaPayload): MirrorState => {
-  switch (delta.domain) {
-    case 'reaction_updated': {
+export const applyStateDelta = (prev: MirrorState, delta: StateDeltaPayload): MirrorState =>
+  onDomain<StateDeltaPayload, MirrorState>(delta, {
+    reaction_updated: ({ channel, message_key, emoji, count, users }) => {
       const reactions = new Map(prev.reactions)
-      const list = reactions.get(delta.channel) ?? []
+      const list = reactions.get(channel) ?? []
       const index = list.findIndex(
-        (a) => a.message_key === delta.message_key && a.emoji === delta.emoji
+        (aggregate) => aggregate.message_key === message_key && aggregate.emoji === emoji
       )
-      const aggregate = {
-        message_key: delta.message_key,
-        emoji: delta.emoji,
-        count: delta.count,
-        users: delta.users
-      }
+      const aggregate = { message_key, emoji, count, users }
       const nextList =
-        delta.count === 0
-          ? list.filter((_, i) => i !== index)
+        count === 0
+          ? list.filter((_, position) => position !== index)
           : index === -1
             ? [...list, aggregate]
-            : list.map((a, i) => (i === index ? aggregate : a))
-      if (nextList.length === 0) reactions.delete(delta.channel)
-      else reactions.set(delta.channel, nextList)
+            : list.map((existing, position) => (position === index ? aggregate : existing))
+      if (nextList.length === 0) reactions.delete(channel)
+      else reactions.set(channel, nextList)
       return { ...prev, reactions }
-    }
-    case 'roster_member_upserted': {
-      const index = prev.roster.findIndex((m) => m.routing_id === delta.member.routing_id)
+    },
+    roster_member_upserted: ({ member }) => {
+      const index = prev.roster.findIndex((existing) => existing.routing_id === member.routing_id)
       const roster =
         index === -1
-          ? [...prev.roster, delta.member]
-          : prev.roster.map((m, i) => (i === index ? delta.member : m))
+          ? [...prev.roster, member]
+          : prev.roster.map((existing, position) => (position === index ? member : existing))
       return { ...prev, roster }
-    }
-    case 'roster_member_removed':
-      return { ...prev, roster: prev.roster.filter((m) => m.routing_id !== delta.routing_id) }
-    case 'reactions': {
+    },
+    roster_member_removed: ({ routing_id }) => ({
+      ...prev,
+      roster: prev.roster.filter((member) => member.routing_id !== routing_id)
+    }),
+    reactions: ({ channel, aggregated }) => {
       const reactions = new Map(prev.reactions)
-      if (delta.aggregated.length === 0) reactions.delete(delta.channel)
-      else reactions.set(delta.channel, delta.aggregated)
+      if (aggregated.length === 0) reactions.delete(channel)
+      else reactions.set(channel, aggregated)
       return { ...prev, reactions }
-    }
-    case 'ci':
-      return { ...prev, ci: delta.snapshot }
-    case 'ci_poll':
-      return { ...prev, ci: delta.snapshot }
-    case 'sync_poll':
-      return { ...prev, sync: delta.status }
-    case 'roster':
-      return { ...prev, roster: delta.members }
-    default:
-      return prev
-  }
-}
+    },
+    ci: ({ snapshot }) => ({ ...prev, ci: snapshot }),
+    ci_poll: ({ snapshot }) => ({ ...prev, ci: snapshot }),
+    sync_poll: ({ status }) => ({ ...prev, sync: status }),
+    roster: ({ members }) => ({ ...prev, roster: members })
+  }).orElse(prev)
