@@ -3,6 +3,7 @@ import type { StateSnapshot } from '../reducer'
 import { StateActionType, type StateAction } from '../actions'
 import type { ClientMessage } from '@transport/types'
 import type { SocketDoor } from './door'
+import { translating } from './translating'
 
 export const chatSend =
   (door: SocketDoor): Middleware<StateSnapshot, StateAction> =>
@@ -18,31 +19,25 @@ export const chatSend =
     door.send(frame)
   }
 
-export const reactionToggle =
-  (door: SocketDoor): Middleware<StateSnapshot, StateAction> =>
-  () =>
-  (next) =>
-  (action) => {
-    if (action.type !== StateActionType.ReactionToggleRequested) return next(action)
-    door.send({
-      type: 'reaction_toggle',
-      channel: action.channel,
-      message_key: action.messageKey,
-      emoji: action.emoji,
-      user: action.user
-    })
-  }
+export const reactionToggle = translating((action) =>
+  action.type === StateActionType.ReactionToggleRequested
+    ? {
+        type: 'reaction_toggle',
+        channel: action.channel,
+        message_key: action.messageKey,
+        emoji: action.emoji,
+        user: action.user
+      }
+    : null
+)
 
-export const olderHistory =
-  (door: SocketDoor): Middleware<StateSnapshot, StateAction> =>
-  () =>
-  (next) =>
-  (action) => {
-    if (action.type !== StateActionType.OlderHistoryRequested) return next(action)
-    door.send({
-      type: 'history_page',
-      request_id: action.requestId,
-      before: action.before,
-      limit: action.limit
-    })
-  }
+export const olderHistory = translating((action) =>
+  action.type === StateActionType.OlderHistoryRequested
+    ? {
+        type: 'history_page',
+        request_id: action.requestId,
+        before: action.before,
+        limit: action.limit
+      }
+    : null
+)

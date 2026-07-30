@@ -1,22 +1,14 @@
-import type { Middleware } from '../redux'
-import type { StateSnapshot } from '../reducer'
-import { StateActionType, type StateAction } from '../actions'
-import type { SocketDoor } from './door'
+import { StateActionType } from '../actions'
+import { translating } from './translating'
 
-export const commentsHydrate =
-  (door: SocketDoor): Middleware<StateSnapshot, StateAction> =>
-  () =>
-  (next) =>
-  (action) => {
-    if (action.type !== StateActionType.CommentsHydrateRequested) return next(action)
-    door.send({ type: 'comments_hydrate', story_id: action.storyId })
-  }
+export const commentsHydrate = translating((action) =>
+  action.type === StateActionType.CommentsHydrateRequested
+    ? { type: 'comments_hydrate', story_id: action.storyId }
+    : null
+)
 
-export const timelineHydrate =
-  (door: SocketDoor): Middleware<StateSnapshot, StateAction> =>
-  () =>
-  (next) =>
-  (action) => {
-    if (action.type !== StateActionType.TimelineHydrateRequested) return next(action)
-    door.send({ type: 'timeline_hydrate', story_id: action.storyId })
-  }
+export const timelineHydrate = translating((action) =>
+  action.type === StateActionType.TimelineHydrateRequested
+    ? { type: 'timeline_hydrate', story_id: action.storyId }
+    : null
+)
