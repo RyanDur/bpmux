@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { applyMiddleware, createStore, type Middleware } from '../redux'
+import { createStore } from '../redux'
 
 type CountState = {
   count: number
@@ -47,46 +47,46 @@ describe('createStore', () => {
   })
 })
 
-describe('applyMiddleware', () => {
-  it('lets middleware observe every dispatched action and pass it through next', () => {
+describe('action listeners — the renderer mirrors the server engine: store = reducer + listeners', () => {
+  it('a listener observes every action after the reduce, even when state does not change', () => {
     const seen: string[] = []
-    const logger: Middleware<CountState, CountAction> = () => (next) => (action) => {
-      seen.push(action.type)
-      next(action)
-    }
-    const store = createStore(reducer, { count: 0 }, applyMiddleware(logger))
+    const store = createStore(reducer, { count: 0 })
+    store.listen((action, _before, after) => seen.push(`${action.type}:${after.count}`))
     store.dispatch({ type: 'inc' })
-    expect(seen).toEqual(['inc'])
-    expect(store.getState()).toEqual({ count: 1 })
+    store.dispatch({ type: 'noop' })
+    expect(seen).toEqual(['inc:1', 'noop:1'])
   })
 
-  it('composes middleware right-to-left (outer wraps inner)', () => {
-    const order: string[] = []
-    const outer: Middleware<CountState, CountAction> = () => (next) => (action) => {
-      order.push('outer:before')
-      next(action)
-      order.push('outer:after')
-    }
-    const inner: Middleware<CountState, CountAction> = () => (next) => (action) => {
-      order.push('inner:before')
-      next(action)
-      order.push('inner:after')
-    }
-    const store = createStore(reducer, { count: 0 }, applyMiddleware(outer, inner))
+  it('a listener sees both sides of the reduce', () => {
+    const store = createStore(reducer, { count: 0 })
+    let observed: string | null = null
+    store.listen((action, before, after) => {
+      if (action.type === 'inc') observed = `${before.count}->${after.count}`
+    })
     store.dispatch({ type: 'inc' })
-    expect(order).toEqual(['outer:before', 'inner:before', 'inner:after', 'outer:after'])
+    expect(observed).toEqual('0->1')
   })
 
-  it('routes middleware-initiated dispatch through the full chain', () => {
+  it('a listener-initiated dispatch runs the full cycle, listeners included', () => {
     const seen: string[] = []
-    const doubler: Middleware<CountState, CountAction> = (api) => (next) => (action) => {
+    const store = createStore(reducer, { count: 0 })
+    store.listen((action, _before, _after, dispatch) => {
       seen.push(action.type)
-      next(action)
-      if (action.type === 'inc') api.dispatch({ type: 'add', by: 10 })
-    }
-    const store = createStore(reducer, { count: 0 }, applyMiddleware(doubler))
+      if (action.type === 'inc') dispatch({ type: 'add', by: 10 })
+    })
     store.dispatch({ type: 'inc' })
     expect(seen).toEqual(['inc', 'add'])
     expect(store.getState()).toEqual({ count: 11 })
+  })
+
+  it('listeners run in registration order and can be removed', () => {
+    const order: string[] = []
+    const store = createStore(reducer, { count: 0 })
+    const forget = store.listen(() => order.push('first'))
+    store.listen(() => order.push('second'))
+    store.dispatch({ type: 'inc' })
+    forget()
+    store.dispatch({ type: 'inc' })
+    expect(order).toEqual(['first', 'second', 'second'])
   })
 })

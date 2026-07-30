@@ -1,34 +1,28 @@
-import type { Middleware } from '../redux'
+import type { ActionListener } from '../redux'
 import type { StateSnapshot } from '../reducer'
 import { StateActionType, type StateAction } from '../actions'
 import type { SocketDoor } from './door'
 
 export const connection =
-  (door: SocketDoor): Middleware<StateSnapshot, StateAction> =>
-  (api) =>
-  (next) =>
-  (action) => {
+  (door: SocketDoor): ActionListener<StateSnapshot, StateAction> =>
+  (action, _before, _after, dispatch) => {
     switch (action.type) {
       case StateActionType.StartRequested:
         if (door.alreadyOn(action.config)) return
         door.adopt(action.config)
-        next(action)
-        door.connect((dispatched) => api.dispatch(dispatched))
+        door.connect(dispatch)
         return
       case StateActionType.Reset:
         door.reset()
-        next(action)
         return
       default:
-        next(action)
+        return
     }
   }
 
 export const frames =
-  (door: SocketDoor): Middleware<StateSnapshot, StateAction> =>
-  (api) =>
-  (next) =>
-  (action) => {
-    if (action.type !== StateActionType.FrameReceived) return next(action)
-    door.frame(action.raw, (dispatched) => api.dispatch(dispatched))
+  (door: SocketDoor): ActionListener<StateSnapshot, StateAction> =>
+  (action, _before, _after, dispatch) => {
+    if (action.type !== StateActionType.FrameReceived) return
+    door.frame(action.raw, dispatch)
   }

@@ -1,14 +1,13 @@
 import { StateActionType } from '../actions'
 import { encodeKeystroke } from '../ptyCodec'
-import { translating } from './translating'
+import type { Translator } from './translating'
 
-export const ptySubscribe = translating((action) =>
+export const ptySubscribe: Translator = (action) =>
   action.type === StateActionType.PtySubscribeRequested
     ? { type: 'pty_subscribe', terminal_id: action.terminalId }
     : null
-)
 
-export const ptyInput = translating((action) =>
+export const ptyInput: Translator = (action) =>
   action.type === StateActionType.PtyInputRequested
     ? {
         type: 'pty_input',
@@ -16,9 +15,8 @@ export const ptyInput = translating((action) =>
         data: encodeKeystroke(action.keystroke)
       }
     : null
-)
 
-export const ptyResize = translating((action) =>
+export const ptyResize: Translator = (action) =>
   action.type === StateActionType.PtyResizeRequested
     ? {
         type: 'pty_resize',
@@ -27,4 +25,3 @@ export const ptyResize = translating((action) =>
         rows: action.rows
       }
     : null
-)

@@ -6,57 +6,55 @@ export type Reducer<S, A extends Action> = (state: S, action: A) => S
 
 export type Dispatch<A extends Action> = (action: A) => void
 
-type Listener = () => void
+type Subscriber = () => void
+
+export type ActionListener<S, A extends Action> = (
+  action: A,
+  before: S,
+  after: S,
+  dispatch: Dispatch<A>
+) => void
 
 export type Store<S, A extends Action> = {
   getState: () => S
   dispatch: Dispatch<A>
-  subscribe: (listener: Listener) => () => void
+  subscribe: (subscriber: Subscriber) => () => void
+  listen: (listener: ActionListener<S, A>) => () => void
 }
-
-export type MiddlewareApi<S, A extends Action> = {
-  getState: () => S
-  dispatch: Dispatch<A>
-}
-
-export type Middleware<S, A extends Action> = (
-  api: MiddlewareApi<S, A>
-) => (next: Dispatch<A>) => Dispatch<A>
-
-export const applyMiddleware =
-  <S, A extends Action>(...middlewares: Middleware<S, A>[]) =>
-  (base: Dispatch<A>, api: MiddlewareApi<S, A>): Dispatch<A> => {
-    const chain = middlewares.map((middleware) => middleware(api))
-    return chain.reduceRight((next, middleware) => middleware(next), base)
-  }
 
 export const createStore = <S, A extends Action>(
   reducer: Reducer<S, A>,
-  preloadedState: S,
-  enhancer?: (base: Dispatch<A>, api: MiddlewareApi<S, A>) => Dispatch<A>
+  preloadedState: S
 ): Store<S, A> => {
   let state = preloadedState
-  const listeners = new Set<Listener>()
+  const subscribers = new Set<Subscriber>()
+  const listeners = new Set<ActionListener<S, A>>()
 
   const getState = (): S => state
 
-  const baseDispatch: Dispatch<A> = (action) => {
-    const next = reducer(state, action)
-    if (next === state) return
-    state = next
-    for (const listener of listeners) listener()
+  const dispatch: Dispatch<A> = (action) => {
+    const before = state
+    const after = reducer(before, action)
+    if (after !== before) {
+      state = after
+      for (const subscriber of subscribers) subscriber()
+    }
+    for (const listener of listeners) listener(action, before, state, dispatch)
   }
 
-  const subscribe = (listener: Listener): (() => void) => {
+  const subscribe = (subscriber: Subscriber): (() => void) => {
+    subscribers.add(subscriber)
+    return () => {
+      subscribers.delete(subscriber)
+    }
+  }
+
+  const listen = (listener: ActionListener<S, A>): (() => void) => {
     listeners.add(listener)
     return () => {
       listeners.delete(listener)
     }
   }
 
-  const dispatch: Dispatch<A> = enhancer
-    ? enhancer(baseDispatch, { getState, dispatch: (action) => dispatch(action) })
-    : baseDispatch
-
-  return { getState, dispatch, subscribe }
+  return { getState, dispatch, subscribe, listen }
 }
