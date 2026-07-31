@@ -113,6 +113,10 @@ impl LivePty {
     }
 
     pub fn close_and_reap(mut self) {
+        self.graceful_stop();
+    }
+
+    fn graceful_stop(&mut self) {
         let _ = signal(self.pid, "TERM");
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
         while std::time::Instant::now() < deadline {
@@ -120,6 +124,16 @@ impl LivePty {
                 return;
             }
             std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
+impl Drop for LivePty {
+    fn drop(&mut self) {
+        if matches!(self.child.try_wait(), Ok(Some(_))) {
+            return;
         }
         let _ = self.child.kill();
         let _ = self.child.wait();

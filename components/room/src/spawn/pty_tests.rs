@@ -42,13 +42,16 @@ fn drain_subscriber_until(rx: &mut broadcast::Receiver<Vec<u8>>, marker: &str) -
     let mut out = String::new();
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
     while std::time::Instant::now() < deadline {
-        match rx.blocking_recv() {
+        match rx.try_recv() {
             Ok(bytes) if bytes.is_empty() => break,
             Ok(bytes) => {
                 out.push_str(&String::from_utf8_lossy(&bytes));
                 if out.contains(marker) {
                     break;
                 }
+            }
+            Err(tokio::sync::broadcast::error::TryRecvError::Empty) => {
+                std::thread::sleep(std::time::Duration::from_millis(20));
             }
             Err(_) => break,
         }
@@ -193,15 +196,26 @@ fn the_current_paste_mode_tracks_the_toggle_off_while_capability_stays_latched()
     );
 }
 
+fn bare_shell() -> (String, Vec<String>) {
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+    if shell.ends_with("zsh") {
+        return (shell, vec!["-f".to_string()]);
+    }
+    if shell.ends_with("bash") {
+        return (shell, vec!["--norc".to_string(), "--noprofile".to_string()]);
+    }
+    ("/bin/sh".to_string(), Vec::new())
+}
+
 #[test]
 fn spawn_pty_retained_runs_a_real_shell_in_the_given_cwd_with_term() {
-    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
+    let (shell, bare_args) = bare_shell();
     let cwd = std::env::temp_dir().join(format!("bpmux-shell-cwd-{}-{}", std::process::id(), "s1"));
     std::fs::create_dir_all(&cwd).unwrap();
     let marker = cwd.file_name().unwrap().to_string_lossy().to_string();
     let live = spawn_pty_retained(
         &shell,
-        &[],
+        &bare_args,
         Some(cwd.as_path()),
         &[("TERM", "xterm-256color")],
     )
@@ -211,13 +225,16 @@ fn spawn_pty_retained_runs_a_real_shell_in_the_given_cwd_with_term() {
     let mut collected = String::new();
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
     while std::time::Instant::now() < deadline {
-        match rx.blocking_recv() {
+        match rx.try_recv() {
             Ok(bytes) if bytes.is_empty() => break,
             Ok(bytes) => {
                 collected.push_str(&String::from_utf8_lossy(&bytes));
                 if collected.contains("TERM=xterm-256color") && collected.contains(&marker) {
                     break;
                 }
+            }
+            Err(tokio::sync::broadcast::error::TryRecvError::Empty) => {
+                std::thread::sleep(std::time::Duration::from_millis(20));
             }
             Err(_) => break,
         }
@@ -235,8 +252,8 @@ fn spawn_pty_retained_runs_a_real_shell_in_the_given_cwd_with_term() {
 
 #[test]
 fn live_pty_resize_propagates_the_winsize_to_the_shell_tty() {
-    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
-    let live = spawn_pty_retained(&shell, &[], None, &[("TERM", "xterm-256color")]).unwrap();
+    let (shell, bare_args) = bare_shell();
+    let live = spawn_pty_retained(&shell, &bare_args, None, &[("TERM", "xterm-256color")]).unwrap();
     live.resize(40, 120).unwrap();
     let mut rx = live.subscribe();
     live.write_input(b"stty size\n").unwrap();
@@ -334,5 +351,24 @@ fn is_alive_reports_true_while_running_and_false_after_the_child_exits() {
     assert!(
         !exiting.is_alive(),
         "after the child exits, is_alive must report false — try_wait() observes the exit and reaps the zombie, where a kill -0 pid-probe would false-positive on the lingering zombie pid that refresh-resurrection (e) depends on excluding"
+    );
+}
+
+#[test]
+fn a_dropped_live_pty_takes_its_process_with_it() {
+    let live = spawn_pty_retained("/bin/cat", &[], None, &[]).unwrap();
+    let pid = live.pid();
+    assert!(
+        super::process::process_alive(pid),
+        "cat must be alive while retained"
+    );
+    drop(live);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(4);
+    while super::process::process_alive(pid) && std::time::Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    assert!(
+        !super::process::process_alive(pid),
+        "dropping a LivePty must reap its child — anything else leaks shells until reboot"
     );
 }
