@@ -4,16 +4,19 @@ use serde_json::Map;
 use serde_json::Value;
 
 use crate::tools_stories::event_meta::meta_for;
+use product_management::story::StoryId;
 use product_management::story::events::{StoryEvent, StoryEventKind};
-use product_management::story::{StoryId, Work};
 use sync::SyncOrchestrator;
 
 mod authorization;
+mod emit;
 mod scheduling;
 mod target;
 
+use emit::{emit_reopen_and_label, emit_transition};
 use target::{
     TargetState, audit_comment_body, current_state_display, parse_position, require_nonempty,
+    validate_position,
 };
 
 pub async fn handle_move_story(
@@ -96,120 +99,6 @@ pub async fn handle_move_story(
         "#{id} moved {from_display} → {to}{pos_msg}",
         to = target.as_display()
     ))
-}
-
-fn validate_position(position: Option<usize>, target: &TargetState, id: u64) -> Result<(), String> {
-    if position.is_none() {
-        return Ok(());
-    }
-    match target {
-        TargetState::Ready => Ok(()),
-        TargetState::Icebox => Err(format!(
-            "#{id} cannot move to the icebox at a position: the icebox is unordered — move to icebox without a position"
-        )),
-        _ => Err(format!(
-            "'position' only meaningful for the ready column; target_state={} ignores ordering",
-            target.as_display()
-        )),
-    }
-}
-
-fn emit_reopen_and_label(
-    r: &SyncOrchestrator,
-    meta: &product_management::story::events::EventMeta,
-    story_id: StoryId,
-    target: &TargetState,
-    prior: Option<&product_management::story::Story>,
-    was_closed: bool,
-) -> Result<(), String> {
-    let id = u64::from(story_id);
-    if was_closed && !target.closes_issue() {
-        r.mutate(StoryEvent::new(
-            meta.clone(),
-            story_id,
-            StoryEventKind::StoryReopened,
-        ))
-        .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
-    }
-    let Some(label) = target.as_label() else {
-        return Ok(());
-    };
-    let target_state = target.workflow_state().unwrap_or(Work::Retired);
-    let already_labeled = prior
-        .map(|story| story.state() == target_state)
-        .unwrap_or(false);
-    if !already_labeled {
-        r.mutate(StoryEvent::new(
-            meta.clone(),
-            story_id,
-            StoryEventKind::TagAdded {
-                label: label.to_string(),
-            },
-        ))
-        .map_err(|e| format!("#{id} tag-add enqueue failed: {e}"))?;
-    }
-    Ok(())
-}
-
-fn emit_transition(
-    r: &SyncOrchestrator,
-    meta: &product_management::story::events::EventMeta,
-    story_id: StoryId,
-    target: &TargetState,
-    target_str: &str,
-    was_closed: bool,
-    rationale: &str,
-) -> Result<(), String> {
-    let id = u64::from(story_id);
-    match target {
-        TargetState::Icebox | TargetState::Ready | TargetState::Workflow(_) => {
-            let state = target
-                .workflow_state()
-                .ok_or_else(|| format!("#{id} move target has no workflow state"))?;
-            r.mutate(StoryEvent::new(
-                meta.clone(),
-                story_id,
-                StoryEventKind::StateTransitioned {
-                    new_state: state.clone(),
-                    placement: board::placement_from_target(
-                        &target_str.to_ascii_lowercase().replace([' ', '_'], "-"),
-                        &workflow::board_middle_stage_ids(workflow::current_workflow()),
-                    ),
-                },
-            ))
-            .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
-            if matches!(state, Work::Accepted) && !was_closed {
-                r.mutate(StoryEvent::new(
-                    meta.clone(),
-                    story_id,
-                    StoryEventKind::StoryClosed {
-                        reason: Some(rationale.to_string()),
-                    },
-                ))
-                .map_err(|e| format!("#{id} accept-close enqueue failed: {e}"))?;
-            }
-        }
-        TargetState::Retired => {
-            r.mutate(StoryEvent::new(
-                meta.clone(),
-                story_id,
-                StoryEventKind::StateTransitioned {
-                    new_state: Work::Retired,
-                    placement: None,
-                },
-            ))
-            .map_err(|e| format!("#{id} retire-state enqueue failed: {e}"))?;
-            r.mutate(StoryEvent::new(
-                meta.clone(),
-                story_id,
-                StoryEventKind::StoryClosed {
-                    reason: Some(format!("retired: {rationale}")),
-                },
-            ))
-            .map_err(|e| format!("#{id} retire enqueue failed: {e}"))?;
-        }
-    }
-    Ok(())
 }
 
 #[cfg(test)]

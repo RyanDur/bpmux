@@ -5,7 +5,6 @@ use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
 
 use protocol::ServerMessage;
-use user_routing::short_name;
 
 pub mod client;
 pub mod client_handlers;
@@ -23,11 +22,10 @@ mod startup;
 pub use client::*;
 pub use delivery::*;
 pub use handler::ws_handler;
-use identify::{resolve_routing_user_id, roster_key_for};
+use identify::{open_session, rebind_roster};
 pub use peer_lag::*;
 pub use roster::*;
 pub use session_io::send_json;
-use session_io::wait_for_identify;
 use startup::system_announcement;
 
 const HEARTBEAT_INTERVAL: std::time::Duration = std::time::Duration::from_secs(30);
@@ -139,67 +137,4 @@ pub(super) async fn run_ws_session(
         dispatch_roster_leave(&store, key).await;
     }
     result
-}
-
-type OpenedSession = (String, Option<String>, bool, Option<String>, Option<String>);
-
-async fn open_session(
-    tx: &mut SplitSink<WebSocket, WsMessage>,
-    rx: &mut SplitStream<WebSocket>,
-    hub: &hub::Hub,
-    store: &Arc<store::Store>,
-    dispatch: &store::Dispatch,
-) -> Result<OpenedSession, Box<dyn std::error::Error + Send + Sync>> {
-    let (identity, replay_cursor, identify_user_id, identify_owner_nonce) =
-        wait_for_identify(tx, rx).await?;
-    let routing_user_id = resolve_routing_user_id(store, dispatch, &identity, identify_user_id);
-    let claimed_owner_nonce = store
-        .selector()
-        .select(|state| owner_session::claimed_nonce(&state.owner_session));
-    let is_owner = owner_session::resolve_owner_mark(
-        claimed_owner_nonce.as_deref(),
-        identify_owner_nonce.as_deref(),
-        &identity,
-    );
-    let roster_key = roster_key_for(&routing_user_id, is_owner);
-    hub.peer_connected();
-    if let Some(ref key) = roster_key {
-        dispatch_roster_join(store, key, &identity).await;
-    }
-    Ok((
-        identity,
-        routing_user_id,
-        is_owner,
-        roster_key,
-        replay_cursor,
-    ))
-}
-
-async fn rebind_roster(
-    store: &Arc<store::Store>,
-    dispatch: &store::Dispatch,
-    routing_user_id: &Option<String>,
-    is_owner: bool,
-    identity: &str,
-    old_key: Option<String>,
-) -> Option<String> {
-    if let Some(user_id) = routing_user_id {
-        dispatch.dispatch(
-            store::routing::RoutingAction::Renamed {
-                user_id: user_id.clone(),
-                display: short_name(identity).to_string(),
-            }
-            .into(),
-        );
-    }
-    let new_key = roster_key_for(routing_user_id, is_owner);
-    if new_key != old_key
-        && let Some(ref old) = old_key
-    {
-        dispatch_roster_leave(store, old).await;
-    }
-    if let Some(ref key) = new_key {
-        dispatch_roster_join(store, key, identity).await;
-    }
-    new_key
 }

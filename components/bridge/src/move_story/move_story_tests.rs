@@ -1,4 +1,5 @@
 use super::*;
+use product_management::story::Work;
 
 #[test]
 fn target_state_parses_canonical_spellings() {

@@ -146,3 +146,23 @@ pub(super) fn audit_comment_body(
         to = target.as_display(),
     )
 }
+
+pub(super) fn validate_position(
+    position: Option<usize>,
+    target: &TargetState,
+    id: u64,
+) -> Result<(), String> {
+    if position.is_none() {
+        return Ok(());
+    }
+    match target {
+        TargetState::Ready => Ok(()),
+        TargetState::Icebox => Err(format!(
+            "#{id} cannot move to the icebox at a position: the icebox is unordered — move to icebox without a position"
+        )),
+        _ => Err(format!(
+            "'position' only meaningful for the ready column; target_state={} ignores ordering",
+            target.as_display()
+        )),
+    }
+}
