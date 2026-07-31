@@ -136,27 +136,30 @@ fn a_concurrent_register_race_lets_every_loser_reclaim_the_winners_id() {
 
     for round in 0..50 {
         let dir = work_dir(&parent, &format!("contended-{round}"));
-        let ids: Vec<String> = std::thread::scope(|scope| {
-            let base_path = base.path();
-            let racers: Vec<_> = (0..8)
-                .map(|_| {
-                    scope.spawn(|| {
-                        register_dir_user_in_base(base_path, &dir)
-                            .expect("every racer resolves an id")
-                            .id
-                    })
-                })
-                .collect();
-            racers
-                .into_iter()
-                .map(|racer| racer.join().expect("racer thread"))
-                .collect()
-        });
+        let ids = race_eight_registrations(base.path(), &dir);
         assert!(
             ids.windows(2).all(|pair| pair[0] == pair[1]),
             "the mint publishes atomically (staged write + hard_link) — every concurrent register in the same dir resolves the ONE winner's id, never a fork and never a partial read; got {ids:?}"
         );
     }
+}
+
+fn race_eight_registrations(base_path: &std::path::Path, dir: &std::path::Path) -> Vec<String> {
+    std::thread::scope(|scope| {
+        let racers: Vec<_> = (0..8)
+            .map(|_| {
+                scope.spawn(|| {
+                    register_dir_user_in_base(base_path, dir)
+                        .expect("every racer resolves an id")
+                        .id
+                })
+            })
+            .collect();
+        racers
+            .into_iter()
+            .map(|racer| racer.join().expect("racer thread"))
+            .collect()
+    })
 }
 
 #[test]

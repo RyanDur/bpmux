@@ -100,6 +100,15 @@ fn burst_message(i: usize) -> Message {
     }
 }
 
+fn spawn_paced_producer(tx: broadcast::Sender<Message>) -> tokio::task::JoinHandle<()> {
+    tokio::spawn(async move {
+        for index in 0..50 {
+            tx.send(burst_message(index)).expect("send");
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+    })
+}
+
 async fn run_burst_and_count_lag(capacity: usize, burst_size: usize) -> u64 {
     let (tx, mut rx) = broadcast::channel::<Message>(capacity);
     for i in 0..burst_size {
@@ -138,15 +147,7 @@ async fn broadcast_capacity_new_size_survives_large_burst() {
 #[tokio::test]
 async fn broadcast_capacity_tolerates_burst_under_deliberating_subscriber() {
     let (tx, mut rx) = broadcast::channel::<Message>(BROADCAST_CHANNEL_CAPACITY);
-    let producer = tokio::spawn({
-        let tx = tx.clone();
-        async move {
-            for i in 0..50 {
-                tx.send(burst_message(i)).expect("send");
-                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-            }
-        }
-    });
+    let producer = spawn_paced_producer(tx.clone());
     let mut received = 0usize;
     let mut lagged = 0u64;
     for _ in 0..50 {

@@ -29,16 +29,26 @@ pub fn reduce(state: &CommitmentsState, action: &CommitmentsAction) -> Option<Co
             let mut fired = false;
             by_user.retain(|user_id, commitments| {
                 if user_ids.contains(user_id) {
-                    commitments.retain(|commitment| {
-                        let matches = commitment.event_class == *event_class
-                            && payload_matches_filter(commitment.filter.as_ref(), payload);
-                        fired |= matches;
-                        !matches
-                    });
+                    fired |= discharge_matching(commitments, event_class, payload);
                 }
                 !commitments.is_empty()
             });
             fired.then_some(CommitmentsState { by_user })
         }
     }
+}
+
+fn discharge_matching(
+    commitments: &mut Vec<Commitment>,
+    event_class: &str,
+    payload: &serde_json::Value,
+) -> bool {
+    let mut fired = false;
+    commitments.retain(|commitment| {
+        let matches = commitment.event_class == event_class
+            && payload_matches_filter(commitment.filter.as_ref(), payload);
+        fired |= matches;
+        !matches
+    });
+    fired
 }

@@ -51,17 +51,7 @@ pub async fn handle_fail_desk_check(
         .get("reason")
         .and_then(|v| v.as_str())
         .ok_or("missing 'reason' argument")?;
-    let trimmed_reason = reason.trim();
-    if trimmed_reason.len() < FALSIFIER_CITE_MIN_CHARS {
-        let err = serde_json::json!({
-            "kind": "workflow-gate-mismatch",
-            "attempted_transition": "fail-desk-check",
-            "missing_evidence": ["falsifier-cite"],
-            "min_chars": FALSIFIER_CITE_MIN_CHARS,
-            "observed_chars": trimmed_reason.len(),
-        });
-        return Err(err.to_string());
-    }
+    require_falsifier_cite(reason)?;
     let board::Decision {
         coarse: new_state,
         placement,
@@ -112,4 +102,19 @@ pub async fn handle_fail_desk_check(
         ));
     }
     Err("fail_desk_check requires refresh — tracker fallback retired in slice 5n".into())
+}
+
+fn require_falsifier_cite(reason: &str) -> Result<(), String> {
+    let trimmed_reason = reason.trim();
+    if trimmed_reason.len() >= FALSIFIER_CITE_MIN_CHARS {
+        return Ok(());
+    }
+    let err = serde_json::json!({
+        "kind": "workflow-gate-mismatch",
+        "attempted_transition": "fail-desk-check",
+        "missing_evidence": ["falsifier-cite"],
+        "min_chars": FALSIFIER_CITE_MIN_CHARS,
+        "observed_chars": trimmed_reason.len(),
+    });
+    Err(err.to_string())
 }

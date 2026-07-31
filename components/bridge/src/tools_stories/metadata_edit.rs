@@ -17,14 +17,7 @@ pub async fn handle_edit_story(
         .ok_or("missing 'id' argument")?;
     let body = args.get("body").and_then(|v| v.as_str());
     let title = args.get("title").and_then(|v| v.as_str());
-    let acceptor = match args.get("acceptor").and_then(|v| v.as_str()) {
-        Some(raw) => Some(
-            product_management::story::Acceptor::parse(raw.trim()).ok_or_else(|| {
-                format!("acceptor must be one of: team | owner | dev (got {raw:?})")
-            })?,
-        ),
-        None => None,
-    };
+    let acceptor = parse_acceptor(args)?;
     if body.is_none() && title.is_none() && acceptor.is_none() {
         return Err(
             "edit_story requires at least one of 'body', 'title', or 'acceptor' (#1279, #1787)"
@@ -113,4 +106,15 @@ pub async fn handle_edit_story(
         ));
     }
     Ok(format!("#{id} {} updated", updated.join(" + ")))
+}
+
+fn parse_acceptor(
+    args: &serde_json::Map<String, serde_json::Value>,
+) -> Result<Option<product_management::story::Acceptor>, String> {
+    let Some(raw) = args.get("acceptor").and_then(|value| value.as_str()) else {
+        return Ok(None);
+    };
+    product_management::story::Acceptor::parse(raw.trim())
+        .map(Some)
+        .ok_or_else(|| format!("acceptor must be one of: team | owner | dev (got {raw:?})"))
 }

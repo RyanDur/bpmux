@@ -42,34 +42,55 @@ pub fn handle_pty_subscribe(
     let already_streaming = pty_readers
         .get(&terminal_id)
         .is_some_and(|stop| !stop.load(std::sync::atomic::Ordering::Relaxed));
-    if !already_streaming && let Some(mut output) = ctx.pty_registry.subscribe_for(&terminal_id) {
-        let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        pty_readers.insert(terminal_id.clone(), stop.clone());
-        let sink = ctx.pty_tx.clone();
-        tokio::spawn(async move {
-            use tokio::sync::broadcast::error::RecvError;
-            loop {
-                if stop.load(std::sync::atomic::Ordering::Relaxed) {
-                    break;
-                }
-                match output.recv().await {
-                    Ok(bytes) if bytes.is_empty() => {
-                        let _ = sink.send((terminal_id.clone(), Vec::new()));
-                        break;
-                    }
-                    Ok(bytes) => {
-                        if sink.send((terminal_id.clone(), bytes)).is_err() {
-                            break;
-                        }
-                    }
-                    Err(RecvError::Lagged(_)) => continue,
-                    Err(RecvError::Closed) => {
-                        let _ = sink.send((terminal_id.clone(), Vec::new()));
-                        break;
-                    }
-                }
+    if already_streaming {
+        return;
+    }
+    let Some(mut output) = ctx.pty_registry.subscribe_for(&terminal_id) else {
+        return;
+    };
+    let stop = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    pty_readers.insert(terminal_id.clone(), stop.clone());
+    let sink = ctx.pty_tx.clone();
+    tokio::spawn(async move {
+        loop {
+            if stop.load(std::sync::atomic::Ordering::Relaxed) {
+                break;
             }
-        });
+            match relay_step(output.recv().await, &sink, &terminal_id) {
+                RelayStep::Continue => {}
+                RelayStep::Stop => break,
+            }
+        }
+    });
+}
+
+enum RelayStep {
+    Continue,
+    Stop,
+}
+
+fn relay_step(
+    received: Result<Vec<u8>, tokio::sync::broadcast::error::RecvError>,
+    sink: &tokio::sync::mpsc::UnboundedSender<(String, Vec<u8>)>,
+    terminal_id: &str,
+) -> RelayStep {
+    use tokio::sync::broadcast::error::RecvError;
+    match received {
+        Ok(bytes) if bytes.is_empty() => {
+            let _ = sink.send((terminal_id.to_string(), Vec::new()));
+            RelayStep::Stop
+        }
+        Ok(bytes) => {
+            if sink.send((terminal_id.to_string(), bytes)).is_err() {
+                return RelayStep::Stop;
+            }
+            RelayStep::Continue
+        }
+        Err(RecvError::Lagged(_)) => RelayStep::Continue,
+        Err(RecvError::Closed) => {
+            let _ = sink.send((terminal_id.to_string(), Vec::new()));
+            RelayStep::Stop
+        }
     }
 }
 

@@ -13,37 +13,19 @@ pub(super) async fn wait_for_identify(
 > {
     let timeout = tokio::time::timeout(std::time::Duration::from_secs(5), async {
         while let Some(Ok(msg)) = rx.next().await {
-            if let WsMessage::Text(text) = msg {
-                match serde_json::from_str::<ClientMessage>(&text) {
-                    Ok(ClientMessage::Identify {
-                        name,
-                        tool,
-                        cursor,
-                        user_id,
-                        owner_nonce,
-                    }) => {
-                        let tool_name = tool.unwrap_or_else(|| "ws".to_string());
-                        return Ok((format!("{name}:{tool_name}"), cursor, user_id, owner_nonce));
-                    }
-                    Ok(_) => {
-                        send_json(
-                            tx,
-                            &ServerMessage::Error {
-                                reason: "must identify first".to_string(),
-                            },
-                        )
-                        .await?;
-                    }
-                    Err(e) => {
-                        send_json(
-                            tx,
-                            &ServerMessage::Error {
-                                reason: format!("invalid message: {e}"),
-                            },
-                        )
-                        .await?;
-                    }
-                }
+            let WsMessage::Text(text) = msg else {
+                continue;
+            };
+            match serde_json::from_str::<ClientMessage>(&text) {
+                Ok(ClientMessage::Identify {
+                    name,
+                    tool,
+                    cursor,
+                    user_id,
+                    owner_nonce,
+                }) => return Ok(identity(name, tool, cursor, user_id, owner_nonce)),
+                Ok(_) => reject(tx, "must identify first".to_string()).await?,
+                Err(error) => reject(tx, format!("invalid message: {error}")).await?,
             }
         }
         Err("connection closed before identify".into())
@@ -53,6 +35,24 @@ pub(super) async fn wait_for_identify(
         Ok(result) => result,
         Err(_) => Err("identify timeout (5s)".into()),
     }
+}
+
+fn identity(
+    name: String,
+    tool: Option<String>,
+    cursor: Option<String>,
+    user_id: Option<String>,
+    owner_nonce: Option<String>,
+) -> (String, Option<String>, Option<String>, Option<String>) {
+    let tool_name = tool.unwrap_or_else(|| "ws".to_string());
+    (format!("{name}:{tool_name}"), cursor, user_id, owner_nonce)
+}
+
+async fn reject(
+    tx: &mut SplitSink<WebSocket, WsMessage>,
+    reason: String,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    send_json(tx, &ServerMessage::Error { reason }).await
 }
 
 pub async fn send_json(

@@ -69,23 +69,7 @@ pub(super) fn apply_push_event(
             body,
             initial_state,
             story_type,
-        } => {
-            let story = s.stories.entry(event.id.value()).or_insert_with(|| {
-                product_management::story::Story::new_minimal(
-                    event.id,
-                    title.clone(),
-                    initial_state.clone(),
-                    event.meta.ts,
-                    event.meta.actor.clone(),
-                )
-            });
-            story.state = initial_state.clone();
-            story.title = title.clone();
-            story.story_type = *story_type;
-            if !body.is_empty() {
-                story.body = Some(body.clone());
-            }
-        }
+        } => story_created(s, event, title, body, initial_state, *story_type),
         StoryEventKind::AcceptorAssigned { acceptor } => {
             typed_label_mirror::acceptor_assigned(s, event.id.value(), *acceptor)
         }
@@ -107,5 +91,30 @@ pub(super) fn apply_push_event(
             }
         }
         _ => {}
+    }
+}
+
+fn story_created(
+    state: &mut InnerState,
+    event: &StoryEvent,
+    title: &str,
+    body: &str,
+    initial_state: &product_management::story::Work,
+    story_type: product_management::story::StoryKind,
+) {
+    let story = state.stories.entry(event.id.value()).or_insert_with(|| {
+        product_management::story::Story::new_minimal(
+            event.id,
+            title.to_string(),
+            initial_state.clone(),
+            event.meta.ts,
+            event.meta.actor.clone(),
+        )
+    });
+    story.state = initial_state.clone();
+    story.title = title.to_string();
+    story.story_type = story_type;
+    if !body.is_empty() {
+        story.body = Some(body.to_string());
     }
 }

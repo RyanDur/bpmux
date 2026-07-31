@@ -8,6 +8,10 @@ use httpmock::{Method, MockServer};
 use serde_json::Value;
 use std::time::Duration;
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "an end-to-end journey pinned as one narrative — splitting it into helpers would hide the arc the test documents"
+)]
 #[test]
 fn external_state_change_propagates_to_two_bridges_via_shared_mock_gh() {
     let server = MockServer::start();

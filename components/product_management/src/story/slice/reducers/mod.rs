@@ -37,26 +37,7 @@ pub fn reduce(state: &Stories, action: &StoryAction) -> Stories {
         }
         StoryAction::Seeded(incoming) => {
             for item in incoming {
-                let key = item.key();
-                let mut seeded = item.clone();
-                if let Some(existing) = stories.get(&key) {
-                    seeded.verdicts = seeded.verdicts.or_else(|| existing.verdicts.clone());
-                    seeded.free_comments = seeded
-                        .free_comments
-                        .or_else(|| existing.free_comments.clone());
-                    if seeded.body.is_none() {
-                        seeded.body = existing.body.clone();
-                        seeded.body_etag = existing.body_etag.clone();
-                    }
-                    if !lww::remote_state_supersedes_local(
-                        existing.state_written_at,
-                        seeded.remote_updated_at,
-                    ) {
-                        seeded.state = existing.state.clone();
-                        seeded.state_written_at = existing.state_written_at;
-                    }
-                }
-                stories.insert(key, seeded);
+                seed_story(&mut stories, item);
             }
         }
         StoryAction::Removed(id) => {
@@ -65,6 +46,31 @@ pub fn reduce(state: &Stories, action: &StoryAction) -> Stories {
         StoryAction::Cleared => stories.clear(),
     }
     stories
+}
+
+fn seed_story(stories: &mut Stories, item: &Story) {
+    let key = item.key();
+    let mut seeded = item.clone();
+    if let Some(existing) = stories.get(&key) {
+        preserve_local(&mut seeded, existing);
+    }
+    stories.insert(key, seeded);
+}
+
+fn preserve_local(seeded: &mut Story, existing: &Story) {
+    seeded.verdicts = seeded.verdicts.take().or_else(|| existing.verdicts.clone());
+    seeded.free_comments = seeded
+        .free_comments
+        .take()
+        .or_else(|| existing.free_comments.clone());
+    if seeded.body.is_none() {
+        seeded.body = existing.body.clone();
+        seeded.body_etag = existing.body_etag.clone();
+    }
+    if !lww::remote_state_supersedes_local(existing.state_written_at, seeded.remote_updated_at) {
+        seeded.state = existing.state.clone();
+        seeded.state_written_at = existing.state_written_at;
+    }
 }
 
 fn apply_event(w: &mut Stories, event: &StoryEvent) {

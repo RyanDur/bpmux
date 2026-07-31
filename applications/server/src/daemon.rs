@@ -51,18 +51,7 @@ pub fn run(name: String, base: std::path::PathBuf, port: u16) -> anyhow::Result<
 
 fn spawn_shutdown_signal_listener(ct: CancellationToken) {
     tokio::spawn(async move {
-        let sigterm = async {
-            #[cfg(unix)]
-            {
-                if let Ok(mut stream) =
-                    tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-                {
-                    stream.recv().await;
-                }
-            }
-            #[cfg(not(unix))]
-            std::future::pending::<()>().await;
-        };
+        let sigterm = wait_for_sigterm();
         let sigint = tokio::signal::ctrl_c();
         tokio::select! {
             _ = sigterm => {
@@ -74,4 +63,17 @@ fn spawn_shutdown_signal_listener(ct: CancellationToken) {
         }
         ct.cancel();
     });
+}
+
+async fn wait_for_sigterm() {
+    #[cfg(unix)]
+    {
+        if let Ok(mut stream) =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+        {
+            stream.recv().await;
+        }
+    }
+    #[cfg(not(unix))]
+    std::future::pending::<()>().await;
 }

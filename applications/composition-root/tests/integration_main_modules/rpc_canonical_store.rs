@@ -57,6 +57,10 @@ async fn fire_rpc(
         .expect("post rpc")
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "an end-to-end journey pinned as one narrative — splitting it into helpers would hide the arc the test documents"
+)]
 #[tokio::test]
 async fn two_callers_observe_same_canonical_store_through_rpc() {
     let dir = tempfile::tempdir().expect("tempdir");

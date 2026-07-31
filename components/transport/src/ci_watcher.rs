@@ -43,7 +43,7 @@ pub fn spawn<A>(
                 .list_latest_run_on_main_conditional(last_etag.as_deref())
                 .await;
             let entries = match conditional {
-                Ok(ci::ConditionalRunEntry::NotModified) => {
+                Ok(ci::ConditionalRunEntry::NotModified) | Ok(ci::ConditionalRunEntry::Empty) => {
                     backoff = base_backoff;
                     let at = chrono::Utc::now().to_rfc3339();
                     last_poll_at = Some(at.clone());
@@ -61,19 +61,6 @@ pub fn spawn<A>(
                     last_etag = etag;
                     entries
                 }
-                Ok(ci::ConditionalRunEntry::Empty) => {
-                    backoff = base_backoff;
-                    let at = chrono::Utc::now().to_rfc3339();
-                    last_poll_at = Some(at.clone());
-                    dispatch(CiAction::PollSucceeded { at, updated: false }.into());
-                    broadcast_ci_poll(
-                        &hub,
-                        last_snapshot.as_ref(),
-                        last_poll_at.clone(),
-                        &actions_url,
-                    );
-                    continue;
-                }
                 Err(e) => {
                     broadcast_ci_poll(
                         &hub,
@@ -81,26 +68,10 @@ pub fn spawn<A>(
                         last_poll_at.clone(),
                         &actions_url,
                     );
-                    if let Some(decision) = rate_limit::classify_and_decide(
-                        &e,
-                        observer.snapshot(),
-                        backoff,
-                        std::time::SystemTime::now(),
-                    ) {
-                        diag::log_diag(&format!(
-                            "ci_watcher: rate-limited; backoff signal={} wait={}s",
-                            rate_limit::signal_label(decision.signal),
-                            decision.wait.as_secs()
-                        ));
-                        tokio::select! {
-                            _ = ct.cancelled() => break,
-                            _ = tokio::time::sleep(decision.wait) => {}
-                        }
-                        backoff = (backoff * 2).min(max_backoff);
-                    } else {
-                        diag::log_diag(&format!("ci_watcher: fetch failed: {e}"));
+                    match absorb_fetch_error(&e, &observer, &mut backoff, max_backoff, &ct).await {
+                        PollRecovery::Retry => continue,
+                        PollRecovery::Cancelled => break,
                     }
-                    continue;
                 }
             };
             let runs: Vec<ci::RunEntry> = entries
@@ -144,6 +115,40 @@ pub fn spawn<A>(
             );
         }
     });
+}
+
+enum PollRecovery {
+    Retry,
+    Cancelled,
+}
+
+async fn absorb_fetch_error(
+    error: &str,
+    observer: &RateLimitObserver,
+    backoff: &mut Duration,
+    max_backoff: Duration,
+    ct: &CancellationToken,
+) -> PollRecovery {
+    let Some(decision) = rate_limit::classify_and_decide(
+        error,
+        observer.snapshot(),
+        *backoff,
+        std::time::SystemTime::now(),
+    ) else {
+        diag::log_diag(&format!("ci_watcher: fetch failed: {error}"));
+        return PollRecovery::Retry;
+    };
+    diag::log_diag(&format!(
+        "ci_watcher: rate-limited; backoff signal={} wait={}s",
+        rate_limit::signal_label(decision.signal),
+        decision.wait.as_secs()
+    ));
+    tokio::select! {
+        _ = ct.cancelled() => return PollRecovery::Cancelled,
+        _ = tokio::time::sleep(decision.wait) => {}
+    }
+    *backoff = (*backoff * 2).min(max_backoff);
+    PollRecovery::Retry
 }
 
 fn broadcast_ci_poll(

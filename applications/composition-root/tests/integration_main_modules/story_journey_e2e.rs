@@ -50,6 +50,10 @@ async fn wait_for_workflow_state(bridge: &TestBridge, id: u64, expected: &str) {
     panic!("#{id} never reached workflow_state={expected}");
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "an end-to-end journey pinned as one narrative — splitting it into helpers would hide the arc the test documents"
+)]
 #[test]
 fn a_story_journeys_icebox_to_accepted_surviving_both_failure_loops() {
     let bpmux = TestBpmux::start_with_envs("human", &[("BPMUX_TEST_MODE", "1")]);
@@ -356,6 +360,10 @@ fn retiring_from_the_real_cli_ends_the_journey_closed() {
     });
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "an end-to-end journey pinned as one narrative — splitting it into helpers would hide the arc the test documents"
+)]
 #[test]
 fn a_rejected_acceptance_reopens_the_closed_story_for_rework() {
     use harness::mock_gh::{issue_json, mock_story_full};

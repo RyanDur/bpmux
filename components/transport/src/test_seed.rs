@@ -157,140 +157,8 @@ pub async fn post_seed_stories(
         );
     };
     for s in &body.stories {
-        let initial_state = match s.initial_state.as_str() {
-            "icebox" | "ready" => product_management::story::Work::Ready,
-            "in-progress" | "desk-check" => product_management::story::Work::InProgress,
-            "delivered" | "acceptance" => product_management::story::Work::Acceptance,
-            "accepted" => product_management::story::Work::Accepted,
-            _ => product_management::story::Work::Ready,
-        };
-        let is_iteration_seed = s.story_type.as_str() == "iteration";
-        let is_epic_seed = s.story_type.as_str() == "epic";
-        let story_type = {
-            use product_management::story::StoryKind;
-            match s.story_type.as_str() {
-                "bug" => StoryKind::Bug,
-                "chore" => StoryKind::Chore,
-                _ => StoryKind::Feature,
-            }
-        };
-        let meta = product_management::story::events::EventMeta {
-            actor: "test-seed".to_string(),
-            actor_id: None,
-            ts: chrono::Utc::now(),
-        };
-        if let Err(e) = refresh.mutate(product_management::story::events::StoryEvent::new(
-            meta,
-            product_management::story::StoryId::new(s.id),
-            product_management::story::events::StoryEventKind::StoryCreated {
-                title: s.title.clone(),
-                body: s.body.clone(),
-                initial_state: initial_state.clone(),
-                story_type,
-            },
-        )) {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("seed_stories: StoryCreated #{} failed: {e}", s.id),
-            );
-        }
-        if s.initial_state == "desk-check" {
-            dispatcher.dispatch(store::AppAction::Board(board::BoardAction::StoryPlaced {
-                story: product_management::story::StoryId::new(s.id),
-                stage: product_management::story::Stage::DeskCheck.id(),
-            }));
-        }
-        let type_label_meta = product_management::story::events::EventMeta {
-            actor: "test-seed".to_string(),
-            actor_id: None,
-            ts: chrono::Utc::now(),
-        };
-        let type_label = if is_iteration_seed {
-            "iteration".to_string()
-        } else if is_epic_seed {
-            "epic".to_string()
-        } else {
-            source_codec::gh_label_codec::GhLabelCodec.encode_story_type(story_type)
-        };
-        if let Err(e) = refresh.mutate(product_management::story::events::StoryEvent::new(
-            type_label_meta,
-            product_management::story::StoryId::new(s.id),
-            product_management::story::events::StoryEventKind::TagAdded { label: type_label },
-        )) {
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("seed_stories: type-label TagAdded on #{} failed: {e}", s.id),
-            );
-        }
-        for label in &s.labels {
-            let tag_meta = product_management::story::events::EventMeta {
-                actor: "test-seed".to_string(),
-                actor_id: None,
-                ts: chrono::Utc::now(),
-            };
-            let codec = source_codec::gh_label_codec::GhLabelCodec;
-            if codec.is_iteration_label_loose(label) {
-                continue;
-            }
-            let event = product_management::story::events::StoryEvent::new(
-                tag_meta,
-                product_management::story::StoryId::new(s.id),
-                product_management::story::events::StoryEventKind::TagAdded {
-                    label: label.clone(),
-                },
-            );
-            if let Err(e) = refresh.mutate(event) {
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("seed_stories: label event {label} on #{} failed: {e}", s.id),
-                );
-            }
-        }
-        if s.is_closed {
-            let close_meta = product_management::story::events::EventMeta {
-                actor: "test-seed".to_string(),
-                actor_id: None,
-                ts: chrono::Utc::now(),
-            };
-            if let Err(e) = refresh.mutate(product_management::story::events::StoryEvent::new(
-                close_meta,
-                product_management::story::StoryId::new(s.id),
-                product_management::story::events::StoryEventKind::StoryClosed {
-                    reason: Some("test-seed: closed at seed time".to_string()),
-                },
-            )) {
-                return (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("seed_stories: StoryClosed #{} failed: {e}", s.id),
-                );
-            }
-        }
-        if is_iteration_seed || is_epic_seed {
-            let mut carrier = product_management::story::Story::new_minimal(
-                product_management::story::StoryId::new(s.id),
-                s.title.clone(),
-                initial_state,
-                chrono::Utc::now(),
-                "test-seed".to_string(),
-            );
-            carrier.body = Some(s.body.clone());
-            if is_iteration_seed {
-                dispatcher.dispatch(store::AppAction::Iteration(
-                    product_management::iteration::IterationAction::Upserted(vec![
-                        source_codec::mapper::decode_iteration_from_story(
-                            &carrier,
-                            &s.labels,
-                            s.is_closed,
-                        ),
-                    ]),
-                ));
-            } else {
-                dispatcher.dispatch(store::AppAction::Epic(
-                    product_management::epic::EpicAction::Upserted(vec![
-                        source_codec::mapper::decode_epic_from_story(&carrier, s.is_closed),
-                    ]),
-                ));
-            }
+        if let Err(message) = seed_one_story(refresh, &dispatcher, s) {
+            return (StatusCode::INTERNAL_SERVER_ERROR, message);
         }
     }
     let invalidate_delta = message::Message {
@@ -359,4 +227,144 @@ pub async fn post_seed_transitions(
         transitions.record(row.story_id, &row.new_state, at.timestamp());
     }
     (axum::http::StatusCode::OK, format!("seeded {}", rows.len()))
+}
+
+fn seed_meta() -> product_management::story::events::EventMeta {
+    product_management::story::events::EventMeta {
+        actor: "test-seed".to_string(),
+        actor_id: None,
+        ts: chrono::Utc::now(),
+    }
+}
+
+fn seed_initial_state(raw: &str) -> product_management::story::Work {
+    use product_management::story::Work;
+    match raw {
+        "in-progress" | "desk-check" => Work::InProgress,
+        "delivered" | "acceptance" => Work::Acceptance,
+        "accepted" => Work::Accepted,
+        _ => Work::Ready,
+    }
+}
+
+fn seed_story_kind(raw: &str) -> product_management::story::StoryKind {
+    use product_management::story::StoryKind;
+    match raw {
+        "bug" => StoryKind::Bug,
+        "chore" => StoryKind::Chore,
+        _ => StoryKind::Feature,
+    }
+}
+
+fn seed_one_story(
+    refresh: &sync::SyncOrchestrator,
+    dispatcher: &store::Dispatch,
+    s: &SeedStory,
+) -> Result<(), String> {
+    let initial_state = seed_initial_state(&s.initial_state);
+    let story_type = seed_story_kind(&s.story_type);
+    let is_iteration_seed = s.story_type.as_str() == "iteration";
+    let is_epic_seed = s.story_type.as_str() == "epic";
+    refresh
+        .mutate(product_management::story::events::StoryEvent::new(
+            seed_meta(),
+            product_management::story::StoryId::new(s.id),
+            product_management::story::events::StoryEventKind::StoryCreated {
+                title: s.title.clone(),
+                body: s.body.clone(),
+                initial_state: initial_state.clone(),
+                story_type,
+            },
+        ))
+        .map_err(|e| format!("seed_stories: StoryCreated #{} failed: {e}", s.id))?;
+    if s.initial_state == "desk-check" {
+        dispatcher.dispatch(store::AppAction::Board(board::BoardAction::StoryPlaced {
+            story: product_management::story::StoryId::new(s.id),
+            stage: product_management::story::Stage::DeskCheck.id(),
+        }));
+    }
+    let type_label = if is_iteration_seed {
+        "iteration".to_string()
+    } else if is_epic_seed {
+        "epic".to_string()
+    } else {
+        source_codec::gh_label_codec::GhLabelCodec.encode_story_type(story_type)
+    };
+    refresh
+        .mutate(product_management::story::events::StoryEvent::new(
+            seed_meta(),
+            product_management::story::StoryId::new(s.id),
+            product_management::story::events::StoryEventKind::TagAdded { label: type_label },
+        ))
+        .map_err(|e| format!("seed_stories: type-label TagAdded on #{} failed: {e}", s.id))?;
+    seed_labels(refresh, s)?;
+    seed_closed(refresh, s)?;
+    if is_iteration_seed || is_epic_seed {
+        seed_container(dispatcher, s, initial_state, is_iteration_seed);
+    }
+    Ok(())
+}
+
+fn seed_labels(refresh: &sync::SyncOrchestrator, s: &SeedStory) -> Result<(), String> {
+    let codec = source_codec::gh_label_codec::GhLabelCodec;
+    for label in &s.labels {
+        if codec.is_iteration_label_loose(label) {
+            continue;
+        }
+        refresh
+            .mutate(product_management::story::events::StoryEvent::new(
+                seed_meta(),
+                product_management::story::StoryId::new(s.id),
+                product_management::story::events::StoryEventKind::TagAdded {
+                    label: label.clone(),
+                },
+            ))
+            .map_err(|e| format!("seed_stories: label event {label} on #{} failed: {e}", s.id))?;
+    }
+    Ok(())
+}
+
+fn seed_closed(refresh: &sync::SyncOrchestrator, s: &SeedStory) -> Result<(), String> {
+    if !s.is_closed {
+        return Ok(());
+    }
+    refresh
+        .mutate(product_management::story::events::StoryEvent::new(
+            seed_meta(),
+            product_management::story::StoryId::new(s.id),
+            product_management::story::events::StoryEventKind::StoryClosed {
+                reason: Some("test-seed: closed at seed time".to_string()),
+            },
+        ))
+        .map_err(|e| format!("seed_stories: StoryClosed #{} failed: {e}", s.id))
+        .map(|_| ())
+}
+
+fn seed_container(
+    dispatcher: &store::Dispatch,
+    s: &SeedStory,
+    initial_state: product_management::story::Work,
+    is_iteration_seed: bool,
+) {
+    let mut carrier = product_management::story::Story::new_minimal(
+        product_management::story::StoryId::new(s.id),
+        s.title.clone(),
+        initial_state,
+        chrono::Utc::now(),
+        "test-seed".to_string(),
+    );
+    carrier.body = Some(s.body.clone());
+    if is_iteration_seed {
+        dispatcher.dispatch(store::AppAction::Iteration(
+            product_management::iteration::IterationAction::Upserted(vec![
+                source_codec::mapper::decode_iteration_from_story(&carrier, &s.labels, s.is_closed),
+            ]),
+        ));
+    } else {
+        dispatcher.dispatch(store::AppAction::Epic(
+            product_management::epic::EpicAction::Upserted(vec![
+                source_codec::mapper::decode_epic_from_story(&carrier, s.is_closed),
+            ]),
+        ));
+    }
 }

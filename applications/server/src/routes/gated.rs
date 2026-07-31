@@ -1,6 +1,10 @@
 use super::HubRouter;
 use transport::auth::AuthState;
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "flat route table — one .route() per gated endpoint; the one registry mapping paths to handlers"
+)]
 pub(crate) fn gated_routes(
     auth_state: AuthState,
     unfurl_cache: transport::unfurl::UnfurlCacheHandle,

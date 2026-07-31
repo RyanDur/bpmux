@@ -7,6 +7,34 @@ use crate::tools_stories::event_meta::meta_for;
 use crate::tools_stories::helpers::ensure_story_in_canonical_store;
 use product_management::story::StoryId;
 
+fn broadcast_verdict_reprompt(hub: &hub::Hub, id: u64, role: &str) {
+    let protocol::ClientMessage::Send {
+        text,
+        to,
+        addressee,
+        to_ids: None,
+        message_type,
+    } = build_verdict_reprompt_signal(id, role)
+    else {
+        return;
+    };
+    let reprompt = message::Message {
+        from: "bpmux".to_string(),
+        text,
+        ts: chrono::Utc::now(),
+        message_type: message::MessageType::from(message_type.as_deref()),
+        to,
+        addressee,
+        explicit_privacy: true,
+        ..message::Message::default()
+    };
+    if let Err(error) = hub.broadcast(&reprompt) {
+        diag::log_diag(&format!(
+            "bridge: verdict-reprompt broadcast failed: {error}"
+        ));
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_accept_story(
     args: &serde_json::Map<String, serde_json::Value>,
@@ -60,30 +88,7 @@ pub async fn handle_accept_story(
             current_head.as_deref(),
         ) {
             for role in e.expired_evidence_roles() {
-                if let protocol::ClientMessage::Send {
-                    text,
-                    to,
-                    addressee,
-                    to_ids: None,
-                    message_type,
-                } = build_verdict_reprompt_signal(id, &role)
-                {
-                    let reprompt = message::Message {
-                        from: "bpmux".to_string(),
-                        text,
-                        ts: chrono::Utc::now(),
-                        message_type: message::MessageType::from(message_type.as_deref()),
-                        to,
-                        addressee,
-                        explicit_privacy: true,
-                        ..message::Message::default()
-                    };
-                    if let Err(err) = s.broadcast(&reprompt) {
-                        diag::log_diag(&format!(
-                            "bridge: verdict-reprompt broadcast failed: {err}"
-                        ));
-                    }
-                }
+                broadcast_verdict_reprompt(s, id, &role);
             }
             return Err(e.as_json_string());
         }

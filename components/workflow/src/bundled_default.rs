@@ -2,164 +2,103 @@ use super::config::{GateClass, Role, Section, State, Transition, WorkflowConfig}
 
 pub fn bundled_default() -> WorkflowConfig {
     WorkflowConfig {
-        role: vec![
-            Role {
-                name: "owner".into(),
-                purposes: vec!["owner".into()],
-            },
-            Role {
-                name: "pm".into(),
-                purposes: vec!["pm".into()],
-            },
-            Role {
-                name: "designer".into(),
-                purposes: vec!["designer".into(), "iteration-reviewer".into()],
-            },
-            Role {
-                name: "dev".into(),
-                purposes: vec!["dev".into(), "iteration-builder".into()],
-            },
-        ],
-        section: vec![
-            Section {
-                id: "pre-work".into(),
-            },
-            Section {
-                id: "in-work".into(),
-            },
-            Section {
-                id: "post-work".into(),
-            },
-        ],
-        state: vec![
-            State {
-                id: "icebox".into(),
-                section: "pre-work".into(),
-                judges: vec![],
-                fail_to: None,
-            },
-            State {
-                id: "ready".into(),
-                section: "pre-work".into(),
-                judges: vec![],
-                fail_to: None,
-            },
-            State {
-                id: "in-progress".into(),
-                section: "in-work".into(),
-                judges: vec![],
-                fail_to: None,
-            },
-            State {
-                id: "acceptance".into(),
-                section: "post-work".into(),
-                judges: vec![],
-                fail_to: None,
-            },
-            State {
-                id: "accepted".into(),
-                section: "post-work".into(),
-                judges: vec![],
-                fail_to: None,
-            },
-            State {
-                id: "retired".into(),
-                section: "post-work".into(),
-                judges: vec![],
-                fail_to: None,
-            },
-        ],
-        transition: vec![
-            Transition {
-                id: "pickup".into(),
-                from: "ready".into(),
-                to: "in-progress".into(),
-                actor_roles: vec!["dev".into()],
-                gate_class: GateClass::None,
-                evidence_window_seconds: 0,
-                required_evidence_roles: vec![],
-            },
-            Transition {
-                id: "deliver".into(),
-                from: "in-progress".into(),
-                to: "acceptance".into(),
-                actor_roles: vec!["dev".into()],
-                gate_class: GateClass::None,
-                evidence_window_seconds: 0,
-                required_evidence_roles: vec![],
-            },
-            Transition {
-                id: "reject".into(),
-                from: "acceptance".into(),
-                to: "ready".into(),
-                actor_roles: vec!["pm".into()],
-                gate_class: GateClass::None,
-                evidence_window_seconds: 0,
-                required_evidence_roles: vec![],
-            },
-            Transition {
-                id: "accept".into(),
-                from: "acceptance".into(),
-                to: "accepted".into(),
-                actor_roles: vec!["pm".into()],
-                gate_class: GateClass::TeamVerifiable,
-                evidence_window_seconds: 600,
-                required_evidence_roles: vec!["designer".into(), "dev".into()],
-            },
-            Transition {
-                id: "accept".into(),
-                from: "acceptance".into(),
-                to: "accepted".into(),
-                actor_roles: vec![],
-                gate_class: GateClass::OwnerWalk,
-                evidence_window_seconds: 0,
-                required_evidence_roles: vec![],
-            },
-            Transition {
-                id: "accept".into(),
-                from: "acceptance".into(),
-                to: "accepted".into(),
-                actor_roles: vec!["dev".into()],
-                gate_class: GateClass::DevVerifiable,
-                evidence_window_seconds: 600,
-                required_evidence_roles: vec!["designer".into()],
-            },
-            Transition {
-                id: "close".into(),
-                from: "any".into(),
-                to: "retired".into(),
-                actor_roles: vec!["pm".into()],
-                gate_class: GateClass::None,
-                evidence_window_seconds: 0,
-                required_evidence_roles: vec![],
-            },
-            Transition {
-                id: "reorder".into(),
-                from: "any".into(),
-                to: "any".into(),
-                actor_roles: vec!["pm".into()],
-                gate_class: GateClass::None,
-                evidence_window_seconds: 0,
-                required_evidence_roles: vec![],
-            },
-            Transition {
-                id: "move-with-position".into(),
-                from: "any".into(),
-                to: "any".into(),
-                actor_roles: vec!["pm".into()],
-                gate_class: GateClass::None,
-                evidence_window_seconds: 0,
-                required_evidence_roles: vec![],
-            },
-            Transition {
-                id: "add-to-iteration".into(),
-                from: "any".into(),
-                to: "any".into(),
-                actor_roles: vec!["pm".into()],
-                gate_class: GateClass::None,
-                evidence_window_seconds: 0,
-                required_evidence_roles: vec![],
-            },
-        ],
+        role: roles(),
+        section: sections(),
+        state: states(),
+        transition: transitions(),
     }
+}
+
+fn role(name: &str, purposes: &[&str]) -> Role {
+    Role {
+        name: name.into(),
+        purposes: purposes.iter().map(|purpose| (*purpose).into()).collect(),
+    }
+}
+
+fn roles() -> Vec<Role> {
+    vec![
+        role("owner", &["owner"]),
+        role("pm", &["pm"]),
+        role("designer", &["designer", "iteration-reviewer"]),
+        role("dev", &["dev", "iteration-builder"]),
+    ]
+}
+
+fn sections() -> Vec<Section> {
+    ["pre-work", "in-work", "post-work"]
+        .into_iter()
+        .map(|id| Section { id: id.into() })
+        .collect()
+}
+
+fn state(id: &str, section: &str) -> State {
+    State {
+        id: id.into(),
+        section: section.into(),
+        judges: vec![],
+        fail_to: None,
+    }
+}
+
+fn states() -> Vec<State> {
+    vec![
+        state("icebox", "pre-work"),
+        state("ready", "pre-work"),
+        state("in-progress", "in-work"),
+        state("acceptance", "post-work"),
+        state("accepted", "post-work"),
+        state("retired", "post-work"),
+    ]
+}
+
+fn ungated(id: &str, from: &str, to: &str, actor_roles: &[&str]) -> Transition {
+    Transition {
+        id: id.into(),
+        from: from.into(),
+        to: to.into(),
+        actor_roles: actor_roles.iter().map(|actor| (*actor).into()).collect(),
+        gate_class: GateClass::None,
+        evidence_window_seconds: 0,
+        required_evidence_roles: vec![],
+    }
+}
+
+fn transitions() -> Vec<Transition> {
+    vec![
+        ungated("pickup", "ready", "in-progress", &["dev"]),
+        ungated("deliver", "in-progress", "acceptance", &["dev"]),
+        ungated("reject", "acceptance", "ready", &["pm"]),
+        Transition {
+            id: "accept".into(),
+            from: "acceptance".into(),
+            to: "accepted".into(),
+            actor_roles: vec!["pm".into()],
+            gate_class: GateClass::TeamVerifiable,
+            evidence_window_seconds: 600,
+            required_evidence_roles: vec!["designer".into(), "dev".into()],
+        },
+        Transition {
+            id: "accept".into(),
+            from: "acceptance".into(),
+            to: "accepted".into(),
+            actor_roles: vec![],
+            gate_class: GateClass::OwnerWalk,
+            evidence_window_seconds: 0,
+            required_evidence_roles: vec![],
+        },
+        Transition {
+            id: "accept".into(),
+            from: "acceptance".into(),
+            to: "accepted".into(),
+            actor_roles: vec!["dev".into()],
+            gate_class: GateClass::DevVerifiable,
+            evidence_window_seconds: 600,
+            required_evidence_roles: vec!["designer".into()],
+        },
+        ungated("close", "any", "retired", &["pm"]),
+        ungated("reorder", "any", "any", &["pm"]),
+        ungated("move-with-position", "any", "any", &["pm"]),
+        ungated("add-to-iteration", "any", "any", &["pm"]),
+    ]
 }

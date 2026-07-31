@@ -11,6 +11,10 @@ use super::mutation_events::{
     push_tag_added, push_tag_removed, push_title_updated, push_verdict_cast,
 };
 
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "flat exhaustive dispatch — one arm per event class with no nesting is the house pattern; clippy's nursery scorer charges per arm where the Sonar spec charges the match once"
+)]
 pub(super) async fn apply_push_event(
     inner: &OctocrabStoryTracker,
     event: &StoryEvent,

@@ -477,13 +477,12 @@ async fn live_loop_broadcasts_frozen_poll_time_on_failure() {
     let mut ci_poll_times: Vec<Option<String>> = Vec::new();
     let deadline = std::time::Instant::now() + Duration::from_secs(2);
     while std::time::Instant::now() < deadline && ci_poll_times.len() < 2 {
-        match frames.try_recv() {
-            Ok(msg) => {
-                if let Some(StateDeltaPayload::CiPoll { snapshot }) = msg.state_delta {
-                    ci_poll_times.push(snapshot.last_successful_poll_at);
-                }
-            }
-            Err(_) => tokio::time::sleep(Duration::from_millis(10)).await,
+        let Ok(msg) = frames.try_recv() else {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+            continue;
+        };
+        if let Some(StateDeltaPayload::CiPoll { snapshot }) = msg.state_delta {
+            ci_poll_times.push(snapshot.last_successful_poll_at);
         }
     }
 

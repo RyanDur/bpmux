@@ -16,17 +16,7 @@ pub(super) fn spawn_background_ingest(
             }
             match orch.refresh_all().await {
                 Ok(()) => {
-                    let count = select
-                        .select(|state| product_management::story::slice::all(&state.stories))
-                        .len();
-                    diag::log_diag(&format!(
-                        "server: production orchestrator ingest succeeded on attempt {} ({count} stories)",
-                        attempt + 1
-                    ));
-                    sync::backfill_shared_history(orch.as_ref(), &select, |action| {
-                        dispatch.dispatch(action)
-                    })
-                    .await;
+                    absorb_ingest_success(&orch, &dispatch, &select, attempt).await;
                     return;
                 }
                 Err(e) if attempt + 1 < backoffs.len() => {
@@ -43,4 +33,20 @@ pub(super) fn spawn_background_ingest(
             }
         }
     });
+}
+
+async fn absorb_ingest_success(
+    orch: &Arc<SyncOrchestrator>,
+    dispatch: &Dispatch,
+    select: &Select,
+    attempt: usize,
+) {
+    let count = select
+        .select(|state| product_management::story::slice::all(&state.stories))
+        .len();
+    diag::log_diag(&format!(
+        "server: production orchestrator ingest succeeded on attempt {} ({count} stories)",
+        attempt + 1
+    ));
+    sync::backfill_shared_history(orch.as_ref(), select, |action| dispatch.dispatch(action)).await;
 }

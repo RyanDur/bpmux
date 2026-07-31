@@ -29,18 +29,8 @@ pub async fn run_ws_connection(
     let (ws_tx, mut ws_rx) = ws_stream.split();
     *ws_tx_store.lock().await = Some(ws_tx);
 
-    {
-        let current_name = name.lock().await.clone();
-        let cursor = subscriptions.cursor().await;
-        let mut tx = ws_tx_store.lock().await;
-        if let Some(ref mut tx) = *tx {
-            let identify = json!({"type": "identify", "name": current_name, "tool": "claude-code", "cursor": cursor, "user_id": user_id.clone()})
-                .to_string();
-            if let Err(e) = tx.send(tungstenite::Message::Text(identify.into())).await {
-                eprintln!("Bridge: failed to identify: {e}");
-                return;
-            }
-        }
+    if !send_identify(&ws_tx_store, &name, &user_id, &subscriptions).await {
+        return;
     }
 
     match ws_rx.next().await {
@@ -99,4 +89,25 @@ pub async fn run_ws_connection(
 
     *ws_tx_store.lock().await = None;
     eprintln!("Bridge: disconnected from bpmux");
+}
+
+async fn send_identify(
+    ws_tx_store: &Arc<Mutex<Option<WsSink>>>,
+    name: &Arc<Mutex<String>>,
+    user_id: &Option<String>,
+    subscriptions: &event_subscription::SubscriptionRegistry,
+) -> bool {
+    let current_name = name.lock().await.clone();
+    let cursor = subscriptions.cursor().await;
+    let mut tx = ws_tx_store.lock().await;
+    let Some(ref mut tx) = *tx else {
+        return true;
+    };
+    let identify = json!({"type": "identify", "name": current_name, "tool": "claude-code", "cursor": cursor, "user_id": user_id.clone()})
+        .to_string();
+    if let Err(error) = tx.send(tungstenite::Message::Text(identify.into())).await {
+        eprintln!("Bridge: failed to identify: {error}");
+        return false;
+    }
+    true
 }

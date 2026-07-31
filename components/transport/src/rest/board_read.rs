@@ -12,32 +12,7 @@ pub async fn get_board(
     let tracker: TrackerHandle = tracker_cell.current();
     if let Some(refresh) = orchestrator.as_ref() {
         if select.select(|state| product_management::story::slice::is_empty(&state.stories)) {
-            match refresh.refresh_all().await {
-                Ok(()) => {
-                    if select
-                        .select(|state| product_management::story::slice::all(&state.stories))
-                        .is_empty()
-                    {
-                        diag::log_diag(
-                            "rest get_board: empty store; refresh_all returned Ok with 0 stories — ingest succeeded but source-of-truth empty OR decode dropped all rows",
-                        );
-                    } else {
-                        diag::log_diag(&format!(
-                            "rest get_board: empty store; refresh_all recovered {} stories",
-                            select
-                                .select(|state| product_management::story::slice::all(
-                                    &state.stories
-                                ))
-                                .len()
-                        ));
-                    }
-                }
-                Err(e) => {
-                    diag::log_diag(&format!(
-                        "rest get_board: empty store; refresh_all failed: {e}"
-                    ));
-                }
-            }
+            recover_empty_store(refresh, &select).await;
         }
         let body = serde_json::json!({
             "stories": ordered_board_stories(&select),
@@ -117,4 +92,25 @@ pub async fn get_story(
             err_body(&format!("story fetch failed: {e}")),
         ),
     }
+}
+
+async fn recover_empty_store(refresh: &sync::SyncOrchestrator, select: &store::Select) {
+    if let Err(error) = refresh.refresh_all().await {
+        diag::log_diag(&format!(
+            "rest get_board: empty store; refresh_all failed: {error}"
+        ));
+        return;
+    }
+    let recovered = select
+        .select(|state| product_management::story::slice::all(&state.stories))
+        .len();
+    if recovered == 0 {
+        diag::log_diag(
+            "rest get_board: empty store; refresh_all returned Ok with 0 stories — ingest succeeded but source-of-truth empty OR decode dropped all rows",
+        );
+        return;
+    }
+    diag::log_diag(&format!(
+        "rest get_board: empty store; refresh_all recovered {recovered} stories"
+    ));
 }

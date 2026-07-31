@@ -28,20 +28,13 @@ impl ServerHandler for BridgeServer {
         let subscriptions = self.subscriptions.clone();
 
         async move {
-            tokio::spawn(async move {
-                loop {
-                    run_ws_connection(
-                        port,
-                        name.clone(),
-                        user_id.clone(),
-                        ws_tx_store.clone(),
-                        subscriptions.clone(),
-                    )
-                    .await;
-                    eprintln!("Bridge: reconnecting in 3 seconds...");
-                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-                }
-            });
+            tokio::spawn(reconnect_forever(
+                port,
+                name,
+                user_id,
+                ws_tx_store,
+                subscriptions,
+            ));
         }
     }
 
@@ -66,5 +59,26 @@ impl ServerHandler for BridgeServer {
         let user_id = self.user_id.clone();
         let subscriptions = self.subscriptions.clone();
         dispatch_tool_call(port, name, user_id, ws_tx, subscriptions, request)
+    }
+}
+
+async fn reconnect_forever(
+    port: u16,
+    name: std::sync::Arc<tokio::sync::Mutex<String>>,
+    user_id: Option<String>,
+    ws_tx_store: std::sync::Arc<tokio::sync::Mutex<Option<super::WsSink>>>,
+    subscriptions: super::event_subscription::SubscriptionRegistry,
+) {
+    loop {
+        run_ws_connection(
+            port,
+            name.clone(),
+            user_id.clone(),
+            ws_tx_store.clone(),
+            subscriptions.clone(),
+        )
+        .await;
+        eprintln!("Bridge: reconnecting in 3 seconds...");
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
     }
 }

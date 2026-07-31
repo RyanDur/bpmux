@@ -128,33 +128,27 @@ impl WsPeer {
     /// errors, and bpmux's own system announcements). Returns `(from, text)`
     /// or panics on timeout.
     pub async fn recv_message(&mut self, timeout: Duration) -> (String, String) {
-        let result = tokio::time::timeout(timeout, async {
-            loop {
-                let Some(raw) = self.next_text().await else {
-                    panic!("websocket closed before a user message arrived");
-                };
-                if let Some(msg) = extract_user_message(&raw) {
-                    return msg;
-                }
-            }
-        })
-        .await;
-        result.expect("timed out waiting for user message")
+        tokio::time::timeout(timeout, next_user_message(self))
+            .await
+            .expect("timed out waiting for user message")
+            .expect("websocket closed before a user message arrived")
     }
 
     /// Like `recv_message` but returns `None` on timeout instead of panicking.
     /// Used to assert that a peer does NOT receive a message.
     pub async fn recv_message_or_timeout(&mut self, timeout: Duration) -> Option<(String, String)> {
-        tokio::time::timeout(timeout, async {
-            loop {
-                let raw = self.next_text().await?;
-                if let Some(msg) = extract_user_message(&raw) {
-                    return Some(msg);
-                }
-            }
-        })
-        .await
-        .unwrap_or(None)
+        tokio::time::timeout(timeout, next_user_message(self))
+            .await
+            .unwrap_or(None)
+    }
+}
+
+async fn next_user_message(peer: &mut WsPeer) -> Option<(String, String)> {
+    loop {
+        let raw = peer.next_text().await?;
+        if let Some(msg) = extract_user_message(&raw) {
+            return Some(msg);
+        }
     }
 }
 

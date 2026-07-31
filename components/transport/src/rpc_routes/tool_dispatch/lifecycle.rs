@@ -3,6 +3,10 @@ use serde_json::Value;
 use super::{Ctx, Routed};
 use bridge;
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "flat exhaustive dispatch — one table mapping each wire tool name to its bridge handler; the length is the arg-plumbing per arm, not logic"
+)]
 pub(super) async fn route(
     tool: &str,
     args: serde_json::Map<String, Value>,

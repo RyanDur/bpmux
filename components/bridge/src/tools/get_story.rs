@@ -78,58 +78,19 @@ pub async fn handle_get_story(
     }) {
         return render_epic_detail(refresh, &epic, select).await;
     }
-    let mut story = select
-        .select(|state| {
-            product_management::story::slice::get(
-                &state.stories,
-                product_management::story::StoryId::new(id),
-            )
-        })
-        .ok_or_else(|| format!("story #{id} not found in board"))?;
-    if story.body.is_none() {
-        match r.fetch_body(id).await {
-            Ok(_) => {
-                story = select
-                    .select(|state| {
-                        product_management::story::slice::get(
-                            &state.stories,
-                            product_management::story::StoryId::new(id),
-                        )
-                    })
-                    .ok_or_else(|| format!("story #{id} not found in board after fetch"))?;
-            }
-            Err(e) => {
-                diag::log_diag(&format!(
-                    "get_story #{id} read-through fetch_body failed: {e}"
-                ));
-            }
-        }
-    }
+    let story = story_by_id(select, id).ok_or_else(|| format!("story #{id} not found in board"))?;
+    let story = hydrate_body(r, select, story, id).await?;
     let fine = select.select(|state| board::fine_stage(&story, &state.board));
     let iterations = select.select(|state| product_management::iteration::all(&state.iterations));
     let projected = product_management::scheduling::projected_state(&story, &iterations);
     let needs_gates = matches!(projected, ProjectedState::Ready)
         || fine == Some(Stage::Dev)
         || story.is_concluded();
-    if needs_gates && story.verdicts.is_none() {
-        match r.fetch_verdicts(id).await {
-            Ok(_) => {
-                story = select
-                    .select(|state| {
-                        product_management::story::slice::get(
-                            &state.stories,
-                            product_management::story::StoryId::new(id),
-                        )
-                    })
-                    .ok_or_else(|| format!("story #{id} not found in board after gate fetch"))?;
-            }
-            Err(e) => {
-                diag::log_diag(&format!(
-                    "get_story #{id} read-through fetch_verdicts failed: {e}"
-                ));
-            }
-        }
-    }
+    let story = if needs_gates && story.verdicts.is_none() {
+        hydrate_verdicts(r, select, story, id).await?
+    } else {
+        story
+    };
     let body_cached = story.body.as_deref();
     let mut body_out = body_cached.unwrap_or(NOT_HYDRATED_PLACEHOLDER).to_string();
     let latest_reject = story.verdicts.as_deref().and_then(latest_reject_json);
@@ -167,4 +128,52 @@ pub async fn handle_get_story(
         "latest_reject": latest_reject,
     });
     serde_json::to_string_pretty(&out).map_err(|e| format!("serialize story: {e}"))
+}
+
+fn story_by_id(select: &store::Select, id: u64) -> Option<product_management::story::Story> {
+    select.select(|state| {
+        product_management::story::slice::get(
+            &state.stories,
+            product_management::story::StoryId::new(id),
+        )
+    })
+}
+
+async fn hydrate_body(
+    r: &SyncOrchestrator,
+    select: &store::Select,
+    story: product_management::story::Story,
+    id: u64,
+) -> Result<product_management::story::Story, String> {
+    if story.body.is_some() {
+        return Ok(story);
+    }
+    match r.fetch_body(id).await {
+        Ok(_) => story_by_id(select, id)
+            .ok_or_else(|| format!("story #{id} not found in board after fetch")),
+        Err(error) => {
+            diag::log_diag(&format!(
+                "get_story #{id} read-through fetch_body failed: {error}"
+            ));
+            Ok(story)
+        }
+    }
+}
+
+async fn hydrate_verdicts(
+    r: &SyncOrchestrator,
+    select: &store::Select,
+    story: product_management::story::Story,
+    id: u64,
+) -> Result<product_management::story::Story, String> {
+    match r.fetch_verdicts(id).await {
+        Ok(_) => story_by_id(select, id)
+            .ok_or_else(|| format!("story #{id} not found in board after gate fetch")),
+        Err(error) => {
+            diag::log_diag(&format!(
+                "get_story #{id} read-through fetch_verdicts failed: {error}"
+            ));
+            Ok(story)
+        }
+    }
 }

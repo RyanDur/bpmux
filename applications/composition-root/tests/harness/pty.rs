@@ -216,17 +216,8 @@ impl TestBpmux {
         let child = pair.slave.spawn_command(cmd).expect("spawn bpmux");
         drop(pair.slave);
 
-        let mut reader = pair.master.try_clone_reader().expect("clone reader");
         let writer = pair.master.take_writer().expect("take writer");
-
-        let drainer = std::thread::spawn(move || {
-            let mut buf = [0u8; 4096];
-            while let Ok(n) = reader.read(&mut buf) {
-                if n == 0 {
-                    break;
-                }
-            }
-        });
+        let drainer = spawn_output_drainer(pair.master.try_clone_reader().expect("clone reader"));
 
         let bpmux = Self {
             child,
@@ -343,11 +334,8 @@ impl TestBpmux {
         let path = dir.path().join("auth_token");
         let deadline = Instant::now() + Duration::from_secs(2);
         loop {
-            if let Ok(s) = std::fs::read_to_string(&path) {
-                let trimmed = s.trim().to_string();
-                if !trimmed.is_empty() {
-                    return trimmed;
-                }
+            if let Some(secret) = read_nonempty(&path) {
+                return secret;
             }
             if Instant::now() >= deadline {
                 panic!("auth_token never appeared at {}", path.display());
@@ -384,4 +372,21 @@ impl Drop for TestBpmux {
         let _ = self.child.kill();
         let _ = self.child.wait();
     }
+}
+
+fn spawn_output_drainer(mut reader: Box<dyn Read + Send>) -> std::thread::JoinHandle<()> {
+    std::thread::spawn(move || {
+        let mut buf = [0u8; 4096];
+        while let Ok(n) = reader.read(&mut buf) {
+            if n == 0 {
+                break;
+            }
+        }
+    })
+}
+
+fn read_nonempty(path: &std::path::Path) -> Option<String> {
+    let contents = std::fs::read_to_string(path).ok()?;
+    let trimmed = contents.trim().to_string();
+    (!trimmed.is_empty()).then_some(trimmed)
 }

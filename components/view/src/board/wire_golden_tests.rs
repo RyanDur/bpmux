@@ -29,6 +29,25 @@ fn sample_iteration() -> Iteration {
     }
 }
 
+fn assert_exact_wire_keys(
+    obj: &serde_json::Map<String, serde_json::Value>,
+    shape: &str,
+    expected: &[&str],
+) {
+    let keys: Vec<&str> = obj.keys().map(String::as_str).collect();
+    for required in expected {
+        assert!(
+            keys.contains(required),
+            "{shape} wire must carry `{required}` (a relocation or rename must not drop it); got {keys:?}"
+        );
+    }
+    assert_eq!(
+        obj.len(),
+        expected.len(),
+        "no spurious {shape} keys; got {keys:?}"
+    );
+}
+
 fn sample_outcome() -> Outcome {
     Outcome {
         id: OutcomeId::new(7),
@@ -53,24 +72,21 @@ fn iteration_view_wire_shape_is_pinned() {
     let obj = json
         .as_object()
         .expect("IterationView serializes to an object");
-    let keys: Vec<&str> = obj.keys().map(String::as_str).collect();
-    for required in [
-        "id",
-        "title",
-        "iteration_order",
-        "is_current",
-        "complete",
-        "builds_outcome",
-        "outcome_position",
-        "stories",
-        "readiness",
-    ] {
-        assert!(
-            keys.contains(&required),
-            "IterationView wire must carry `{required}` (relocation to crate::view must not drop it); got {keys:?}"
-        );
-    }
-    assert_eq!(obj.len(), 9, "no spurious IterationView keys; got {keys:?}");
+    assert_exact_wire_keys(
+        obj,
+        "IterationView",
+        &[
+            "id",
+            "title",
+            "iteration_order",
+            "is_current",
+            "complete",
+            "builds_outcome",
+            "outcome_position",
+            "stories",
+            "readiness",
+        ],
+    );
 
     assert_eq!(json["id"].as_u64(), Some(42));
     assert_eq!(
@@ -88,14 +104,11 @@ fn iteration_view_wire_shape_is_pinned() {
     let readiness = json["readiness"]
         .as_object()
         .expect("readiness is a nested object");
-    for k in ["drafted", "stories_ordered", "review_closed", "dev_ok"] {
-        assert!(
-            readiness.contains_key(k),
-            "IterationReadiness wire must carry `{k}`; got {:?}",
-            readiness.keys().collect::<Vec<_>>()
-        );
-    }
-    assert_eq!(readiness.len(), 4, "no spurious readiness keys");
+    assert_exact_wire_keys(
+        readiness,
+        "IterationReadiness",
+        &["drafted", "stories_ordered", "review_closed", "dev_ok"],
+    );
 }
 
 #[test]
@@ -107,22 +120,19 @@ fn outcome_view_wire_shape_is_pinned() {
     let obj = json
         .as_object()
         .expect("OutcomeView serializes to an object");
-    let keys: Vec<&str> = obj.keys().map(String::as_str).collect();
-    for required in [
-        "id",
-        "title",
-        "body",
-        "horizon",
-        "horizon_order",
-        "outcome_readiness",
-        "iterations",
-    ] {
-        assert!(
-            keys.contains(&required),
-            "OutcomeView wire must carry `{required}` (relocation to crate::view must not drop it); got {keys:?}"
-        );
-    }
-    assert_eq!(obj.len(), 7, "no spurious OutcomeView keys; got {keys:?}");
+    assert_exact_wire_keys(
+        obj,
+        "OutcomeView",
+        &[
+            "id",
+            "title",
+            "body",
+            "horizon",
+            "horizon_order",
+            "outcome_readiness",
+            "iterations",
+        ],
+    );
 
     assert_eq!(json["id"].as_u64(), Some(7));
     assert_eq!(
@@ -135,13 +145,11 @@ fn outcome_view_wire_shape_is_pinned() {
     let readiness = json["outcome_readiness"]
         .as_object()
         .expect("outcome_readiness is a nested object");
-    for k in ["iteration_count", "gap_count", "all_ready"] {
-        assert!(
-            readiness.contains_key(k),
-            "OutcomeReadiness wire must carry `{k}`"
-        );
-    }
-    assert_eq!(readiness.len(), 3, "no spurious outcome_readiness keys");
+    assert_exact_wire_keys(
+        readiness,
+        "OutcomeReadiness",
+        &["iteration_count", "gap_count", "all_ready"],
+    );
 
     let iterations = json["iterations"]
         .as_array()
@@ -150,14 +158,11 @@ fn outcome_view_wire_shape_is_pinned() {
     let building = iterations[0]
         .as_object()
         .expect("BuildingIterationView is a nested object");
-    for k in ["id", "name", "position", "readiness"] {
-        assert!(
-            building.contains_key(k),
-            "BuildingIterationView wire must carry `{k}`; got {:?}",
-            building.keys().collect::<Vec<_>>()
-        );
-    }
-    assert_eq!(building.len(), 4, "no spurious BuildingIterationView keys");
+    assert_exact_wire_keys(
+        building,
+        "BuildingIterationView",
+        &["id", "name", "position", "readiness"],
+    );
     assert_eq!(building["id"].as_u64(), Some(42));
     assert_eq!(building["name"].as_str(), Some("Vela"));
     assert_eq!(building["position"].as_u64(), Some(1));

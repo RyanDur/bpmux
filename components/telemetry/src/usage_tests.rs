@@ -2,6 +2,8 @@
 
 use super::usage::{Record, Source, key_for, last_used_datetime, load_from, parse_key, save_to};
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use tempfile::TempDir;
 
 fn tmp_path() -> (TempDir, std::path::PathBuf) {
@@ -98,42 +100,18 @@ fn save_then_reload_preserves_counts_across_restarts() {
 
 #[test]
 fn concurrent_save_to_never_publishes_torn_json() {
-    use std::sync::atomic::{AtomicBool, Ordering};
-    use std::sync::{Arc, Mutex};
-
     let (_dir, path) = tmp_path();
     let stop = Arc::new(AtomicBool::new(false));
     let torn: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
 
-    let reader = {
-        let path = path.clone();
-        let stop = Arc::clone(&stop);
-        let torn = Arc::clone(&torn);
-        std::thread::spawn(move || {
-            while !stop.load(Ordering::Relaxed) {
-                if let Ok(contents) = std::fs::read_to_string(&path) {
-                    if contents.is_empty() {
-                        continue;
-                    }
-                    if serde_json::from_str::<HashMap<String, Record>>(&contents).is_err() {
-                        *torn.lock().unwrap() = Some(contents);
-                        return;
-                    }
-                }
-            }
-        })
-    };
+    let reader = spawn_torn_reader(path.clone(), Arc::clone(&stop), Arc::clone(&torn));
 
     let writers: Vec<_> = (0..8u64)
-        .map(|t| {
+        .map(|writer| {
             let path = path.clone();
             std::thread::spawn(move || {
                 for _ in 0..50 {
-                    let mut map = HashMap::new();
-                    for k in 0..((t + 1) * 4) {
-                        map.insert(format!("mcp:tool_{t}_{k}"), Record::now(k as usize));
-                    }
-                    save_to(&path, &map).expect("save");
+                    save_to(&path, &writer_map(writer)).expect("save");
                 }
             })
         })
@@ -150,4 +128,40 @@ fn concurrent_save_to_never_publishes_torn_json() {
         observed.is_none(),
         "reader observed torn JSON published by a concurrent writer: {observed:?}"
     );
+}
+
+fn spawn_torn_reader(
+    path: std::path::PathBuf,
+    stop: Arc<AtomicBool>,
+    torn: Arc<Mutex<Option<String>>>,
+) -> std::thread::JoinHandle<()> {
+    std::thread::spawn(move || {
+        while !stop.load(Ordering::Relaxed) {
+            if let Some(contents) = torn_snapshot(&path) {
+                *torn.lock().unwrap() = Some(contents);
+                return;
+            }
+        }
+    })
+}
+
+fn torn_snapshot(path: &std::path::Path) -> Option<String> {
+    let contents = std::fs::read_to_string(path).ok()?;
+    if contents.is_empty() {
+        return None;
+    }
+    serde_json::from_str::<HashMap<String, Record>>(&contents)
+        .is_err()
+        .then_some(contents)
+}
+
+fn writer_map(writer: u64) -> HashMap<String, Record> {
+    let mut map = HashMap::new();
+    for key in 0..((writer + 1) * 4) {
+        map.insert(
+            format!("mcp:tool_{writer}_{key}"),
+            Record::now(key as usize),
+        );
+    }
+    map
 }

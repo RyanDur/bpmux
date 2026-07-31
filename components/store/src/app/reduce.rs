@@ -12,89 +12,69 @@ use product_management::story::slice;
 
 use super::{AppAction, AppState};
 
+macro_rules! patched {
+    ($state:expr, $field:ident, $reduced:expr) => {
+        match $reduced {
+            Some(value) => AppState {
+                $field: Arc::new(value),
+                ..$state.clone()
+            },
+            None => $state.clone(),
+        }
+    };
+}
+
+#[expect(
+    clippy::cognitive_complexity,
+    reason = "flat exhaustive dispatch — the root reducer routes each action family to its slice with no nesting; clippy scores the patched! expansion per arm where the Sonar spec charges the match once"
+)]
 pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
     match action {
-        AppAction::Roster(action) => match roster::reduce(&state.roster, action) {
-            Some(roster) => AppState {
-                roster: Arc::new(roster),
-                ..state.clone()
-            },
-            None => state.clone(),
-        },
-        AppAction::Reactions(action) => match reactions::reduce(&state.reactions, action) {
-            Some(reactions) => AppState {
-                reactions: Arc::new(reactions),
-                ..state.clone()
-            },
-            None => state.clone(),
-        },
-        AppAction::Evidence(action) => match evidence::reduce(&state.evidence, action) {
-            Some(evidence) => AppState {
-                evidence: Arc::new(evidence),
-                ..state.clone()
-            },
-            None => state.clone(),
-        },
-        AppAction::Ci(action) => match ci::reduce(&state.ci, action) {
-            Some(ci) => AppState {
-                ci: Arc::new(ci),
-                ..state.clone()
-            },
-            None => state.clone(),
-        },
-        AppAction::Sync(action) => match crate::sync::reduce(&state.sync, action) {
-            Some(sync) => AppState {
-                sync: Arc::new(sync),
-                ..state.clone()
-            },
-            None => state.clone(),
-        },
+        AppAction::Roster(action) => patched!(state, roster, roster::reduce(&state.roster, action)),
+        AppAction::Reactions(action) => {
+            patched!(
+                state,
+                reactions,
+                reactions::reduce(&state.reactions, action)
+            )
+        }
+        AppAction::Evidence(action) => {
+            patched!(state, evidence, evidence::reduce(&state.evidence, action))
+        }
+        AppAction::Ci(action) => patched!(state, ci, ci::reduce(&state.ci, action)),
+        AppAction::Sync(action) => patched!(state, sync, crate::sync::reduce(&state.sync, action)),
         AppAction::SyncHealth(action) => {
-            match crate::sync_health::reduce(&state.sync_health, action) {
-                Some(sync_health) => AppState {
-                    sync_health: Arc::new(sync_health),
-                    ..state.clone()
-                },
-                None => state.clone(),
-            }
+            patched!(
+                state,
+                sync_health,
+                crate::sync_health::reduce(&state.sync_health, action)
+            )
         }
         AppAction::Commitments(action) => {
-            match crate::commitments::reduce(&state.commitments, action) {
-                Some(commitments) => AppState {
-                    commitments: Arc::new(commitments),
-                    ..state.clone()
-                },
-                None => state.clone(),
-            }
+            patched!(
+                state,
+                commitments,
+                crate::commitments::reduce(&state.commitments, action)
+            )
         }
-        AppAction::Routing(action) => match crate::routing::reduce(&state.routing, action) {
-            Some(routing) => AppState {
-                routing: Arc::new(routing),
-                ..state.clone()
-            },
-            None => state.clone(),
-        },
-        AppAction::Outcome(action) => match outcome::reduce(&state.outcomes, action) {
-            Some(outcomes) => AppState {
-                outcomes: Arc::new(outcomes),
-                ..state.clone()
-            },
-            None => state.clone(),
-        },
-        AppAction::Iteration(action) => match iteration::reduce(&state.iterations, action) {
-            Some(iterations) => AppState {
-                iterations: Arc::new(iterations),
-                ..state.clone()
-            },
-            None => state.clone(),
-        },
-        AppAction::Epic(action) => match epic::reduce(&state.epics, action) {
-            Some(epics) => AppState {
-                epics: Arc::new(epics),
-                ..state.clone()
-            },
-            None => state.clone(),
-        },
+        AppAction::Routing(action) => {
+            patched!(
+                state,
+                routing,
+                crate::routing::reduce(&state.routing, action)
+            )
+        }
+        AppAction::Outcome(action) => {
+            patched!(state, outcomes, outcome::reduce(&state.outcomes, action))
+        }
+        AppAction::Iteration(action) => {
+            patched!(
+                state,
+                iterations,
+                iteration::reduce(&state.iterations, action)
+            )
+        }
+        AppAction::Epic(action) => patched!(state, epics, epic::reduce(&state.epics, action)),
         AppAction::Story(action) => {
             let stories = Arc::new(slice::reduce(&state.stories, action));
             let board = board::react_to_story(&state.board, action)
@@ -115,30 +95,20 @@ pub fn app_reduce(state: &AppState, action: &AppAction) -> AppState {
                 ..state.clone()
             }
         }
-        AppAction::Board(action) => match board::reduce(&state.board, action) {
-            Some(board) => AppState {
-                board: Arc::new(board),
-                ..state.clone()
-            },
-            None => state.clone(),
-        },
+        AppAction::Board(action) => patched!(state, board, board::reduce(&state.board, action)),
         AppAction::SharedHistory(action) => {
-            match product_management::history::reduce(&state.shared_history, action) {
-                Some(shared_history) => AppState {
-                    shared_history: Arc::new(shared_history),
-                    ..state.clone()
-                },
-                None => state.clone(),
-            }
+            patched!(
+                state,
+                shared_history,
+                product_management::history::reduce(&state.shared_history, action)
+            )
         }
         AppAction::OwnerSession(action) => {
-            match owner_session::reduce(&state.owner_session, action) {
-                Some(owner_session) => AppState {
-                    owner_session: Arc::new(owner_session),
-                    ..state.clone()
-                },
-                None => state.clone(),
-            }
+            patched!(
+                state,
+                owner_session,
+                owner_session::reduce(&state.owner_session, action)
+            )
         }
         AppAction::ClientConnected(_) => state.clone(),
     }

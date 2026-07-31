@@ -7,6 +7,10 @@ use workflow::config::WorkflowConfig;
 pub const ITERATION_REVIEWER_PURPOSE: &str = "iteration-reviewer";
 pub const ITERATION_BUILDER_PURPOSE: &str = "iteration-builder";
 
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "a readiness checklist of independent facts, not a disguised state machine — every combination is meaningful and the shape is serialized to the wire"
+)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct IterationReadiness {
     pub drafted: bool,

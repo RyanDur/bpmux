@@ -27,9 +27,9 @@ describe('Dodds RTL anti-pattern eslint substrate ()', () => {
     expect(firedRuleIds).toContain(ruleId)
   })
 
-  test('grace-tier: rules emit warnings not errors', async () => {
+  test('gate-tier: rules emit errors not warnings', async () => {
     const [result] = await lintFixture()
-    expect(result.errorCount).toBe(0)
-    expect(result.warningCount).toBeGreaterThan(0)
+    expect(result.warningCount).toBe(0)
+    expect(result.errorCount).toBeGreaterThan(0)
   })
 })

@@ -21,12 +21,9 @@ impl Osc7CwdParser {
             let payload_start = start + OSC7_PREFIX.len();
             match find_terminator(&self.buf[payload_start..]) {
                 Some((offset, term_len)) => {
-                    if let Some(path) =
-                        extract_path(&self.buf[payload_start..payload_start + offset])
-                    {
-                        latest = Some(path);
-                    }
-                    self.buf.drain(..payload_start + offset + term_len);
+                    latest = self
+                        .consume_frame(payload_start, offset, term_len)
+                        .or(latest);
                 }
                 None => {
                     self.buf.drain(..start);
@@ -41,6 +38,17 @@ impl Osc7CwdParser {
             keep_tail(&mut self.buf, OSC7_PREFIX.len());
         }
         latest
+    }
+
+    fn consume_frame(
+        &mut self,
+        payload_start: usize,
+        offset: usize,
+        term_len: usize,
+    ) -> Option<String> {
+        let path = extract_path(&self.buf[payload_start..payload_start + offset]);
+        self.buf.drain(..payload_start + offset + term_len);
+        path
     }
 }
 

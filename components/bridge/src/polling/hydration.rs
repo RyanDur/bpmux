@@ -87,33 +87,43 @@ pub async fn run_hydration_loop_cancellable(
             to_hydrate,
             to_revalidate.iter().map(|(n, _)| *n).collect::<Vec<_>>()
         ));
-        let mut hydrated_ok = 0u32;
-        let mut revalidated_ok = 0u32;
-        let to_hydrate_len = to_hydrate.len();
-        for (idx, (number, prior_etag)) in to_hydrate
-            .into_iter()
-            .map(|n| (n, None::<String>))
-            .chain(to_revalidate)
-            .enumerate()
-        {
-            match refresh.fetch_body_conditional(number, prior_etag).await {
-                Ok(_) => {
-                    if idx < to_hydrate_len {
-                        hydrated_ok += 1;
-                    } else {
-                        revalidated_ok += 1;
-                    }
-                }
-                Err(e) => {
-                    diag::log_diag(&format!("bridge: hydrate body #{number} failed: {e}"));
-                    break;
-                }
-            }
-        }
+        let (hydrated_ok, revalidated_ok) =
+            hydrate_batch(&refresh, to_hydrate, to_revalidate).await;
         diag::log_diag(&format!(
             "bridge: hydration tick complete: hydrated={hydrated_ok} revalidated={revalidated_ok}"
         ));
     }
+}
+
+async fn hydrate_batch(
+    refresh: &sync::SyncOrchestrator,
+    to_hydrate: Vec<u64>,
+    to_revalidate: Vec<(u64, Option<String>)>,
+) -> (u32, u32) {
+    let mut hydrated_ok = 0u32;
+    let mut revalidated_ok = 0u32;
+    let to_hydrate_len = to_hydrate.len();
+    for (idx, (number, prior_etag)) in to_hydrate
+        .into_iter()
+        .map(|number| (number, None::<String>))
+        .chain(to_revalidate)
+        .enumerate()
+    {
+        match refresh.fetch_body_conditional(number, prior_etag).await {
+            Ok(_) => {
+                if idx < to_hydrate_len {
+                    hydrated_ok += 1;
+                } else {
+                    revalidated_ok += 1;
+                }
+            }
+            Err(error) => {
+                diag::log_diag(&format!("bridge: hydrate body #{number} failed: {error}"));
+                break;
+            }
+        }
+    }
+    (hydrated_ok, revalidated_ok)
 }
 
 pub fn hydration_interval_from_env() -> std::time::Duration {

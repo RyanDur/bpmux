@@ -102,7 +102,7 @@ lint_log=$(mktemp); lint_exit=0
 cargo fmt --check >"$fmt_log" 2>&1 &
 fmt_pid=$!
 
-cargo clippy --workspace --all-targets -- -D warnings >"$clippy_log" 2>&1 &
+cargo clippy --workspace --all-targets -- -D warnings -D clippy::cognitive_complexity -D clippy::excessive_nesting -D clippy::fn_params_excessive_bools -D clippy::struct_excessive_bools -D clippy::too_many_lines >"$clippy_log" 2>&1 &
 clippy_pid=$!
 
 env -u BPMUX_PORT -u BPMUX_TERMINAL_ID -u BPMUX_USER_ID -u BPMUX_ROLE -u BPMUX_DATA_BASE cargo nextest run --no-fail-fast --retries 1 --status-level fail --hide-progress-bar >"$nextest_log" 2>&1 &
@@ -165,14 +165,14 @@ for_each_exit_check() {
     fi
 }
 
-[ $fmt_exit -ne 0 ] && exit $fmt_exit
-[ $clippy_exit -ne 0 ] && exit $clippy_exit
+[ $fmt_exit -ne 0 ] && { echo "FAIL: cargo fmt"; exit $fmt_exit; }
+[ $clippy_exit -ne 0 ] && { echo "FAIL: cargo clippy"; exit $clippy_exit; }
 for_each_exit_check "cargo nextest" "$nextest_exit"
-[ $build_exit -ne 0 ] && exit $build_exit
+[ $build_exit -ne 0 ] && { echo "FAIL: electron build+typecheck"; exit $build_exit; }
 for_each_exit_check "npm test:unit" "$unit_exit"
 [ $depcruise_exit -ne 0 ] && { echo "FAIL: architecture signals"; exit $depcruise_exit; }
-[ $inline_exit -ne 0 ] && exit $inline_exit
-[ $lint_exit -ne 0 ] && exit $lint_exit
+[ $inline_exit -ne 0 ] && { echo "FAIL: comment-class gate"; exit $inline_exit; }
+[ $lint_exit -ne 0 ] && { echo "FAIL: eslint + stylelint (pushed files)"; exit $lint_exit; }
 
 # Lighthouse floor on the renderer wave 1 just built (same config CI asserts:
 # a11y 1.0, best-practices 0.85). Local rendering differs from the Linux

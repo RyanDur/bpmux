@@ -43,22 +43,7 @@ pub async fn handle_move_story(
 
     authorization::enforce_move_authorization(role)?;
 
-    if position.is_some() {
-        match target {
-            TargetState::Ready => {}
-            TargetState::Icebox => {
-                return Err(format!(
-                    "#{id} cannot move to the icebox at a position: the icebox is unordered — move to icebox without a position"
-                ));
-            }
-            _ => {
-                return Err(format!(
-                    "'position' only meaningful for the ready column; target_state={} ignores ordering",
-                    target.as_display()
-                ));
-            }
-        }
-    }
+    validate_position(position, &target, id)?;
 
     let r = refresh.ok_or("move_story requires refresh — tracker fallback not supported")?;
     let prior = Some(crate::tools_stories::ensure_story_in_canonical_store(r, select, id).await?);
@@ -79,81 +64,10 @@ pub async fn handle_move_story(
     let actor_short = meta.actor.clone();
     let story_id = StoryId::new(id);
 
-    if was_closed && !target.closes_issue() {
-        r.mutate(StoryEvent::new(
-            meta.clone(),
-            story_id,
-            StoryEventKind::StoryReopened,
-        ))
-        .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
-    }
-
-    if let Some(label) = target.as_label() {
-        let target_state = target.workflow_state().unwrap_or(Work::Retired);
-        let already_labeled = prior
-            .as_ref()
-            .map(|s| s.state() == target_state)
-            .unwrap_or(false);
-        if !already_labeled {
-            r.mutate(StoryEvent::new(
-                meta.clone(),
-                story_id,
-                StoryEventKind::TagAdded {
-                    label: label.to_string(),
-                },
-            ))
-            .map_err(|e| format!("#{id} tag-add enqueue failed: {e}"))?;
-        }
-    }
-
-    match &target {
-        TargetState::Icebox | TargetState::Ready | TargetState::Workflow(_) => {
-            let state = target
-                .workflow_state()
-                .ok_or_else(|| format!("#{id} move target has no workflow state"))?;
-            r.mutate(StoryEvent::new(
-                meta.clone(),
-                story_id,
-                StoryEventKind::StateTransitioned {
-                    new_state: state.clone(),
-                    placement: board::placement_from_target(
-                        &target_str.to_ascii_lowercase().replace([' ', '_'], "-"),
-                        &workflow::board_middle_stage_ids(workflow::current_workflow()),
-                    ),
-                },
-            ))
-            .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
-            if matches!(state, Work::Accepted) && !was_closed {
-                r.mutate(StoryEvent::new(
-                    meta.clone(),
-                    story_id,
-                    StoryEventKind::StoryClosed {
-                        reason: Some(rationale.clone()),
-                    },
-                ))
-                .map_err(|e| format!("#{id} accept-close enqueue failed: {e}"))?;
-            }
-        }
-        TargetState::Retired => {
-            r.mutate(StoryEvent::new(
-                meta.clone(),
-                story_id,
-                StoryEventKind::StateTransitioned {
-                    new_state: Work::Retired,
-                    placement: None,
-                },
-            ))
-            .map_err(|e| format!("#{id} retire-state enqueue failed: {e}"))?;
-            r.mutate(StoryEvent::new(
-                meta.clone(),
-                story_id,
-                StoryEventKind::StoryClosed {
-                    reason: Some(format!("retired: {rationale}")),
-                },
-            ))
-            .map_err(|e| format!("#{id} retire enqueue failed: {e}"))?;
-        }
-    }
+    emit_reopen_and_label(r, &meta, story_id, &target, prior.as_ref(), was_closed)?;
+    emit_transition(
+        r, &meta, story_id, &target, target_str, was_closed, &rationale,
+    )?;
 
     scheduling::apply_scheduling(
         r,
@@ -182,6 +96,120 @@ pub async fn handle_move_story(
         "#{id} moved {from_display} → {to}{pos_msg}",
         to = target.as_display()
     ))
+}
+
+fn validate_position(position: Option<usize>, target: &TargetState, id: u64) -> Result<(), String> {
+    if position.is_none() {
+        return Ok(());
+    }
+    match target {
+        TargetState::Ready => Ok(()),
+        TargetState::Icebox => Err(format!(
+            "#{id} cannot move to the icebox at a position: the icebox is unordered — move to icebox without a position"
+        )),
+        _ => Err(format!(
+            "'position' only meaningful for the ready column; target_state={} ignores ordering",
+            target.as_display()
+        )),
+    }
+}
+
+fn emit_reopen_and_label(
+    r: &SyncOrchestrator,
+    meta: &product_management::story::events::EventMeta,
+    story_id: StoryId,
+    target: &TargetState,
+    prior: Option<&product_management::story::Story>,
+    was_closed: bool,
+) -> Result<(), String> {
+    let id = u64::from(story_id);
+    if was_closed && !target.closes_issue() {
+        r.mutate(StoryEvent::new(
+            meta.clone(),
+            story_id,
+            StoryEventKind::StoryReopened,
+        ))
+        .map_err(|e| format!("#{id} reopen enqueue failed: {e}"))?;
+    }
+    let Some(label) = target.as_label() else {
+        return Ok(());
+    };
+    let target_state = target.workflow_state().unwrap_or(Work::Retired);
+    let already_labeled = prior
+        .map(|story| story.state() == target_state)
+        .unwrap_or(false);
+    if !already_labeled {
+        r.mutate(StoryEvent::new(
+            meta.clone(),
+            story_id,
+            StoryEventKind::TagAdded {
+                label: label.to_string(),
+            },
+        ))
+        .map_err(|e| format!("#{id} tag-add enqueue failed: {e}"))?;
+    }
+    Ok(())
+}
+
+fn emit_transition(
+    r: &SyncOrchestrator,
+    meta: &product_management::story::events::EventMeta,
+    story_id: StoryId,
+    target: &TargetState,
+    target_str: &str,
+    was_closed: bool,
+    rationale: &str,
+) -> Result<(), String> {
+    let id = u64::from(story_id);
+    match target {
+        TargetState::Icebox | TargetState::Ready | TargetState::Workflow(_) => {
+            let state = target
+                .workflow_state()
+                .ok_or_else(|| format!("#{id} move target has no workflow state"))?;
+            r.mutate(StoryEvent::new(
+                meta.clone(),
+                story_id,
+                StoryEventKind::StateTransitioned {
+                    new_state: state.clone(),
+                    placement: board::placement_from_target(
+                        &target_str.to_ascii_lowercase().replace([' ', '_'], "-"),
+                        &workflow::board_middle_stage_ids(workflow::current_workflow()),
+                    ),
+                },
+            ))
+            .map_err(|e| format!("#{id} state enqueue failed: {e}"))?;
+            if matches!(state, Work::Accepted) && !was_closed {
+                r.mutate(StoryEvent::new(
+                    meta.clone(),
+                    story_id,
+                    StoryEventKind::StoryClosed {
+                        reason: Some(rationale.to_string()),
+                    },
+                ))
+                .map_err(|e| format!("#{id} accept-close enqueue failed: {e}"))?;
+            }
+        }
+        TargetState::Retired => {
+            r.mutate(StoryEvent::new(
+                meta.clone(),
+                story_id,
+                StoryEventKind::StateTransitioned {
+                    new_state: Work::Retired,
+                    placement: None,
+                },
+            ))
+            .map_err(|e| format!("#{id} retire-state enqueue failed: {e}"))?;
+            r.mutate(StoryEvent::new(
+                meta.clone(),
+                story_id,
+                StoryEventKind::StoryClosed {
+                    reason: Some(format!("retired: {rationale}")),
+                },
+            ))
+            .map_err(|e| format!("#{id} retire enqueue failed: {e}"))?;
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

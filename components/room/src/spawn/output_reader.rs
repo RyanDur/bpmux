@@ -22,12 +22,7 @@ pub(super) fn spawn_output_reader(
                     break;
                 }
                 Ok(n) => {
-                    if let Some(state) = sniffer.observe(&buf[..n]) {
-                        if state {
-                            paste_capable.store(true, Ordering::Relaxed);
-                        }
-                        current_paste_mode.store(state, Ordering::Relaxed);
-                    }
+                    note_paste_mode(&mut sniffer, &buf[..n], &paste_capable, &current_paste_mode);
                     let _ = output.send(buf[..n].to_vec());
                 }
                 Err(_) => {
@@ -37,4 +32,19 @@ pub(super) fn spawn_output_reader(
             }
         }
     });
+}
+
+fn note_paste_mode(
+    sniffer: &mut PasteModeSniffer,
+    chunk: &[u8],
+    paste_capable: &AtomicBool,
+    current_paste_mode: &AtomicBool,
+) {
+    let Some(state) = sniffer.observe(chunk) else {
+        return;
+    };
+    if state {
+        paste_capable.store(true, Ordering::Relaxed);
+    }
+    current_paste_mode.store(state, Ordering::Relaxed);
 }

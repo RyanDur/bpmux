@@ -106,37 +106,15 @@ pub async fn handle_pass_desk_check(
                 transition.from
             )
         })?;
-        let mut events = Vec::new();
-        if was_closed {
-            events.push(product_management::story::events::StoryEvent::new(
-                meta.clone(),
-                StoryId::new(id),
-                product_management::story::events::StoryEventKind::StoryReopened,
-            ));
-        }
-        events.push(product_management::story::events::StoryEvent::new(
-            meta.clone(),
-            StoryId::new(id),
-            product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
-        ));
-        events.push(product_management::story::events::StoryEvent::new(
-            meta.clone(),
-            StoryId::new(id),
-            product_management::story::events::StoryEventKind::VerdictCast {
-                verdict: product_management::story::Verdict::Succeed {
-                    step: "desk-check".into(),
-                },
-                payload: bypass.clone().map(format_bypass_payload),
-            },
-        ));
-        events.push(product_management::story::events::StoryEvent::new(
+        let events = pass_events(
             meta,
-            StoryId::new(id),
-            product_management::story::events::StoryEventKind::StateTransitioned {
-                new_state,
-                placement,
-            },
-        ));
+            id,
+            was_closed,
+            acceptor,
+            bypass.clone().map(format_bypass_payload),
+            new_state,
+            placement,
+        );
         r.mutate_batch(events)
             .map_err(|e| format!("#{id} pass-desk-check enqueue failed: {e}"))?;
         return Ok(format!(
@@ -144,4 +122,47 @@ pub async fn handle_pass_desk_check(
         ));
     }
     Err("pass_desk_check requires refresh — tracker fallback retired in slice 5n".into())
+}
+
+fn pass_events(
+    meta: product_management::story::events::EventMeta,
+    id: u64,
+    was_closed: bool,
+    acceptor: product_management::story::Acceptor,
+    payload: Option<String>,
+    new_state: product_management::story::Work,
+    placement: Option<workflow::StageId>,
+) -> Vec<product_management::story::events::StoryEvent> {
+    let mut events = Vec::new();
+    if was_closed {
+        events.push(product_management::story::events::StoryEvent::new(
+            meta.clone(),
+            StoryId::new(id),
+            product_management::story::events::StoryEventKind::StoryReopened,
+        ));
+    }
+    events.push(product_management::story::events::StoryEvent::new(
+        meta.clone(),
+        StoryId::new(id),
+        product_management::story::events::StoryEventKind::AcceptorAssigned { acceptor },
+    ));
+    events.push(product_management::story::events::StoryEvent::new(
+        meta.clone(),
+        StoryId::new(id),
+        product_management::story::events::StoryEventKind::VerdictCast {
+            verdict: product_management::story::Verdict::Succeed {
+                step: "desk-check".into(),
+            },
+            payload,
+        },
+    ));
+    events.push(product_management::story::events::StoryEvent::new(
+        meta,
+        StoryId::new(id),
+        product_management::story::events::StoryEventKind::StateTransitioned {
+            new_state,
+            placement,
+        },
+    ));
+    events
 }

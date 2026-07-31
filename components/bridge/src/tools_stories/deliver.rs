@@ -81,35 +81,54 @@ pub async fn handle_deliver_story(
                 held_step.as_str()
             )
         })?;
-        let mut events = Vec::new();
-        if was_closed {
-            events.push(StoryEvent::new(
-                meta.clone(),
-                StoryId::new(id),
-                StoryEventKind::StoryReopened,
-            ));
-        }
-        events.push(StoryEvent::new(
-            meta.clone(),
-            StoryId::new(id),
-            StoryEventKind::VerdictCast {
-                verdict: Verdict::Succeed {
-                    step: "in-progress".into(),
-                },
-                payload: Some(verified_observation.to_string()),
-            },
-        ));
-        events.push(StoryEvent::new(
+        let events = deliver_events(
             meta,
-            StoryId::new(id),
-            StoryEventKind::StateTransitioned {
-                new_state,
-                placement,
-            },
-        ));
+            id,
+            was_closed,
+            verified_observation,
+            new_state,
+            placement,
+        );
         r.mutate_batch(events)
             .map_err(|e| format!("#{id} deliver enqueue failed: {e}"))?;
         return Ok(format!("#{id} delivered: signals sent, labels updated"));
     }
     Err("deliver_story requires refresh — tracker fallback retired in slice 5n".into())
+}
+
+fn deliver_events(
+    meta: product_management::story::events::EventMeta,
+    id: u64,
+    was_closed: bool,
+    verified_observation: &str,
+    new_state: product_management::story::Work,
+    placement: Option<workflow::StageId>,
+) -> Vec<StoryEvent> {
+    let mut events = Vec::new();
+    if was_closed {
+        events.push(StoryEvent::new(
+            meta.clone(),
+            StoryId::new(id),
+            StoryEventKind::StoryReopened,
+        ));
+    }
+    events.push(StoryEvent::new(
+        meta.clone(),
+        StoryId::new(id),
+        StoryEventKind::VerdictCast {
+            verdict: Verdict::Succeed {
+                step: "in-progress".into(),
+            },
+            payload: Some(verified_observation.to_string()),
+        },
+    ));
+    events.push(StoryEvent::new(
+        meta,
+        StoryId::new(id),
+        StoryEventKind::StateTransitioned {
+            new_state,
+            placement,
+        },
+    ));
+    events
 }

@@ -1,6 +1,5 @@
 import { defineConfig } from 'eslint/config'
 import tseslint from '@electron-toolkit/eslint-config-ts'
-import eslintConfigPrettier from '@electron-toolkit/eslint-config-prettier'
 import eslintPluginReact from 'eslint-plugin-react'
 import eslintPluginReactHooks from 'eslint-plugin-react-hooks'
 import eslintPluginReactRefresh from 'eslint-plugin-react-refresh'
@@ -8,6 +7,7 @@ import eslintPluginTestingLibrary from 'eslint-plugin-testing-library'
 import eslintPluginJestDom from 'eslint-plugin-jest-dom'
 import eslintPluginJsxA11y from 'eslint-plugin-jsx-a11y'
 import eslintPluginPreferArrow from 'eslint-plugin-prefer-arrow-functions'
+import eslintPluginSonarjs from 'eslint-plugin-sonarjs'
 
 // Shared no-restricted-syntax selectors. no-restricted-syntax REPLACES (does not
 // merge) across flat-config blocks, so a per-file waiver that needs to drop ONE
@@ -62,7 +62,8 @@ export default defineConfig(
     plugins: {
       'react-hooks': eslintPluginReactHooks,
       'react-refresh': eslintPluginReactRefresh,
-      'prefer-arrow-functions': eslintPluginPreferArrow
+      'prefer-arrow-functions': eslintPluginPreferArrow,
+      sonarjs: eslintPluginSonarjs
     },
     rules: {
       ...eslintPluginReactHooks.configs.recommended.rules,
@@ -71,6 +72,16 @@ export default defineConfig(
       'prefer-arrow-functions/prefer-arrow-functions': ['error', { returnStyle: 'unchanged' }],
       'prefer-arrow-callback': 'error',
       'prefer-const': 'error',
+      'sonarjs/cognitive-complexity': ['error', 15],
+      'max-depth': ['error', 3],
+      'max-params': ['error', 4],
+      'max-nested-callbacks': ['error', 3],
+      'arrow-body-style': ['error', 'as-needed'],
+      'object-shorthand': ['error', 'always'],
+      'no-lonely-if': 'error',
+      'no-else-return': ['error', { allowElseIf: false }],
+      'no-useless-rename': 'error',
+      'no-extra-boolean-cast': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
       '@typescript-eslint/no-unused-vars': [
@@ -129,19 +140,31 @@ export default defineConfig(
     rules: { 'jsx-a11y/no-autofocus': 'off' }
   },
   {
+    files: [
+      '**/*.test.{ts,tsx}',
+      '**/*.spec.{ts,tsx}',
+      '**/test-support/**/*.{ts,tsx}',
+      'test/**/*.{ts,tsx}',
+      'tests/**/*.{ts,tsx}'
+    ],
+    rules: {
+      'max-nested-callbacks': ['error', 6]
+    }
+  },
+  {
     files: ['**/*.test.{ts,tsx}', '**/test-support/**/*.{ts,tsx}'],
     plugins: {
       'testing-library': eslintPluginTestingLibrary,
       'jest-dom': eslintPluginJestDom
     },
     rules: {
-      'testing-library/prefer-user-event': 'warn',
-      'testing-library/no-container': 'warn',
-      'testing-library/no-unnecessary-act': 'warn',
-      'testing-library/prefer-screen-queries': 'warn',
-      'testing-library/prefer-find-by': 'warn',
-      'testing-library/no-debugging-utils': 'warn',
-      'jest-dom/prefer-enabled-disabled': 'warn'
+      'testing-library/prefer-user-event': 'error',
+      'testing-library/no-container': 'error',
+      'testing-library/no-unnecessary-act': 'error',
+      'testing-library/prefer-screen-queries': 'error',
+      'testing-library/prefer-find-by': 'error',
+      'testing-library/no-debugging-utils': 'error',
+      'jest-dom/prefer-enabled-disabled': 'error'
     }
   },
   {
@@ -164,8 +187,8 @@ export default defineConfig(
       '@typescript-eslint/switch-exhaustiveness-check': [
         'error',
         { considerDefaultExhaustiveForUnions: true }
-      ]
+      ],
+      '@typescript-eslint/no-unnecessary-boolean-literal-compare': 'error'
     }
-  },
-  eslintConfigPrettier
+  }
 )

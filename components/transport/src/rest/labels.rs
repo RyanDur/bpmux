@@ -48,49 +48,7 @@ pub async fn post_story_labels(
         );
     };
     for op in reorder_label_ops(&payload) {
-        let meta = sync::cache_fill_meta();
-        let story_id = product_management::story::StoryId::new(id);
-        let codec = source_codec::gh_label_codec::GhLabelCodec;
-        let (event, descriptor) = match op {
-            LabelOp::Add(label) => {
-                let descriptor = format!("TagAdded {label} on #{id}");
-                let event = if let Some(tag) = codec.decode_tag(&label) {
-                    Some(product_management::story::events::StoryEvent::new(
-                        meta,
-                        story_id,
-                        product_management::story::events::StoryEventKind::TagSet { tag },
-                    ))
-                } else if codec.is_iteration_label_loose(&label) {
-                    None
-                } else {
-                    Some(product_management::story::events::StoryEvent::new(
-                        meta,
-                        story_id,
-                        product_management::story::events::StoryEventKind::TagAdded { label },
-                    ))
-                };
-                (event, descriptor)
-            }
-            LabelOp::Remove(label) => {
-                let descriptor = format!("TagRemoved {label} on #{id}");
-                let event = if let Some(tag) = codec.decode_tag(&label) {
-                    Some(product_management::story::events::StoryEvent::new(
-                        meta,
-                        story_id,
-                        product_management::story::events::StoryEventKind::TagUnset { tag },
-                    ))
-                } else if codec.is_iteration_label_loose(&label) {
-                    None
-                } else {
-                    Some(product_management::story::events::StoryEvent::new(
-                        meta,
-                        story_id,
-                        product_management::story::events::StoryEventKind::TagRemoved { label },
-                    ))
-                };
-                (event, descriptor)
-            }
-        };
+        let (event, descriptor) = label_event(op, id);
         let Some(event) = event else {
             continue;
         };
@@ -110,32 +68,10 @@ pub async fn post_story_labels(
     }) {
         let codec = source_codec::gh_label_codec::GhLabelCodec;
         for label in &payload.add {
-            if let Some(order) = codec.decode_iteration_order(label) {
-                iteration.iteration_order = Some(order);
-            } else if let Some(role) = codec.decode_iteration_review_closer(label) {
-                if !iteration.review_closers.contains(&role) {
-                    iteration.review_closers.push(role);
-                }
-            } else if let Some(role) = codec.decode_iteration_dev_ok(label) {
-                if !iteration.dev_ok_by.contains(&role) {
-                    iteration.dev_ok_by.push(role);
-                }
-            } else if codec.is_current_iteration_label(label) {
-                iteration.is_current = true;
-            }
+            apply_added_iteration_label(&mut iteration, &codec, label);
         }
         for label in &payload.remove {
-            if let Some(order) = codec.decode_iteration_order(label) {
-                if iteration.iteration_order == Some(order) {
-                    iteration.iteration_order = None;
-                }
-            } else if let Some(role) = codec.decode_iteration_review_closer(label) {
-                iteration.review_closers.retain(|r| r != &role);
-            } else if let Some(role) = codec.decode_iteration_dev_ok(label) {
-                iteration.dev_ok_by.retain(|r| r != &role);
-            } else if codec.is_current_iteration_label(label) {
-                iteration.is_current = false;
-            }
+            apply_removed_iteration_label(&mut iteration, &codec, label);
         }
         dispatcher.dispatch(store::AppAction::Iteration(
             product_management::iteration::IterationAction::Upserted(vec![iteration]),
@@ -148,4 +84,94 @@ pub async fn post_story_labels(
         json_headers(),
         serde_json::json!({ "ok": true, "id": id }).to_string(),
     )
+}
+
+fn label_event(
+    op: LabelOp,
+    id: u64,
+) -> (
+    Option<product_management::story::events::StoryEvent>,
+    String,
+) {
+    let meta = sync::cache_fill_meta();
+    let story_id = product_management::story::StoryId::new(id);
+    let codec = source_codec::gh_label_codec::GhLabelCodec;
+    match op {
+        LabelOp::Add(label) => {
+            let descriptor = format!("TagAdded {label} on #{id}");
+            let event = if let Some(tag) = codec.decode_tag(&label) {
+                Some(product_management::story::events::StoryEvent::new(
+                    meta,
+                    story_id,
+                    product_management::story::events::StoryEventKind::TagSet { tag },
+                ))
+            } else if codec.is_iteration_label_loose(&label) {
+                None
+            } else {
+                Some(product_management::story::events::StoryEvent::new(
+                    meta,
+                    story_id,
+                    product_management::story::events::StoryEventKind::TagAdded { label },
+                ))
+            };
+            (event, descriptor)
+        }
+        LabelOp::Remove(label) => {
+            let descriptor = format!("TagRemoved {label} on #{id}");
+            let event = if let Some(tag) = codec.decode_tag(&label) {
+                Some(product_management::story::events::StoryEvent::new(
+                    meta,
+                    story_id,
+                    product_management::story::events::StoryEventKind::TagUnset { tag },
+                ))
+            } else if codec.is_iteration_label_loose(&label) {
+                None
+            } else {
+                Some(product_management::story::events::StoryEvent::new(
+                    meta,
+                    story_id,
+                    product_management::story::events::StoryEventKind::TagRemoved { label },
+                ))
+            };
+            (event, descriptor)
+        }
+    }
+}
+
+fn apply_added_iteration_label(
+    iteration: &mut product_management::iteration::Iteration,
+    codec: &source_codec::gh_label_codec::GhLabelCodec,
+    label: &str,
+) {
+    if let Some(order) = codec.decode_iteration_order(label) {
+        iteration.iteration_order = Some(order);
+    } else if let Some(role) = codec.decode_iteration_review_closer(label) {
+        if !iteration.review_closers.contains(&role) {
+            iteration.review_closers.push(role);
+        }
+    } else if let Some(role) = codec.decode_iteration_dev_ok(label) {
+        if !iteration.dev_ok_by.contains(&role) {
+            iteration.dev_ok_by.push(role);
+        }
+    } else if codec.is_current_iteration_label(label) {
+        iteration.is_current = true;
+    }
+}
+
+fn apply_removed_iteration_label(
+    iteration: &mut product_management::iteration::Iteration,
+    codec: &source_codec::gh_label_codec::GhLabelCodec,
+    label: &str,
+) {
+    if let Some(order) = codec.decode_iteration_order(label) {
+        if iteration.iteration_order == Some(order) {
+            iteration.iteration_order = None;
+        }
+    } else if let Some(role) = codec.decode_iteration_review_closer(label) {
+        iteration.review_closers.retain(|closer| closer != &role);
+    } else if let Some(role) = codec.decode_iteration_dev_ok(label) {
+        iteration.dev_ok_by.retain(|approver| approver != &role);
+    } else if codec.is_current_iteration_label(label) {
+        iteration.is_current = false;
+    }
 }

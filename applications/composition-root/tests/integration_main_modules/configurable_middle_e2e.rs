@@ -125,6 +125,10 @@ fn pass_args(id: u64) -> serde_json::Value {
     })
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "an end-to-end journey pinned as one narrative — splitting it into helpers would hide the arc the test documents"
+)]
 #[test]
 fn a_three_stage_middle_drives_end_to_end_with_per_stage_judges() {
     let root = project_root_with(THREE_STAGE_WORKFLOW);

@@ -6,6 +6,11 @@ use tokio::sync::Mutex;
 use super::event_subscription::SubscriptionRegistry;
 use super::{McpError, WsSink, rpc_client, tools};
 
+#[expect(
+    clippy::cognitive_complexity,
+    clippy::too_many_lines,
+    reason = "flat exhaustive dispatch — the one table mapping every wire tool name to its handler; splitting it would scatter the tool registry, and clippy charges per arm where the Sonar spec charges the match once"
+)]
 pub(super) async fn dispatch_tool_call(
     port: u16,
     name: Arc<Mutex<String>>,

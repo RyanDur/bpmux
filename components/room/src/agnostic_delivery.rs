@@ -29,21 +29,26 @@ pub fn spawn_terminal_delivery_loop(
     tokio::spawn(async move {
         loop {
             match rx.recv().await {
-                Ok(msg) => {
-                    for inject in deliver_to_terminals(&msg, &registry, &select, &dispatch) {
-                        spawn_deferred_inject(registry.clone(), dispatch.clone(), inject);
-                    }
-                    for inject in super::wake_delivery::wake_committed_terminals(
-                        &msg, &registry, &select, &dispatch,
-                    ) {
-                        spawn_deferred_inject(registry.clone(), dispatch.clone(), inject);
-                    }
-                }
+                Ok(msg) => deliver_message(&msg, &registry, &select, &dispatch),
                 Err(broadcast::error::RecvError::Lagged(_)) => continue,
                 Err(broadcast::error::RecvError::Closed) => break,
             }
         }
     });
+}
+
+fn deliver_message(
+    msg: &Message,
+    registry: &Arc<LivePtyRegistry>,
+    select: &Select,
+    dispatch: &Dispatch,
+) {
+    for inject in deliver_to_terminals(msg, registry, select, dispatch) {
+        spawn_deferred_inject(registry.clone(), dispatch.clone(), inject);
+    }
+    for inject in super::wake_delivery::wake_committed_terminals(msg, registry, select, dispatch) {
+        spawn_deferred_inject(registry.clone(), dispatch.clone(), inject);
+    }
 }
 
 fn mark_delivered(dispatch: &Dispatch, user_id: &str, ts: &str) {
@@ -74,12 +79,13 @@ pub(crate) fn spawn_deferred_inject(
             let owner_paused = registry
                 .human_input_age(&inject.terminal_id)
                 .is_none_or(|age| age >= HOLD_DEBOUNCE);
-            if owner_paused || start.elapsed() >= HOLD_MAX {
-                if registry.submit_to(&inject.terminal_id, inject.line.as_bytes()) {
-                    mark_delivered(&dispatch, &inject.user_id, &inject.ts);
-                }
-                return;
+            if !owner_paused && start.elapsed() < HOLD_MAX {
+                continue;
             }
+            if registry.submit_to(&inject.terminal_id, inject.line.as_bytes()) {
+                mark_delivered(&dispatch, &inject.user_id, &inject.ts);
+            }
+            return;
         }
     });
 }

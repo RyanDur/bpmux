@@ -178,61 +178,25 @@ impl TestBridge {
     }
 
     async fn wait_until_ws_ready(&self, name: &str) {
-        let _ = tokio::time::timeout(Duration::from_secs(30), async {
-            loop {
-                let mut params = rmcp::model::CallToolRequestParams::new("set_name");
-                params.arguments = serde_json::json!({ "name": name }).as_object().cloned();
-                let result = self.client.peer().call_tool(params).await;
-                if let Ok(ref tool_result) = result
-                    && !tool_result.is_error.unwrap_or(false)
-                {
-                    return;
-                }
-                tokio::time::sleep(Duration::from_millis(100)).await;
-            }
-        })
+        let _ = tokio::time::timeout(
+            Duration::from_secs(30),
+            set_name_accepted_eventually(self, name),
+        )
         .await;
     }
 
     pub async fn send(&self, text: &str) {
-        tokio::time::timeout(Duration::from_secs(30), async {
-            loop {
-                let mut params = rmcp::model::CallToolRequestParams::new("send_message");
-                params.arguments = serde_json::json!({"text": text}).as_object().cloned();
-                let result = self
-                    .client
-                    .peer()
-                    .call_tool(params)
-                    .await
-                    .expect("tool call");
-                if !result.is_error.unwrap_or(false) {
-                    return;
-                }
-                tokio::time::sleep(Duration::from_millis(100)).await;
-            }
-        })
+        tokio::time::timeout(
+            Duration::from_secs(30),
+            send_accepted_eventually(self, text),
+        )
         .await
         .expect("bridge should become ready within timeout");
     }
 
     pub async fn wait_for_message(&self, substring: &str, timeout: Duration) {
-        let result = tokio::time::timeout(timeout, async {
-            loop {
-                let params = rmcp::model::CallToolRequestParams::new("read_messages");
-                let result = self
-                    .client
-                    .peer()
-                    .call_tool(params)
-                    .await
-                    .expect("read_messages");
-                let text = format!("{result:?}");
-                if text.contains(substring) {
-                    return;
-                }
-                tokio::time::sleep(Duration::from_millis(200)).await;
-            }
-        })
-        .await;
+        let result =
+            tokio::time::timeout(timeout, message_readable_eventually(self, substring)).await;
         assert!(
             result.is_ok(),
             "message containing {substring:?} not read within {timeout:?}"
@@ -287,18 +251,65 @@ impl TestBridge {
                 .first()
                 .and_then(|c| c.as_text().map(|t| t.text.clone()))
                 .unwrap_or_default();
-            if result.is_error.unwrap_or(false) {
-                if text.contains("not connected to bpmux") && std::time::Instant::now() < deadline {
-                    tokio::time::sleep(Duration::from_millis(100)).await;
-                    continue;
-                }
-                return Err(text);
+            if !result.is_error.unwrap_or(false) {
+                return Ok(serde_json::from_str(&text).unwrap_or(serde_json::Value::String(text)));
             }
-            return Ok(serde_json::from_str(&text).unwrap_or(serde_json::Value::String(text)));
+            if text.contains("not connected to bpmux") && std::time::Instant::now() < deadline {
+                tokio::time::sleep(Duration::from_millis(100)).await;
+                continue;
+            }
+            return Err(text);
         }
     }
 
     pub async fn close(self) {
         let _ = tokio::time::timeout(Duration::from_secs(2), self.client.cancel()).await;
+    }
+}
+
+async fn set_name_accepted_eventually(bridge: &TestBridge, name: &str) {
+    loop {
+        let mut params = rmcp::model::CallToolRequestParams::new("set_name");
+        params.arguments = serde_json::json!({ "name": name }).as_object().cloned();
+        let result = bridge.client.peer().call_tool(params).await;
+        if let Ok(ref tool_result) = result
+            && !tool_result.is_error.unwrap_or(false)
+        {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+}
+
+async fn send_accepted_eventually(bridge: &TestBridge, text: &str) {
+    loop {
+        let mut params = rmcp::model::CallToolRequestParams::new("send_message");
+        params.arguments = serde_json::json!({"text": text}).as_object().cloned();
+        let result = bridge
+            .client
+            .peer()
+            .call_tool(params)
+            .await
+            .expect("tool call");
+        if !result.is_error.unwrap_or(false) {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+}
+
+async fn message_readable_eventually(bridge: &TestBridge, substring: &str) {
+    loop {
+        let params = rmcp::model::CallToolRequestParams::new("read_messages");
+        let result = bridge
+            .client
+            .peer()
+            .call_tool(params)
+            .await
+            .expect("read_messages");
+        if format!("{result:?}").contains(substring) {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(200)).await;
     }
 }

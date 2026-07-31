@@ -77,13 +77,9 @@ impl HandoffTracker {
         };
         const RESPONSE_SCAN_WINDOW: usize = 200;
         if let Ok(messages) = host.read_recent(RESPONSE_SCAN_WINDOW, 0, &|_| true) {
-            let recipient_responded = messages.iter().any(|m| {
-                if !m.is_chat() {
-                    return false;
-                }
-                let sender = m.from.split(':').next().unwrap_or(&m.from);
-                sender == h.to && m.ts > h.ts
-            });
+            let recipient_responded = messages
+                .iter()
+                .any(|message| chat_response_from(message, &h.to, h.ts));
             if recipient_responded {
                 return;
             }
@@ -102,6 +98,18 @@ impl HandoffTracker {
         };
         let _ = host.broadcast(&nudge);
     }
+}
+
+fn chat_response_from(
+    message: &Message,
+    recipient: &str,
+    since: chrono::DateTime<chrono::Utc>,
+) -> bool {
+    if !message.is_chat() {
+        return false;
+    }
+    let sender = message.from.split(':').next().unwrap_or(&message.from);
+    sender == recipient && message.ts > since
 }
 
 fn detect_handoff(text: &str, agents: &[String], owner_name: &str) -> Option<String> {

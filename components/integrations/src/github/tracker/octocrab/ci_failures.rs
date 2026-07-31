@@ -112,57 +112,13 @@ impl OctocrabStoryTracker {
             if job.conclusion.as_deref() != Some("failure") {
                 continue;
             }
-            let log_path = format!(
-                "/repos/{}/{}/actions/jobs/{}/logs",
-                self.owner, self.repo, job.id
-            );
-            use http_body_util::BodyExt;
-            let log_text = match self.client._get(log_path).await {
-                Ok(resp) => {
-                    let body = resp.into_body().collect().await;
-                    match body {
-                        Ok(collected) => String::from_utf8_lossy(&collected.to_bytes()).to_string(),
-                        Err(e) => {
-                            diag::log_diag(&format!(
-                                "tracker: collect log body for job {} failed: {e}",
-                                job.id
-                            ));
-                            continue;
-                        }
-                    }
-                }
-                Err(e) => {
-                    diag::log_diag(&format!("tracker: get log for job {} failed: {e}", job.id));
-                    continue;
-                }
+            let Some(log_text) = self.fetch_job_log(job.id).await else {
+                continue;
             };
-            let parsed = ci::parse_playwright_failures_from_log(run_id, &log_text);
-            if parsed.failures.is_empty() {
-                let fallback = ci::build_non_test_failure_record(&job.name, &log_text);
-                all_failures.push(fallback);
-            } else {
-                for mut failure in parsed.failures {
-                    failure.shard_id = Some(job.name.clone());
-                    failure.stage = Some(job.name.clone());
-                    all_failures.push(failure);
-                }
-            }
+            all_failures.extend(job_failures(run_id, &job.name, &log_text));
         }
         let final_failures = if all_failures.is_empty() && conclusion == "failure" {
-            vec![ci::CiTestFailure {
-                shard_id: Some("(workflow)".to_string()),
-                test_name: "(workflow failure: no job reached conclusion=failure)".to_string(),
-                file: None,
-                line: None,
-                error_message: format!(
-                    "workflow run {run_id} conclusion=failure but no per-job failure-conclusion found. \
-                     Likely runner-infrastructure failure (cancelled / host died / pre-job setup). \
-                     Inspect GH Actions UI directly for this run."
-                ),
-                retry_count: 0,
-                stage: Some("(workflow)".to_string()),
-                class: Some("unknown_failure_class".to_string()),
-            }]
+            vec![workflow_failure_fallback(run_id)]
         } else {
             all_failures
         };
@@ -171,5 +127,64 @@ impl OctocrabStoryTracker {
             conclusion,
             failures: final_failures,
         })
+    }
+
+    async fn fetch_job_log(&self, job_id: u64) -> Option<String> {
+        use http_body_util::BodyExt;
+        let log_path = format!(
+            "/repos/{}/{}/actions/jobs/{job_id}/logs",
+            self.owner, self.repo
+        );
+        let response = match self.client._get(log_path).await {
+            Ok(response) => response,
+            Err(error) => {
+                diag::log_diag(&format!(
+                    "tracker: get log for job {job_id} failed: {error}"
+                ));
+                return None;
+            }
+        };
+        match response.into_body().collect().await {
+            Ok(collected) => Some(String::from_utf8_lossy(&collected.to_bytes()).to_string()),
+            Err(error) => {
+                diag::log_diag(&format!(
+                    "tracker: collect log body for job {job_id} failed: {error}"
+                ));
+                None
+            }
+        }
+    }
+}
+
+fn job_failures(run_id: u64, job_name: &str, log_text: &str) -> Vec<ci::CiTestFailure> {
+    let parsed = ci::parse_playwright_failures_from_log(run_id, log_text);
+    if parsed.failures.is_empty() {
+        return vec![ci::build_non_test_failure_record(job_name, log_text)];
+    }
+    parsed
+        .failures
+        .into_iter()
+        .map(|mut failure| {
+            failure.shard_id = Some(job_name.to_string());
+            failure.stage = Some(job_name.to_string());
+            failure
+        })
+        .collect()
+}
+
+fn workflow_failure_fallback(run_id: u64) -> ci::CiTestFailure {
+    ci::CiTestFailure {
+        shard_id: Some("(workflow)".to_string()),
+        test_name: "(workflow failure: no job reached conclusion=failure)".to_string(),
+        file: None,
+        line: None,
+        error_message: format!(
+            "workflow run {run_id} conclusion=failure but no per-job failure-conclusion found. \
+             Likely runner-infrastructure failure (cancelled / host died / pre-job setup). \
+             Inspect GH Actions UI directly for this run."
+        ),
+        retry_count: 0,
+        stage: Some("(workflow)".to_string()),
+        class: Some("unknown_failure_class".to_string()),
     }
 }

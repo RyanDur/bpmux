@@ -61,7 +61,7 @@ lint_log=$(mktemp); lint_exit=0
 cargo fmt --check >"$fmt_log" 2>&1 &
 fmt_pid=$!
 
-cargo clippy --lib --tests -- -D warnings >"$clippy_log" 2>&1 &
+cargo clippy --lib --tests -- -D warnings -D clippy::cognitive_complexity -D clippy::excessive_nesting -D clippy::fn_params_excessive_bools -D clippy::struct_excessive_bools -D clippy::too_many_lines >"$clippy_log" 2>&1 &
 clippy_pid=$!
 
 env -u BPMUX_PORT -u BPMUX_TERMINAL_ID -u BPMUX_USER_ID -u BPMUX_ROLE -u BPMUX_DATA_BASE cargo nextest run --no-fail-fast --retries 1 --status-level fail --hide-progress-bar >"$nextest_log" 2>&1 &
@@ -107,19 +107,19 @@ rm -f "$fmt_log" "$clippy_log" "$nextest_log" "$unit_log" "$inline_log" "$lint_l
 # Treat 141 (SIGPIPE) as warn-not-fail per #1135 — Playwright's
 # vitest reporter can SIGPIPE on stdout pipe-close even when all
 # tests pass.
-[ $fmt_exit -ne 0 ] && exit $fmt_exit
-[ $clippy_exit -ne 0 ] && exit $clippy_exit
-[ $nextest_exit -ne 0 ] && [ $nextest_exit -ne 141 ] && exit $nextest_exit
+[ $fmt_exit -ne 0 ] && { echo "FAIL: cargo fmt"; exit $fmt_exit; }
+[ $clippy_exit -ne 0 ] && { echo "FAIL: cargo clippy"; exit $clippy_exit; }
+[ $nextest_exit -ne 0 ] && [ $nextest_exit -ne 141 ] && { echo "FAIL: cargo nextest"; exit $nextest_exit; }
 if [ $nextest_exit -eq 141 ]; then
     echo "WARN: cargo nextest exited 141 (SIGPIPE — reporter pipe-close, not test failure)"
 fi
 [ $signals_exit -ne 0 ] && { echo "FAIL: architecture signals"; exit $signals_exit; }
-[ $unit_exit -ne 0 ] && [ $unit_exit -ne 141 ] && exit $unit_exit
+[ $unit_exit -ne 0 ] && [ $unit_exit -ne 141 ] && { echo "FAIL: npm test:unit"; exit $unit_exit; }
 if [ $unit_exit -eq 141 ]; then
     echo "WARN: npm test:unit exited 141 (SIGPIPE — reporter pipe-close, not test failure)"
 fi
-[ $inline_exit -ne 0 ] && exit $inline_exit
-[ $lint_exit -ne 0 ] && exit $lint_exit
+[ $inline_exit -ne 0 ] && { echo "FAIL: comment-class gate"; exit $inline_exit; }
+[ $lint_exit -ne 0 ] && { echo "FAIL: eslint + stylelint (staged)"; exit $lint_exit; }
 
 # cargo audit runs sequentially after parallel block — it locks the
 # Cargo registry index briefly and parallel-cargo can deadlock.

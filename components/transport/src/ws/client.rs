@@ -26,6 +26,11 @@ pub struct ClientCtx<'a> {
     pub routing_user_id: &'a Option<String>,
 }
 
+#[expect(
+    clippy::cognitive_complexity,
+    clippy::too_many_lines,
+    reason = "flat exhaustive dispatch — the one table mapping every client wire verb to its handler; splitting it would scatter the verb registry, and clippy charges per arm where the Sonar spec charges the match once"
+)]
 pub async fn handle_client_message(
     text: &str,
     identity: &str,

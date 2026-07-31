@@ -13,7 +13,10 @@ const lintAs = async (code: string, filePath: string): Promise<ESLint.LintResult
       {
         files: ['**/*.{ts,tsx}'],
         languageOptions: { parserOptions: { projectService: false } },
-        rules: { '@typescript-eslint/switch-exhaustiveness-check': 'off' }
+        rules: {
+          '@typescript-eslint/switch-exhaustiveness-check': 'off',
+          '@typescript-eslint/no-unnecessary-boolean-literal-compare': 'off'
+        }
       }
     ]
   })

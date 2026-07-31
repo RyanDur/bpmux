@@ -151,6 +151,10 @@ mod reopen_on_state_transition_tests {
         );
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "a lifecycle walk — success, fail, reject, re-entry — pinned as one narrative; splitting it into helpers would hide the arc the test documents"
+    )]
     #[tokio::test]
     async fn the_full_lifecycle_walks_success_fail_reject_and_re_entry() {
         let seeded_story = Story::new_minimal(

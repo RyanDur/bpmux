@@ -44,6 +44,17 @@ where
     false
 }
 
+async fn owner_rejection_arrives(peer: &mut WsPeer) -> bool {
+    loop {
+        let Some(frame) = peer.next_text().await else {
+            return false;
+        };
+        if let Ok(ServerMessage::Error { reason }) = serde_json::from_str::<ServerMessage>(&frame) {
+            return reason.to_lowercase().contains("owner");
+        }
+    }
+}
+
 #[test]
 fn rename_reaps_prior_auto_identity_from_roster() {
     let bpmux = TestBpmux::start();
@@ -90,20 +101,10 @@ fn rename_to_the_reserved_owner_identity_is_rejected_over_ws() {
 
         peer.rename("owner").await;
 
-        let rejected = tokio::time::timeout(Duration::from_secs(5), async {
-            loop {
-                let Some(frame) = peer.next_text().await else {
-                    return false;
-                };
-                if let Ok(ServerMessage::Error { reason }) =
-                    serde_json::from_str::<ServerMessage>(&frame)
-                {
-                    return reason.to_lowercase().contains("owner");
-                }
-            }
-        })
-        .await
-        .expect("a frame within 5s");
+        let rejected =
+            tokio::time::timeout(Duration::from_secs(5), owner_rejection_arrives(&mut peer))
+                .await
+                .expect("a frame within 5s");
         assert!(
             rejected,
             "renaming to the OWNER identity over WS must be rejected with a ServerMessage::Error — the WS set_name-validation locus enforces the auto-submit attribution-boundary (an agent renamed to 'owner' would get owner-framed messages via frame_team_message's short_name(from)). This pins the WS wiring so a regression of the Rename arm cannot silently re-open owner-forgery CI-undetected, matching the REST register_rejects e2e"

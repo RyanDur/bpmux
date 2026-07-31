@@ -197,12 +197,7 @@ mod verdict_substrate_integration {
             "block still cites expiry — the reprompt is additive, never a bypass; got {err}"
         );
 
-        let mut reprompts = Vec::new();
-        while let Ok(msg) = rx.try_recv() {
-            if msg.text.contains("submit_verdict") {
-                reprompts.push(msg);
-            }
-        }
+        let reprompts = drain_reprompts(&mut rx);
         assert_eq!(
             reprompts.len(),
             2,
@@ -281,12 +276,7 @@ mod verdict_substrate_integration {
             "substrate-change expiry routes through the same expired path; got {err}"
         );
 
-        let mut reprompts = Vec::new();
-        while let Ok(msg) = rx.try_recv() {
-            if msg.text.contains("submit_verdict") {
-                reprompts.push(msg);
-            }
-        }
+        let reprompts = drain_reprompts(&mut rx);
         assert_eq!(
             reprompts.len(),
             2,
@@ -646,5 +636,17 @@ mod verdict_substrate_integration {
             records[0]["expires_at"].is_string(),
             "freshness must surface expires_at (cast_at + accept-window) in view_verdicts; got {records:?}"
         );
+    }
+
+    fn drain_reprompts(
+        rx: &mut tokio::sync::broadcast::Receiver<message::Message>,
+    ) -> Vec<message::Message> {
+        let mut reprompts = Vec::new();
+        while let Ok(msg) = rx.try_recv() {
+            if msg.text.contains("submit_verdict") {
+                reprompts.push(msg);
+            }
+        }
+        reprompts
     }
 }

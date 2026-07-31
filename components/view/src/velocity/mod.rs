@@ -89,42 +89,10 @@ pub fn compute(
 
     let delivered_per_day = delivered_in_window as f64 / WINDOW_DAYS as f64;
 
-    let mut pickup_durations: Vec<f64> = Vec::new();
-    for ((number, lc), deliver_times) in &events {
-        if *lc != Lifecycle::Delivered {
-            continue;
-        }
-        let starts = events.get(&(*number, Lifecycle::Started));
-        for d in deliver_times {
-            if let Some(starts) = starts
-                && let Some(best_start) = starts.iter().filter(|s| s <= &d).max()
-            {
-                let hours = (*d - *best_start).num_minutes() as f64 / 60.0;
-                if hours >= 0.0 {
-                    pickup_durations.push(hours);
-                }
-            }
-        }
-    }
+    let mut pickup_durations = stage_durations(&events, Lifecycle::Started, Lifecycle::Delivered);
     let median_pickup_to_deliver_hours = median(&mut pickup_durations);
 
-    let mut accept_durations: Vec<f64> = Vec::new();
-    for ((number, lc), accept_times) in &events {
-        if *lc != Lifecycle::Accepted {
-            continue;
-        }
-        let delivers = events.get(&(*number, Lifecycle::Delivered));
-        for a in accept_times {
-            if let Some(delivers) = delivers
-                && let Some(best_deliver) = delivers.iter().filter(|d| d <= &a).max()
-            {
-                let hours = (*a - *best_deliver).num_minutes() as f64 / 60.0;
-                if hours >= 0.0 {
-                    accept_durations.push(hours);
-                }
-            }
-        }
-    }
+    let mut accept_durations = stage_durations(&events, Lifecycle::Delivered, Lifecycle::Accepted);
     let median_deliver_to_accept_hours = median(&mut accept_durations);
 
     let fail_count: usize = events
@@ -161,6 +129,32 @@ pub fn compute(
         note,
         wip_history: wip_history::derive_wip_history(transitions, now),
     }
+}
+
+fn stage_durations(
+    events: &HashMap<(u64, Lifecycle), Vec<DateTime<Utc>>>,
+    from: Lifecycle,
+    to: Lifecycle,
+) -> Vec<f64> {
+    let mut durations = Vec::new();
+    for ((number, lifecycle), end_times) in events {
+        if *lifecycle != to {
+            continue;
+        }
+        let start_times = events.get(&(*number, from));
+        for end in end_times {
+            if let Some(hours) = stage_hours(start_times, end) {
+                durations.push(hours);
+            }
+        }
+    }
+    durations
+}
+
+fn stage_hours(start_times: Option<&Vec<DateTime<Utc>>>, end: &DateTime<Utc>) -> Option<f64> {
+    let best_start = start_times?.iter().filter(|start| start <= &end).max()?;
+    let hours = (*end - *best_start).num_minutes() as f64 / 60.0;
+    (hours >= 0.0).then_some(hours)
 }
 
 fn median(values: &mut [f64]) -> Option<f64> {

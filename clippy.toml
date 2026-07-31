@@ -1,0 +1,2 @@
+cognitive-complexity-threshold = 15
+excessive-nesting-threshold = 4

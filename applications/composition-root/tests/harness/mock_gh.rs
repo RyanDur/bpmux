@@ -99,16 +99,7 @@ pub fn mock_story_mutations_with_state(
         then.respond_with(move |req: &HttpMockRequest| {
             let mut s = patch_state.lock().unwrap();
             if let Some(patch) = parse_json_body(req) {
-                if let Some(state_str) = patch.get("state").and_then(|v| v.as_str()) {
-                    s.is_closed = state_str == "closed";
-                }
-                if let Some(labels_arr) = patch.get("labels").and_then(|v| v.as_array()) {
-                    let new_labels: Vec<String> = labels_arr
-                        .iter()
-                        .filter_map(|v| v.as_str().map(String::from))
-                        .collect();
-                    s.labels = new_labels;
-                }
+                apply_issue_patch(&mut s, &patch);
             }
             let snap = s.clone();
             drop(s);
@@ -120,16 +111,8 @@ pub fn mock_story_mutations_with_state(
         when.method(Method::POST).path(labels_path);
         then.respond_with(move |req: &HttpMockRequest| {
             let mut s = post_labels_state.lock().unwrap();
-            if let Some(patch) = parse_json_body(req)
-                && let Some(labels_arr) = patch.get("labels").and_then(|v| v.as_array())
-            {
-                for v in labels_arr {
-                    if let Some(name) = v.as_str()
-                        && !s.labels.iter().any(|l| l == name)
-                    {
-                        s.labels.push(name.to_string());
-                    }
-                }
+            if let Some(patch) = parse_json_body(req) {
+                append_new_labels(&mut s, &patch);
             }
             let labels_json: Vec<Value> = s.labels.iter().map(|n| label_json(n)).collect();
             json_response(Value::Array(labels_json))
@@ -210,6 +193,31 @@ pub fn mock_issue_creation_allocates_sequential_numbers(server: &MockServer) {
                 .build()
         });
     });
+}
+
+fn apply_issue_patch(state: &mut MockIssueState, patch: &Value) {
+    if let Some(state_str) = patch.get("state").and_then(|value| value.as_str()) {
+        state.is_closed = state_str == "closed";
+    }
+    if let Some(labels_arr) = patch.get("labels").and_then(|value| value.as_array()) {
+        state.labels = labels_arr
+            .iter()
+            .filter_map(|value| value.as_str().map(String::from))
+            .collect();
+    }
+}
+
+fn append_new_labels(state: &mut MockIssueState, patch: &Value) {
+    let Some(labels_arr) = patch.get("labels").and_then(|value| value.as_array()) else {
+        return;
+    };
+    for value in labels_arr {
+        if let Some(name) = value.as_str()
+            && !state.labels.iter().any(|label| label == name)
+        {
+            state.labels.push(name.to_string());
+        }
+    }
 }
 
 fn parse_json_body(req: &HttpMockRequest) -> Option<Value> {

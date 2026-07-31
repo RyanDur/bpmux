@@ -38,6 +38,10 @@ fn seed_story(adapter: &InMemorySourceAdapter, id: u64) {
     adapter.seed_body(id, "## What\n\noriginal body\n".to_string());
 }
 
+#[expect(
+    clippy::too_many_lines,
+    reason = "an end-to-end journey pinned as one narrative — splitting it into helpers would hide the arc the test documents"
+)]
 #[tokio::test]
 async fn edit_story_replaces_body_at_canonical_store() {
     let dir = tempfile::tempdir().expect("tempdir");

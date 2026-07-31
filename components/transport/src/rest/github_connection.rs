@@ -134,13 +134,7 @@ pub async fn put_github_connection(
         Some(adapter) => {
             cell.connect(Arc::new(adapter));
             if let Some(orchestrator) = orchestrator {
-                tokio::spawn(async move {
-                    if let Err(e) = orchestrator.refresh_all().await {
-                        diag::log_diag(&format!(
-                            "github-connection: first sync after connect failed ({e}) — the poll loop retries"
-                        ));
-                    }
-                });
+                tokio::spawn(first_sync_after_connect(orchestrator));
             }
         }
         None => {
@@ -169,4 +163,12 @@ pub async fn delete_github_connection(
     actions_url.set_repo(None);
     cell.disconnect();
     ok_body(serde_json::json!({"state": "disconnected"}))
+}
+
+async fn first_sync_after_connect(orchestrator: Arc<sync::SyncOrchestrator>) {
+    if let Err(error) = orchestrator.refresh_all().await {
+        diag::log_diag(&format!(
+            "github-connection: first sync after connect failed ({error}) — the poll loop retries"
+        ));
+    }
 }

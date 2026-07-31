@@ -209,13 +209,12 @@ mod poll_loop_tests {
                 .push(since);
             let prev = self.ticks.fetch_add(1, Ordering::SeqCst);
             let should_fail = self.fail_after.is_some_and(|n| prev >= n);
-            Box::pin(async move {
-                if should_fail {
-                    Err(SyncError::Other("simulated".into()))
-                } else {
-                    Ok(())
-                }
-            })
+            let result = if should_fail {
+                Err(SyncError::Other("simulated".into()))
+            } else {
+                Ok(())
+            };
+            Box::pin(async move { result })
         }
 
         fn flush_pending_writes(&self) -> BoxedFuture<'_, Result<usize, SyncError>> {

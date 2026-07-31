@@ -13,29 +13,35 @@ pub fn frame_team_message(sender: &str, scope: &str, body: &str) -> String {
 fn sanitize_field(field: &str) -> String {
     let mut stripped = String::with_capacity(field.len());
     let mut chars = field.chars().peekable();
-    while let Some(c) = chars.next() {
-        if c == '\x1b' {
-            if chars.peek() == Some(&'[') {
-                chars.next();
-                while let Some(&following) = chars.peek() {
-                    chars.next();
-                    if following.is_ascii_alphabetic() {
-                        break;
-                    }
-                }
-            } else if chars.peek().is_some() {
-                chars.next();
-            }
+    while let Some(current) = chars.next() {
+        if current == '\x1b' {
+            skip_escape_sequence(&mut chars);
             continue;
         }
-        if !c.is_control() {
-            stripped.push(c);
+        if !current.is_control() {
+            stripped.push(current);
         }
     }
     while stripped.contains(MARKER) {
         stripped = stripped.replace(MARKER, "");
     }
     stripped
+}
+
+fn skip_escape_sequence(chars: &mut std::iter::Peekable<std::str::Chars>) {
+    if chars.peek() != Some(&'[') {
+        if chars.peek().is_some() {
+            chars.next();
+        }
+        return;
+    }
+    chars.next();
+    while let Some(&following) = chars.peek() {
+        chars.next();
+        if following.is_ascii_alphabetic() {
+            break;
+        }
+    }
 }
 
 use message::{BROADCAST_ALL, Message};
