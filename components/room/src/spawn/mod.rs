@@ -2,6 +2,7 @@ mod agent_detect;
 #[cfg(test)]
 mod agent_detect_tests;
 mod input_activity;
+mod live_pty;
 mod osc7;
 mod osc7_parse;
 mod output_reader;
@@ -11,6 +12,7 @@ mod provisioning;
 mod pty;
 
 pub use agent_detect::*;
+pub use live_pty::*;
 pub use osc7::*;
 pub use osc7_parse::*;
 pub use paste_mode::*;
